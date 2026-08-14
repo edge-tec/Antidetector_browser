@@ -1,0 +1,16 @@
+# ──────────────────────────────────────────────
+# ProfileVault Apache Rewrite Rules for aaPanel
+# ──────────────────────────────────────────────
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Protect sensitive files
+    RewriteRule ^(config\.php|db\.php|database\.sql|profilevault\.sqlite|\.env|\.git) - [F,L]
+
+    # Route all non-file requests to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
