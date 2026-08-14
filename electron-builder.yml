@@ -1,0 +1,79 @@
+appId: com.profilevault.app
+productName: ProfileVault
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!tests/*'
+asarUnpack:
+  - '**/*.node'
+  - resources/**
+
+# ── macOS Packaging ──
+mac:
+  icon: resources/icon.png
+  category: public.app-category.developer-tools
+  darkModeSupport: true
+  minimumSystemVersion: '10.15'
+  hardenedRuntime: true
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+dmg:
+  artifactName: 'ProfileVault-macOS-${arch}.${ext}'
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# ── Windows Packaging ──
+win:
+  icon: resources/icon.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: 'ProfileVault-Windows-x64.${ext}'
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ProfileVault
+  uninstallDisplayName: ProfileVault Anti-Detect Browser
+  runAfterFinish: true
+
+npmRebuild: true
+
+# ── Linux Packaging ──
+linux:
+  icon: resources/icon.png
+  category: Utility;Development;Network;
+  synopsis: Professional Anti-Detect Browser Profile & Privacy Management Application
+  maintainer: ProfileVault Support <support@profilevault.local>
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+    - target: rpm
+      arch:
+        - x64
+  artifactName: 'ProfileVault-Linux-${arch}.${ext}'
+
+publish:
+  provider: generic
+  url: https://releases.profilevault.local/updates

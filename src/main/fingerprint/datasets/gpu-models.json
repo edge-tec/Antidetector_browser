@@ -1,0 +1,62 @@
+{
+  "windows": {
+    "nvidia": [
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4090 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce RTX 4090", "maxTexture": 32768 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4080 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce RTX 4080", "maxTexture": 32768 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3080 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce RTX 3080", "maxTexture": 32768 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce RTX 3070", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce RTX 3060", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Ti Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce GTX 1660 Ti", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1080 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce GTX 1080", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce GTX 1070", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1060 6GB Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "GeForce GTX 1060", "maxTexture": 16384 }
+    ],
+    "amd": [
+      { "vendor": "Google Inc. (AMD)", "renderer": "ANGLE (AMD, AMD Radeon RX 7900 XTX Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "Radeon RX 7900 XTX", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (AMD)", "renderer": "ANGLE (AMD, AMD Radeon RX 6800 XT Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "Radeon RX 6800 XT", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (AMD)", "renderer": "ANGLE (AMD, AMD Radeon RX 580 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "Radeon RX 580", "maxTexture": 16384 }
+    ],
+    "intel": [
+      { "vendor": "Google Inc. (Intel)", "renderer": "ANGLE (Intel, Intel(R) UHD Graphics 770 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "UHD Graphics 770", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Intel)", "renderer": "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "UHD Graphics 630", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Intel)", "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)", "gpu": "Iris Xe Graphics", "maxTexture": 16384 }
+    ]
+  },
+  "macos": {
+    "apple": [
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M1, OpenGL 4.1)", "gpu": "Apple M1", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", "gpu": "Apple M1 Pro", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M2, OpenGL 4.1)", "gpu": "Apple M2", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M2 Pro, OpenGL 4.1)", "gpu": "Apple M2 Pro", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M3, OpenGL 4.1)", "gpu": "Apple M3", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M3 Pro, OpenGL 4.1)", "gpu": "Apple M3 Pro", "maxTexture": 16384 }
+    ],
+    "intel": [
+      { "vendor": "Google Inc. (Intel)", "renderer": "ANGLE (Intel Inc., Intel(R) UHD Graphics 630, OpenGL 4.1)", "gpu": "UHD Graphics 630", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Intel)", "renderer": "ANGLE (Intel Inc., Intel(R) Iris(TM) Plus Graphics 655, OpenGL 4.1)", "gpu": "Iris Plus Graphics 655", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (AMD)", "renderer": "ANGLE (ATI Technologies Inc., AMD Radeon Pro 5500M, OpenGL 4.1)", "gpu": "Radeon Pro 5500M", "maxTexture": 16384 }
+    ]
+  },
+  "linux": {
+    "nvidia": [
+      { "vendor": "Google Inc. (NVIDIA Corporation)", "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce GTX 1080/PCIe/SSE2, OpenGL 4.5)", "gpu": "GeForce GTX 1080", "maxTexture": 16384 }
+    ],
+    "amd": [
+      { "vendor": "Google Inc. (X.Org)", "renderer": "ANGLE (X.Org, AMD Radeon RX 580, OpenGL 4.6)", "gpu": "Radeon RX 580", "maxTexture": 16384 }
+    ],
+    "intel": [
+      { "vendor": "Google Inc. (Intel)", "renderer": "ANGLE (Intel, Mesa Intel(R) UHD Graphics 630 (CFL GT2), OpenGL 4.6)", "gpu": "UHD Graphics 630", "maxTexture": 16384 }
+    ]
+  },
+  "android": {
+    "qualcomm": [
+      { "vendor": "Qualcomm", "renderer": "Adreno (TM) 740", "gpu": "Adreno 740", "maxTexture": 16384 },
+      { "vendor": "Qualcomm", "renderer": "Adreno (TM) 730", "gpu": "Adreno 730", "maxTexture": 16384 },
+      { "vendor": "Qualcomm", "renderer": "Adreno (TM) 660", "gpu": "Adreno 660", "maxTexture": 16384 }
+    ],
+    "mali": [
+      { "vendor": "ARM", "renderer": "Mali-G715 Immortalis MC11", "gpu": "Mali-G715", "maxTexture": 8192 },
+      { "vendor": "ARM", "renderer": "Mali-G710 MC10", "gpu": "Mali-G710", "maxTexture": 8192 }
+    ]
+  }
+}

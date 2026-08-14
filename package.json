@@ -1,0 +1,56 @@
+{
+  "name": "profilevault",
+  "version": "1.0.0",
+  "description": "Professional macOS Browser Profile & Privacy Management Application",
+  "main": "./out/main/index.js",
+  "homepage": "https://profilevault.local",
+  "author": {
+    "name": "ProfileVault Team",
+    "email": "support@profilevault.local"
+  },
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "postinstall": "electron-builder install-app-deps",
+    "package:win": "electron-vite build && electron-builder --win nsis --x64",
+    "package:mac:intel": "electron-vite build && electron-builder --mac dmg --x64",
+    "package:mac:arm": "electron-vite build && electron-builder --mac dmg --arm64",
+    "package:linux": "electron-vite build && electron-builder --linux AppImage --x64",
+    "package:linux:all": "electron-vite build && electron-builder --linux AppImage deb rpm --x64",
+    "package:all": "electron-vite build && electron-builder --win --mac --linux",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "express": "^4.21.0",
+    "nodemailer": "^9.0.5",
+    "puppeteer-core": "^23.6.0",
+    "uuid": "^10.0.0",
+    "winston": "^3.15.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^3.0.0",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

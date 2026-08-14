@@ -1,0 +1,44 @@
+{
+  "desktop": [
+    { "width": 3840, "height": 2160, "dpr": 1.5, "viewport": [2560, 1329], "label": "4K UHD", "weight": 5 },
+    { "width": 3840, "height": 2160, "dpr": 2, "viewport": [1920, 1009], "label": "4K UHD @2x", "weight": 3 },
+    { "width": 2560, "height": 1440, "dpr": 1, "viewport": [2560, 1369], "label": "QHD", "weight": 15 },
+    { "width": 2560, "height": 1440, "dpr": 1.25, "viewport": [2048, 1095], "label": "QHD @1.25x", "weight": 8 },
+    { "width": 1920, "height": 1200, "dpr": 1, "viewport": [1920, 1129], "label": "WUXGA", "weight": 10 },
+    { "width": 1920, "height": 1080, "dpr": 1, "viewport": [1920, 969], "label": "Full HD", "weight": 35 },
+    { "width": 1920, "height": 1080, "dpr": 1.25, "viewport": [1536, 775], "label": "Full HD @1.25x", "weight": 12 },
+    { "width": 1920, "height": 1080, "dpr": 1.5, "viewport": [1280, 609], "label": "Full HD @1.5x", "weight": 5 },
+    { "width": 1680, "height": 1050, "dpr": 1, "viewport": [1680, 979], "label": "WSXGA+", "weight": 5 },
+    { "width": 1600, "height": 900, "dpr": 1, "viewport": [1600, 829], "label": "HD+", "weight": 8 },
+    { "width": 1440, "height": 900, "dpr": 1, "viewport": [1440, 829], "label": "WXGA+", "weight": 5 },
+    { "width": 1366, "height": 768, "dpr": 1, "viewport": [1366, 697], "label": "WXGA", "weight": 12 },
+    { "width": 1280, "height": 1024, "dpr": 1, "viewport": [1280, 953], "label": "SXGA", "weight": 3 },
+    { "width": 1280, "height": 800, "dpr": 1, "viewport": [1280, 729], "label": "WXGA", "weight": 5 },
+    { "width": 1280, "height": 720, "dpr": 1, "viewport": [1280, 649], "label": "HD", "weight": 4 }
+  ],
+  "macos-retina": [
+    { "width": 3024, "height": 1964, "dpr": 2, "viewport": [1512, 911], "label": "MacBook Pro 14\"", "weight": 15 },
+    { "width": 3456, "height": 2234, "dpr": 2, "viewport": [1728, 1046], "label": "MacBook Pro 16\"", "weight": 12 },
+    { "width": 2560, "height": 1600, "dpr": 2, "viewport": [1280, 729], "label": "MacBook Air 13\"", "weight": 18 },
+    { "width": 2880, "height": 1800, "dpr": 2, "viewport": [1440, 829], "label": "MacBook Pro 15\"", "weight": 10 },
+    { "width": 5120, "height": 2880, "dpr": 2, "viewport": [2560, 1369], "label": "iMac 27\" 5K", "weight": 8 },
+    { "width": 4480, "height": 2520, "dpr": 2, "viewport": [2240, 1189], "label": "iMac 24\" 4.5K", "weight": 8 },
+    { "width": 6016, "height": 3384, "dpr": 2, "viewport": [3008, 1621], "label": "Pro Display XDR", "weight": 3 }
+  ],
+  "android": [
+    { "width": 412, "height": 915, "dpr": 2.625, "viewport": [412, 823], "label": "Pixel 8", "weight": 15 },
+    { "width": 393, "height": 873, "dpr": 2.75, "viewport": [393, 786], "label": "Pixel 7", "weight": 12 },
+    { "width": 360, "height": 800, "dpr": 3, "viewport": [360, 712], "label": "Samsung Galaxy S23", "weight": 18 },
+    { "width": 384, "height": 854, "dpr": 2.81, "viewport": [384, 766], "label": "Samsung Galaxy S24", "weight": 15 },
+    { "width": 412, "height": 892, "dpr": 3.5, "viewport": [412, 804], "label": "Samsung Galaxy S24 Ultra", "weight": 10 },
+    { "width": 360, "height": 780, "dpr": 3, "viewport": [360, 692], "label": "Samsung Galaxy A54", "weight": 8 }
+  ],
+  "taskbar_heights": {
+    "windows-10": 40,
+    "windows-11": 48,
+    "macos-intel": 25,
+    "macos-arm": 25,
+    "linux": 27,
+    "android": 0
+  }
+}
