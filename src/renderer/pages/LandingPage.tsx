@@ -445,6 +445,147 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         </div>
       </section>
 
+      {/* ── 4b. Supported Accounts & Platforms Grid Section ── */}
+      <section style={{ backgroundColor: '#FFFFFF', padding: '90px 24px', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 'clamp(26px, 4vw, 36px)', fontWeight: 800, color: '#1E293B', margin: '0 0 48px', letterSpacing: '-0.5px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+            Ideal for managing accounts across all services
+          </h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+            {/* 1. Facebook */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9', transition: 'transform 0.2s ease, boxShadow 0.2s ease' }} className="platform-card">
+              <svg height="26" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="0" y="24" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="26" letterSpacing="-1">facebook</text>
+              </svg>
+            </div>
+
+            {/* 2. Amazon */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="28" viewBox="0 0 120 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="0" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="700" fontSize="24">amazon</text>
+                <path d="M12 28 C 30 35, 65 35, 80 25 M 76 23 L 83 25 L 80 30" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              </svg>
+            </div>
+
+            {/* 3. eBay */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="26" viewBox="0 0 100 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="0" y="24" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="28" letterSpacing="-1">ebay</text>
+              </svg>
+            </div>
+
+            {/* 4. LinkedIn */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="0" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="700" fontSize="24">Linked</text>
+                <rect x="76" y="4" width="22" height="22" rx="4" fill="#64748B" />
+                <text x="81" y="21" fill="#F8FAFC" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="18">in</text>
+              </svg>
+            </div>
+
+            {/* 5. Reddit */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="26" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="14" cy="16" r="10" fill="#64748B" />
+                <circle cx="10" cy="14" r="2" fill="#F8FAFC" />
+                <circle cx="18" cy="14" r="2" fill="#F8FAFC" />
+                <path d="M 10 18 Q 14 22 18 18" stroke="#F8FAFC" strokeWidth="1.5" fill="none" />
+                <text x="32" y="24" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="24">reddit</text>
+              </svg>
+            </div>
+
+            {/* 6. Instagram */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="26" viewBox="0 0 140 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="0" y="24" fill="#64748B" fontFamily="Georgia, serif" fontStyle="italic" fontWeight="700" fontSize="26">Instagram</text>
+              </svg>
+            </div>
+
+            {/* 7. TikTok */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 14 6 L 14 20 A 5 5 0 1 1 9 15 M 14 11 A 7 7 0 0 0 21 6" stroke="#64748B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <text x="28" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="24">TikTok</text>
+              </svg>
+            </div>
+
+            {/* 8. Discord */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 4 8 C 8 6 14 5 18 6 C 18 6 20 10 21 16 C 16 18 10 18 5 16 C 6 10 8 6 8 6" fill="#64748B" />
+                <text x="26" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="22">Discord</text>
+              </svg>
+            </div>
+
+            {/* 9. Gmail */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 4 8 L 14 16 L 24 8 L 24 22 L 4 22 Z" stroke="#64748B" strokeWidth="2.5" strokeLinejoin="round" fill="none" />
+                <path d="M 4 8 L 14 16 L 24 8" stroke="#64748B" strokeWidth="2.5" fill="none" />
+                <text x="32" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="600" fontSize="22">Gmail</text>
+              </svg>
+            </div>
+
+            {/* 10. Google Ads */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 140 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 6 22 L 14 6 L 22 22 Z" stroke="#64748B" strokeWidth="2.5" fill="none" />
+                <circle cx="20" cy="20" r="4" fill="#64748B" />
+                <text x="30" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="700" fontSize="18">Google</text>
+                <text x="94" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="400" fontSize="18">Ads</text>
+              </svg>
+            </div>
+
+            {/* 11. Etsy */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="26" viewBox="0 0 100 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="0" y="24" fill="#64748B" fontFamily="Georgia, serif" fontWeight="700" fontSize="28">Etsy</text>
+              </svg>
+            </div>
+
+            {/* 12. Pinterest */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="26" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="0" y="24" fill="#64748B" fontFamily="Georgia, serif" fontStyle="italic" fontWeight="700" fontSize="26">Pinterest</text>
+              </svg>
+            </div>
+
+            {/* 13. Meta */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 6 16 C 6 10, 14 10, 18 16 C 22 22, 30 22, 30 16 C 30 10, 22 10, 18 16 C 14 22, 6 22, 6 16 Z" stroke="#64748B" strokeWidth="2.5" fill="none" />
+                <text x="36" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="24">Meta</text>
+              </svg>
+            </div>
+
+            {/* 14. X */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="26" viewBox="0 0 50 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 10 6 L 25 24 M 25 6 L 10 24" stroke="#64748B" strokeWidth="3.5" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            {/* 15. Airbnb */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 14 6 C 10 6, 6 12, 6 18 C 6 22, 10 26, 14 26 C 18 26, 22 22, 22 18 C 22 12, 18 6, 14 6 Z M 14 14 C 12 14, 11 16, 11 18 C 11 20, 12 21, 14 21 C 16 21, 17 20, 17 18 C 17 16, 16 14, 14 14 Z" stroke="#64748B" strokeWidth="2" fill="none" />
+                <text x="28" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="22">airbnb</text>
+              </svg>
+            </div>
+
+            {/* 16. YouTube */}
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
+              <svg height="24" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="6" width="26" height="18" rx="5" fill="#64748B" />
+                <polygon points="12,10 20,15 12,20" fill="#F8FAFC" />
+                <text x="34" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="22" letterSpacing="-0.5">YouTube</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── 5. How It Works Timeline ── */}
       <section id="how-it-works" style={{ backgroundColor: '#14141F', borderTop: '1px solid #2C2C3E', borderBottom: '1px solid #2C2C3E', padding: '90px 24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>

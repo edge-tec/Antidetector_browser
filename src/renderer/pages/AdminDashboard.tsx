@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { UserDisplay, Profile } from '../types'
+import { AdminSupportManager } from '../components/AdminSupportManager'
 
 interface SmtpFormState {
   host: string
@@ -47,6 +48,7 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
       'admin:get-smtp-config': 'adminGetSmtpConfig',
       'admin:save-smtp-config': 'adminSaveSmtpConfig',
       'admin:test-smtp-config': 'adminTestSmtpConfig',
+      'admin:send-email-broadcast': 'adminSendEmailBroadcast',
       'landing:get-public-data': 'getPublicLandingData',
       'landing:admin-update-branding': 'adminUpdateBranding',
       'landing:admin-update-hero': 'adminUpdateHero',
@@ -96,12 +98,34 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
     }
   }
 
+  if (channel === 'admin:get-smtp-config') {
+    return {
+      success: true,
+      data: {
+        host: 'smtp.gmail.com',
+        port: 587,
+        user: 'admin@profilevault.local',
+        password: '',
+        fromEmail: 'noreply@profilevault.local',
+        secure: false,
+        enabled: true
+      }
+    }
+  }
+
+  if (channel === 'admin:test-smtp-config') {
+    return {
+      success: true,
+      message: 'Successfully connected to SMTP server (Mock Test)'
+    }
+  }
+
   return { success: true }
 }
 
 export const AdminDashboard: React.FC = () => {
   const { sessionToken, currentUser, impersonateUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'releases' | 'cms' | 'smtp' | 'audit'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'releases' | 'cms' | 'smtp' | 'support' | 'audit'>('users')
   const [users, setUsers] = useState<UserDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
@@ -176,7 +200,18 @@ export const AdminDashboard: React.FC = () => {
   })
   const [savingSmtp, setSavingSmtp] = useState(false)
   const [testingSmtp, setTestingSmtp] = useState(false)
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false)
   const [smtpStatusMessage, setSmtpStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Broadcast Email State
+  const [broadcastForm, setBroadcastForm] = useState({
+    targetGroup: 'all',
+    customEmails: '',
+    subject: '⚡ ProfileVault Latest Update & Feature Announcement',
+    messageBody: 'Hello,\n\nWe are excited to share our latest product updates with you! Check out the new performance improvements, updated browser fingerprint databases, and enhanced security features in ProfileVault.\n\nThank you for choosing ProfileVault!'
+  })
+  const [sendingBroadcast, setSendingBroadcast] = useState(false)
+  const [broadcastStatus, setBroadcastStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Landing CMS State
   const [cmsTab, setCmsTab] = useState<'branding' | 'hero' | 'pricing' | 'faq' | 'seo'>('branding')
@@ -366,15 +401,91 @@ export const AdminDashboard: React.FC = () => {
   const handleSaveSmtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setSavingSmtp(true)
+    setSmtpStatusMessage(null)
     try {
       const res = await callAdminIpc('admin:save-smtp-config', sessionToken || 'mock-admin-token', smtpForm)
       if (res?.success) {
-        setSmtpStatusMessage({ type: 'success', text: 'SMTP configuration saved!' })
+        setSmtpStatusMessage({ type: 'success', text: 'SMTP server configuration updated and saved successfully!' })
+      } else {
+        setSmtpStatusMessage({ type: 'error', text: res?.error || 'Failed to save SMTP configuration.' })
       }
     } catch (err: any) {
       setSmtpStatusMessage({ type: 'error', text: err.message })
     } finally {
       setSavingSmtp(false)
+    }
+  }
+
+  const handleTestSmtp = async () => {
+    setTestingSmtp(true)
+    setSmtpStatusMessage(null)
+    try {
+      const res = await callAdminIpc('admin:test-smtp-config', sessionToken || 'mock-admin-token', smtpForm)
+      if (res?.success) {
+        setSmtpStatusMessage({ type: 'success', text: res.message || 'Successfully connected to SMTP server!' })
+      } else {
+        setSmtpStatusMessage({ type: 'error', text: res?.message || res?.error || 'SMTP Connection test failed.' })
+      }
+    } catch (err: any) {
+      setSmtpStatusMessage({ type: 'error', text: err.message })
+    } finally {
+      setTestingSmtp(false)
+    }
+  }
+
+  const applySmtpPreset = (preset: 'gmail' | 'outlook' | 'sendgrid' | 'mailgun' | 'ses') => {
+    switch (preset) {
+      case 'gmail':
+        setSmtpForm(prev => ({ ...prev, host: 'smtp.gmail.com', port: 587, secure: false, enabled: true }))
+        showToast('Applied Gmail SMTP preset (smtp.gmail.com:587)')
+        break
+      case 'outlook':
+        setSmtpForm(prev => ({ ...prev, host: 'smtp.office365.com', port: 587, secure: false, enabled: true }))
+        showToast('Applied Outlook / Office 365 preset (smtp.office365.com:587)')
+        break
+      case 'sendgrid':
+        setSmtpForm(prev => ({ ...prev, host: 'smtp.sendgrid.net', port: 587, secure: false, enabled: true }))
+        showToast('Applied SendGrid preset (smtp.sendgrid.net:587)')
+        break
+      case 'mailgun':
+        setSmtpForm(prev => ({ ...prev, host: 'smtp.mailgun.org', port: 587, secure: false, enabled: true }))
+        showToast('Applied Mailgun preset (smtp.mailgun.org:587)')
+        break
+      case 'ses':
+        setSmtpForm(prev => ({ ...prev, host: 'email-smtp.us-east-1.amazonaws.com', port: 587, secure: false, enabled: true }))
+        showToast('Applied Amazon SES preset (Port 587)')
+        break
+    }
+  }
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!broadcastForm.subject || !broadcastForm.messageBody) {
+      setBroadcastStatus({ type: 'error', text: 'Subject and message body content are required.' })
+      return
+    }
+    setSendingBroadcast(true)
+    setBroadcastStatus(null)
+    try {
+      const customEmailsArr = broadcastForm.targetGroup === 'custom'
+        ? broadcastForm.customEmails.split(',').map(e => e.trim()).filter(Boolean)
+        : []
+      const res = await callAdminIpc('admin:send-email-broadcast', sessionToken || 'mock-admin-token', {
+        targetGroup: broadcastForm.targetGroup,
+        customEmails: customEmailsArr,
+        subject: broadcastForm.subject,
+        messageBody: broadcastForm.messageBody
+      })
+      if (res?.success) {
+        setBroadcastStatus({ type: 'success', text: res.message || 'Email update broadcast sent successfully!' })
+        showToast('Email broadcast delivered!')
+      } else {
+        setBroadcastStatus({ type: 'error', text: res?.error || res?.message || 'Failed to deliver broadcast email.' })
+      }
+    } catch (err: any) {
+      setBroadcastStatus({ type: 'error', text: err.message })
+    } finally {
+      setSendingBroadcast(false)
     }
   }
 
@@ -518,6 +629,23 @@ export const AdminDashboard: React.FC = () => {
               }}
             >
               📧 SMTP Settings
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('support')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: activeTab === 'support' ? '#1C1C28' : 'transparent',
+                color: activeTab === 'support' ? '#2DD4BF' : '#94A3B8',
+                fontWeight: activeTab === 'support' ? 600 : 400,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              💬 Live Support
             </button>
           </div>
 
@@ -837,13 +965,444 @@ export const AdminDashboard: React.FC = () => {
 
         {/* 5. SMTP Tab */}
         {activeTab === 'smtp' && (
-          <div style={{ maxWidth: '640px', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '28px' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: '16px', color: '#F1F5F9' }}>📧 SMTP Server Settings</h3>
-            {smtpStatusMessage && <div style={{ padding: '10px', marginBottom: '16px', borderRadius: '8px', backgroundColor: smtpStatusMessage.type === 'success' ? '#10B98120' : '#EF444420', color: smtpStatusMessage.type === 'success' ? '#10B981' : '#F87171' }}>{smtpStatusMessage.text}</div>}
-            <form onSubmit={handleSaveSmtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input type="text" placeholder="SMTP Host" value={smtpForm.host} onChange={e => setSmtpForm({ ...smtpForm, host: e.target.value })} style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }} />
-              <button type="submit" style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Save SMTP Settings</button>
+          <div style={{ maxWidth: '800px', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #2C2C3E', paddingBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#F1F5F9', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📧</span> Full SMTP Server Configuration
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                  Configure outgoing mail server for email verification links, security alerts, and system notifications.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: smtpForm.enabled ? '#10B98120' : '#64748B20',
+                    color: smtpForm.enabled ? '#10B981' : '#94A3B8',
+                    border: `1px solid ${smtpForm.enabled ? '#10B98140' : '#64748B40'}`
+                  }}
+                >
+                  {smtpForm.enabled ? '● SMTP Active' : '○ SMTP Disabled'}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Provider Presets */}
+            <div style={{ marginBottom: '20px', backgroundColor: '#14141F', padding: '14px', borderRadius: '12px', border: '1px solid #2C2C3E' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                ⚡ Quick Provider Presets
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => applySmtpPreset('gmail')}
+                  style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#1C1C28', border: '1px solid #334155', color: '#F87171', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  🔴 Gmail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySmtpPreset('outlook')}
+                  style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#1C1C28', border: '1px solid #334155', color: '#60A5FA', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  🟦 Outlook 365
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySmtpPreset('sendgrid')}
+                  style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#1C1C28', border: '1px solid #334155', color: '#34D399', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  🟩 SendGrid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySmtpPreset('mailgun')}
+                  style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#1C1C28', border: '1px solid #334155', color: '#FBBF24', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  🟧 Mailgun
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySmtpPreset('ses')}
+                  style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#1C1C28', border: '1px solid #334155', color: '#F472B6', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  🟨 Amazon SES
+                </button>
+              </div>
+            </div>
+
+            {smtpStatusMessage && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  marginBottom: '20px',
+                  borderRadius: '10px',
+                  backgroundColor: smtpStatusMessage.type === 'success' ? '#10B9811A' : '#EF44441A',
+                  color: smtpStatusMessage.type === 'success' ? '#34D399' : '#F87171',
+                  border: `1px solid ${smtpStatusMessage.type === 'success' ? '#10B98140' : '#EF444440'}`,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>{smtpStatusMessage.type === 'success' ? '✅' : '❌'}</span>
+                <span>{smtpStatusMessage.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveSmtp} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Toggle Switch Row */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'space-between',
+                  backgroundColor: '#14141F',
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #2C2C3E'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#F1F5F9' }}>Enable Outgoing SMTP Delivery</div>
+                  <div style={{ fontSize: '12px', color: '#94A3B8' }}>
+                    When enabled, account verification and alerts are delivered directly to user email inboxes via SMTP.
+                  </div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: '48px', height: '26px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={smtpForm.enabled}
+                    onChange={e => setSmtpForm({ ...smtpForm, enabled: e.target.checked })}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundColor: smtpForm.enabled ? '#2DD4BF' : '#334155',
+                      borderRadius: '26px',
+                      transition: '0.2s',
+                    }}
+                  />
+                  <span
+                    style={{
+                      position: 'absolute',
+                      height: '20px',
+                      width: '20px',
+                      left: smtpForm.enabled ? '24px' : '3px',
+                      bottom: '3px',
+                      backgroundColor: '#FFF',
+                      borderRadius: '50%',
+                      transition: '0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Server Host & Port Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                    SMTP Server Host
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. smtp.gmail.com or mail.yourdomain.com"
+                    value={smtpForm.host}
+                    onChange={e => setSmtpForm({ ...smtpForm, host: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', outline: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                    SMTP Port
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="587"
+                    value={smtpForm.port}
+                    onChange={e => setSmtpForm({ ...smtpForm, port: parseInt(e.target.value, 10) || 587 })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', outline: 'none' }}
+                  />
+                </div>
+              </div>
+
+              {/* Security & Encryption Option */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                  Encryption Protocol
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setSmtpForm({ ...smtpForm, secure: false })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: !smtpForm.secure ? '#1C1C28' : '#14141F',
+                      border: `1px solid ${!smtpForm.secure ? '#2DD4BF' : '#2C2C3E'}`,
+                      color: !smtpForm.secure ? '#2DD4BF' : '#94A3B8',
+                      fontSize: '13px',
+                      fontWeight: !smtpForm.secure ? 600 : 400,
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    🔒 STARTTLS / TLS (Port 587/25)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSmtpForm({ ...smtpForm, secure: true })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: smtpForm.secure ? '#1C1C28' : '#14141F',
+                      border: `1px solid ${smtpForm.secure ? '#2DD4BF' : '#2C2C3E'}`,
+                      color: smtpForm.secure ? '#2DD4BF' : '#94A3B8',
+                      fontSize: '13px',
+                      fontWeight: smtpForm.secure ? 600 : 400,
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    🛡️ Direct SSL / TLS (Port 465)
+                  </button>
+                </div>
+              </div>
+
+              {/* Authentication Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                    SMTP Username / Email
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. user@gmail.com or api_key"
+                    value={smtpForm.user}
+                    onChange={e => setSmtpForm({ ...smtpForm, user: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', outline: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                    SMTP Password / App Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showSmtpPassword ? 'text' : 'password'}
+                      placeholder="••••••••••••••••"
+                      value={smtpForm.password}
+                      onChange={e => setSmtpForm({ ...smtpForm, password: e.target.value })}
+                      style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', outline: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                      style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                      {showSmtpPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sender Email Address */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                  Default "From" Sender Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. noreply@profilevault.com"
+                  value={smtpForm.fromEmail}
+                  onChange={e => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', outline: 'none' }}
+                />
+                <span style={{ fontSize: '11px', color: '#64748B', marginTop: '4px', display: 'block' }}>
+                  If left empty, system defaults to SMTP Username.
+                </span>
+              </div>
+
+              {/* Buttons Bar */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '10px', borderTop: '1px solid #2C2C3E', paddingTop: '18px' }}>
+                <button
+                  type="button"
+                  onClick={handleTestSmtp}
+                  disabled={testingSmtp || !smtpForm.host || !smtpForm.user}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#1C1C28',
+                    border: '1px solid #334155',
+                    color: testingSmtp ? '#94A3B8' : '#F1F5F9',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: testingSmtp || !smtpForm.host || !smtpForm.user ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {testingSmtp ? '⚡ Testing Connection...' : '⚡ Test SMTP Connection'}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={savingSmtp}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#2DD4BF',
+                    color: '#0F0F17',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: savingSmtp ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {savingSmtp ? '💾 Saving Configuration...' : '💾 Save SMTP Settings'}
+                </button>
+              </div>
             </form>
+
+            {/* 📢 Admin Email Broadcast & Updates System Card */}
+            <div style={{ marginTop: '24px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px' }}>
+              <div style={{ marginBottom: '16px', borderBottom: '1px solid #2C2C3E', paddingBottom: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📢</span> Send Latest Update & System Announcement
+                </h4>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                  Deliver latest product update notifications, release notes, or security announcements directly to user inboxes.
+                </p>
+              </div>
+
+              {broadcastStatus && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    marginBottom: '16px',
+                    borderRadius: '8px',
+                    backgroundColor: broadcastStatus.type === 'success' ? '#10B9811A' : '#EF44441A',
+                    color: broadcastStatus.type === 'success' ? '#34D399' : '#F87171',
+                    border: `1px solid ${broadcastStatus.type === 'success' ? '#10B98140' : '#EF444440'}`,
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <span>{broadcastStatus.type === 'success' ? '✅' : '❌'}</span>
+                  <span>{broadcastStatus.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSendBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                    Target Audience
+                  </label>
+                  <select
+                    value={broadcastForm.targetGroup}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, targetGroup: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#1C1C28', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
+                  >
+                    <option value="all">👥 All Registered Users</option>
+                    <option value="verified">✓ Verified Users Only</option>
+                    <option value="admins">👑 Administrators Only</option>
+                    <option value="custom">✏️ Custom Email Address List</option>
+                  </select>
+                </div>
+
+                {broadcastForm.targetGroup === 'custom' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                      Custom Recipients (Comma-separated emails)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="user1@example.com, user2@example.com"
+                      value={broadcastForm.customEmails}
+                      onChange={e => setBroadcastForm({ ...broadcastForm, customEmails: e.target.value })}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#1C1C28', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                    Email Subject / Headline
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ⚡ ProfileVault Update: New Features Released!"
+                    value={broadcastForm.subject}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, subject: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#1C1C28', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+                    Announcement Message Body
+                  </label>
+                  <textarea
+                    rows={5}
+                    placeholder="Type your system announcement or update details here..."
+                    value={broadcastForm.messageBody}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, messageBody: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#1C1C28', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', resize: 'vertical', lineHeight: '1.5' }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={sendingBroadcast || !broadcastForm.subject || !broadcastForm.messageBody}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#6366F1',
+                    color: '#FFF',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: sendingBroadcast || !broadcastForm.subject || !broadcastForm.messageBody ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginTop: '4px'
+                  }}
+                >
+                  {sendingBroadcast ? '🚀 Delivering Broadcast...' : '📢 Send Email Announcement to Users'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Support Tab View */}
+        {activeTab === 'support' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <AdminSupportManager />
           </div>
         )}
       </div>

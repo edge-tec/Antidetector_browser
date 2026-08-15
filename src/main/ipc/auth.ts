@@ -239,6 +239,11 @@ export function setupAuthIPC(): void {
       tokenRepo.markUsed(tokenResult.token.id)
       const displayUser = userRepo.verifyEmail(userId)!
 
+      // Send confirmation email asynchronously
+      emailService.sendAccountVerifiedEmail(displayUser.name, displayUser.email).catch(err => {
+        logger.error('auth', `Background confirmation email failed: ${err.message}`)
+      })
+
       // Create active session token
       const sessionToken = sessionManager.createSession(displayUser)
       logger.info('auth', `Email verified successfully for user "${displayUser.email}"`)
@@ -247,7 +252,7 @@ export function setupAuthIPC(): void {
         success: true,
         user: displayUser,
         token: sessionToken,
-        message: 'Your email has been verified successfully!'
+        message: 'Your email has been verified successfully! A confirmation message has been sent to your inbox.'
       }
     } catch (err: any) {
       logger.error('auth', `Email verification failed: ${err.message}`)

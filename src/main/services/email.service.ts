@@ -156,6 +156,126 @@ export class EmailService {
   }
 
   /**
+   * Send confirmation email after user successfully verifies their email address.
+   */
+  async sendAccountVerifiedEmail(userName: string, email: string): Promise<{ success: boolean; sentViaSmtp: boolean; error?: string }> {
+    const htmlContent = this.renderVerifiedConfirmationHtml(userName, email)
+    const smtpConfig = this.getSmtpConfig()
+
+    let sentViaSmtp = false
+    let smtpError: string | undefined
+
+    if (smtpConfig.enabled && smtpConfig.host && smtpConfig.user) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: smtpConfig.host,
+          port: smtpConfig.port,
+          secure: smtpConfig.secure,
+          auth: {
+            user: smtpConfig.user,
+            pass: smtpConfig.password
+          }
+        })
+
+        await transporter.sendMail({
+          from: `"ProfileVault Security" <${smtpConfig.fromEmail || smtpConfig.user}>`,
+          to: email,
+          subject: '🎉 ProfileVault Account Confirmed & Ready!',
+          html: htmlContent
+        })
+
+        sentViaSmtp = true
+        logger.info('auth', `Account verification confirmation email sent via SMTP to "${email}"`)
+      } catch (err: any) {
+        smtpError = err.message
+        logger.error('auth', `Failed to send verification confirmation email via SMTP to "${email}": ${err.message}`)
+      }
+    } else {
+      logger.info('auth', `SMTP disabled. Account verified confirmation logged for "${email}"`)
+    }
+
+    return {
+      success: true,
+      sentViaSmtp,
+      error: smtpError
+    }
+  }
+
+  /**
+   * Send system update / announcement email to target list of user emails.
+   */
+  async sendBroadcastEmail(
+    recipients: string[],
+    subject: string,
+    messageBody: string
+  ): Promise<{ success: boolean; totalSent: number; totalFailed: number; sentViaSmtp: boolean; message: string }> {
+    if (!recipients || recipients.length === 0) {
+      return { success: false, totalSent: 0, totalFailed: 0, sentViaSmtp: false, message: 'No recipient emails specified.' }
+    }
+
+    const smtpConfig = this.getSmtpConfig()
+    const htmlContent = this.renderBroadcastHtml(subject, messageBody)
+
+    let totalSent = 0
+    let totalFailed = 0
+
+    if (smtpConfig.enabled && smtpConfig.host && smtpConfig.user) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: smtpConfig.host,
+          port: smtpConfig.port,
+          secure: smtpConfig.secure,
+          auth: {
+            user: smtpConfig.user,
+            pass: smtpConfig.password
+          }
+        })
+
+        for (const recipient of recipients) {
+          try {
+            await transporter.sendMail({
+              from: `"ProfileVault Updates" <${smtpConfig.fromEmail || smtpConfig.user}>`,
+              to: recipient,
+              subject: subject,
+              html: htmlContent
+            })
+            totalSent++
+          } catch (err: any) {
+            totalFailed++
+            logger.error('admin', `Failed to send broadcast email to "${recipient}": ${err.message}`)
+          }
+        }
+
+        logger.info('admin', `Email broadcast completed. Sent: ${totalSent}, Failed: ${totalFailed}`)
+        return {
+          success: true,
+          totalSent,
+          totalFailed,
+          sentViaSmtp: true,
+          message: `Broadcast delivered via SMTP to ${totalSent} recipient(s).`
+        }
+      } catch (err: any) {
+        return {
+          success: false,
+          totalSent: 0,
+          totalFailed: recipients.length,
+          sentViaSmtp: false,
+          message: `SMTP Broadcast transport failed: ${err.message}`
+        }
+      }
+    } else {
+      logger.info('admin', `SMTP disabled. Simulated broadcast of "${subject}" to ${recipients.length} recipients.`)
+      return {
+        success: true,
+        totalSent: recipients.length,
+        totalFailed: 0,
+        sentViaSmtp: false,
+        message: `SMTP disabled. Broadcast logged for ${recipients.length} user(s) in system log.`
+      }
+    }
+  }
+
+  /**
    * Render professional HTML template for account verification email.
    */
   renderEmailHtml(userName: string, verificationUrl: string): string {
@@ -206,6 +326,111 @@ export class EmailService {
 </html>
     `
   }
+
+  /**
+   * Render HTML template for account verification confirmation email.
+   */
+  renderVerifiedConfirmationHtml(userName: string, email: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Account Verified — ProfileVault</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0F0F17; color: #CBD5E1; margin: 0; padding: 40px 20px; }
+    .container { max-width: 580px; margin: 0 auto; background: #1C1C28; border: 1px solid #2C2C3E; border-radius: 12px; padding: 36px; }
+    .header { text-align: center; border-bottom: 1px solid #2C2C3E; padding-bottom: 24px; margin-bottom: 24px; }
+    .logo { font-size: 22px; font-weight: 700; color: #2DD4BF; letter-spacing: 0.5px; }
+    .badge { display: inline-block; background: #10B98120; border: 1px solid #10B98140; color: #34D399; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+    h2 { color: #F1F5F9; font-size: 22px; margin-top: 0; }
+    p { line-height: 1.6; font-size: 14px; color: #94A3B8; }
+    .feature-list { background: #14141F; border: 1px solid #2C2C3E; border-radius: 8px; padding: 18px 24px; margin: 24px 0; }
+    .feature-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; color: #CBD5E1; }
+    .btn-container { text-align: center; margin: 28px 0; }
+    .btn { display: inline-block; padding: 14px 32px; background-color: #2DD4BF; color: #0F0F17; font-weight: 700; text-decoration: none; border-radius: 8px; font-size: 14px; }
+    .footer { text-align: center; font-size: 12px; color: #475569; margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🛡️ ProfileVault Antidetect</div>
+    </div>
+    <div style="text-align: center;">
+      <span class="badge">✓ Email Verified Successfully</span>
+      <h2>Welcome to ProfileVault, ${userName}!</h2>
+    </div>
+    <p>Your email address (<strong>${email}</strong>) has been verified. Your account is now fully active and ready to use.</p>
+
+    <div class="feature-list">
+      <div style="font-weight: 600; color: #F1F5F9; margin-bottom: 12px; font-size: 14px;">🚀 What you can do now:</div>
+      <div class="feature-item">🔒 Create isolated, fingerprint-protected browser profiles</div>
+      <div class="feature-item">🌐 Assign HTTP/HTTPS & SOCKS5 proxies per profile</div>
+      <div class="feature-item">👥 Provision team access & share profile permissions</div>
+      <div class="feature-item">⚡ Automate routine tasks with browser session isolation</div>
+    </div>
+
+    <div class="btn-container">
+      <a href="app://profilevault" class="btn">Open ProfileVault Application</a>
+    </div>
+
+    <div class="footer">
+      © ${new Date().getFullYear()} ProfileVault Antidetect Software. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>
+    `
+  }
+
+  /**
+   * Render HTML template for admin broadcast emails / system updates.
+   */
+  renderBroadcastHtml(subject: string, messageBody: string): string {
+    const formattedBody = messageBody.replace(/\n/g, '<br>')
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0F0F17; color: #CBD5E1; margin: 0; padding: 40px 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #1C1C28; border: 1px solid #2C2C3E; border-radius: 12px; padding: 36px; }
+    .header { text-align: center; border-bottom: 1px solid #2C2C3E; padding-bottom: 24px; margin-bottom: 24px; }
+    .logo { font-size: 22px; font-weight: 700; color: #2DD4BF; letter-spacing: 0.5px; }
+    .badge { display: inline-block; background: #6366F120; border: 1px solid #6366F140; color: #818CF8; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; margin-bottom: 14px; }
+    h2 { color: #F1F5F9; font-size: 20px; margin-top: 0; }
+    .content { line-height: 1.7; font-size: 14px; color: #CBD5E1; background: #14141F; border: 1px solid #2C2C3E; padding: 20px; border-radius: 10px; margin: 20px 0; }
+    .footer { text-align: center; font-size: 12px; color: #475569; margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🛡️ ProfileVault System Announcement</div>
+    </div>
+    <div>
+      <span class="badge">📢 System Update</span>
+      <h2>${subject}</h2>
+    </div>
+
+    <div class="content">
+      ${formattedBody}
+    </div>
+
+    <p style="font-size: 12px; color: #64748B;">You are receiving this official update because you are a registered user of ProfileVault Antidetect Software.</p>
+
+    <div class="footer">
+      © ${new Date().getFullYear()} ProfileVault Antidetect Software. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>
+    `
+  }
 }
 
 export const emailService = new EmailService()
+

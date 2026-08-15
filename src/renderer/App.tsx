@@ -16,6 +16,7 @@ import { RegisterPage } from './pages/RegisterPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { LandingPage } from './pages/LandingPage'
+import { SupportChatWidget } from './components/SupportChatWidget'
 import logoImg from './assets/logo.png'
 
 // ═══════════════════════════════════════════
@@ -1595,6 +1596,7 @@ function AppContent() {
       )}
 
       {/* ── Overlays ── */}
+      <SupportChatWidget />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <ConfirmDialog state={confirmState} onCancel={() => setConfirmState((s) => ({ ...s, show: false }))} />
     </div>

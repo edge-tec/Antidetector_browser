@@ -233,4 +233,84 @@ INSERT INTO `landing_seo` (`config_key`, `config_value`) VALUES
 ('meta_description', 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Antidetect Software.')
 ON DUPLICATE KEY UPDATE `config_key`=`config_key`;
 
+-- 7. System Settings Table (SMTP & General System Configuration)
+CREATE TABLE IF NOT EXISTS `settings` (
+  `key` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `value` TEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `settings` (`key`, `value`) VALUES
+('smtp_host', 'smtp.gmail.com'),
+('smtp_port', '587'),
+('smtp_user', ''),
+('smtp_password', ''),
+('smtp_from_email', 'noreply@profilevault.local'),
+('smtp_secure', 'false'),
+('smtp_enabled', 'false')
+ON DUPLICATE KEY UPDATE `key`=`key`;
+
+-- 8. Support System Tables
+CREATE TABLE IF NOT EXISTS `support_conversations` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `assigned_agent_id` VARCHAR(36) DEFAULT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'open',
+  `priority` VARCHAR(50) NOT NULL DEFAULT 'normal',
+  `subject` VARCHAR(255) NOT NULL DEFAULT 'Support Request',
+  `last_message_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `closed_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_sup_conv_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `support_messages` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `conversation_id` VARCHAR(50) NOT NULL,
+  `sender_id` VARCHAR(36) NOT NULL,
+  `sender_type` VARCHAR(20) NOT NULL,
+  `message` TEXT NOT NULL,
+  `message_type` VARCHAR(50) DEFAULT 'text',
+  `attachment_path` VARCHAR(255) DEFAULT NULL,
+  `attachment_name` VARCHAR(255) DEFAULT NULL,
+  `attachment_size` INT DEFAULT NULL,
+  `attachment_mime` VARCHAR(100) DEFAULT NULL,
+  `is_read` TINYINT(1) DEFAULT 0,
+  `read_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_sup_msg_conv` FOREIGN KEY (`conversation_id`) REFERENCES `support_conversations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `support_internal_notes` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `conversation_id` VARCHAR(50) NOT NULL,
+  `agent_id` VARCHAR(36) NOT NULL,
+  `agent_name` VARCHAR(255) NOT NULL,
+  `note` TEXT NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_sup_note_conv` FOREIGN KEY (`conversation_id`) REFERENCES `support_conversations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `support_settings` (
+  `key` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `value` TEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `support_settings` (`key`, `value`) VALUES
+('support_enabled', 'true'),
+('support_available', 'true'),
+('business_hours', 'Mon-Fri 09:00 - 18:00 UTC'),
+('welcome_message', 'Hello! How can our support team assist you today?'),
+('offline_message', 'Our support team is currently offline. Please leave a message and we will respond shortly.'),
+('auto_reply_enabled', 'true'),
+('auto_reply_message', 'Thanks for contacting ProfileVault support! An agent has been notified and will reply shortly.'),
+('max_attachment_size_mb', '10'),
+('allowed_file_types', 'jpg,jpeg,png,gif,webp,pdf,txt,zip'),
+('notification_sound_enabled', 'true'),
+('max_open_conversations_per_user', '3'),
+('rate_limit_messages_per_min', '15')
+ON DUPLICATE KEY UPDATE `key`=`key`;
+
 SET FOREIGN_KEY_CHECKS = 1;
+
+

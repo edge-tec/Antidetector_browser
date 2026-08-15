@@ -311,6 +311,127 @@ switch ($action) {
         respondJson(['success' => true]);
         break;
 
+    // ── 5. SMTP Configuration APIs ──
+    case 'get-smtp-config':
+        try {
+            $stmt = $db->prepare("SELECT `key`, `value` FROM settings WHERE `key` LIKE 'smtp_%'");
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+            $map = [];
+            foreach ($rows as $r) {
+                $map[$r['key']] = $r['value'];
+            }
+            $config = [
+                'host' => $map['smtp_host'] ?? '',
+                'port' => (int)($map['smtp_port'] ?? 587),
+                'user' => $map['smtp_user'] ?? '',
+                'password' => $map['smtp_password'] ?? '',
+                'fromEmail' => $map['smtp_from_email'] ?? '',
+                'secure' => ($map['smtp_secure'] ?? 'false') === 'true',
+                'enabled' => ($map['smtp_enabled'] ?? 'false') === 'true'
+            ];
+            respondJson(['success' => true, 'data' => $config]);
+        } catch (Exception $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'save-smtp-config':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $stmt = $db->prepare("REPLACE INTO settings (`key`, `value`) VALUES (?, ?)");
+
+            if (isset($input['host'])) $stmt->execute(['smtp_host', (string)$input['host']]);
+            if (isset($input['port'])) $stmt->execute(['smtp_port', (string)$input['port']]);
+            if (isset($input['user'])) $stmt->execute(['smtp_user', (string)$input['user']]);
+            if (isset($input['password'])) $stmt->execute(['smtp_password', (string)$input['password']]);
+            if (isset($input['fromEmail'])) $stmt->execute(['smtp_from_email', (string)$input['fromEmail']]);
+            if (isset($input['secure'])) $stmt->execute(['smtp_secure', $input['secure'] ? 'true' : 'false']);
+            if (isset($input['enabled'])) $stmt->execute(['smtp_enabled', $input['enabled'] ? 'true' : 'false']);
+
+            respondJson(['success' => true]);
+        } catch (Exception $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'test-smtp-config':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $host = trim($input['host'] ?? '');
+        $port = (int)($input['port'] ?? 587);
+        $user = trim($input['user'] ?? '');
+        $secure = isset($input['secure']) && ($input['secure'] === true || $input['secure'] === 'true');
+
+        if (!$host || !$user) {
+            respondJson(['success' => false, 'message' => 'SMTP Host and Username are required for testing connection.'], 400);
+        }
+
+        $remoteHost = $secure ? "ssl://{$host}" : $host;
+        $connection = @fsockopen($remoteHost, $port, $errno, $errstr, 5);
+
+        if (is_resource($connection)) {
+            fclose($connection);
+            respondJson(['success' => true, 'message' => "Successfully connected to SMTP server {$host}:{$port}"]);
+        } else {
+            respondJson(['success' => false, 'message' => "SMTP Connection failed: {$errstr} (Error {$errno})"]);
+        }
+        break;
+
+    case 'send-email-broadcast':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $subject = trim($input['subject'] ?? '');
+        $messageBody = trim($input['messageBody'] ?? $input['message_body'] ?? '');
+        $targetGroup = $input['targetGroup'] ?? 'all';
+        $customEmails = $input['customEmails'] ?? [];
+
+        if (!$subject || !$messageBody) {
+            respondJson(['success' => false, 'error' => 'Subject and message body are required.'], 400);
+        }
+
+        $recipients = [];
+        if (!empty($customEmails)) {
+            $recipients = array_filter(array_map('trim', (array)$customEmails));
+        } else {
+            if ($targetGroup === 'verified') {
+                $stmt = $db->prepare("SELECT email FROM users WHERE email_verified = 1");
+            } elseif ($targetGroup === 'admins') {
+                $stmt = $db->prepare("SELECT email FROM users WHERE role = 'admin'");
+            } else {
+                $stmt = $db->prepare("SELECT email FROM users");
+            }
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+            foreach ($rows as $r) { $recipients[] = $r['email']; }
+        }
+
+        $htmlBody = "
+        <div style='font-family: sans-serif; background:#0F0F17; color:#CBD5E1; padding:30px;'>
+          <div style='max-width:580px; margin:0 auto; background:#1C1C28; padding:30px; border-radius:12px; border:1px solid #2C2C3E;'>
+            <span style='background:#6366F120; border:1px solid #6366F140; color:#818CF8; padding:4px 12px; border-radius:16px; font-size:12px; font-weight:600;'>📢 System Update</span>
+            <h2 style='color:#F1F5F9; font-size:20px; margin-top:12px;'>" . htmlspecialchars($subject) . "</h2>
+            <div style='line-height:1.6; font-size:14px; color:#CBD5E1; background:#14141F; padding:18px; border-radius:8px; margin:20px 0;'>
+              " . nl2br(htmlspecialchars($messageBody)) . "
+            </div>
+            <p style='font-size:12px; color:#64748B;'>Official notification from ProfileVault Antidetect Software.</p>
+          </div>
+        </div>";
+
+        $sentCount = 0;
+        foreach ($recipients as $recipientEmail) {
+            if (sendSmtpMailPhp($recipientEmail, $subject, $htmlBody)) {
+                $sentCount++;
+            }
+        }
+
+        respondJson([
+            'success' => true,
+            'totalSent' => $sentCount,
+            'message' => "Email broadcast delivered to {$sentCount} recipient(s)."
+        ]);
+        break;
+
     default:
         respondJson(['success' => false, 'error' => 'Invalid admin action.'], 404);
 }
+
+

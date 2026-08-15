@@ -60,6 +60,14 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
         exit();
     }
 
+    // Support APIs (/api/support/*)
+    if (strpos($requestUri, '/api/support/') === 0) {
+        $action = str_replace('/api/support/', '', $requestUri);
+        $_GET['action'] = $action;
+        require_once __DIR__ . '/api/support.php';
+        exit();
+    }
+
     respondJson(['success' => false, 'error' => 'API endpoint not found.'], 404);
 }
 

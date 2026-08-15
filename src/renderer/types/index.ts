@@ -106,7 +106,74 @@ export interface IpcResult<T = any> {
   error?: string
 }
 
-export type Page = 'dashboard' | 'profiles' | 'groups' | 'proxies' | 'automation' | 'settings' | 'logs'
+export type Page = 'dashboard' | 'profiles' | 'groups' | 'proxies' | 'automation' | 'settings' | 'logs' | 'support'
+
+export type ConversationStatus = 'open' | 'pending' | 'waiting_user' | 'waiting_support' | 'closed'
+export type ConversationPriority = 'low' | 'normal' | 'high' | 'urgent'
+export type SenderType = 'user' | 'agent' | 'system'
+
+export interface SupportConversation {
+  id: string
+  user_id: string
+  assigned_agent_id: string | null
+  status: ConversationStatus
+  priority: ConversationPriority
+  subject: string
+  last_message_at: string
+  closed_at: string | null
+  created_at: string
+  updated_at: string
+  user_name?: string
+  user_email?: string
+  assigned_agent_name?: string
+  unread_count?: number
+  last_message_preview?: string
+  user_plan?: string
+  user_status?: string
+  user_created_at?: string
+}
+
+export interface SupportMessage {
+  id: string
+  conversation_id: string
+  sender_id: string
+  sender_type: SenderType
+  message: string
+  message_type: 'text' | 'attachment' | 'system_event'
+  attachment_path: string | null
+  attachment_name: string | null
+  attachment_size: number | null
+  attachment_mime: string | null
+  is_read: number
+  read_at: string | null
+  created_at: string
+  sender_name?: string
+}
+
+export interface SupportInternalNote {
+  id: string
+  conversation_id: string
+  agent_id: string
+  agent_name: string
+  note: string
+  created_at: string
+}
+
+export interface SupportSettingsMap {
+  support_enabled: string
+  support_available: string
+  business_hours: string
+  welcome_message: string
+  offline_message: string
+  auto_reply_enabled: string
+  auto_reply_message: string
+  max_attachment_size_mb: string
+  allowed_file_types: string
+  notification_sound_enabled: string
+  max_open_conversations_per_user: string
+  rate_limit_messages_per_min: string
+}
+
 
 // Window API type
 declare global {

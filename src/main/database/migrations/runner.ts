@@ -8,6 +8,7 @@ import * as migration002 from './002_fingerprint_expansion'
 import * as migration003 from './003_auth_system'
 import * as migration004 from './004_landing_cms'
 import * as migration005 from './005_subscriptions_and_licenses'
+import * as migration006 from './006_live_support_system'
 
 interface Migration {
   id: number
@@ -20,7 +21,8 @@ const migrations: Migration[] = [
   { id: migration002.id, name: migration002.name, up: migration002.up },
   { id: migration003.id, name: migration003.name, up: migration003.up },
   { id: migration004.id, name: migration004.name, up: migration004.up },
-  { id: migration005.id, name: migration005.name, up: migration005.up }
+  { id: migration005.id, name: migration005.name, up: migration005.up },
+  { id: migration006.id, name: migration006.name, up: migration006.up }
 ]
 
 export function runMigrations(db: Database.Database): void {

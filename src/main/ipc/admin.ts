@@ -268,4 +268,42 @@ export function setupAdminIPC(): void {
     const result = await emailService.testSmtpConfig(config)
     return result
   })
+
+  // ── Admin Broadcast System Updates / Announcement Email ──
+  ipcMain.handle('admin:send-email-broadcast', async (_event, sessionToken: string, payload: { targetGroup?: string; customEmails?: string[]; subject: string; messageBody: string }) => {
+    const auth = authorizeUser(sessionToken, { requireAdmin: true })
+    if (auth.error || !auth.user) {
+      return { success: false, error: auth.error || 'Admin access required.' }
+    }
+
+    try {
+      const { targetGroup = 'all', customEmails = [], subject, messageBody } = payload || {}
+      if (!subject || !messageBody) {
+        return { success: false, error: 'Subject and message body content are required.' }
+      }
+
+      let recipients: string[] = []
+
+      if (customEmails && customEmails.length > 0) {
+        recipients = customEmails.map(e => e.trim().toLowerCase()).filter(Boolean)
+      } else {
+        const allUsers = userRepo.listUsers()
+        if (targetGroup === 'verified') {
+          recipients = allUsers.filter(u => u.emailVerified).map(u => u.email)
+        } else if (targetGroup === 'admins') {
+          recipients = allUsers.filter(u => u.role === 'admin').map(u => u.email)
+        } else {
+          recipients = allUsers.map(u => u.email)
+        }
+      }
+
+      const result = await emailService.sendBroadcastEmail(recipients, subject, messageBody)
+      logger.info('admin', `Admin "${auth.user.email}" triggered broadcast "${subject}" to ${recipients.length} recipients.`)
+
+      return result
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }
+

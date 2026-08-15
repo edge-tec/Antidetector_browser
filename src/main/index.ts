@@ -16,6 +16,7 @@ import { setupAuthIPC } from './ipc/auth'
 import { setupAdminIPC } from './ipc/admin'
 import { setupLandingIPC } from './ipc/landing'
 import { setupSubscriptionIPC } from './ipc/subscription.ipc'
+import { setupSupportIPC } from './ipc/support.ipc'
 import { logger } from './logging/logger'
 
 let mainWindow: BrowserWindow | null = null
@@ -101,6 +102,7 @@ app.whenReady().then(async () => {
   setupAdminIPC()
   setupLandingIPC()
   setupSubscriptionIPC()
+  setupSupportIPC()
   registerProfileHandlers()
   registerBrowserHandlers()
   registerProxyHandlers()

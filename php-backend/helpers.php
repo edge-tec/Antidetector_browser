@@ -127,3 +127,103 @@ function requireAdmin(): array {
     }
     return $user;
 }
+
+// ──────────────────────────────────────────────
+// SMTP Email System Helper Functions
+// ──────────────────────────────────────────────
+
+function getSmtpSettingsPhp(): array {
+    $db = Database::getConnection();
+    try {
+        $stmt = $db->prepare("SELECT `key`, `value` FROM settings WHERE `key` LIKE 'smtp_%'");
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+        $map = [];
+        foreach ($rows as $r) { $map[$r['key']] = $r['value']; }
+        return [
+            'host' => $map['smtp_host'] ?? '',
+            'port' => (int)($map['smtp_port'] ?? 587),
+            'user' => $map['smtp_user'] ?? '',
+            'password' => $map['smtp_password'] ?? '',
+            'fromEmail' => $map['smtp_from_email'] ?? 'noreply@profilevault.local',
+            'secure' => ($map['smtp_secure'] ?? 'false') === 'true',
+            'enabled' => ($map['smtp_enabled'] ?? 'false') === 'true'
+        ];
+    } catch (Exception $e) {
+        return ['enabled' => false];
+    }
+}
+
+function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody): bool {
+    $smtp = getSmtpSettingsPhp();
+    if (!$smtp['enabled'] || empty($smtp['host']) || empty($smtp['user'])) {
+        return false;
+    }
+
+    $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $smtp['user'];
+    $headers = [];
+    $headers[] = 'MIME-Version: 1.0';
+    $headers[] = 'Content-type: text/html; charset=utf-8';
+    $headers[] = 'From: ProfileVault System <' . $from . '>';
+    $headers[] = 'Reply-To: ' . $from;
+    $headers[] = 'X-Mailer: ProfileVault Mailer/1.0';
+
+    return @mail($toEmail, $subject, $htmlBody, implode("\r\n", $headers));
+}
+
+function sendVerificationEmailPhp(string $userId, string $userName, string $email): array {
+    $db = Database::getConnection();
+    $plainToken = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $plainToken);
+    $tokenId = 'tok_' . bin2hex(random_bytes(8));
+
+    $stmt = $db->prepare("
+        INSERT INTO verification_tokens (id, user_id, token_hash, expires_at, used)
+        VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), 0)
+    ");
+    $stmt->execute([$tokenId, $userId, $tokenHash]);
+
+    $baseUrl = defined('APP_BASE_URL') ? APP_BASE_URL : 'app://profilevault';
+    $verificationUrl = $baseUrl . '/verify-email?token=' . $plainToken;
+
+    $html = "
+    <div style='font-family: sans-serif; background:#0F0F17; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:560px; margin:0 auto; background:#1C1C28; padding:30px; border-radius:12px; border:1px solid #2C2C3E;'>
+        <h2 style='color:#F1F5F9; font-size:20px;'>Verify your ProfileVault Account</h2>
+        <p>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+        <p>Thank you for registering with ProfileVault! Please verify your email to activate your account:</p>
+        <p style='text-align:center; margin:24px 0;'>
+          <a href='" . $verificationUrl . "' style='background:#2DD4BF; color:#0F0F17; font-weight:700; padding:12px 28px; text-decoration:none; border-radius:8px;'>Verify Email Account</a>
+        </p>
+        <p style='font-size:12px; color:#64748B;'>Or copy & paste: " . $verificationUrl . "</p>
+      </div>
+    </div>";
+
+    $sent = sendSmtpMailPhp($email, 'Confirm your ProfileVault Account', $html);
+
+    return [
+        'success' => true,
+        'token' => $plainToken,
+        'verificationUrl' => $verificationUrl,
+        'sentViaSmtp' => $sent
+    ];
+}
+
+function sendAccountVerifiedConfirmationPhp(string $userName, string $email): bool {
+    $html = "
+    <div style='font-family: sans-serif; background:#0F0F17; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:560px; margin:0 auto; background:#1C1C28; padding:30px; border-radius:12px; border:1px solid #2C2C3E;'>
+        <div style='text-align:center;'>
+          <span style='background:#10B98120; border:1px solid #10B98140; color:#34D399; padding:4px 12px; border-radius:16px; font-size:12px; font-weight:600;'>✓ Email Verified Successfully</span>
+          <h2 style='color:#F1F5F9; font-size:22px; margin-top:12px;'>Welcome to ProfileVault, " . htmlspecialchars($userName) . "!</h2>
+        </div>
+        <p>Your email address (<strong>" . htmlspecialchars($email) . "</strong>) has been verified. Your account is now fully active and ready to create isolated browser profiles and proxies.</p>
+        <p style='text-align:center; margin:24px 0;'>
+          <a href='app://profilevault' style='background:#2DD4BF; color:#0F0F17; font-weight:700; padding:12px 28px; text-decoration:none; border-radius:8px;'>Launch ProfileVault App</a>
+        </p>
+      </div>
+    </div>";
+
+    return sendSmtpMailPhp($email, '🎉 ProfileVault Account Confirmed & Ready!', $html);
+}
+

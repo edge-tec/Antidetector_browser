@@ -28,6 +28,7 @@ const api = {
   adminGetSmtpConfig: (token: string) => ipcRenderer.invoke('admin:get-smtp-config', token),
   adminSaveSmtpConfig: (token: string, config: any) => ipcRenderer.invoke('admin:save-smtp-config', token, config),
   adminTestSmtpConfig: (token: string, config: any) => ipcRenderer.invoke('admin:test-smtp-config', token, config),
+  adminSendEmailBroadcast: (token: string, payload: any) => ipcRenderer.invoke('admin:send-email-broadcast', token, payload),
 
   // ── Landing CMS ──
   getPublicLandingData: () => ipcRenderer.invoke('landing:get-public-data'),
@@ -121,6 +122,26 @@ const api = {
   selectFile: (filters?: any[]) => ipcRenderer.invoke('system:selectFile', filters),
   selectDirectory: () => ipcRenderer.invoke('system:selectDirectory'),
 
+  // ── Live Support System ──
+  getSupportConversations: (token: string) => ipcRenderer.invoke('support:get-user-conversations', token),
+  getSupportConversation: (token: string, conversationId: string) => ipcRenderer.invoke('support:get-conversation', token, conversationId),
+  createSupportConversation: (token: string, input: any) => ipcRenderer.invoke('support:create-conversation', token, input),
+  sendSupportMessage: (token: string, conversationId: string, message: string, attachment?: any) =>
+    ipcRenderer.invoke('support:send-message', token, conversationId, message, attachment),
+  markSupportRead: (token: string, conversationId: string) => ipcRenderer.invoke('support:mark-read', token, conversationId),
+  sendSupportTyping: (token: string, conversationId: string, isTyping: boolean) =>
+    ipcRenderer.invoke('support:typing', token, conversationId, isTyping),
+  adminGetSupportConversations: (token: string, options?: any) => ipcRenderer.invoke('support:admin-get-conversations', token, options),
+  adminUpdateSupportStatus: (token: string, conversationId: string, status: string) =>
+    ipcRenderer.invoke('support:admin-update-status', token, conversationId, status),
+  adminAssignSupportAgent: (token: string, conversationId: string, agentId: string | null) =>
+    ipcRenderer.invoke('support:admin-assign-agent', token, conversationId, agentId),
+  adminAddSupportInternalNote: (token: string, conversationId: string, note: string) =>
+    ipcRenderer.invoke('support:admin-add-internal-note', token, conversationId, note),
+  adminGetSupportSettings: (token: string) => ipcRenderer.invoke('support:admin-get-settings', token),
+  adminSaveSupportSettings: (token: string, settings: Record<string, string>) =>
+    ipcRenderer.invoke('support:admin-save-settings', token, settings),
+
   // ── Events (Main → Renderer) ──
   onProfileStatusChanged: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('profile:statusChanged', callback)
@@ -129,6 +150,18 @@ const api = {
   onToast: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('ui:toast', callback)
     return () => ipcRenderer.removeListener('ui:toast', callback)
+  },
+  onSupportNewMessage: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('support:new-message', callback)
+    return () => ipcRenderer.removeListener('support:new-message', callback)
+  },
+  onSupportTypingIndicator: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('support:typing-indicator', callback)
+    return () => ipcRenderer.removeListener('support:typing-indicator', callback)
+  },
+  onSupportStatusUpdated: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('support:status-updated', callback)
+    return () => ipcRenderer.removeListener('support:status-updated', callback)
   }
 }
 
