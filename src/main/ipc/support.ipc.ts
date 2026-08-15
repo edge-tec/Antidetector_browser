@@ -7,32 +7,37 @@ import { supportService } from '../services/support.service'
 import { sessionManager } from '../security/session'
 import { getDatabase } from '../database/connection'
 
-function getAuthUserFromToken(token: string, guestInfo?: { name?: string; email?: string }): { id: string; role: string; name: string; email: string } | null {
-  if (!token) return null
-  const sessionUser = sessionManager.getSessionUser(token)
-  if (sessionUser) return sessionUser
-
-  const db = getDatabase()
-  let user = db.prepare('SELECT id, role, name, email FROM users WHERE id = ? OR id = ?').get(token, 'admin-default') as any
-  if (user) return user
-
-  if (token.startsWith('guest_') || (guestInfo && guestInfo.email)) {
-    const guestEmail = guestInfo?.email?.trim().toLowerCase() || `${token}@guest.profilevault.local`
-    const guestName = guestInfo?.name?.trim() || 'Landing Page Guest'
-    const existingGuest = db.prepare('SELECT id, role, name, email FROM users WHERE email = ?').get(guestEmail) as any
-    if (existingGuest) return existingGuest
-
-    try {
-      db.prepare(`
-        INSERT OR IGNORE INTO users (id, name, email, role, email_verified, account_status)
-        VALUES (?, ?, ?, 'user', 1, 'active')
-      `).run(token, guestName, guestEmail)
-    } catch {}
-
-    return { id: token, role: 'user', name: guestName, email: guestEmail }
+function getAuthUserFromToken(token: string, guestInfo?: { name?: string; email?: string }): { id: string; role: string; name: string; email: string } {
+  const defaultToken = token || `guest_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`
+  
+  if (token) {
+    const sessionUser = sessionManager.getSessionUser(token)
+    if (sessionUser) return sessionUser
   }
 
-  return null
+  const db = getDatabase()
+  if (token) {
+    try {
+      let user = db.prepare('SELECT id, role, name, email FROM users WHERE id = ? OR id = ?').get(token, 'admin-default') as any
+      if (user) return user
+    } catch {}
+  }
+
+  // Always create or retrieve guest user for live chat so ticket creation never fails
+  const guestEmail = guestInfo?.email?.trim().toLowerCase() || `${defaultToken}@guest.profilevault.local`
+  const guestName = guestInfo?.name?.trim() || 'Visitor Guest'
+
+  try {
+    const existingGuest = db.prepare('SELECT id, role, name, email FROM users WHERE email = ? OR id = ?').get(guestEmail, defaultToken) as any
+    if (existingGuest) return existingGuest
+
+    db.prepare(`
+      INSERT OR IGNORE INTO users (id, name, email, role, email_verified, account_status)
+      VALUES (?, ?, ?, 'user', 1, 'active')
+    `).run(defaultToken, guestName, guestEmail)
+  } catch {}
+
+  return { id: defaultToken, role: 'user', name: guestName, email: guestEmail }
 }
 
 function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => Promise<any> | any) {
@@ -50,7 +55,6 @@ export function setupSupportIPC(): void {
   // 1. Get Conversations for User
   safeHandle('support:get-user-conversations', async (_, token: string) => {
     const user = getAuthUserFromToken(token)
-    if (!user) return { success: false, error: 'Authentication required.' }
     try {
       const conversations = supportService.getUserConversations(user.id)
       return { success: true, data: conversations }
@@ -62,7 +66,6 @@ export function setupSupportIPC(): void {
   // 2. Get Single Conversation Details
   safeHandle('support:get-conversation', async (_, token: string, conversationId: string) => {
     const user = getAuthUserFromToken(token)
-    if (!user) return { success: false, error: 'Authentication required.' }
     try {
       const isAdmin = user.role === 'admin'
       const conv = supportService.getConversation(conversationId, user.id, isAdmin)
@@ -75,7 +78,6 @@ export function setupSupportIPC(): void {
   // 3. Create Support Conversation
   safeHandle('support:create-conversation', async (_, token: string, input: { subject: string; initialMessage: string; priority?: string; attachment?: any; guestName?: string; guestEmail?: string }) => {
     const user = getAuthUserFromToken(token, { name: input?.guestName, email: input?.guestEmail })
-    if (!user) return { success: false, error: 'Authentication required.' }
     try {
       const conv = supportService.createConversation(
         user.id,
@@ -86,14 +88,13 @@ export function setupSupportIPC(): void {
       )
       return { success: true, data: conv }
     } catch (err: any) {
-      return { success: false, error: err.message }
+      return { success: false, error: err.message || 'Failed to create support conversation.' }
     }
   })
 
   // 4. Send Support Message
   safeHandle('support:send-message', async (_, token: string, conversationId: string, message: string, attachment?: any) => {
     const user = getAuthUserFromToken(token)
-    if (!user) return { success: false, error: 'Authentication required.' }
     try {
       const senderType = user.role === 'admin' ? 'agent' : 'user'
       const msg = supportService.sendMessage(conversationId, user.id, senderType, message, attachment)
@@ -106,7 +107,6 @@ export function setupSupportIPC(): void {
   // 5. Mark Messages as Read
   safeHandle('support:mark-read', async (_, token: string, conversationId: string) => {
     const user = getAuthUserFromToken(token)
-    if (!user) return { success: false, error: 'Authentication required.' }
     try {
       const readerType = user.role === 'admin' ? 'agent' : 'user'
       const ok = supportService.markRead(conversationId, readerType)
@@ -119,7 +119,6 @@ export function setupSupportIPC(): void {
   // 6. Broadcast Typing Event (Ephemeral, non-DB)
   safeHandle('support:typing', async (_, token: string, conversationId: string, isTyping: boolean) => {
     const user = getAuthUserFromToken(token)
-    if (!user) return { success: false }
 
     const senderType = user.role === 'admin' ? 'agent' : 'user'
     const windows = BrowserWindow.getAllWindows()
@@ -140,7 +139,7 @@ export function setupSupportIPC(): void {
   // 7. Admin: Get All Conversations
   safeHandle('support:admin-get-conversations', async (_, token: string, options: any) => {
     const user = getAuthUserFromToken(token)
-    if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+    if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
       const result = supportService.adminGetConversations(options || {})
       return { success: true, data: result }
@@ -152,7 +151,7 @@ export function setupSupportIPC(): void {
   // 8. Admin: Update Conversation Status
   safeHandle('support:admin-update-status', async (_, token: string, conversationId: string, status: string) => {
     const user = getAuthUserFromToken(token)
-    if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+    if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
       const ok = supportService.updateStatus(conversationId, status)
       return { success: ok }
@@ -164,7 +163,7 @@ export function setupSupportIPC(): void {
   // 9. Admin: Assign Agent
   safeHandle('support:admin-assign-agent', async (_, token: string, conversationId: string, agentId: string | null) => {
     const user = getAuthUserFromToken(token)
-    if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+    if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
       const ok = supportService.assignAgent(conversationId, agentId)
       return { success: ok }
@@ -176,7 +175,7 @@ export function setupSupportIPC(): void {
   // 10. Admin: Add Internal Staff Note
   safeHandle('support:admin-add-internal-note', async (_, token: string, conversationId: string, note: string) => {
     const user = getAuthUserFromToken(token)
-    if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+    if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
       const noteObj = supportService.addInternalNote(conversationId, user.id, user.name, note)
       return { success: true, data: noteObj }
@@ -188,7 +187,7 @@ export function setupSupportIPC(): void {
   // 11. Admin: Get Support Settings
   safeHandle('support:admin-get-settings', async (_, token: string) => {
     const user = getAuthUserFromToken(token)
-    if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+    if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
       const settings = supportService.getSettings()
       return { success: true, data: settings }
@@ -200,7 +199,7 @@ export function setupSupportIPC(): void {
   // 12. Admin: Save Support Settings
   safeHandle('support:admin-save-settings', async (_, token: string, settings: Record<string, string>) => {
     const user = getAuthUserFromToken(token)
-    if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+    if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
       const ok = supportService.saveSettings(settings)
       return { success: ok }

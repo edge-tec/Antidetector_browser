@@ -211,12 +211,10 @@ export const SupportChatWidget: React.FC = () => {
   // Create new conversation
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!effectiveToken || !newSubject.trim() || !newMessage.trim()) return
+    if (!newSubject.trim() || !newMessage.trim()) return
 
-    if (!currentUser && (!guestName.trim() || !guestEmail.trim())) {
-      alert('Please enter your Name and Email address to start live support chat.')
-      return
-    }
+    const finalGuestName = currentUser?.name || guestName.trim() || `Visitor #${Math.floor(1000 + Math.random() * 9000)}`
+    const finalGuestEmail = currentUser?.email || guestEmail.trim() || `${effectiveToken}@guest.profilevault.local`
 
     setLoading(true)
     try {
@@ -229,8 +227,8 @@ export const SupportChatWidget: React.FC = () => {
             initialMessage: newMessage.trim(),
             priority: newPriority,
             attachment: selectedFile,
-            guestName: currentUser?.name || guestName.trim(),
-            guestEmail: currentUser?.email || guestEmail.trim()
+            guestName: finalGuestName,
+            guestEmail: finalGuestEmail
           })
         } catch (ipcErr: any) {
           console.warn('Electron IPC createSupportConversation failed, attempting REST API fallback:', ipcErr)
