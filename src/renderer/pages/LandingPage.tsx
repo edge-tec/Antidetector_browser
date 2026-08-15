@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react'
 import logoImg from '../assets/logo.png'
+import { SupportChatWidget } from '../components/SupportChatWidget'
 
 interface LandingProps {
   onNavigateLogin: () => void
@@ -1244,6 +1245,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           © {new Date().getFullYear()} {branding.site_name || 'ProfileVault'}. All rights reserved.
         </div>
       </footer>
+
+      {/* Floating Live Support Chat Widget for Landing Page Visitors */}
+      <SupportChatWidget />
     </div>
   )
 }

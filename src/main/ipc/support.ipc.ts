@@ -8,15 +8,32 @@ import { sessionManager } from '../security/session'
 import { userRepo } from '../database/repositories/user.repo'
 import { getDatabase } from '../database/connection'
 
-function getAuthUserFromToken(token: string): { id: string; role: string; name: string; email: string } | null {
+function getAuthUserFromToken(token: string, guestInfo?: { name?: string; email?: string }): { id: string; role: string; name: string; email: string } | null {
   if (!token) return null
   const sessionUser = sessionManager.getSessionUser(token)
   if (sessionUser) return sessionUser
 
-  // Fallback DB lookup for admin-default or token matching
   const db = getDatabase()
-  const user = db.prepare('SELECT id, role, name, email FROM users WHERE id = ? OR id = ?').get(token, 'admin-default') as any
-  return user || null
+  let user = db.prepare('SELECT id, role, name, email FROM users WHERE id = ? OR id = ?').get(token, 'admin-default') as any
+  if (user) return user
+
+  if (token.startsWith('guest_') || (guestInfo && guestInfo.email)) {
+    const guestEmail = guestInfo?.email?.trim().toLowerCase() || `${token}@guest.profilevault.local`
+    const guestName = guestInfo?.name?.trim() || 'Landing Page Guest'
+    const existingGuest = db.prepare('SELECT id, role, name, email FROM users WHERE email = ?').get(guestEmail) as any
+    if (existingGuest) return existingGuest
+
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO users (id, name, email, role, email_verified, account_status)
+        VALUES (?, ?, ?, 'user', 1, 'active')
+      `).run(token, guestName, guestEmail)
+    } catch {}
+
+    return { id: token, role: 'user', name: guestName, email: guestEmail }
+  }
+
+  return null
 }
 
 export function setupSupportIPC(): void {
@@ -46,8 +63,8 @@ export function setupSupportIPC(): void {
   })
 
   // 3. Create Support Conversation
-  ipcMain.handle('support:create-conversation', async (_, token: string, input: { subject: string; initialMessage: string; priority?: string; attachment?: any }) => {
-    const user = getAuthUserFromToken(token)
+  ipcMain.handle('support:create-conversation', async (_, token: string, input: { subject: string; initialMessage: string; priority?: string; attachment?: any; guestName?: string; guestEmail?: string }) => {
+    const user = getAuthUserFromToken(token, { name: input.guestName, email: input.guestEmail })
     if (!user) return { success: false, error: 'Authentication required.' }
     try {
       const conv = supportService.createConversation(

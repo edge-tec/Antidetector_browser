@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — User Live Support Chat Widget Component
+// ProfileVault — User & Guest Live Support Chat Widget Component
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -13,6 +13,20 @@ export const SupportChatWidget: React.FC = () => {
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
   const [activeConv, setActiveConv] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+
+  // Guest Visitor state
+  const [guestToken] = useState(() => {
+    let token = localStorage.getItem('pv_guest_support_token')
+    if (!token) {
+      token = `guest_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`
+      localStorage.setItem('pv_guest_support_token', token)
+    }
+    return token
+  })
+  const [guestName, setGuestName] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+
+  const effectiveToken = sessionToken || guestToken
 
   // New ticket state
   const [isCreatingTicket, setIsCreatingTicket] = useState(false)
@@ -33,40 +47,42 @@ export const SupportChatWidget: React.FC = () => {
 
   // Load conversations list
   const loadConversations = useCallback(async () => {
-    if (!sessionToken) return
+    if (!effectiveToken) return
     try {
       if (typeof window !== 'undefined' && (window as any).api?.getSupportConversations) {
-        const res = await (window as any).api.getSupportConversations(sessionToken)
+        const res = await (window as any).api.getSupportConversations(effectiveToken)
         if (res?.success && res.data) {
           setConversations(res.data)
         }
       }
     } catch {}
-  }, [sessionToken])
+  }, [effectiveToken])
 
   // Load single active conversation detail
   const loadActiveConversation = useCallback(async (convId: string) => {
-    if (!sessionToken || !convId) return
+    if (!effectiveToken || !convId) return
     try {
       if (typeof window !== 'undefined' && (window as any).api?.getSupportConversation) {
-        const res = await (window as any).api.getSupportConversation(sessionToken, convId)
+        const res = await (window as any).api.getSupportConversation(effectiveToken, convId)
         if (res?.success && res.data) {
           setActiveConv(res.data)
           // Mark messages read
-          await (window as any).api.markSupportRead(sessionToken, convId)
+          if (typeof (window as any).api?.markSupportRead === 'function') {
+            await (window as any).api.markSupportRead(effectiveToken, convId)
+          }
           loadConversations()
         }
       }
     } catch {}
-  }, [sessionToken, loadConversations])
+  }, [effectiveToken, loadConversations])
 
   useEffect(() => {
-    if (sessionToken && currentUser) {
+    if (effectiveToken) {
       loadConversations()
       const interval = setInterval(loadConversations, 5000)
       return () => clearInterval(interval)
     }
-  }, [sessionToken, currentUser, loadConversations])
+  }, [effectiveToken, loadConversations])
 
   useEffect(() => {
     if (activeConvId) {
@@ -127,12 +143,12 @@ export const SupportChatWidget: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setChatInput(e.target.value)
 
-    if (!sessionToken || !activeConvId) return
+    if (!effectiveToken || !activeConvId) return
 
     if (!isTyping) {
       setIsTyping(true)
       if ((window as any).api?.sendSupportTyping) {
-        (window as any).api.sendSupportTyping(sessionToken, activeConvId, true)
+        (window as any).api.sendSupportTyping(effectiveToken, activeConvId, true)
       }
     }
 
@@ -140,7 +156,7 @@ export const SupportChatWidget: React.FC = () => {
     typingTimerRef.current = setTimeout(() => {
       setIsTyping(false)
       if ((window as any).api?.sendSupportTyping) {
-        (window as any).api.sendSupportTyping(sessionToken, activeConvId, false)
+        (window as any).api.sendSupportTyping(effectiveToken, activeConvId, false)
       }
     }, 2000)
   }
@@ -171,12 +187,12 @@ export const SupportChatWidget: React.FC = () => {
   // Send message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sessionToken || !activeConvId || (!chatInput.trim() && !selectedFile)) return
+    if (!effectiveToken || !activeConvId || (!chatInput.trim() && !selectedFile)) return
 
     setLoading(true)
     try {
       if ((window as any).api?.sendSupportMessage) {
-        const res = await (window as any).api.sendSupportMessage(sessionToken, activeConvId, chatInput.trim(), selectedFile)
+        const res = await (window as any).api.sendSupportMessage(effectiveToken, activeConvId, chatInput.trim(), selectedFile)
         if (res?.success) {
           setChatInput('')
           setSelectedFile(null)
@@ -195,16 +211,23 @@ export const SupportChatWidget: React.FC = () => {
   // Create new conversation
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sessionToken || !newSubject.trim() || !newMessage.trim()) return
+    if (!effectiveToken || !newSubject.trim() || !newMessage.trim()) return
+
+    if (!currentUser && (!guestName.trim() || !guestEmail.trim())) {
+      alert('Please enter your Name and Email address to start live support chat.')
+      return
+    }
 
     setLoading(true)
     try {
       if ((window as any).api?.createSupportConversation) {
-        const res = await (window as any).api.createSupportConversation(sessionToken, {
+        const res = await (window as any).api.createSupportConversation(effectiveToken, {
           subject: newSubject.trim(),
           initialMessage: newMessage.trim(),
           priority: newPriority,
-          attachment: selectedFile
+          attachment: selectedFile,
+          guestName: currentUser?.name || guestName.trim(),
+          guestEmail: currentUser?.email || guestEmail.trim()
         })
         if (res?.success && res.data) {
           setNewSubject('')
@@ -223,8 +246,6 @@ export const SupportChatWidget: React.FC = () => {
       setLoading(false)
     }
   }
-
-  if (!currentUser) return null
 
   return (
     <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -275,7 +296,7 @@ export const SupportChatWidget: React.FC = () => {
       {isOpen && (
         <div style={{
           width: '380px',
-          height: '540px',
+          height: '560px',
           backgroundColor: '#161622',
           border: '1px solid #2C2C3E',
           borderRadius: '16px',
@@ -301,7 +322,7 @@ export const SupportChatWidget: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 800, color: '#F1F5F9' }}>ProfileVault Support</div>
-                <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 600 }}>● Agents Online</div>
+                <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 600 }}>● Support Agents Online</div>
               </div>
             </div>
 
@@ -350,17 +371,17 @@ export const SupportChatWidget: React.FC = () => {
                     gap: '8px'
                   }}
                 >
-                  <span>✏️</span> Start New Support Ticket
+                  <span>✏️</span> Start Live Support Chat
                 </button>
 
                 <div style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', marginTop: '6px' }}>
-                  YOUR RECENT TICKETS
+                  YOUR RECENT CONVERSATIONS
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
                   {conversations.length === 0 ? (
                     <div style={{ textAlign: 'center', color: '#64748B', fontSize: '13px', marginTop: '40px' }}>
-                      No support conversations yet.<br />Click above to start a ticket!
+                      No support conversations yet.<br />Click above to start a live chat!
                     </div>
                   ) : (
                     conversations.map((c) => (
@@ -407,19 +428,47 @@ export const SupportChatWidget: React.FC = () => {
               </div>
             )}
 
-            {/* View 2: Create New Ticket Form */}
+            {/* View 2: Create New Ticket / Guest Form */}
             {!activeConvId && isCreatingTicket && (
               <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 800, color: '#F1F5F9', marginBottom: '4px' }}>
-                  Open New Support Ticket
+                  Start Live Chat Session
                 </div>
 
+                {!currentUser && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>YOUR NAME</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Enter your full name"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#F1F5F9', fontSize: '13px' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>YOUR EMAIL</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="Enter your email address"
+                        value={guestEmail}
+                        onChange={(e) => setGuestEmail(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#F1F5F9', fontSize: '13px' }}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>SUBJECT / ISSUE</label>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>SUBJECT / TOPIC</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Proxy Connection Assistance"
+                    placeholder="e.g. Question about Features & Proxies"
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#F1F5F9', fontSize: '13px' }}
@@ -427,25 +476,11 @@ export const SupportChatWidget: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>PRIORITY</label>
-                  <select
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#F1F5F9', fontSize: '13px' }}
-                  >
-                    <option value="low">Low Priority</option>
-                    <option value="normal">Normal Priority</option>
-                    <option value="high">High Priority</option>
-                    <option value="urgent">Urgent Priority</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>MESSAGE BODY</label>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>MESSAGE</label>
                   <textarea
                     required
-                    rows={4}
-                    placeholder="Describe your issue or request in detail..."
+                    rows={3}
+                    placeholder="Type your message here..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#F1F5F9', fontSize: '13px', resize: 'none' }}
@@ -472,7 +507,7 @@ export const SupportChatWidget: React.FC = () => {
                     disabled={loading}
                     style={{ flex: 1, padding: '10px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, border: 'none', cursor: 'pointer' }}
                   >
-                    {loading ? 'Submitting...' : 'Submit Ticket'}
+                    {loading ? 'Starting Chat...' : 'Start Live Chat'}
                   </button>
                 </div>
               </form>
