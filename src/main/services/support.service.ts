@@ -117,14 +117,14 @@ export class SupportService {
     const convSql = `
       SELECT 
         c.*,
-        u.name as user_name,
-        u.email as user_email,
-        u.account_status as user_status,
-        u.created_at as user_created_at,
+        COALESCE(u.name, c.user_id, 'Visitor Guest') as user_name,
+        COALESCE(u.email, 'guest@profilevault.local') as user_email,
+        COALESCE(u.account_status, 'active') as user_status,
+        COALESCE(u.created_at, c.created_at) as user_created_at,
         (SELECT name FROM users WHERE id = c.assigned_agent_id) as assigned_agent_name,
         (SELECT p.name FROM subscriptions s JOIN pricing_plans p ON s.plan_id = p.id WHERE s.user_id = c.user_id) as user_plan
       FROM support_conversations c
-      JOIN users u ON c.user_id = u.id
+      LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?
     `
     const conv = db.prepare(convSql).get(conversationId) as any
@@ -137,7 +137,7 @@ export class SupportService {
 
     // Fetch messages
     const messages = db.prepare(`
-      SELECT m.*, u.name as sender_name 
+      SELECT m.*, COALESCE(u.name, 'Support User') as sender_name 
       FROM support_messages m
       LEFT JOIN users u ON m.sender_id = u.id
       WHERE m.conversation_id = ?
@@ -170,6 +170,14 @@ export class SupportService {
   ): any {
     const db = getDatabase()
     const settings = this.getSettings()
+
+    // Ensure user exists in users table
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO users (id, name, email, role, email_verified, account_status)
+        VALUES (?, 'Visitor Guest', ?, 'user', 1, 'active')
+      `).run(userId, `${userId}@guest.profilevault.local`)
+    } catch {}
 
     // Check open conversation limit for user
     const maxOpen = parseInt(settings.max_open_conversations_per_user || '5', 10)

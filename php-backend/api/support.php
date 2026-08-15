@@ -39,14 +39,14 @@ switch ($action) {
         $stmt = $db->prepare("
             SELECT 
                 c.*,
-                u.name as user_name,
-                u.email as user_email,
-                u.account_status as user_status,
-                u.created_at as user_created_at,
+                COALESCE(u.name, c.user_id, 'Visitor Guest') as user_name,
+                COALESCE(u.email, 'guest@profilevault.local') as user_email,
+                COALESCE(u.account_status, 'active') as user_status,
+                COALESCE(u.created_at, c.created_at) as user_created_at,
                 (SELECT name FROM users WHERE id = c.assigned_agent_id) as assigned_agent_name,
                 (SELECT p.name FROM subscriptions s JOIN pricing_plans p ON s.plan_id = p.id WHERE s.user_id = c.user_id) as user_plan
             FROM support_conversations c
-            JOIN users u ON c.user_id = u.id
+            LEFT JOIN users u ON c.user_id = u.id
             WHERE c.id = ?
         ");
         $stmt->execute([$convId]);
@@ -94,6 +94,11 @@ switch ($action) {
 
         $convId = 'conv_' . bin2hex(random_bytes(8));
         $msgId = 'msg_' . bin2hex(random_bytes(8));
+
+        try {
+            $userStmt = $db->prepare("INSERT IGNORE INTO users (id, name, email, role, email_verified, account_status) VALUES (?, 'Visitor Guest', ?, 'user', 1, 'active')");
+            $userStmt->execute([$user['id'], $user['email'] ?? ($user['id'] . '@guest.profilevault.local')]);
+        } catch (Exception $e) {}
 
         $stmt = $db->prepare("
             INSERT INTO support_conversations (id, user_id, status, priority, subject, last_message_at, created_at)
