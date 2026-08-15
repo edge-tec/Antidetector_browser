@@ -79,16 +79,20 @@ export const SupportChatWidget: React.FC = () => {
   useEffect(() => {
     if (effectiveToken) {
       loadConversations()
-      const interval = setInterval(loadConversations, 5000)
+      // Intelligent polling: 10s when widget open, 30s when closed
+      const pollRate = isOpen ? 10000 : 30000
+      const interval = setInterval(loadConversations, pollRate)
       return () => clearInterval(interval)
     }
-  }, [effectiveToken, loadConversations])
+  }, [effectiveToken, isOpen, loadConversations])
 
   useEffect(() => {
-    if (activeConvId) {
+    if (activeConvId && isOpen) {
       loadActiveConversation(activeConvId)
+      const activeInterval = setInterval(() => loadActiveConversation(activeConvId), 8000)
+      return () => clearInterval(activeInterval)
     }
-  }, [activeConvId, loadActiveConversation])
+  }, [activeConvId, isOpen, loadActiveConversation])
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
