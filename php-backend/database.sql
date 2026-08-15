@@ -261,6 +261,8 @@ CREATE TABLE IF NOT EXISTS `support_conversations` (
   `closed_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_sup_conv_user_status` (`user_id`, `status`),
+  KEY `idx_sup_conv_last_msg` (`last_message_at`),
   CONSTRAINT `fk_sup_conv_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -278,6 +280,8 @@ CREATE TABLE IF NOT EXISTS `support_messages` (
   `is_read` TINYINT(1) DEFAULT 0,
   `read_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_sup_msg_conv_created` (`conversation_id`, `created_at`),
+  KEY `idx_sup_msg_unread` (`conversation_id`, `sender_type`, `is_read`),
   CONSTRAINT `fk_sup_msg_conv` FOREIGN KEY (`conversation_id`) REFERENCES `support_conversations` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
