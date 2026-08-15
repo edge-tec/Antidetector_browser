@@ -1,19 +1,22 @@
 // ──────────────────────────────────────────────────────────────────
 // ProfileVault — ClientRects Injection Script Builder
-// Adds deterministic noise to getBoundingClientRect / getClientRects
+// Adds deterministic noise to getBoundingClientRect / getClientRects safely
 // ──────────────────────────────────────────────────────────────────
 
 import { ClientRectsFingerprint } from '../../../fingerprint/types'
 
 export function buildClientRectsScript(cr: ClientRectsFingerprint): string {
-  if (cr.mode === 'off') {
+  const safeMode = cr?.mode || 'off'
+  const safeSeed = cr?.noiseSeed || 9999
+
+  if (safeMode === 'off') {
     return '// ClientRects: OFF (no override)'
   }
 
   return `
-// ═══ ClientRects Noise (Seed: ${cr.noiseSeed}) ═══
+// ═══ ClientRects Noise (Seed: ${safeSeed}) ═══
 (function() {
-  const SEED = ${cr.noiseSeed};
+  const SEED = ${safeSeed};
 
   function mulberry32(seed) {
     return function() {

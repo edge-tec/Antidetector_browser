@@ -1,10 +1,9 @@
 // ──────────────────────────────────────────────────────────────────
 // ProfileVault v2 — Browser Injection Orchestrator
 // Builds and injects fingerprint override scripts via CDP
-// Page.addScriptToEvaluateOnNewDocument
+// Page.addScriptToEvaluateOnNewDocument & Emulation domain
 // ──────────────────────────────────────────────────────────────────
 
-import { screen } from 'electron'
 import { Page, Browser } from 'puppeteer-core'
 import { Fingerprint } from '../../fingerprint/types'
 import { logger } from '../../logging/logger'
@@ -80,8 +79,21 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   try {
     const client = await page.target().createCDPSession()
 
-    // Always clear device metrics override so Chromium renders 100% native edge-to-edge like Google Chrome
+    // Always clear device metrics override so Chromium renders 100% native edge-to-edge
     await client.send('Emulation.clearDeviceMetricsOverride')
+
+    // Geolocation CDP Override
+    if (fingerprint.geolocation && (fingerprint.geolocation.mode === 'custom' || fingerprint.geolocation.mode === 'ip-based')) {
+      try {
+        await client.send('Emulation.setGeolocationOverride', {
+          latitude: fingerprint.geolocation.latitude || 40.7128,
+          longitude: fingerprint.geolocation.longitude || -74.006,
+          accuracy: fingerprint.geolocation.accuracy || 50
+        })
+      } catch (err: any) {
+        logger.warn('browser', `Could not set CDP Geolocation override: ${err.message}`)
+      }
+    }
 
     if (isAndroid) {
       // 1. Enable CDP Touch Emulation for Android

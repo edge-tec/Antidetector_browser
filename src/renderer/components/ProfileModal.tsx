@@ -323,6 +323,7 @@ export const ProfileModal: React.FC<Props> = ({
   const [processorGen, setProcessorGen] = useState('M4')
   const [groupId, setGroupId] = useState('')
   const [notes, setNotes] = useState('')
+  const [startUrl, setStartUrl] = useState('')
   const [tagsStr, setTagsStr] = useState('')
 
   // Proxy state
@@ -414,13 +415,18 @@ export const ProfileModal: React.FC<Props> = ({
           const fpWrtc = initialProfile.webrtcMode
           setWebrtcSetting(fpWrtc === 'disabled' || fpWrtc === 'off' ? 'off' : 'based_on_ip')
         }
+        setStartUrl(initialProfile.startUrl || initialProfile.fingerprint?.browser?.startUrl || '')
         if (initialProfile.extensions && Array.isArray(initialProfile.extensions)) {
           setExtensions(initialProfile.extensions)
+        } else if (initialProfile.fingerprint?.browser?.extensions && Array.isArray(initialProfile.fingerprint.browser.extensions)) {
+          setExtensions(initialProfile.fingerprint.browser.extensions)
         } else {
           setExtensions([])
         }
         if (initialProfile.bookmarks && Array.isArray(initialProfile.bookmarks)) {
           setBookmarks(initialProfile.bookmarks)
+        } else if (initialProfile.fingerprint?.browser?.bookmarks && Array.isArray(initialProfile.fingerprint.browser.bookmarks)) {
+          setBookmarks(initialProfile.fingerprint.browser.bookmarks)
         } else {
           setBookmarks([])
         }
@@ -523,6 +529,11 @@ export const ProfileModal: React.FC<Props> = ({
         }
       }
 
+      finalFp.browser = finalFp.browser || {}
+      finalFp.browser.extensions = extensions
+      finalFp.browser.bookmarks = bookmarks
+      finalFp.browser.startUrl = startUrl
+
       const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean)
 
       await onSave({
@@ -533,6 +544,7 @@ export const ProfileModal: React.FC<Props> = ({
         proxyId: finalProxyId,
         webrtcMode: webrtcSetting === 'off' ? 'disabled' : 'default',
         notes,
+        startUrl,
         tags,
         fingerprint: finalFp,
         extensions,
@@ -839,6 +851,17 @@ export const ProfileModal: React.FC<Props> = ({
                         style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Start Page / Launch URL</label>
+                    <input
+                      type="text"
+                      value={startUrl}
+                      onChange={e => setStartUrl(e.target.value)}
+                      placeholder="e.g. https://whoer.net or https://google.com"
+                      style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                    />
                   </div>
 
                   <div>

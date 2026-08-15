@@ -1,26 +1,34 @@
 // ──────────────────────────────────────────────────────────────────
 // ProfileVault — Permissions Injection Script Builder
-// Overrides navigator.permissions.query()
+// Overrides navigator.permissions.query() safely
 // ──────────────────────────────────────────────────────────────────
 
 import { PermissionsFingerprint, PermissionState } from '../../../fingerprint/types'
 
 export function buildPermissionsScript(perms: PermissionsFingerprint): string {
+  const safePerms = perms || {
+    camera: 'prompt',
+    microphone: 'prompt',
+    geolocation: 'prompt',
+    notifications: 'prompt',
+    clipboard: 'prompt'
+  }
+
   const permMap: Record<string, PermissionState> = {
-    camera: perms.camera,
-    microphone: perms.microphone,
-    geolocation: perms.geolocation,
-    notifications: perms.notifications,
-    'clipboard-read': perms.clipboard,
-    'clipboard-write': perms.clipboard,
-    midi: perms.midi,
-    accelerometer: perms.sensors,
-    gyroscope: perms.sensors,
-    magnetometer: perms.sensors,
-    usb: perms.usb,
-    bluetooth: perms.bluetooth,
-    'background-sync': perms.backgroundSync,
-    'persistent-storage': perms.persistentStorage
+    camera: safePerms.camera || 'prompt',
+    microphone: safePerms.microphone || 'prompt',
+    geolocation: safePerms.geolocation || 'prompt',
+    notifications: safePerms.notifications || 'prompt',
+    'clipboard-read': safePerms.clipboard || 'prompt',
+    'clipboard-write': safePerms.clipboard || 'prompt',
+    midi: safePerms.midi || 'prompt',
+    accelerometer: safePerms.sensors || 'prompt',
+    gyroscope: safePerms.sensors || 'prompt',
+    magnetometer: safePerms.sensors || 'prompt',
+    usb: safePerms.usb || 'prompt',
+    bluetooth: safePerms.bluetooth || 'prompt',
+    'background-sync': safePerms.backgroundSync || 'prompt',
+    'persistent-storage': safePerms.persistentStorage || 'prompt'
   }
 
   return `

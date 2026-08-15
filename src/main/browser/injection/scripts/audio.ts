@@ -1,12 +1,16 @@
 // ──────────────────────────────────────────────────────────────────
 // ProfileVault — AudioContext Injection Script Builder
-// Adds deterministic noise to AudioContext fingerprinting methods
+// Adds deterministic noise to AudioContext fingerprinting methods safely
 // ──────────────────────────────────────────────────────────────────
 
 import { AudioFingerprint } from '../../../fingerprint/types'
 
 export function buildAudioScript(audio: AudioFingerprint): string {
-  if (audio.mode === 'off') {
+  const safeMode = audio?.mode || 'noise'
+  const safeSeed = audio?.noiseSeed || 54321
+  const safeSampleRate = audio?.sampleRate || 44100
+
+  if (safeMode === 'off') {
     return `
 // ═══ AudioContext Disabled ═══
 (function() {
@@ -17,15 +21,15 @@ export function buildAudioScript(audio: AudioFingerprint): string {
 })();`
   }
 
-  if (audio.mode === 'default') {
+  if (safeMode === 'default') {
     return '// AudioContext: Default (no override)'
   }
 
   return `
-// ═══ AudioContext Noise (Seed: ${audio.noiseSeed}) ═══
+// ═══ AudioContext Noise (Seed: ${safeSeed}) ═══
 (function() {
-  const SEED = ${audio.noiseSeed};
-  const SAMPLE_RATE = ${audio.sampleRate};
+  const SEED = ${safeSeed};
+  const SAMPLE_RATE = ${safeSampleRate};
 
   function mulberry32(seed) {
     return function() {

@@ -2,7 +2,8 @@
 // ProfileVault v2 — Browser Launcher (Puppeteer + Fingerprint Injection)
 // ──────────────────────────────────────────────────────────────────
 
-import { screen } from 'electron'
+import fs from 'fs'
+import path from 'path'
 import puppeteer, { Browser } from 'puppeteer-core'
 import { Profile, Proxy } from '../database/models'
 import { Fingerprint, createDefaultFingerprint } from '../fingerprint/types'
@@ -17,6 +18,50 @@ export interface LaunchResult {
   browser: Browser
   pid: number
   wsEndpoint: string
+}
+
+/**
+ * Auto-generate Chromium Bookmarks JSON file inside profile data directory.
+ */
+function setupProfileBookmarks(userDataDir: string, bookmarks: Array<{ title: string; url: string }>): void {
+  if (!Array.isArray(bookmarks) || bookmarks.length === 0) return
+  try {
+    const defaultDir = path.join(userDataDir, 'Default')
+    if (!fs.existsSync(defaultDir)) {
+      fs.mkdirSync(defaultDir, { recursive: true })
+    }
+    const bookmarksPath = path.join(defaultDir, 'Bookmarks')
+    const bookmarkNodes = bookmarks.map((b, idx) => ({
+      date_added: String(Date.now() * 1000),
+      guid: `bm-guid-${idx}-${Date.now()}`,
+      id: String(idx + 1),
+      name: b.title || b.url,
+      type: 'url',
+      url: b.url.startsWith('http') ? b.url : `https://${b.url}`
+    }))
+
+    const bookmarksJson = {
+      checksum: '00000000000000000000000000000000',
+      roots: {
+        bookmark_bar: {
+          children: bookmarkNodes,
+          date_added: '13300000000000000',
+          date_modified: '13300000000000000',
+          id: '1',
+          name: 'Bookmarks bar',
+          type: 'folder'
+        },
+        other: { children: [], date_added: '13300000000000000', date_modified: '0', id: '2', name: 'Other bookmarks', type: 'folder' },
+        synced: { children: [], date_added: '13300000000000000', date_modified: '0', id: '3', name: 'Mobile bookmarks', type: 'folder' }
+      },
+      version: 1
+    }
+
+    fs.writeFileSync(bookmarksPath, JSON.stringify(bookmarksJson, null, 2), 'utf8')
+    logger.info('browser', `Wrote ${bookmarks.length} bookmarks to Chromium profile: ${bookmarksPath}`)
+  } catch (err: any) {
+    logger.warn('browser', `Failed to write Chromium bookmarks: ${err.message}`)
+  }
 }
 
 /**
@@ -68,11 +113,6 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   // Safe browsing
   if (fingerprint?.browser && !fingerprint.browser.safeBrowsing) {
     args.push('--safebrowsing-disable-auto-update')
-  }
-
-  // System extensions
-  if (fingerprint?.browser && !fingerprint.browser.systemExtensionsEnabled) {
-    args.push('--disable-extensions-except=')
   }
 
   // Custom DNS
@@ -150,6 +190,11 @@ export async function launchBrowser(
     fingerprint = createDefaultFingerprint({ osType: (profile.osType as any) || 'windows-10' })
   }
 
+  // Auto-setup Bookmarks in Chromium Profile directory
+  if (fingerprint?.browser?.bookmarks && Array.isArray(fingerprint.browser.bookmarks)) {
+    setupProfileBookmarks(userDataDir, fingerprint.browser.bookmarks)
+  }
+
   // Resolve proxy
   let proxy: Proxy | null = null
   if (profile.proxyId) {
@@ -185,8 +230,13 @@ export async function launchBrowser(
 
   // Determine start URLs
   let startUrls: string[] = []
-  if (fingerprint?.browser?.startUrlMode === 'custom' && Array.isArray(fingerprint.browser.startUrls) && fingerprint.browser.startUrls.length > 0) {
-    startUrls = fingerprint.browser.startUrls
+  if (profile.startUrl) {
+    startUrls.push(profile.startUrl)
+  }
+  if (fingerprint?.browser?.startUrls && Array.isArray(fingerprint.browser.startUrls)) {
+    for (const url of fingerprint.browser.startUrls) {
+      if (url && !startUrls.includes(url)) startUrls.push(url)
+    }
   }
 
   logger.info('browser', `Launching browser for profile "${profile.name}"`, JSON.stringify({
@@ -215,10 +265,10 @@ export async function launchBrowser(
     const process = browser.process()
     const pid = process?.pid || 0
 
-    // ── Inject full fingerprint via CDP ──
+    // Inject full fingerprint via CDP
     await setupBrowserInjection(browser, fingerprint)
 
-    // ── Maximize Chromium window & WebContents view via CDP ──
+    // Maximize Chromium window & WebContents view via CDP
     try {
       const pages = await browser.pages()
       if (pages.length > 0) {
@@ -233,7 +283,7 @@ export async function launchBrowser(
       logger.warn('browser', `Could not maximize CDP window: ${err.message}`)
     }
 
-    // ── Set timezone via CDP ──
+    // Set timezone via CDP
     const tz = fingerprint?.timezone?.timezone
     if (tz) {
       try {
@@ -254,7 +304,7 @@ export async function launchBrowser(
       }
     }
 
-    // ── Handle proxy authentication for HTTP/HTTPS proxies ──
+    // Handle proxy authentication for HTTP/HTTPS proxies
     if (effectiveProxy && effectiveProxy.username && (effectiveProxy.type === 'http' || effectiveProxy.type === 'https')) {
       try {
         let password = ''
@@ -291,7 +341,7 @@ export async function launchBrowser(
       }
     }
 
-    // ── Navigate to start URLs ──
+    // Navigate to start URLs
     if (startUrls.length > 0) {
       try {
         const pages = await browser.pages()

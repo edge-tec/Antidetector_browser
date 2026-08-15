@@ -1,42 +1,53 @@
 // ──────────────────────────────────────────────────────────────────
 // ProfileVault — Media Devices Injection Script Builder
-// Overrides navigator.mediaDevices.enumerateDevices()
+// Overrides navigator.mediaDevices.enumerateDevices() safely
 // ──────────────────────────────────────────────────────────────────
 
 import { MediaDevicesFingerprint } from '../../../fingerprint/types'
 
 export function buildMediaDevicesScript(md: MediaDevicesFingerprint): string {
+  const safe = {
+    videoInputs: md?.videoInputs ?? 1,
+    audioInputs: md?.audioInputs ?? 1,
+    audioOutputs: md?.audioOutputs ?? 1,
+    deviceIds: md?.deviceIds || [],
+    groupIds: md?.groupIds || [],
+    cameraLabels: md?.cameraLabels || [],
+    microphoneLabels: md?.microphoneLabels || [],
+    speakerLabels: md?.speakerLabels || []
+  }
+
   const devices: any[] = []
 
   // Build video inputs
-  for (let i = 0; i < md.videoInputs; i++) {
+  for (let i = 0; i < safe.videoInputs; i++) {
     devices.push({
       kind: 'videoinput',
-      deviceId: md.deviceIds[i] || `video-${i}`,
-      groupId: `group-video-${i}`,
-      label: md.cameraLabels[i] || `Camera ${i + 1}`
+      deviceId: safe.deviceIds[i] || `video-${i}`,
+      groupId: safe.groupIds[i] || `group-video-${i}`,
+      label: safe.cameraLabels[i] || `HD Web Camera ${i + 1}`
     })
   }
 
   // Build audio inputs
-  for (let i = 0; i < md.audioInputs; i++) {
-    const idx = md.videoInputs + i
+  for (let i = 0; i < safe.audioInputs; i++) {
+    const idx = safe.videoInputs + i
     devices.push({
       kind: 'audioinput',
-      deviceId: md.deviceIds[idx] || `audio-in-${i}`,
-      groupId: `group-audio-in-${i}`,
-      label: md.microphoneLabels[i] || `Microphone ${i + 1}`
+      deviceId: safe.deviceIds[idx] || `audio-in-${i}`,
+      groupId: safe.groupIds[idx] || `group-audio-in-${i}`,
+      label: safe.microphoneLabels[i] || `Internal Microphone ${i + 1}`
     })
   }
 
   // Build audio outputs
-  for (let i = 0; i < md.audioOutputs; i++) {
-    const idx = md.videoInputs + md.audioInputs + i
+  for (let i = 0; i < safe.audioOutputs; i++) {
+    const idx = safe.videoInputs + safe.audioInputs + i
     devices.push({
       kind: 'audiooutput',
-      deviceId: md.deviceIds[idx] || `audio-out-${i}`,
-      groupId: `group-audio-out-${i}`,
-      label: md.speakerLabels[i] || `Speaker ${i + 1}`
+      deviceId: safe.deviceIds[idx] || `audio-out-${i}`,
+      groupId: safe.groupIds[idx] || `group-audio-out-${i}`,
+      label: safe.speakerLabels[i] || `Internal Speaker ${i + 1}`
     })
   }
 

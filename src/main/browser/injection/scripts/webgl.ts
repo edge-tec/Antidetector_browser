@@ -1,12 +1,42 @@
 // ──────────────────────────────────────────────────────────────────
 // ProfileVault — WebGL Injection Script Builder
-// Intercepts WebGL API calls to spoof GPU identity
+// Intercepts WebGL API calls to spoof GPU identity with safe defaults
 // ──────────────────────────────────────────────────────────────────
 
 import { WebGLFingerprint } from '../../../fingerprint/types'
 
 export function buildWebGLScript(webgl: WebGLFingerprint): string {
-  if (!webgl.enabled) {
+  const safeWebgl = {
+    enabled: webgl?.enabled !== false,
+    unmaskedVendor: webgl?.unmaskedVendor || 'Google Inc. (Apple)',
+    unmaskedRenderer: webgl?.unmaskedRenderer || 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)',
+    vendor: webgl?.vendor || 'WebKit',
+    renderer: webgl?.renderer || 'WebKit WebGL',
+    shadingLanguageVersion: webgl?.shadingLanguageVersion || 'WebGL GLSL ES 1.0 (OpenGL ES 2.0 Chromium)',
+    maxTextureSize: webgl?.maxTextureSize || 16384,
+    maxViewportDims: webgl?.maxViewportDims || [16384, 16384],
+    maxRenderbufferSize: webgl?.maxRenderbufferSize || 16384,
+    extensions: webgl?.extensions || [
+      'ANGLE_instanced_arrays',
+      'EXT_blend_minmax',
+      'EXT_color_buffer_half_float',
+      'EXT_disjoint_timer_query',
+      'EXT_float_blend',
+      'EXT_frag_depth',
+      'EXT_shader_texture_lod',
+      'EXT_texture_compression_bptc',
+      'EXT_texture_filter_anisotropic',
+      'WEBGL_color_buffer_float',
+      'WEBGL_compressed_texture_s3tc',
+      'WEBGL_debug_renderer_info',
+      'WEBGL_debug_shaders',
+      'WEBGL_depth_texture',
+      'WEBGL_draw_buffers',
+      'WEBGL_lose_context'
+    ]
+  }
+
+  if (!safeWebgl.enabled) {
     return `
 // ═══ WebGL Disabled ═══
 (function() {
@@ -22,12 +52,12 @@ export function buildWebGLScript(webgl: WebGLFingerprint): string {
   return `
 // ═══ WebGL Override ═══
 (function() {
-  const UNMASKED_VENDOR = ${JSON.stringify(webgl.unmaskedVendor)};
-  const UNMASKED_RENDERER = ${JSON.stringify(webgl.unmaskedRenderer)};
-  const MAX_TEXTURE_SIZE = ${webgl.maxTextureSize};
-  const MAX_VIEWPORT_DIMS = new Int32Array([${webgl.maxViewportDims[0]}, ${webgl.maxViewportDims[1]}]);
-  const MAX_RENDERBUFFER = ${webgl.maxRenderbufferSize};
-  const EXTENSIONS = ${JSON.stringify(webgl.extensions)};
+  const UNMASKED_VENDOR = ${JSON.stringify(safeWebgl.unmaskedVendor)};
+  const UNMASKED_RENDERER = ${JSON.stringify(safeWebgl.unmaskedRenderer)};
+  const MAX_TEXTURE_SIZE = ${safeWebgl.maxTextureSize};
+  const MAX_VIEWPORT_DIMS = new Int32Array([${safeWebgl.maxViewportDims[0]}, ${safeWebgl.maxViewportDims[1]}]);
+  const MAX_RENDERBUFFER = ${safeWebgl.maxRenderbufferSize};
+  const EXTENSIONS = ${JSON.stringify(safeWebgl.extensions)};
 
   function patchContext(proto) {
     // Override getParameter
@@ -44,11 +74,11 @@ export function buildWebGLScript(webgl: WebGLFingerprint): string {
       // MAX_RENDERBUFFER_SIZE
       if (param === 0x84E8 || param === 34024) return MAX_RENDERBUFFER;
       // RENDERER
-      if (param === 0x1F01 || param === 7937) return ${JSON.stringify(webgl.renderer)};
+      if (param === 0x1F01 || param === 7937) return ${JSON.stringify(safeWebgl.renderer)};
       // VENDOR
-      if (param === 0x1F00 || param === 7936) return ${JSON.stringify(webgl.vendor)};
+      if (param === 0x1F00 || param === 7936) return ${JSON.stringify(safeWebgl.vendor)};
       // SHADING_LANGUAGE_VERSION
-      if (param === 0x8B8C || param === 35724) return ${JSON.stringify(webgl.shadingLanguageVersion)};
+      if (param === 0x8B8C || param === 35724) return ${JSON.stringify(safeWebgl.shadingLanguageVersion)};
       return origGetParam.call(this, param);
     };
 
