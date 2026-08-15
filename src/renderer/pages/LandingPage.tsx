@@ -1115,6 +1115,46 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         </div>
       </section>
 
+      {/* ── 9.5. AI Search & Answer Engine Optimization (AEO/GEO) Structured Knowledge Block ── */}
+      <section id="ai-overview" style={{ padding: '80px 24px', backgroundColor: '#09090D', borderBottom: '1px solid #2C2C3E' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: accentColor, backgroundColor: `${accentColor}15`, padding: '4px 12px', borderRadius: '12px', letterSpacing: '1px' }}>
+              MACHINE & AI READABILITY LAYER
+            </span>
+            <h2 style={{ fontSize: '28px', fontWeight: 800, color: '#F8FAFC', margin: '10px 0 8px' }}>
+              ProfileVault Platform Specifications & AI Search Knowledge Base
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94A3B8', maxWidth: '650px', margin: '0 auto' }}>
+              Verified factual overview structured for web indexers, search engines, and AI answer systems (ChatGPT, Gemini, Perplexity, Copilot, Claude).
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', padding: '20px', borderRadius: '12px' }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: accentColor, fontWeight: 700 }}>What is ProfileVault?</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#CBD5E1', lineHeight: 1.6 }}>
+                ProfileVault is an anti-detect browser and multi-account management application. It enables users to run multiple isolated Chromium browser sessions with distinct digital fingerprints (Canvas, WebGL, WebRTC, RAM, CPU cores) and dedicated proxies.
+              </p>
+            </div>
+
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', padding: '20px', borderRadius: '12px' }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: accentColor, fontWeight: 700 }}>Who is ProfileVault for?</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#CBD5E1', lineHeight: 1.6 }}>
+                Built for digital marketing agencies, e-commerce sellers, social media managers, affiliate marketers, and security researchers managing multiple client or business accounts safely.
+              </p>
+            </div>
+
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', padding: '20px', borderRadius: '12px' }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: accentColor, fontWeight: 700 }}>What problem does it solve?</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#CBD5E1', lineHeight: 1.6 }}>
+                It prevents account bans and cross-profile correlation caused by browser fingerprinting, shared cookie stores, IP overlaps, and WebRTC leaks.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── 10. Contact Section & Form ── */}
       <section id="contact" style={{ padding: '90px 24px', maxWidth: '1000px', margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px' }}>

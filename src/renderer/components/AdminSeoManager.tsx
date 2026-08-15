@@ -1,0 +1,711 @@
+// ──────────────────────────────────────────────
+// ProfileVault — Admin SEO & AI Search Optimization (AEO/GEO) Manager
+// ──────────────────────────────────────────────
+
+import React, { useState, useEffect } from 'react'
+
+interface AdminSeoManagerProps {
+  sessionToken: string
+}
+
+export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }) => {
+  const [activeTab, setActiveTab] = useState<
+    'settings' | 'pages' | 'content_assistant' | 'keywords' | 'entity' | 'robots' | 'sitemap' | 'audit' | 'redirects'
+  >('audit')
+
+  const [loading, setLoading] = useState(false)
+  const [settings, setSettings] = useState<Record<string, string>>({})
+  const [pages, setPages] = useState<any[]>([])
+  const [selectedPage, setSelectedPage] = useState<any | null>(null)
+
+  // Keywords state
+  const [keywordsData, setKeywordsData] = useState<{ keywords: any[]; warnings: any[] }>({ keywords: [], warnings: [] })
+  const [newKw, setNewKw] = useState({ keyword: '', keyword_type: 'primary', search_intent: 'commercial', target_url: '/' })
+
+  // Redirects & 404 state
+  const [redirects, setRedirects] = useState<any[]>([])
+  const [newRed, setNewRed] = useState({ source_path: '', target_path: '', status_code: 301 })
+  const [logs404, setLogs404] = useState<any[]>([])
+
+  // Audit state
+  const [auditReport, setAuditReport] = useState<any | null>(null)
+  const [auditing, setAuditing] = useState(false)
+
+  // Content Assistant state
+  const [caInput, setCaInput] = useState({ keyword: 'anti detect browser', topic: 'Profile isolation and proxy setup', intent: 'commercial' })
+  const [caResult, setCaResult] = useState<any | null>(null)
+  const [caLoading, setCaLoading] = useState(false)
+
+  // Page Editor State
+  const [pageForm, setPageForm] = useState({
+    id: '',
+    page_path: '/',
+    title: '',
+    description: '',
+    keywords: '',
+    canonical_url: '',
+    robots: 'index, follow',
+    og_title: '',
+    og_description: '',
+    og_image: '',
+    schema_type: 'SoftwareApplication',
+    primary_keyword: '',
+    ai_quick_answer: ''
+  })
+
+  // Load Initial SEO Data
+  const loadSeoData = async () => {
+    setLoading(true)
+    try {
+      if (typeof window !== 'undefined' && (window as any).api) {
+        const api = (window as any).api
+
+        if (typeof api.seoGetSettings === 'function') {
+          const res = await api.seoGetSettings(sessionToken)
+          if (res?.success) setSettings(res.data)
+        }
+
+        if (typeof api.seoGetPages === 'function') {
+          const res = await api.seoGetPages(sessionToken)
+          if (res?.success && res.data) {
+            setPages(res.data)
+            if (res.data.length > 0 && !selectedPage) {
+              setSelectedPage(res.data[0])
+              setPageForm(res.data[0])
+            }
+          }
+        }
+
+        if (typeof api.seoGetKeywords === 'function') {
+          const res = await api.seoGetKeywords(sessionToken)
+          if (res?.success) setKeywordsData(res.data)
+        }
+
+        if (typeof api.seoGetRedirects === 'function') {
+          const res = await api.seoGetRedirects(sessionToken)
+          if (res?.success) setRedirects(res.data)
+        }
+
+        if (typeof api.seoGet404Logs === 'function') {
+          const res = await api.seoGet404Logs(sessionToken)
+          if (res?.success) setLogs404(res.data)
+        }
+
+        if (typeof api.seoGetLatestAudit === 'function') {
+          const res = await api.seoGetLatestAudit(sessionToken)
+          if (res?.success) setAuditReport(res.data)
+        }
+      }
+    } catch (err) {
+      console.error('Error loading SEO data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSeoData()
+  }, [sessionToken])
+
+  // Save Settings
+  const handleSaveSettings = async () => {
+    try {
+      if ((window as any).api?.seoSaveSettings) {
+        const res = await (window as any).api.seoSaveSettings(sessionToken, settings)
+        if (res?.success) {
+          alert('✓ Global SEO & AEO settings saved successfully!')
+          loadSeoData()
+        }
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`)
+    }
+  }
+
+  // Save Page SEO
+  const handleSavePageSeo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if ((window as any).api?.seoSavePage) {
+        const res = await (window as any).api.seoSavePage(sessionToken, pageForm)
+        if (res?.success) {
+          alert('✓ Page SEO saved successfully!')
+          loadSeoData()
+        }
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`)
+    }
+  }
+
+  // Run Site Audit
+  const handleRunAudit = async () => {
+    setAuditing(true)
+    try {
+      if ((window as any).api?.seoRunAudit) {
+        const res = await (window as any).api.seoRunAudit(sessionToken)
+        if (res?.success) {
+          setAuditReport(res.data)
+        }
+      }
+    } catch (err: any) {
+      alert(`Audit error: ${err.message}`)
+    } finally {
+      setAuditing(false)
+    }
+  }
+
+  // Content Assistant
+  const handleGenerateContentAssistant = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCaLoading(true)
+    try {
+      if ((window as any).api?.seoGenerateContentAssistant) {
+        const res = await (window as any).api.seoGenerateContentAssistant(sessionToken, caInput)
+        if (res?.success) setCaResult(res.data)
+      }
+    } catch (err: any) {
+      alert(`Assistant error: ${err.message}`)
+    } finally {
+      setCaLoading(false)
+    }
+  }
+
+  // Add Keyword
+  const handleAddKeyword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newKw.keyword.trim()) return
+    try {
+      if ((window as any).api?.seoSaveKeyword) {
+        const res = await (window as any).api.seoSaveKeyword(sessionToken, newKw)
+        if (res?.success) {
+          setNewKw({ keyword: '', keyword_type: 'primary', search_intent: 'commercial', target_url: '/' })
+          loadSeoData()
+        }
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`)
+    }
+  }
+
+  // Delete Keyword
+  const handleDeleteKeyword = async (id: string) => {
+    if (!confirm('Delete this target keyword?')) return
+    try {
+      if ((window as any).api?.seoDeleteKeyword) {
+        await (window as any).api.seoDeleteKeyword(sessionToken, id)
+        loadSeoData()
+      }
+    } catch {}
+  }
+
+  // Add Redirect
+  const handleAddRedirect = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newRed.source_path.trim() || !newRed.target_path.trim()) return
+    try {
+      if ((window as any).api?.seoSaveRedirect) {
+        const res = await (window as any).api.seoSaveRedirect(sessionToken, newRed)
+        if (res?.success) {
+          setNewRed({ source_path: '', target_path: '', status_code: 301 })
+          loadSeoData()
+        }
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`)
+    }
+  }
+
+  const isRobotsDangerous = (settings.robots_content || '').includes('Disallow: /') && !(settings.robots_content || '').includes('Disallow: /admin')
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#F1F5F9' }}>
+      
+      {/* ── Top Header Navigation Bar ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2C2C3E', paddingBottom: '16px' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#F1F5F9' }}>
+            🔍 Google SEO & AI Search Optimization (AEO/GEO)
+          </h2>
+          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px' }}>
+            Technical SEO, Schema.org JSON-LD, Search Engine Crawlability & AI Answer Engine Optimization (ChatGPT, Gemini, Perplexity, Claude)
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={handleRunAudit}
+            disabled={auditing}
+            style={{
+              padding: '10px 18px',
+              borderRadius: '8px',
+              backgroundColor: '#2DD4BF',
+              color: '#0F0F17',
+              fontWeight: 800,
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <span>{auditing ? '⌛ Auditing...' : '⚡ Run Site Audit'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Sub Navigation Tabs ── */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', backgroundColor: '#14141F', padding: '6px', borderRadius: '10px', border: '1px solid #2C2C3E' }}>
+        {[
+          { id: 'audit', label: '📊 Site Audit & Score', icon: '📊' },
+          { id: 'settings', label: '⚙️ Global Settings', icon: '⚙️' },
+          { id: 'pages', label: '📄 Page SEO & Snippets', icon: '📄' },
+          { id: 'content_assistant', label: '💡 Content Assistant', icon: '💡' },
+          { id: 'keywords', label: '🔑 Keywords & Cannibalization', icon: '🔑' },
+          { id: 'entity', label: '🏢 Entity & Brand', icon: '🏢' },
+          { id: 'robots', label: '🤖 Robots.txt', icon: '🤖' },
+          { id: 'sitemap', label: '🗺️ Sitemap & llms.txt', icon: '🗺️' },
+          { id: 'redirects', label: '🔀 Redirects & 404s', icon: '🔀' }
+        ].map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setActiveTab(t.id as any)}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: activeTab === t.id ? '#2DD4BF20' : 'transparent',
+              color: activeTab === t.id ? '#2DD4BF' : '#94A3B8',
+              fontWeight: activeTab === t.id ? 800 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── TAB 1: SITE AUDIT & SCORE ── */}
+      {activeTab === 'audit' && auditReport && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Score Header Card */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '220px 1fr',
+            gap: '24px',
+            backgroundColor: '#161622',
+            border: '1px solid #2C2C3E',
+            borderRadius: '14px',
+            padding: '24px',
+            alignItems: 'center'
+          }}>
+            <div style={{ textAlign: 'center', borderRight: '1px solid #2C2C3E', paddingRight: '24px' }}>
+              <div style={{
+                fontSize: '48px',
+                fontWeight: 900,
+                color: auditReport.score >= 80 ? '#10B981' : auditReport.score >= 60 ? '#F59E0B' : '#EF4444'
+              }}>
+                {auditReport.score}/100
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#94A3B8', marginTop: '4px' }}>SEO & AEO HEALTH SCORE</div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div style={{ backgroundColor: '#EF444415', border: '1px solid #EF444440', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#EF4444' }}>{auditReport.criticalCount}</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#F87171' }}>CRITICAL ISSUES</div>
+              </div>
+              <div style={{ backgroundColor: '#F59E0B15', border: '1px solid #F59E0B40', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#F59E0B' }}>{auditReport.warningCount}</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#FBBF24' }}>WARNINGS</div>
+              </div>
+              <div style={{ backgroundColor: '#10B98115', border: '1px solid #10B98140', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#10B981' }}>{auditReport.passedCount}</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#34D399' }}>PASSED CHECKS</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Audit Recommendation Items List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#F1F5F9' }}>AUDIT RECOMMENDATIONS & CHECKS</h3>
+            {auditReport.items?.map((item: any) => (
+              <div
+                key={item.id}
+                style={{
+                  padding: '16px',
+                  borderRadius: '10px',
+                  backgroundColor: '#161622',
+                  border: `1px solid ${item.type === 'critical' ? '#EF444460' : item.type === 'warning' ? '#F59E0B60' : '#2C2C3E'}`,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      backgroundColor: item.type === 'critical' ? '#EF444420' : item.type === 'warning' ? '#F59E0B20' : '#10B98120',
+                      color: item.type === 'critical' ? '#F87171' : item.type === 'warning' ? '#FBBF24' : '#34D399'
+                    }}>
+                      {item.type.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9' }}>{item.title}</span>
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#94A3B8' }}>{item.description}</div>
+                  <div style={{ fontSize: '12px', color: '#2DD4BF', marginTop: '6px', fontWeight: 600 }}>💡 Action: {item.recommendation}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      )}
+
+      {/* ── TAB 2: GLOBAL SETTINGS ── */}
+      {activeTab === 'settings' && (
+        <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>Global SEO & AEO System Controls</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            {[
+              { key: 'seo_enabled', label: 'Enable Technical SEO Engine' },
+              { key: 'schema_enabled', label: 'Enable Schema.org JSON-LD Generation' },
+              { key: 'sitemap_enabled', label: 'Enable Dynamic XML Sitemap (/sitemap.xml)' },
+              { key: 'robots_enabled', label: 'Enable Robots.txt Directives (/robots.txt)' },
+              { key: 'og_enabled', label: 'Enable Open Graph & Twitter Cards' },
+              { key: 'ai_aeo_enabled', label: 'Enable AI Search & Answer Engine Optimization (AEO)' },
+              { key: 'internal_links_enabled', label: 'Enable Internal Link Analyzer' },
+              { key: 'seo_audit_enabled', label: 'Enable Automated SEO Site Audit' }
+            ].map(ctrl => (
+              <label key={ctrl.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: '#14141F', borderRadius: '8px', border: '1px solid #2C2C3E', cursor: 'pointer' }}>
+                <span style={{ fontSize: '13px', color: '#F1F5F9', fontWeight: 600 }}>{ctrl.label}</span>
+                <input
+                  type="checkbox"
+                  checked={settings[ctrl.key] === '1'}
+                  onChange={e => setSettings({ ...settings, [ctrl.key]: e.target.checked ? '1' : '0' })}
+                  style={{ width: '18px', height: '18px', accentColor: '#2DD4BF' }}
+                />
+              </label>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>SITE NAME</label>
+              <input
+                type="text"
+                value={settings.site_name || ''}
+                onChange={e => setSettings({ ...settings, site_name: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>DEFAULT META DESCRIPTION</label>
+              <textarea
+                rows={2}
+                value={settings.site_description || ''}
+                onChange={e => setSettings({ ...settings, site_description: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', resize: 'none' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>PRIMARY CANONICAL SITE URL</label>
+              <input
+                type="text"
+                value={settings.site_url || ''}
+                onChange={e => setSettings({ ...settings, site_url: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            style={{ padding: '12px 24px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}
+          >
+            💾 Save Global Settings
+          </button>
+        </div>
+      )}
+
+      {/* ── TAB 3: PAGE SEO & GOOGLE SNIPPET PREVIEW ── */}
+      {activeTab === 'pages' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '20px' }}>
+          
+          {/* Page Selector Sidebar */}
+          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: '#F1F5F9', marginBottom: '6px' }}>SELECT PAGE</div>
+            {pages.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { setSelectedPage(p); setPageForm(p) }}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  textAlign: 'left',
+                  backgroundColor: selectedPage?.id === p.id ? '#2DD4BF20' : '#14141F',
+                  color: selectedPage?.id === p.id ? '#2DD4BF' : '#CBD5E1',
+                  fontWeight: selectedPage?.id === p.id ? 700 : 400,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                {p.page_path} ({p.title.substring(0, 18)}...)
+              </button>
+            ))}
+          </div>
+
+          {/* Page Form & Google Live Search Snippet Preview */}
+          <form onSubmit={handleSavePageSeo} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>
+              Editing Page SEO — Path: <span style={{ color: '#2DD4BF' }}>{pageForm.page_path}</span>
+            </h3>
+
+            {/* Google Live Search Preview Widget */}
+            <div style={{ backgroundColor: '#1E1E2E', border: '1px solid #313244', borderRadius: '10px', padding: '18px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#94A3B8', marginBottom: '8px' }}>🔍 GOOGLE SEARCH RESULT PREVIEW</div>
+              <div style={{ fontSize: '14px', color: '#BDC3C7', marginBottom: '2px' }}>{settings.site_name || 'ProfileVault'}</div>
+              <div style={{ fontSize: '18px', color: '#8AB4F8', fontWeight: 600, cursor: 'pointer', marginBottom: '4px' }}>
+                {pageForm.title || 'Page Title Preview'}
+              </div>
+              <div style={{ fontSize: '13px', color: '#202124', backgroundColor: '#E8EAED', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginBottom: '6px', fontFamily: 'monospace' }}>
+                {pageForm.canonical_url || `https://profilevault.local${pageForm.page_path}`}
+              </div>
+              <div style={{ fontSize: '13px', color: '#BDC3C7', lineHeight: 1.5 }}>
+                {pageForm.description || 'Page meta description preview will appear here...'}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>SEO TITLE ({pageForm.title?.length || 0} chars)</label>
+                <input
+                  type="text"
+                  required
+                  value={pageForm.title || ''}
+                  onChange={e => setPageForm({ ...pageForm, title: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>PRIMARY KEYWORD</label>
+                <input
+                  type="text"
+                  value={pageForm.primary_keyword || ''}
+                  onChange={e => setPageForm({ ...pageForm, primary_keyword: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>META DESCRIPTION ({pageForm.description?.length || 0} chars)</label>
+              <textarea
+                rows={3}
+                required
+                value={pageForm.description || ''}
+                onChange={e => setPageForm({ ...pageForm, description: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', resize: 'none' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>CANONICAL URL</label>
+                <input
+                  type="text"
+                  value={pageForm.canonical_url || ''}
+                  onChange={e => setPageForm({ ...pageForm, canonical_url: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>ROBOTS DIRECTIVE</label>
+                <select
+                  value={pageForm.robots || 'index, follow'}
+                  onChange={e => setPageForm({ ...pageForm, robots: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                >
+                  <option value="index, follow">index, follow (Default)</option>
+                  <option value="noindex, follow">noindex, follow</option>
+                  <option value="index, nofollow">index, nofollow</option>
+                  <option value="noindex, nofollow">noindex, nofollow</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>AI / AEO QUICK ANSWER SUMMARY (2-4 Sentences)</label>
+              <textarea
+                rows={3}
+                placeholder="Factual concise answer summary designed for AI answer engines..."
+                value={pageForm.ai_quick_answer || ''}
+                onChange={e => setPageForm({ ...pageForm, ai_quick_answer: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', resize: 'none' }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              style={{ padding: '12px 24px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}
+            >
+              💾 Save Page SEO Metadata
+            </button>
+          </form>
+
+        </div>
+      )}
+
+      {/* ── TAB 4: CONTENT ASSISTANT ── */}
+      {activeTab === 'content_assistant' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <form onSubmit={handleGenerateContentAssistant} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>SEO & AEO Content Assistant Generator</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>TARGET KEYWORD</label>
+                <input
+                  type="text"
+                  required
+                  value={caInput.keyword}
+                  onChange={e => setCaInput({ ...caInput, keyword: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>TOPIC / PAGE TYPE</label>
+                <input
+                  type="text"
+                  required
+                  value={caInput.topic}
+                  onChange={e => setCaInput({ ...caInput, topic: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>SEARCH INTENT</label>
+                <select
+                  value={caInput.intent}
+                  onChange={e => setCaInput({ ...caInput, intent: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                >
+                  <option value="commercial">Commercial / Purchase Intent</option>
+                  <option value="informational">Informational / Guide</option>
+                  <option value="transactional">Transactional</option>
+                  <option value="navigational">Navigational</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={caLoading}
+              style={{ padding: '12px 24px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}
+            >
+              {caLoading ? 'Generating...' : '🚀 Generate SEO & AEO Content Blueprint'}
+            </button>
+          </form>
+
+          {caResult && (
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#2DD4BF' }}>RECOMMENDED SEO CONTENT STRUCTURE</h4>
+              
+              <div><strong>Suggested Title:</strong> {caResult.suggestedTitle}</div>
+              <div><strong>Suggested Meta Description:</strong> {caResult.suggestedMetaDescription}</div>
+              <div><strong>Suggested H1:</strong> {caResult.suggestedH1}</div>
+
+              <div>
+                <strong>Heading Outline Structure (H2/H3):</strong>
+                <ul>
+                  {caResult.headingOutline?.map((h: string, idx: number) => <li key={idx}>{h}</li>)}
+                </ul>
+              </div>
+
+              <div>
+                <strong>AI Featured Snippet Quick Answer:</strong>
+                <div style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', padding: '12px', borderRadius: '8px', color: '#2DD4BF', fontSize: '13px', marginTop: '6px' }}>
+                  {caResult.featuredSnippetAnswer}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB 5: ROBOTS.TXT SAFETY EDITOR ── */}
+      {activeTab === 'robots' && (
+        <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>Robots.txt Rules & Safety Validator</h3>
+            {isRobotsDangerous && (
+              <span style={{ backgroundColor: '#EF444420', color: '#EF4444', border: '1px solid #EF4444', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 800 }}>
+                ⚠️ CRITICAL: DANGEROUS RULE DETECTED
+              </span>
+            )}
+          </div>
+
+          <textarea
+            rows={10}
+            value={settings.robots_content || ''}
+            onChange={e => setSettings({ ...settings, robots_content: e.target.value })}
+            style={{ width: '100%', padding: '14px', borderRadius: '8px', backgroundColor: '#09090D', border: '1px solid #2C2C3E', color: '#2DD4BF', fontFamily: 'monospace', fontSize: '13px' }}
+          />
+
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            style={{ padding: '12px 24px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}
+          >
+            💾 Save Robots.txt Configuration
+          </button>
+        </div>
+      )}
+
+      {/* ── TAB 6: SITEMAP & LLMS.TXT ── */}
+      {activeTab === 'sitemap' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>XML Sitemap (/sitemap.xml)</h3>
+            <div style={{ fontSize: '13px', color: '#94A3B8' }}>Automatically generated from indexable canonical pages.</div>
+            <a
+              href="http://localhost:3000/sitemap.xml"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#2DD4BF', textDecoration: 'none', fontWeight: 700, fontSize: '13px' }}
+            >
+              🔗 View XML Sitemap Endpoint
+            </a>
+          </div>
+
+          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>AI Readability File (/llms.txt)</h3>
+            <div style={{ fontSize: '13px', color: '#94A3B8' }}>Standardized machine-readable file format for LLMs & AI Search Engines.</div>
+            <a
+              href="http://localhost:3000/llms.txt"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#2DD4BF', textDecoration: 'none', fontWeight: 700, fontSize: '13px' }}
+            >
+              🔗 View /llms.txt Machine File
+            </a>
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
+}

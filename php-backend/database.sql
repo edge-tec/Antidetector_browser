@@ -298,18 +298,128 @@ CREATE TABLE IF NOT EXISTS `support_settings` (
 
 INSERT INTO `support_settings` (`key`, `value`) VALUES
 ('support_enabled', 'true'),
-('support_available', 'true'),
-('business_hours', 'Mon-Fri 09:00 - 18:00 UTC'),
-('welcome_message', 'Hello! How can our support team assist you today?'),
-('offline_message', 'Our support team is currently offline. Please leave a message and we will respond shortly.'),
+('support_hours', '24/7 Live Agent Support'),
 ('auto_reply_enabled', 'true'),
-('auto_reply_message', 'Thanks for contacting ProfileVault support! An agent has been notified and will reply shortly.'),
-('max_attachment_size_mb', '10'),
-('allowed_file_types', 'jpg,jpeg,png,gif,webp,pdf,txt,zip'),
-('notification_sound_enabled', 'true'),
-('max_open_conversations_per_user', '3'),
 ('rate_limit_messages_per_min', '15')
 ON DUPLICATE KEY UPDATE `key`=`key`;
+
+-- 9. Google SEO & AI Search Optimization (AEO/GEO) Tables
+CREATE TABLE IF NOT EXISTS `seo_settings` (
+  `key` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `value` TEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `seo_settings` (`key`, `value`) VALUES
+('seo_enabled', '1'),
+('schema_enabled', '1'),
+('sitemap_enabled', '1'),
+('robots_enabled', '1'),
+('og_enabled', '1'),
+('ai_aeo_enabled', '1'),
+('internal_links_enabled', '1'),
+('seo_audit_enabled', '1'),
+('content_assistant_enabled', '1'),
+('site_name', 'ProfileVault'),
+('site_description', 'Professional Multi-Account Anti-Detect Browser with Isolated Profiles, Fingerprint Spoofing & Residential Proxy Support.'),
+('site_url', 'https://profilevault.local'),
+('default_og_image', 'https://profilevault.local/og-cover.png'),
+('twitter_handle', '@ProfileVaultApp'),
+('robots_content', 'User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://profilevault.local/sitemap.xml'),
+('entity_brand_name', 'ProfileVault Software Inc.'),
+('entity_logo', 'https://profilevault.local/logo.png'),
+('entity_email', 'support@profilevault.local'),
+('entity_phone', '+1 (800) 555-0199'),
+('entity_same_as', '["https://x.com/ProfileVaultApp", "https://github.com/edge-tec/Antidetector_browser"]')
+ON DUPLICATE KEY UPDATE `key`=`key`;
+
+CREATE TABLE IF NOT EXISTS `page_seo` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `page_path` VARCHAR(255) NOT NULL UNIQUE,
+  `page_type` VARCHAR(50) NOT NULL DEFAULT 'webpage',
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT NOT NULL,
+  `keywords` TEXT DEFAULT NULL,
+  `canonical_url` VARCHAR(255) DEFAULT NULL,
+  `robots` VARCHAR(100) DEFAULT 'index, follow',
+  `og_title` VARCHAR(255) DEFAULT NULL,
+  `og_description` TEXT DEFAULT NULL,
+  `og_image` VARCHAR(255) DEFAULT NULL,
+  `twitter_card` VARCHAR(50) DEFAULT 'summary_large_image',
+  `twitter_title` VARCHAR(255) DEFAULT NULL,
+  `twitter_description` TEXT DEFAULT NULL,
+  `schema_type` VARCHAR(50) DEFAULT 'SoftwareApplication',
+  `primary_keyword` VARCHAR(255) DEFAULT NULL,
+  `ai_quick_answer` TEXT DEFAULT NULL,
+  `structured_data_json` TEXT DEFAULT NULL,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `page_seo` (
+  `id`, `page_path`, `page_type`, `title`, `description`, `keywords`, `canonical_url`, `robots`,
+  `og_title`, `og_description`, `og_image`, `schema_type`, `primary_keyword`, `ai_quick_answer`
+) VALUES (
+  'page_home', '/', 'homepage',
+  'ProfileVault — Anti-Detect Browser & Multi-Account Management Tool',
+  'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, fingerprint spoofing, and residential proxies.',
+  'anti detect browser, multi account browser, browser profile isolation, fingerprint spoofing, proxy manager',
+  'https://profilevault.local/',
+  'index, follow',
+  'ProfileVault — Anti-Detect Browser & Profile Isolation',
+  'Professional anti-detect browser for managing isolated web profiles without bans.',
+  'https://profilevault.local/og-cover.png',
+  'SoftwareApplication',
+  'anti detect browser',
+  'ProfileVault is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
+) ON DUPLICATE KEY UPDATE `id`=`id`;
+
+CREATE TABLE IF NOT EXISTS `seo_keywords` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `keyword` VARCHAR(255) NOT NULL UNIQUE,
+  `keyword_type` VARCHAR(50) DEFAULT 'primary',
+  `search_intent` VARCHAR(50) DEFAULT 'commercial',
+  `target_url` VARCHAR(255) NOT NULL,
+  `country` VARCHAR(10) DEFAULT 'US',
+  `language` VARCHAR(10) DEFAULT 'en',
+  `status` VARCHAR(50) DEFAULT 'active',
+  `ranking_position` INT DEFAULT 0,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `seo_redirects` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `source_path` VARCHAR(255) NOT NULL UNIQUE,
+  `target_path` VARCHAR(255) NOT NULL,
+  `status_code` INT DEFAULT 301,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `seo_404_logs` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `request_path` VARCHAR(255) NOT NULL,
+  `referrer` TEXT DEFAULT NULL,
+  `user_agent` TEXT DEFAULT NULL,
+  `hit_count` INT DEFAULT 1,
+  `last_seen_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `seo_internal_links` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `source_page` VARCHAR(255) NOT NULL,
+  `target_page` VARCHAR(255) NOT NULL,
+  `anchor_text` VARCHAR(255) NOT NULL,
+  `status` VARCHAR(50) DEFAULT 'suggested',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `seo_audit_reports` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `score` INT NOT NULL,
+  `critical_count` INT NOT NULL,
+  `warning_count` INT NOT NULL,
+  `passed_count` INT NOT NULL,
+  `audit_json` LONGTEXT NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

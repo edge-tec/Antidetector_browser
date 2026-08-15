@@ -162,7 +162,26 @@ const api = {
   onSupportStatusUpdated: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('support:status-updated', callback)
     return () => ipcRenderer.removeListener('support:status-updated', callback)
-  }
+  },
+
+  // ── SEO & AEO Management APIs ──
+  seoGetSettings: (token?: string) => ipcRenderer.invoke('seo:get-settings', token),
+  seoSaveSettings: (token: string, settings: any) => ipcRenderer.invoke('seo:save-settings', token, settings),
+  seoGetPages: (token?: string) => ipcRenderer.invoke('seo:get-pages', token),
+  seoSavePage: (token: string, page: any) => ipcRenderer.invoke('seo:save-page', token, page),
+  seoDeletePage: (token: string, id: string) => ipcRenderer.invoke('seo:delete-page', token, id),
+  seoGetKeywords: (token?: string) => ipcRenderer.invoke('seo:get-keywords', token),
+  seoSaveKeyword: (token: string, kw: any) => ipcRenderer.invoke('seo:save-keyword', token, kw),
+  seoDeleteKeyword: (token: string, id: string) => ipcRenderer.invoke('seo:delete-keyword', token, id),
+  seoGetRedirects: (token?: string) => ipcRenderer.invoke('seo:get-redirects', token),
+  seoSaveRedirect: (token: string, r: any) => ipcRenderer.invoke('seo:save-redirect', token, r),
+  seoDeleteRedirect: (token: string, id: string) => ipcRenderer.invoke('seo:delete-redirect', token, id),
+  seoGet404Logs: (token?: string) => ipcRenderer.invoke('seo:get-404-logs', token),
+  seoRunAudit: (token: string) => ipcRenderer.invoke('seo:run-audit', token),
+  seoGetLatestAudit: (token?: string) => ipcRenderer.invoke('seo:get-latest-audit', token),
+  seoGenerateContentAssistant: (token: string, params: any) => ipcRenderer.invoke('seo:generate-content-assistant', token, params),
+  seoGetSitemapXml: () => ipcRenderer.invoke('seo:get-sitemap-xml'),
+  seoGetLlmsTxt: () => ipcRenderer.invoke('seo:get-llms-txt')
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { UserDisplay, Profile } from '../types'
 import { AdminSupportManager } from '../components/AdminSupportManager'
+import { AdminSeoManager } from '../components/AdminSeoManager'
 
 interface SmtpFormState {
   host: string
@@ -125,7 +126,7 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
 
 export const AdminDashboard: React.FC = () => {
   const { sessionToken, currentUser, impersonateUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'releases' | 'cms' | 'smtp' | 'support' | 'audit'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'audit'>('users')
   const [users, setUsers] = useState<UserDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
@@ -646,6 +647,23 @@ export const AdminDashboard: React.FC = () => {
               }}
             >
               💬 Live Support
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('seo')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: activeTab === 'seo' ? '#1C1C28' : 'transparent',
+                color: activeTab === 'seo' ? '#2DD4BF' : '#94A3B8',
+                fontWeight: activeTab === 'seo' ? 600 : 400,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              🔍 SEO Management
             </button>
           </div>
 
@@ -1403,6 +1421,13 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'support' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <AdminSupportManager />
+          </div>
+        )}
+
+        {/* SEO Management Tab View */}
+        {activeTab === 'seo' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <AdminSeoManager sessionToken={sessionToken || ''} />
           </div>
         )}
       </div>
