@@ -114,7 +114,25 @@ if ($action === 'save-page') {
 if ($action === 'get-keywords') {
     requireAdminAuth($pdo);
     $stmt = $pdo->query("SELECT * FROM `seo_keywords` ORDER BY `created_at` DESC");
-    respondJson(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    $keywords = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Calculate cannibalization warnings
+    $urlMap = [];
+    foreach ($keywords as $k) {
+        $kw = strtolower(trim($k['keyword']));
+        if (!isset($urlMap[$kw])) $urlMap[$kw] = [];
+        $urlMap[$kw][] = $k['target_url'];
+    }
+
+    $warnings = [];
+    foreach ($urlMap as $kw => $urls) {
+        $uniqueUrls = array_unique($urls);
+        if (count($uniqueUrls) > 1) {
+            $warnings[] = ['keyword' => $kw, 'urls' => array_values($uniqueUrls)];
+        }
+    }
+
+    respondJson(['success' => true, 'data' => ['keywords' => $keywords, 'warnings' => $warnings]]);
 }
 
 if ($action === 'save-keyword') {
@@ -127,6 +145,7 @@ if ($action === 'save-keyword') {
         INSERT INTO `seo_keywords` (`id`, `keyword`, `keyword_type`, `search_intent`, `target_url`, `country`, `language`, `status`, `ranking_position`)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
+            `keyword` = VALUES(`keyword`),
             `keyword_type` = VALUES(`keyword_type`),
             `search_intent` = VALUES(`search_intent`),
             `target_url` = VALUES(`target_url`),
@@ -149,6 +168,49 @@ if ($action === 'save-keyword') {
     ]);
 
     respondJson(['success' => true, 'message' => 'Keyword saved successfully.']);
+}
+
+if ($action === 'delete-keyword') {
+    requireAdminAuth($pdo);
+    $id = $_GET['id'] ?? '';
+    $stmt = $pdo->prepare("DELETE FROM `seo_keywords` WHERE `id` = ?");
+    $stmt->execute([$id]);
+    respondJson(['success' => true, 'message' => 'Keyword deleted.']);
+}
+
+if ($action === 'get-redirects') {
+    requireAdminAuth($pdo);
+    $stmt = $pdo->query("SELECT * FROM `seo_redirects` ORDER BY `created_at` DESC");
+    respondJson(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+}
+
+if ($action === 'save-redirect') {
+    requireAdminAuth($pdo);
+    $input = getJsonInput();
+    $id = $input['id'] ?? 'red_' . substr(md5(uniqid()), 0, 8);
+
+    $stmt = $pdo->prepare("
+        INSERT INTO `seo_redirects` (`id`, `source_path`, `target_path`, `status_code`)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            `target_path` = VALUES(`target_path`),
+            `status_code` = VALUES(`status_code`)
+    ");
+
+    $stmt->execute([
+        $id,
+        $input['source_path'],
+        $input['target_path'],
+        (int)($input['status_code'] ?? 301)
+    ]);
+
+    respondJson(['success' => true, 'message' => 'Redirect saved.']);
+}
+
+if ($action === 'get-404-logs') {
+    requireAdminAuth($pdo);
+    $stmt = $pdo->query("SELECT * FROM `seo_404_logs` ORDER BY `hit_count` DESC LIMIT 50");
+    respondJson(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
 respondJson(['success' => false, 'error' => 'Invalid action.'], 400);

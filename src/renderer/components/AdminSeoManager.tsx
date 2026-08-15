@@ -258,15 +258,15 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
       {/* ── Sub Navigation Tabs ── */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', backgroundColor: '#14141F', padding: '6px', borderRadius: '10px', border: '1px solid #2C2C3E' }}>
         {[
-          { id: 'audit', label: '📊 Site Audit & Score', icon: '📊' },
-          { id: 'settings', label: '⚙️ Global Settings', icon: '⚙️' },
-          { id: 'pages', label: '📄 Page SEO & Snippets', icon: '📄' },
-          { id: 'content_assistant', label: '💡 Content Assistant', icon: '💡' },
-          { id: 'keywords', label: '🔑 Keywords & Cannibalization', icon: '🔑' },
-          { id: 'entity', label: '🏢 Entity & Brand', icon: '🏢' },
-          { id: 'robots', label: '🤖 Robots.txt', icon: '🤖' },
-          { id: 'sitemap', label: '🗺️ Sitemap & llms.txt', icon: '🗺️' },
-          { id: 'redirects', label: '🔀 Redirects & 404s', icon: '🔀' }
+          { id: 'audit', label: '📊 Site Audit & Score' },
+          { id: 'settings', label: '⚙️ Global Settings' },
+          { id: 'pages', label: '📄 Page SEO & Snippets' },
+          { id: 'content_assistant', label: '💡 Content Assistant' },
+          { id: 'keywords', label: '🔑 Keywords & Cannibalization' },
+          { id: 'entity', label: '🏢 Entity & Brand' },
+          { id: 'robots', label: '🤖 Robots.txt' },
+          { id: 'sitemap', label: '🗺️ Sitemap & llms.txt' },
+          { id: 'redirects', label: '🔀 Redirects & 404s' }
         ].map(t => (
           <button
             key={t.id}
@@ -646,7 +646,165 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
         </div>
       )}
 
-      {/* ── TAB 5: ROBOTS.TXT SAFETY EDITOR ── */}
+      {/* ── TAB 5: KEYWORDS & CANNIBALIZATION ── */}
+      {activeTab === 'keywords' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Cannibalization Warning Alert Box */}
+          {keywordsData.warnings?.length > 0 && (
+            <div style={{ backgroundColor: '#EF444415', border: '1px solid #EF4444', borderRadius: '12px', padding: '18px' }}>
+              <h4 style={{ margin: '0 0 8px', color: '#EF4444', fontSize: '15px', fontWeight: 800 }}>⚠️ Keyword Cannibalization Warning</h4>
+              {keywordsData.warnings.map((w: any, idx: number) => (
+                <div key={idx} style={{ fontSize: '13px', color: '#F87171', marginBottom: '4px' }}>
+                  Keyword "<strong>{w.keyword}</strong>" is targeted across multiple URLs: {w.urls.join(', ')}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Keyword Form */}
+          <form onSubmit={handleAddKeyword} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '20px', display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '180px' }}>
+              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TARGET KEYWORD</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. anti detect browser"
+                value={newKw.keyword}
+                onChange={e => setNewKw({ ...newKw, keyword: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+            <div style={{ width: '160px' }}>
+              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>INTENT</label>
+              <select
+                value={newKw.search_intent}
+                onChange={e => setNewKw({ ...newKw, search_intent: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              >
+                <option value="commercial">Commercial</option>
+                <option value="informational">Informational</option>
+                <option value="transactional">Transactional</option>
+              </select>
+            </div>
+            <div style={{ flex: 1, minWidth: '160px' }}>
+              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TARGET URL</label>
+              <input
+                type="text"
+                value={newKw.target_url}
+                onChange={e => setNewKw({ ...newKw, target_url: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+            <button type="submit" style={{ padding: '10px 18px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+              ➕ Add Keyword
+            </button>
+          </form>
+
+          {/* Keywords List Table */}
+          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#14141F', color: '#94A3B8', borderBottom: '1px solid #2C2C3E' }}>
+                  <th style={{ padding: '12px 16px' }}>KEYWORD</th>
+                  <th style={{ padding: '12px 16px' }}>INTENT</th>
+                  <th style={{ padding: '12px 16px' }}>TARGET URL</th>
+                  <th style={{ padding: '12px 16px' }}>STATUS</th>
+                  <th style={{ padding: '12px 16px' }}>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {keywordsData.keywords?.map((k: any) => (
+                  <tr key={k.id} style={{ borderBottom: '1px solid #2C2C3E' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#F1F5F9' }}>{k.keyword}</td>
+                    <td style={{ padding: '12px 16px', color: '#94A3B8' }}>{k.search_intent}</td>
+                    <td style={{ padding: '12px 16px', color: '#60A5FA', fontFamily: 'monospace' }}>{k.target_url}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ backgroundColor: '#10B98120', color: '#10B981', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
+                        {k.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <button type="button" onClick={() => handleDeleteKeyword(k.id)} style={{ backgroundColor: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 700 }}>
+                        🗑️ Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 6: ENTITY & BRAND PROFILE ── */}
+      {activeTab === 'entity' && (
+        <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>Organization & Brand Entity Profile</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>ORGANIZATION BRAND NAME</label>
+              <input
+                type="text"
+                value={settings.entity_brand_name || ''}
+                onChange={e => setSettings({ ...settings, entity_brand_name: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>LOGO URL</label>
+              <input
+                type="text"
+                value={settings.entity_logo || ''}
+                onChange={e => setSettings({ ...settings, entity_logo: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>SUPPORT EMAIL</label>
+              <input
+                type="text"
+                value={settings.entity_email || ''}
+                onChange={e => setSettings({ ...settings, entity_email: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>PHONE</label>
+              <input
+                type="text"
+                value={settings.entity_phone || ''}
+                onChange={e => setSettings({ ...settings, entity_phone: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>SAMEAS SOCIAL & REPOSITORY URLS (JSON Array)</label>
+            <input
+              type="text"
+              value={settings.entity_same_as || ''}
+              onChange={e => setSettings({ ...settings, entity_same_as: e.target.value })}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontFamily: 'monospace' }}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            style={{ padding: '12px 24px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}
+          >
+            💾 Save Entity Profile
+          </button>
+        </div>
+      )}
+
+      {/* ── TAB 7: ROBOTS.TXT SAFETY EDITOR ── */}
       {activeTab === 'robots' && (
         <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -675,7 +833,7 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
         </div>
       )}
 
-      {/* ── TAB 6: SITEMAP & LLMS.TXT ── */}
+      {/* ── TAB 8: SITEMAP & LLMS.TXT ── */}
       {activeTab === 'sitemap' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -703,6 +861,88 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
               🔗 View /llms.txt Machine File
             </a>
           </div>
+        </div>
+      )}
+
+      {/* ── TAB 9: REDIRECTS & 404 LOGS ── */}
+      {activeTab === 'redirects' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Add Redirect Form */}
+          <form onSubmit={handleAddRedirect} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '20px', display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>SOURCE PATH</label>
+              <input
+                type="text"
+                required
+                placeholder="/old-page"
+                value={newRed.source_path}
+                onChange={e => setNewRed({ ...newRed, source_path: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TARGET PATH</label>
+              <input
+                type="text"
+                required
+                placeholder="/new-page"
+                value={newRed.target_path}
+                onChange={e => setNewRed({ ...newRed, target_path: e.target.value })}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+              />
+            </div>
+            <button type="submit" style={{ padding: '10px 18px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+              ➕ Add 301 Redirect
+            </button>
+          </form>
+
+          {/* 301 Redirects Table */}
+          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', fontWeight: 800, fontSize: '14px', borderBottom: '1px solid #2C2C3E', color: '#F1F5F9' }}>ACTIVE 301/302 REDIRECTS</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#14141F', color: '#94A3B8', borderBottom: '1px solid #2C2C3E' }}>
+                  <th style={{ padding: '12px 16px' }}>SOURCE</th>
+                  <th style={{ padding: '12px 16px' }}>TARGET</th>
+                  <th style={{ padding: '12px 16px' }}>HTTP CODE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {redirects.map(r => (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #2C2C3E' }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#F87171' }}>{r.source_path}</td>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#34D399' }}>{r.target_path}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{r.status_code}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 404 Error Log Tracker Table */}
+          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', fontWeight: 800, fontSize: '14px', borderBottom: '1px solid #2C2C3E', color: '#F1F5F9' }}>RECENT 404 URL HIT LOGS</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#14141F', color: '#94A3B8', borderBottom: '1px solid #2C2C3E' }}>
+                  <th style={{ padding: '12px 16px' }}>REQUESTED PATH</th>
+                  <th style={{ padding: '12px 16px' }}>HITS</th>
+                  <th style={{ padding: '12px 16px' }}>LAST SEEN</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs404.map(l => (
+                  <tr key={l.id} style={{ borderBottom: '1px solid #2C2C3E' }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#FBBF24' }}>{l.request_path}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 800, color: '#EF4444' }}>{l.hit_count}</td>
+                    <td style={{ padding: '12px 16px', color: '#94A3B8' }}>{l.last_seen_at}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
         </div>
       )}
 
