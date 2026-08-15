@@ -220,28 +220,60 @@ export const SupportChatWidget: React.FC = () => {
 
     setLoading(true)
     try {
-      if ((window as any).api?.createSupportConversation) {
-        const res = await (window as any).api.createSupportConversation(effectiveToken, {
-          subject: newSubject.trim(),
-          initialMessage: newMessage.trim(),
-          priority: newPriority,
-          attachment: selectedFile,
-          guestName: currentUser?.name || guestName.trim(),
-          guestEmail: currentUser?.email || guestEmail.trim()
-        })
-        if (res?.success && res.data) {
-          setNewSubject('')
-          setNewMessage('')
-          setSelectedFile(null)
-          setIsCreatingTicket(false)
-          setActiveConvId(res.data.id)
-          loadConversations()
-        } else {
-          alert(res?.error || 'Failed to create support ticket.')
+      let res: any = null
+
+      if (typeof window !== 'undefined' && (window as any).api?.createSupportConversation) {
+        try {
+          res = await (window as any).api.createSupportConversation(effectiveToken, {
+            subject: newSubject.trim(),
+            initialMessage: newMessage.trim(),
+            priority: newPriority,
+            attachment: selectedFile,
+            guestName: currentUser?.name || guestName.trim(),
+            guestEmail: currentUser?.email || guestEmail.trim()
+          })
+        } catch (ipcErr: any) {
+          console.warn('Electron IPC createSupportConversation failed, attempting REST API fallback:', ipcErr)
         }
       }
+
+      // REST API Fallback for web server or if IPC handler is unhandled
+      if (!res?.success) {
+        try {
+          const fetchRes = await fetch('/api/support/create-conversation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${effectiveToken}`
+            },
+            body: JSON.stringify({
+              subject: newSubject.trim(),
+              initialMessage: newMessage.trim(),
+              priority: newPriority,
+              guestName: currentUser?.name || guestName.trim(),
+              guestEmail: currentUser?.email || guestEmail.trim()
+            })
+          })
+          if (fetchRes.ok) {
+            res = await fetchRes.json()
+          }
+        } catch (restErr: any) {
+          console.error('REST API support conversation error:', restErr)
+        }
+      }
+
+      if (res?.success && res.data) {
+        setNewSubject('')
+        setNewMessage('')
+        setSelectedFile(null)
+        setIsCreatingTicket(false)
+        setActiveConvId(res.data.id)
+        loadConversations()
+      } else {
+        alert(res?.error || 'Failed to create live support conversation. Please try again.')
+      }
     } catch (err: any) {
-      alert(`Error: ${err.message}`)
+      alert(`Live support error: ${err.message || 'Unable to connect to support service.'}`)
     } finally {
       setLoading(false)
     }

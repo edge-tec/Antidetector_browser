@@ -98,19 +98,19 @@ app.whenReady().then(async () => {
     logger.error('system', `Database initialization failed: ${err.message}`)
   }
 
-  // Register IPC handlers
-  setupAuthIPC()
-  setupAdminIPC()
-  setupLandingIPC()
-  setupSubscriptionIPC()
-  setupSupportIPC()
-  registerSeoHandlers()
-  registerProfileHandlers()
-  registerBrowserHandlers()
-  registerProxyHandlers()
-  registerGroupHandlers()
-  registerSettingsHandlers()
-  registerFingerprintIPC()
+  // Register IPC handlers safely
+  try { setupAuthIPC() } catch (err: any) { logger.error('system', `Auth IPC failed: ${err.message}`) }
+  try { setupAdminIPC() } catch (err: any) { logger.error('system', `Admin IPC failed: ${err.message}`) }
+  try { setupLandingIPC() } catch (err: any) { logger.error('system', `Landing IPC failed: ${err.message}`) }
+  try { setupSubscriptionIPC() } catch (err: any) { logger.error('system', `Subscription IPC failed: ${err.message}`) }
+  try { setupSupportIPC() } catch (err: any) { logger.error('system', `Support IPC failed: ${err.message}`) }
+  try { registerSeoHandlers() } catch (err: any) { logger.error('system', `SEO IPC failed: ${err.message}`) }
+  try { registerProfileHandlers() } catch (err: any) { logger.error('system', `Profile IPC failed: ${err.message}`) }
+  try { registerBrowserHandlers() } catch (err: any) { logger.error('system', `Browser IPC failed: ${err.message}`) }
+  try { registerProxyHandlers() } catch (err: any) { logger.error('system', `Proxy IPC failed: ${err.message}`) }
+  try { registerGroupHandlers() } catch (err: any) { logger.error('system', `Group IPC failed: ${err.message}`) }
+  try { registerSettingsHandlers() } catch (err: any) { logger.error('system', `Settings IPC failed: ${err.message}`) }
+  try { registerFingerprintIPC() } catch (err: any) { logger.error('system', `Fingerprint IPC failed: ${err.message}`) }
 
   // Initialize profile manager (find Chromium)
   try {
