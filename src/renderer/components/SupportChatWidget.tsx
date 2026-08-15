@@ -262,12 +262,13 @@ export const SupportChatWidget: React.FC = () => {
         }
       }
 
-      if (res?.success && res.data) {
+      const createdConvId = res?.data?.id || res?.conversation_id
+      if (res?.success && createdConvId) {
         setNewSubject('')
         setNewMessage('')
         setSelectedFile(null)
         setIsCreatingTicket(false)
-        setActiveConvId(res.data.id)
+        setActiveConvId(createdConvId)
         loadConversations()
       } else {
         alert(res?.error || 'Failed to create live support conversation. Please try again.')

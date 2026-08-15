@@ -172,14 +172,25 @@ export class SupportService {
     const settings = this.getSettings()
 
     // Check open conversation limit for user
-    const maxOpen = parseInt(settings.max_open_conversations_per_user || '3', 10)
+    const maxOpen = parseInt(settings.max_open_conversations_per_user || '5', 10)
     const openCountRow = db.prepare(`
       SELECT COUNT(*) as count FROM support_conversations 
       WHERE user_id = ? AND status IN ('open', 'pending', 'waiting_support')
     `).get(userId) as { count: number }
 
     if (openCountRow && openCountRow.count >= maxOpen) {
-      throw new Error(`You have reached the limit of ${maxOpen} active open support conversations. Please wait for an agent to resolve your active tickets.`)
+      if (userId.startsWith('guest_') || userId.includes('@guest.')) {
+        db.prepare(`
+          UPDATE support_conversations SET status = 'closed', updated_at = datetime('now')
+          WHERE id = (
+            SELECT id FROM support_conversations 
+            WHERE user_id = ? AND status IN ('open', 'pending', 'waiting_support')
+            ORDER BY created_at ASC LIMIT 1
+          )
+        `).run(userId)
+      } else {
+        throw new Error(`You have reached the limit of ${maxOpen} active open support conversations. Please wait for an agent to resolve your active tickets.`)
+      }
     }
 
     const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`

@@ -118,7 +118,7 @@ switch ($action) {
             ")->execute([$autoMsgId, $convId, $autoRow['value']]);
         }
 
-        respondJson(['success' => true, 'conversation_id' => $convId]);
+        respondJson(['success' => true, 'data' => ['id' => $convId, 'subject' => $subject, 'status' => 'open'], 'conversation_id' => $convId]);
         break;
 
     // 4. Send Support Message
