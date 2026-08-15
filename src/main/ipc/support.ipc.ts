@@ -5,7 +5,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { supportService } from '../services/support.service'
 import { sessionManager } from '../security/session'
-import { userRepo } from '../database/repositories/user.repo'
 import { getDatabase } from '../database/connection'
 
 function getAuthUserFromToken(token: string, guestInfo?: { name?: string; email?: string }): { id: string; role: string; name: string; email: string } | null {
@@ -36,9 +35,20 @@ function getAuthUserFromToken(token: string, guestInfo?: { name?: string; email?
   return null
 }
 
+function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => Promise<any> | any) {
+  try {
+    ipcMain.removeHandler(channel)
+  } catch {}
+  try {
+    ipcMain.handle(channel, listener)
+  } catch (err: any) {
+    console.error(`Failed to register IPC handler for ${channel}:`, err.message)
+  }
+}
+
 export function setupSupportIPC(): void {
   // 1. Get Conversations for User
-  ipcMain.handle('support:get-user-conversations', async (_, token: string) => {
+  safeHandle('support:get-user-conversations', async (_, token: string) => {
     const user = getAuthUserFromToken(token)
     if (!user) return { success: false, error: 'Authentication required.' }
     try {
@@ -50,7 +60,7 @@ export function setupSupportIPC(): void {
   })
 
   // 2. Get Single Conversation Details
-  ipcMain.handle('support:get-conversation', async (_, token: string, conversationId: string) => {
+  safeHandle('support:get-conversation', async (_, token: string, conversationId: string) => {
     const user = getAuthUserFromToken(token)
     if (!user) return { success: false, error: 'Authentication required.' }
     try {
@@ -63,8 +73,8 @@ export function setupSupportIPC(): void {
   })
 
   // 3. Create Support Conversation
-  ipcMain.handle('support:create-conversation', async (_, token: string, input: { subject: string; initialMessage: string; priority?: string; attachment?: any; guestName?: string; guestEmail?: string }) => {
-    const user = getAuthUserFromToken(token, { name: input.guestName, email: input.guestEmail })
+  safeHandle('support:create-conversation', async (_, token: string, input: { subject: string; initialMessage: string; priority?: string; attachment?: any; guestName?: string; guestEmail?: string }) => {
+    const user = getAuthUserFromToken(token, { name: input?.guestName, email: input?.guestEmail })
     if (!user) return { success: false, error: 'Authentication required.' }
     try {
       const conv = supportService.createConversation(
@@ -81,7 +91,7 @@ export function setupSupportIPC(): void {
   })
 
   // 4. Send Support Message
-  ipcMain.handle('support:send-message', async (_, token: string, conversationId: string, message: string, attachment?: any) => {
+  safeHandle('support:send-message', async (_, token: string, conversationId: string, message: string, attachment?: any) => {
     const user = getAuthUserFromToken(token)
     if (!user) return { success: false, error: 'Authentication required.' }
     try {
@@ -94,7 +104,7 @@ export function setupSupportIPC(): void {
   })
 
   // 5. Mark Messages as Read
-  ipcMain.handle('support:mark-read', async (_, token: string, conversationId: string) => {
+  safeHandle('support:mark-read', async (_, token: string, conversationId: string) => {
     const user = getAuthUserFromToken(token)
     if (!user) return { success: false, error: 'Authentication required.' }
     try {
@@ -107,7 +117,7 @@ export function setupSupportIPC(): void {
   })
 
   // 6. Broadcast Typing Event (Ephemeral, non-DB)
-  ipcMain.handle('support:typing', async (_, token: string, conversationId: string, isTyping: boolean) => {
+  safeHandle('support:typing', async (_, token: string, conversationId: string, isTyping: boolean) => {
     const user = getAuthUserFromToken(token)
     if (!user) return { success: false }
 
@@ -128,7 +138,7 @@ export function setupSupportIPC(): void {
   })
 
   // 7. Admin: Get All Conversations
-  ipcMain.handle('support:admin-get-conversations', async (_, token: string, options: any) => {
+  safeHandle('support:admin-get-conversations', async (_, token: string, options: any) => {
     const user = getAuthUserFromToken(token)
     if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
@@ -140,7 +150,7 @@ export function setupSupportIPC(): void {
   })
 
   // 8. Admin: Update Conversation Status
-  ipcMain.handle('support:admin-update-status', async (_, token: string, conversationId: string, status: string) => {
+  safeHandle('support:admin-update-status', async (_, token: string, conversationId: string, status: string) => {
     const user = getAuthUserFromToken(token)
     if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
@@ -152,7 +162,7 @@ export function setupSupportIPC(): void {
   })
 
   // 9. Admin: Assign Agent
-  ipcMain.handle('support:admin-assign-agent', async (_, token: string, conversationId: string, agentId: string | null) => {
+  safeHandle('support:admin-assign-agent', async (_, token: string, conversationId: string, agentId: string | null) => {
     const user = getAuthUserFromToken(token)
     if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
@@ -164,7 +174,7 @@ export function setupSupportIPC(): void {
   })
 
   // 10. Admin: Add Internal Staff Note
-  ipcMain.handle('support:admin-add-internal-note', async (_, token: string, conversationId: string, note: string) => {
+  safeHandle('support:admin-add-internal-note', async (_, token: string, conversationId: string, note: string) => {
     const user = getAuthUserFromToken(token)
     if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
@@ -176,7 +186,7 @@ export function setupSupportIPC(): void {
   })
 
   // 11. Admin: Get Support Settings
-  ipcMain.handle('support:admin-get-settings', async (_, token: string) => {
+  safeHandle('support:admin-get-settings', async (_, token: string) => {
     const user = getAuthUserFromToken(token)
     if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {
@@ -188,7 +198,7 @@ export function setupSupportIPC(): void {
   })
 
   // 12. Admin: Save Support Settings
-  ipcMain.handle('support:admin-save-settings', async (_, token: string, settings: Record<string, string>) => {
+  safeHandle('support:admin-save-settings', async (_, token: string, settings: Record<string, string>) => {
     const user = getAuthUserFromToken(token)
     if (!user || user.role !== 'admin') return { success: false, error: 'Admin access required.' }
     try {

@@ -8,9 +8,20 @@ import { seoService } from '../services/seo.service'
 import { authorizeUser } from '../security/session'
 import { logger } from '../logging/logger'
 
+function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => Promise<any> | any) {
+  try {
+    ipcMain.removeHandler(channel)
+  } catch {}
+  try {
+    ipcMain.handle(channel, listener)
+  } catch (err: any) {
+    console.error(`Failed to register IPC handler for ${channel}:`, err.message)
+  }
+}
+
 export function registerSeoHandlers(): void {
   // Get Global SEO Settings
-  ipcMain.handle('seo:get-settings', async (_event, sessionToken?: string) => {
+  safeHandle('seo:get-settings', async (_event, sessionToken?: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -24,7 +35,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Save Global SEO Settings
-  ipcMain.handle('seo:save-settings', async (_event, sessionToken: string, settings: Record<string, string>) => {
+  safeHandle('seo:save-settings', async (_event, sessionToken: string, settings: Record<string, string>) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -38,7 +49,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Get Page SEO List
-  ipcMain.handle('seo:get-pages', async (_event, sessionToken?: string) => {
+  safeHandle('seo:get-pages', async (_event, sessionToken?: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -51,7 +62,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Save Page SEO Entry
-  ipcMain.handle('seo:save-page', async (_event, sessionToken: string, pageData: any) => {
+  safeHandle('seo:save-page', async (_event, sessionToken: string, pageData: any) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -65,7 +76,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Delete Page SEO Entry
-  ipcMain.handle('seo:delete-page', async (_event, sessionToken: string, id: string) => {
+  safeHandle('seo:delete-page', async (_event, sessionToken: string, id: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -79,7 +90,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Get Keywords List
-  ipcMain.handle('seo:get-keywords', async (_event, sessionToken?: string) => {
+  safeHandle('seo:get-keywords', async (_event, sessionToken?: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -94,7 +105,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Save Keyword
-  ipcMain.handle('seo:save-keyword', async (_event, sessionToken: string, kwData: any) => {
+  safeHandle('seo:save-keyword', async (_event, sessionToken: string, kwData: any) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -108,7 +119,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Delete Keyword
-  ipcMain.handle('seo:delete-keyword', async (_event, sessionToken: string, id: string) => {
+  safeHandle('seo:delete-keyword', async (_event, sessionToken: string, id: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -122,7 +133,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Get Redirects List
-  ipcMain.handle('seo:get-redirects', async (_event, sessionToken?: string) => {
+  safeHandle('seo:get-redirects', async (_event, sessionToken?: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -135,7 +146,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Save Redirect
-  ipcMain.handle('seo:save-redirect', async (_event, sessionToken: string, redData: any) => {
+  safeHandle('seo:save-redirect', async (_event, sessionToken: string, redData: any) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -149,7 +160,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Delete Redirect
-  ipcMain.handle('seo:delete-redirect', async (_event, sessionToken: string, id: string) => {
+  safeHandle('seo:delete-redirect', async (_event, sessionToken: string, id: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -163,7 +174,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Get 404 Error Logs
-  ipcMain.handle('seo:get-404-logs', async (_event, sessionToken?: string) => {
+  safeHandle('seo:get-404-logs', async (_event, sessionToken?: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -176,7 +187,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Run Site Audit
-  ipcMain.handle('seo:run-audit', async (_event, sessionToken: string) => {
+  safeHandle('seo:run-audit', async (_event, sessionToken: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -190,7 +201,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Get Latest Site Audit
-  ipcMain.handle('seo:get-latest-audit', async (_event, sessionToken?: string) => {
+  safeHandle('seo:get-latest-audit', async (_event, sessionToken?: string) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -204,7 +215,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Content Assistant Generator
-  ipcMain.handle('seo:generate-content-assistant', async (_event, sessionToken: string, params: any) => {
+  safeHandle('seo:generate-content-assistant', async (_event, sessionToken: string, params: any) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user || auth.user.role !== 'admin') {
@@ -218,7 +229,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Get Sitemap XML
-  ipcMain.handle('seo:get-sitemap-xml', async (_event) => {
+  safeHandle('seo:get-sitemap-xml', async (_event) => {
     try {
       return { success: true, data: seoService.generateSitemapXml() }
     } catch (err: any) {
@@ -227,7 +238,7 @@ export function registerSeoHandlers(): void {
   })
 
   // Get LLMS.txt
-  ipcMain.handle('seo:get-llms-txt', async (_event) => {
+  safeHandle('seo:get-llms-txt', async (_event) => {
     try {
       return { success: true, data: seoService.generateLlmsTxt() }
     } catch (err: any) {
