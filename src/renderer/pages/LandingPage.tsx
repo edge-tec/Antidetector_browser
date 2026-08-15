@@ -216,7 +216,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
   }
 
   return (
-    <div style={{ backgroundColor: '#0F0F14', color: '#CBD5E1', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: '100vh', overflowX: 'hidden' }}>
+    <div style={{ backgroundColor: '#0F0F14', color: '#CBD5E1', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', width: '100%', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       
       {/* ── 1. Sticky Navigation Bar ── */}
       <header className="window-drag-area" style={{

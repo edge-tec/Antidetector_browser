@@ -1107,7 +1107,7 @@ function AppContent() {
   // 2. Public Landing View overlay for logged in users
   if (viewingPublicLanding) {
     return (
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 999, width: '100vw', height: '100vh', overflowY: 'auto', backgroundColor: '#0F0F14' }}>
         <button
           type="button"
           onClick={() => setViewingPublicLanding(false)}
