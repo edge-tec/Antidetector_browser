@@ -85,26 +85,36 @@ export const SupportChatWidget: React.FC = () => {
   useEffect(() => {
     if (typeof window === 'undefined' || !(window as any).api) return
 
-    const unsubMsg = (window as any).api.onSupportNewMessage((_: any, data: any) => {
-      if (data?.conversationId === activeConvId) {
-        loadActiveConversation(activeConvId)
-      } else {
+    let unsubMsg: any
+    let unsubTyping: any
+    let unsubStatus: any
+
+    if (typeof (window as any).api.onSupportNewMessage === 'function') {
+      unsubMsg = (window as any).api.onSupportNewMessage((_: any, data: any) => {
+        if (data?.conversationId === activeConvId) {
+          loadActiveConversation(activeConvId)
+        } else {
+          loadConversations()
+        }
+      })
+    }
+
+    if (typeof (window as any).api.onSupportTypingIndicator === 'function') {
+      unsubTyping = (window as any).api.onSupportTypingIndicator((_: any, data: any) => {
+        if (data?.conversationId === activeConvId && data?.senderType === 'agent') {
+          setSupportIsTyping(data.isTyping)
+        }
+      })
+    }
+
+    if (typeof (window as any).api.onSupportStatusUpdated === 'function') {
+      unsubStatus = (window as any).api.onSupportStatusUpdated((_: any, data: any) => {
+        if (data?.conversationId === activeConvId) {
+          loadActiveConversation(activeConvId)
+        }
         loadConversations()
-      }
-    })
-
-    const unsubTyping = (window as any).api.onSupportTypingIndicator((_: any, data: any) => {
-      if (data?.conversationId === activeConvId && data?.senderType === 'agent') {
-        setSupportIsTyping(data.isTyping)
-      }
-    })
-
-    const unsubStatus = (window as any).api.onSupportStatusUpdated((_: any, data: any) => {
-      if (data?.conversationId === activeConvId) {
-        loadActiveConversation(activeConvId)
-      }
-      loadConversations()
-    })
+      })
+    }
 
     return () => {
       if (typeof unsubMsg === 'function') unsubMsg()

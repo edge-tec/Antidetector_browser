@@ -74,7 +74,9 @@ export const AdminSupportManager: React.FC = () => {
         if (res?.success && res.data) {
           setSelectedConv(res.data)
           // Mark read as agent
-          await (window as any).api.markSupportRead(sessionToken, convId)
+          if (typeof (window as any).api?.markSupportRead === 'function') {
+            await (window as any).api.markSupportRead(sessionToken, convId)
+          }
           loadConversations()
         }
       }
