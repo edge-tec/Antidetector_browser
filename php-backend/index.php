@@ -327,7 +327,7 @@ header('Content-Type: text/html; charset=utf-8');
         <h1>Browse Privately. Isolate Profiles.<br>Scale Without Limits.</h1>
         <p>Create isolated browser profiles with configurable Canvas, WebGL, User-Agent fingerprints, proxy bridges, and centralized aaPanel administration.</p>
         <div class="hero-actions">
-            <button class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;" onclick="openModal('login')">🚀 Admin Login & Dashboard</button>
+            <button class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;" onclick="openModal('login')">🚀 Login & Dashboard</button>
             <a href="#pricing" class="btn btn-outline" style="padding: 14px 28px; font-size: 16px;">View Pricing Plans</a>
         </div>
 
@@ -530,7 +530,7 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="modal-overlay" id="loginModal">
         <div class="modal-box">
             <button class="close-modal" onclick="closeModal()">✕</button>
-            <h2 style="margin-bottom: 8px;">Admin & User Login</h2>
+            <h2 style="margin-bottom: 8px;">Login</h2>
             <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Sign in to access your ProfileVault dashboard.</p>
             
             <div id="loginMsg" style="display: none; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
