@@ -392,6 +392,31 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
     </section>
 
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="section container">
+        <div class="section-title">
+            <h2>How ProfileVault Works in 3 Simple Steps</h2>
+            <p>Set up isolated browser profiles in seconds with full environment customization.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center;">
+                <div style="background: rgba(99, 102, 241, 0.15); color: #818CF8; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; margin: 0 auto 20px;">1</div>
+                <h3 style="font-size: 20px; margin-bottom: 10px; color: #FFF;">Create Profile</h3>
+                <p style="color: var(--text-muted); font-size: 14px;">Choose a profile template or start from scratch to configure your browser environment.</p>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center;">
+                <div style="background: rgba(45, 212, 191, 0.15); color: var(--accent); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; margin: 0 auto 20px;">2</div>
+                <h3 style="font-size: 20px; margin-bottom: 10px; color: #FFF;">Configure Environment</h3>
+                <p style="color: var(--text-muted); font-size: 14px;">Set custom User Agent, OS, timezone, WebGL noise, Canvas fingerprint, and proxy bridge.</p>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center;">
+                <div style="background: rgba(139, 92, 246, 0.15); color: #C084FC; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; margin: 0 auto 20px;">3</div>
+                <h3 style="font-size: 20px; margin-bottom: 10px; color: #FFF;">Launch Isolated Window</h3>
+                <p style="color: var(--text-muted); font-size: 14px;">Open an isolated browser window running with dedicated storage, cookies, and network stack.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Pricing Section -->
     <section id="pricing" class="section container">
         <div class="section-title">
@@ -438,6 +463,43 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
     </section>
 
+    <!-- FAQ Section -->
+    <section id="faq" class="section container">
+        <div class="section-title">
+            <h2>Frequently Asked Questions</h2>
+            <p>Everything you need to know about ProfileVault Anti-Detect Browser software.</p>
+        </div>
+        <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer; transition: 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+                    <span>What is an anti-detect browser?</span>
+                    <span class="faq-icon" style="color: var(--accent); font-size: 20px; font-weight: 700;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                    An anti-detect browser isolates browser profiles so each runs with its own cookies, local storage, proxy, and digital fingerprint (WebGL, Canvas, User-Agent, WebRTC).
+                </div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer; transition: 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+                    <span>Can I use HTTP, HTTPS, and SOCKS5 proxies?</span>
+                    <span class="faq-icon" style="color: var(--accent); font-size: 20px; font-weight: 700;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                    Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in speed testing and automated proxy bridge authentication.
+                </div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer; transition: 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+                    <span>How does the desktop app connect to aaPanel?</span>
+                    <span class="faq-icon" style="color: var(--accent); font-size: 20px; font-weight: 700;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                    Your desktop app connects to your server at <code>https://app.edgecash.net/api/license/validate</code> to authorize users, check subscriptions, and validate permissions.
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Downloads Section -->
     <section id="downloads" class="section container">
         <div class="section-title">
@@ -450,6 +512,7 @@ header('Content-Type: text/html; charset=utf-8');
             <a href="/api/public/releases" class="btn btn-outline" style="padding: 16px 28px;">🐧 Linux (.AppImage)</a>
         </div>
     </section>
+
 
     <!-- Footer -->
     <footer>
@@ -544,6 +607,17 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <script>
+        function toggleFaq(item) {
+            const answer = item.querySelector('.faq-answer');
+            const icon = item.querySelector('.faq-icon');
+            if (answer.style.display === 'block') {
+                answer.style.display = 'none';
+                icon.innerText = '+';
+            } else {
+                answer.style.display = 'block';
+                icon.innerText = '−';
+            }
+        }
         function openModal(type) {
             document.getElementById('loginModal').classList.add('active');
         }
