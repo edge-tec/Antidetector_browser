@@ -1913,22 +1913,17 @@ header('Content-Type: text/html; charset=utf-8');
                     body: JSON.stringify({ name, email, password })
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (data.success && data.sessionToken && data.user) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Account created successfully! Logging in...';
+                    msg.innerText = 'Account created successfully! Redirecting to Dashboard...';
 
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/dashboard');
-                    }
-
                     setTimeout(() => {
-                        closeModal();
-                        checkSession();
-                    }, 400);
+                        window.location.href = '/dashboard';
+                    }, 300);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -1959,22 +1954,17 @@ header('Content-Type: text/html; charset=utf-8');
                     body: JSON.stringify({ email, name, googleId: 'g_' + Date.now() })
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (data.success && data.sessionToken && data.user) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Google Sign-In successful! Opening dashboard...';
+                    msg.innerText = 'Google Sign-In successful! Redirecting to Dashboard...';
 
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/dashboard');
-                    }
-
                     setTimeout(() => {
-                        closeModal();
-                        checkSession();
-                    }, 400);
+                        window.location.href = '/dashboard';
+                    }, 300);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -1987,15 +1977,16 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-
-
         function checkSession() {
             const token = localStorage.getItem('sessionToken');
             const userStr = localStorage.getItem('user');
             const adminModal = document.getElementById('adminDashboardModal');
-            if (token && userStr) {
+            if (token && userStr && token !== 'undefined' && userStr !== 'undefined') {
                 try {
                     const user = JSON.parse(userStr);
+                    if (!user || !user.email) {
+                        throw new Error('Invalid stored user payload');
+                    }
                     const isAdmin = user.role === 'admin';
 
                     const infoEl = document.getElementById('adminUserInfo');
@@ -2022,7 +2013,15 @@ header('Content-Type: text/html; charset=utf-8');
                     }
 
                     loadUserPortalData();
-                } catch(e){}
+                } catch(e) {
+                    localStorage.removeItem('sessionToken');
+                    localStorage.removeItem('user');
+                    if (adminModal) {
+                        adminModal.classList.remove('active');
+                        adminModal.style.display = 'none';
+                    }
+                    window.location.href = '/login';
+                }
             } else {
                 if (adminModal) {
                     adminModal.classList.remove('active');
@@ -3028,7 +3027,7 @@ header('Content-Type: text/html; charset=utf-8');
 
         async function handleLogin(e) {
             e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const msg = document.getElementById('loginMsg');
 
@@ -3044,22 +3043,17 @@ header('Content-Type: text/html; charset=utf-8');
                     body: JSON.stringify({ email, password })
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (data.success && data.sessionToken && data.user) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Success! Redirecting to Account Dashboard...';
+                    msg.innerText = 'Success! Redirecting to Dashboard...';
                     
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/dashboard');
-                    }
-
                     setTimeout(() => {
-                        closeModal();
-                        checkSession();
-                    }, 400);
+                        window.location.href = '/dashboard';
+                    }, 300);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -3077,27 +3071,33 @@ header('Content-Type: text/html; charset=utf-8');
             const path = window.location.pathname.toLowerCase();
             const token = localStorage.getItem('sessionToken');
             const userStr = localStorage.getItem('user');
-            const isAuthenticated = !!(token && userStr);
+            let isAuthenticated = false;
+
+            if (token && userStr && token !== 'undefined' && userStr !== 'undefined') {
+                try {
+                    const u = JSON.parse(userStr);
+                    if (u && u.email) {
+                        isAuthenticated = true;
+                    }
+                } catch(e) {
+                    localStorage.removeItem('sessionToken');
+                    localStorage.removeItem('user');
+                }
+            }
 
             if (path.includes('/logout')) {
                 localStorage.removeItem('sessionToken');
                 localStorage.removeItem('user');
-                if (window.history && window.history.replaceState) {
-                    window.history.replaceState({}, '', '/login');
-                }
                 closeAdminDashboard();
-                openModal('login');
+                window.location.href = '/login';
                 return;
             }
 
             // Protected Dashboard / Profile Routes (/dashboard, /profile, /admin)
             if (path.includes('/dashboard') || path.includes('/profile') || path.includes('/admin')) {
                 if (!isAuthenticated) {
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/login');
-                    }
                     closeAdminDashboard();
-                    openModal('login');
+                    window.location.href = '/login';
                     return;
                 } else {
                     closeModal();
@@ -3109,11 +3109,8 @@ header('Content-Type: text/html; charset=utf-8');
             // Authentication Routes (/login, /register)
             if (path.includes('/login') || path.includes('/register')) {
                 if (isAuthenticated) {
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/dashboard');
-                    }
                     closeModal();
-                    checkSession();
+                    window.location.href = '/dashboard';
                     return;
                 } else {
                     closeAdminDashboard();
@@ -3122,9 +3119,11 @@ header('Content-Type: text/html; charset=utf-8');
                 }
             }
 
-            // Default Root / Landing Page Path
+            // Default Root / Landing Page Path ('/')
             if (isAuthenticated) {
-                checkSession();
+                // Authenticated users visiting root landing page -> Automatically redirect to /dashboard!
+                window.location.href = '/dashboard';
+                return;
             } else {
                 closeAdminDashboard();
             }
