@@ -118,6 +118,74 @@ switch ($action) {
         ]);
         break;
 
+    // ── 4. Google OAuth Login / Registration ──
+    case 'google':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $email = trim($input['email'] ?? '');
+        $name = trim($input['name'] ?? '');
+        $googleId = trim($input['googleId'] ?? '');
+
+        if (!$email) {
+            respondJson(['success' => false, 'error' => 'Email address is required for Google Sign-In.'], 400);
+        }
+
+        if (!$name) $name = explode('@', $email)[0];
+
+        // Check if user already exists
+        $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            // Register new user automatically
+            $userId = 'usr_g_' . bin2hex(random_bytes(6));
+            $passwordHash = hashUserPassword('google_' . bin2hex(random_bytes(10)));
+
+            $insertStmt = $db->prepare("
+                INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'user', 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ");
+            $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash]);
+
+            // Create default starter subscription
+            $subId = 'sub_' . $userId;
+            $insertSub = $db->prepare("
+                INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
+                VALUES (?, ?, 'plan_starter', 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 3)
+            ");
+            $insertSub->execute([$subId, $userId]);
+
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+        }
+
+        if ($user['account_status'] === 'suspended') {
+            respondJson(['success' => false, 'error' => 'Your account has been suspended by an administrator.'], 403);
+        }
+
+        // Update last login timestamp
+        $updateStmt = $db->prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $updateStmt->execute([$user['id']]);
+
+        // Generate JWT session token
+        $sessionToken = createSessionToken($user['id']);
+
+        respondJson([
+            'success' => true,
+            'sessionToken' => $sessionToken,
+            'user' => [
+                'id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role'],
+                'emailVerified' => (bool)$user['email_verified'],
+                'accountStatus' => $user['account_status'],
+                'createdAt' => $user['created_at'],
+                'lastLoginAt' => date('c')
+            ]
+        ]);
+        break;
+
     // ── 3. Get Current Profile ──
     case 'me':
         $user = getAuthenticatedUser();
