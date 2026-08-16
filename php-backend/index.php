@@ -32,6 +32,8 @@ if ($requestUri === '/robots.txt') {
 if ($requestUri === '/llms.txt' || $requestUri === '/llms') {
     require_once __DIR__ . '/llms.php';
     exit();
+}
+
 // ── 0.1 Direct Application Download Endpoints ──
 if (strpos($requestUri, '/download/') === 0 || $requestUri === '/download') {
     $subPath = str_replace('/download/', '', $requestUri);
