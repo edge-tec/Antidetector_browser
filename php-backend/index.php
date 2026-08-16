@@ -786,7 +786,7 @@ header('Content-Type: text/html; charset=utf-8');
                     <div id="tab-releases" class="admin-tab-content" style="display: none;">
                         <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Desktop App Version & Download URL Settings</h3>
                         <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS App Download URL (.dmg)</label>
                                     <input type="text" id="cfgMacUrl" value="https://app.edgecash.net/releases/ProfileVault.dmg" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
@@ -794,6 +794,10 @@ header('Content-Type: text/html; charset=utf-8');
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Windows App Download URL (.exe)</label>
                                     <input type="text" id="cfgWinUrl" value="https://app.edgecash.net/releases/ProfileVault.exe" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Linux App Download URL (.AppImage)</label>
+                                    <input type="text" id="cfgLinuxUrl" value="https://app.edgecash.net/releases/ProfileVault.AppImage" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Latest App Version</label>
@@ -1766,6 +1770,7 @@ header('Content-Type: text/html; charset=utf-8');
             const token = localStorage.getItem('sessionToken');
             const macUrl = document.getElementById('cfgMacUrl').value;
             const winUrl = document.getElementById('cfgWinUrl').value;
+            const linuxUrl = document.getElementById('cfgLinuxUrl') ? document.getElementById('cfgLinuxUrl').value : 'https://app.edgecash.net/releases/ProfileVault.AppImage';
             const version = document.getElementById('cfgAppVersion').value;
 
             try {
@@ -1775,7 +1780,7 @@ header('Content-Type: text/html; charset=utf-8');
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ mac_download_url: macUrl, win_download_url: winUrl, latest_version: version })
+                    body: JSON.stringify({ mac_download_url: macUrl, win_download_url: winUrl, linux_download_url: linuxUrl, latest_version: version })
                 });
                 const data = await res.json();
                 if (data.success) {
