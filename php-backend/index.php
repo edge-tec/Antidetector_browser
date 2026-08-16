@@ -1916,14 +1916,19 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success && data.sessionToken && data.user) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Account created successfully! Redirecting to Dashboard...';
+                    msg.innerText = 'Account created successfully! Opening dashboard...';
 
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
+                    if (window.history && window.history.pushState) {
+                        window.history.pushState({}, '', '/dashboard');
+                    }
+
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 300);
+                        closeModal();
+                        checkSession();
+                    }, 200);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -1932,8 +1937,9 @@ header('Content-Type: text/html; charset=utf-8');
             } catch(e) {
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
-                msg.innerText = 'Network error during registration.';
+                msg.innerText = 'Unable to connect to authentication server. Please try again.';
             }
+            return false;
         }
 
         async function handleGoogleSignIn() {
@@ -1957,14 +1963,19 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success && data.sessionToken && data.user) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Google Sign-In successful! Redirecting to Dashboard...';
+                    msg.innerText = 'Google Sign-In successful! Opening dashboard...';
 
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
+                    if (window.history && window.history.pushState) {
+                        window.history.pushState({}, '', '/dashboard');
+                    }
+
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 300);
+                        closeModal();
+                        checkSession();
+                    }, 200);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -1973,7 +1984,7 @@ header('Content-Type: text/html; charset=utf-8');
             } catch(e) {
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
-                msg.innerText = 'Network error during Google Sign-In.';
+                msg.innerText = 'Unable to connect to authentication server. Please try again.';
             }
         }
 
@@ -2020,7 +2031,7 @@ header('Content-Type: text/html; charset=utf-8');
                         adminModal.classList.remove('active');
                         adminModal.style.display = 'none';
                     }
-                    window.location.href = '/login';
+                    openModal('login');
                 }
             } else {
                 if (adminModal) {
@@ -3026,15 +3037,23 @@ header('Content-Type: text/html; charset=utf-8');
         }
 
         async function handleLogin(e) {
-            e.preventDefault();
+            if (e && e.preventDefault) e.preventDefault();
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const msg = document.getElementById('loginMsg');
 
+            if (!email || !password) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.innerText = 'Email Address and Password are required.';
+                return false;
+            }
+
             msg.style.display = 'block';
             msg.style.background = 'rgba(99,102,241,0.2)';
             msg.style.color = '#818CF8';
-            msg.innerText = 'Authenticating...';
+            msg.innerText = 'Authenticating credentials...';
 
             try {
                 const res = await fetch('/api/auth/login', {
@@ -3046,24 +3065,30 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success && data.sessionToken && data.user) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Success! Redirecting to Dashboard...';
+                    msg.innerText = 'Login successful! Opening dashboard...';
                     
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
+                    if (window.history && window.history.pushState) {
+                        window.history.pushState({}, '', '/dashboard');
+                    }
+
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 300);
+                        closeModal();
+                        checkSession();
+                    }, 200);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
-                    msg.innerText = data.error || 'Login failed.';
+                    msg.innerText = data.error || 'Invalid email address or password.';
                 }
             } catch (err) {
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
-                msg.innerText = 'Network error during login.';
+                msg.innerText = 'Unable to connect to authentication server. Please try again.';
             }
+            return false;
         }
 
         // Router & Route Guard on Page Load
@@ -3089,43 +3114,20 @@ header('Content-Type: text/html; charset=utf-8');
                 localStorage.removeItem('sessionToken');
                 localStorage.removeItem('user');
                 closeAdminDashboard();
-                window.location.href = '/login';
+                openModal('login');
                 return;
             }
 
-            // Protected Dashboard / Profile Routes (/dashboard, /profile, /admin)
-            if (path.includes('/dashboard') || path.includes('/profile') || path.includes('/admin')) {
-                if (!isAuthenticated) {
-                    closeAdminDashboard();
-                    window.location.href = '/login';
-                    return;
-                } else {
-                    closeModal();
-                    checkSession();
-                    return;
-                }
-            }
-
-            // Authentication Routes (/login, /register)
-            if (path.includes('/login') || path.includes('/register')) {
-                if (isAuthenticated) {
-                    closeModal();
-                    window.location.href = '/dashboard';
-                    return;
-                } else {
-                    closeAdminDashboard();
-                    openModal(path.includes('/register') ? 'register' : 'login');
-                    return;
-                }
-            }
-
-            // Default Root / Landing Page Path ('/')
             if (isAuthenticated) {
-                // Authenticated users visiting root landing page -> Automatically redirect to /dashboard!
-                window.location.href = '/dashboard';
-                return;
+                closeModal();
+                checkSession();
             } else {
                 closeAdminDashboard();
+                if (path.includes('/login')) {
+                    openModal('login');
+                } else if (path.includes('/register')) {
+                    openModal('register');
+                }
             }
             loadUserPortalData();
         });
