@@ -345,7 +345,7 @@ header('Content-Type: text/html; charset=utf-8');
         </ul>
         <div>
             <button class="btn btn-outline" onclick="openModal('login')">Login</button>
-            <button class="btn btn-primary" onclick="openModal('login')">Admin Portal</button>
+            <button class="btn btn-primary" onclick="openModal('register')">Register Account</button>
         </div>
     </nav>
 
@@ -355,8 +355,8 @@ header('Content-Type: text/html; charset=utf-8');
         <h1>Browse Privately. Isolate Profiles.<br>Scale Without Limits.</h1>
         <p>Create isolated browser profiles with configurable Canvas, WebGL, User-Agent fingerprints, proxy bridges, and centralized aaPanel administration.</p>
         <div class="hero-actions">
-            <button class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;" onclick="openModal('login')">🚀 Login & Dashboard</button>
-            <a href="#pricing" class="btn btn-outline" style="padding: 14px 28px; font-size: 16px;">View Pricing Plans</a>
+            <button class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;" onclick="openModal('login')">🔑 Login</button>
+            <button class="btn btn-outline" style="padding: 14px 32px; font-size: 16px;" onclick="openModal('register')">✨ Register Account</button>
         </div>
 
         <!-- Live Server Status Bar -->
@@ -585,25 +585,51 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
     </footer>
 
-    <!-- Login Modal -->
+    <!-- Login & Register Modal -->
     <div class="modal-overlay" id="loginModal">
-        <div class="modal-box">
+        <div class="modal-box" style="max-width: 440px;">
             <button class="close-modal" onclick="closeModal()">✕</button>
-            <h2 style="margin-bottom: 8px;">Login</h2>
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Sign in to access your ProfileVault dashboard.</p>
+
+            <!-- Mode Switcher -->
+            <div style="display: flex; background: var(--bg-input); padding: 4px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border);">
+                <button id="modalBtnLogin" class="btn" style="flex: 1; border-radius: 8px; font-weight: 700; padding: 8px; background: var(--primary); color: #FFF;" onclick="switchAuthTab('login')">Login</button>
+                <button id="modalBtnRegister" class="btn" style="flex: 1; border-radius: 8px; font-weight: 700; padding: 8px; background: transparent; color: var(--text-muted);" onclick="switchAuthTab('register')">Register Account</button>
+            </div>
             
             <div id="loginMsg" style="display: none; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
 
+            <!-- Login Form -->
             <form id="loginForm" onsubmit="handleLogin(event)">
+                <h3 style="margin-bottom: 4px; color: #FFF;">Welcome Back</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Sign in to access your ProfileVault dashboard.</p>
                 <div class="form-group">
                     <label>Email Address</label>
-                    <input type="email" id="loginEmail" value="admin@profilevault.local" required>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" required>
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="loginPassword" value="admin" required>
+                    <input type="password" id="loginPassword" placeholder="Enter password" required>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px;">Sign In to Dashboard</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 8px;">Sign In to Account</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
+                <h3 style="margin-bottom: 4px; color: #FFF;">Create Free Account</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Register now to get starter profile quota.</p>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="regName" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="regEmail" placeholder="name@domain.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword" placeholder="Minimum 6 characters" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 8px;">Create Free Account</button>
             </form>
         </div>
     </div>
@@ -1183,9 +1209,81 @@ header('Content-Type: text/html; charset=utf-8');
                 icon.innerText = '−';
             }
         }
-        function openModal(type) {
+        function openModal(mode) {
             document.getElementById('loginModal').classList.add('active');
+            switchAuthTab(mode || 'login');
         }
+
+        function switchAuthTab(mode) {
+            const loginForm = document.getElementById('loginForm');
+            const regForm = document.getElementById('registerForm');
+            const btnLogin = document.getElementById('modalBtnLogin');
+            const btnReg = document.getElementById('modalBtnRegister');
+            const msg = document.getElementById('loginMsg');
+            if (msg) msg.style.display = 'none';
+
+            if (mode === 'register') {
+                loginForm.style.display = 'none';
+                regForm.style.display = 'block';
+                btnReg.style.background = 'var(--primary)';
+                btnReg.style.color = '#FFF';
+                btnLogin.style.background = 'transparent';
+                btnLogin.style.color = 'var(--text-muted)';
+            } else {
+                regForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                btnLogin.style.background = 'var(--primary)';
+                btnLogin.style.color = '#FFF';
+                btnReg.style.background = 'transparent';
+                btnReg.style.color = 'var(--text-muted)';
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const msg = document.getElementById('loginMsg');
+
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(99,102,241,0.2)';
+            msg.style.color = '#818CF8';
+            msg.innerText = 'Creating account...';
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msg.style.background = 'rgba(45,212,191,0.2)';
+                    msg.style.color = '#2DD4BF';
+                    msg.innerText = 'Account created successfully! Logging in...';
+
+                    localStorage.setItem('sessionToken', data.sessionToken);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
+                    setTimeout(() => {
+                        closeModal();
+                        document.getElementById('adminUserInfo').innerText = 'Logged in as ' + data.user.name + ' (' + data.user.email + ')';
+                        document.getElementById('adminDashboardModal').classList.add('active');
+                        loadUsersTable();
+                    }, 800);
+                } else {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = data.error || 'Registration failed.';
+                }
+            } catch(e) {
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.innerText = 'Network error during registration.';
+            }
+        }
+
         function closeModal() {
             document.getElementById('loginModal').classList.remove('active');
         }
