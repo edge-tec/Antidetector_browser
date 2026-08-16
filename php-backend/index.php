@@ -49,7 +49,7 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
     }
 
     // Public Releases & App Downloads Manifest API
-    if ($requestUri === '/api/public/releases') {
+    if ($requestUri === '/api/public/releases' || $requestUri === '/api/releases') {
         require_once __DIR__ . '/api/releases.php';
         exit();
     }
