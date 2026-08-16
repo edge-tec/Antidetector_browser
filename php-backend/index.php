@@ -890,11 +890,8 @@ header('Content-Type: text/html; charset=utf-8');
             
             <div id="loginMsg" style="display: none; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
 
-            <!-- Login Form -->
+            <!-- Login Form (Matches User Screenshot Exactly) -->
             <form id="loginForm" onsubmit="handleLogin(event)">
-                <h3 style="margin-bottom: 4px; color: #FFF; font-size: 20px; text-align: center;">Welcome Back</h3>
-                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px; text-align: center;">Sign in to access your antidetect browser dashboard.</p>
-                
                 <div class="form-group" style="margin-bottom: 14px;">
                     <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Email Address</label>
                     <input type="email" id="loginEmail" placeholder="user@example.com" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
@@ -902,7 +899,7 @@ header('Content-Type: text/html; charset=utf-8');
                 
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Password</label>
-                    <input type="password" id="loginPassword" placeholder="Enter password" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                    <input type="password" id="loginPassword" placeholder="••••••••" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
                 </div>
                 
                 <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 13px; background: #2DD4BF; color: #000; font-weight: 800; border-radius: 8px; font-size: 15px;">Sign In</button>
@@ -920,7 +917,7 @@ header('Content-Type: text/html; charset=utf-8');
                 </button>
 
                 <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 20px;">
-                    Don't have an account? <a href="#" onclick="switchAuthTab('register'); return false;" style="color: #2DD4BF; font-weight: 700; text-decoration: none;">Create Account</a>
+                    Don't have an account? <a href="#" onclick="switchAuthTab('register'); return false;" style="color: #2DD4BF; font-weight: 700; text-decoration: none;">Create one</a>
                 </p>
             </form>
 
