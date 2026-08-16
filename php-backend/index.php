@@ -112,15 +112,21 @@ if ($requestUri !== '/' && file_exists($rendererPath . $requestUri) && !is_dir($
     exit();
 }
 
-// Load Page SEO Data from Database for HTML Injection
-$stmtPage = $pdo->prepare("SELECT * FROM `page_seo` WHERE `page_path` = ? LIMIT 1");
-$stmtPage->execute([$requestUri]);
-$pageSeo = $stmtPage->fetch(PDO::FETCH_ASSOC);
+// Load Page SEO Data from Database for HTML Injection (with safety fallback)
+$pageSeo = false;
+try {
+    $stmtPage = $pdo->prepare("SELECT * FROM `page_seo` WHERE `page_path` = ? LIMIT 1");
+    $stmtPage->execute([$requestUri]);
+    $pageSeo = $stmtPage->fetch(PDO::FETCH_ASSOC);
 
-if (!$pageSeo) {
-    $stmtHome = $pdo->query("SELECT * FROM `page_seo` WHERE `page_path` = '/' LIMIT 1");
-    $pageSeo = $stmtHome->fetch(PDO::FETCH_ASSOC);
+    if (!$pageSeo) {
+        $stmtHome = $pdo->query("SELECT * FROM `page_seo` WHERE `page_path` = '/' LIMIT 1");
+        $pageSeo = $stmtHome->fetch(PDO::FETCH_ASSOC);
+    }
+} catch (Throwable $e) {
+    $pageSeo = false;
 }
+
 
 $pageTitle = $pageSeo['title'] ?? 'ProfileVault — Anti-Detect Browser & Profile Isolation';
 $pageDesc = $pageSeo['description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.';
