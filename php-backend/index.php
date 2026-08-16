@@ -486,6 +486,63 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
     </div>
 
+    <!-- Admin Dashboard Overlay Modal -->
+    <div class="modal-overlay" id="adminDashboardModal">
+        <div class="modal-box" style="max-width: 960px; width: 95%;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: linear-gradient(135deg, var(--primary), var(--accent)); width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👑</div>
+                    <div>
+                        <h2 style="font-size: 20px; color: #FFF;">ProfileVault Admin Dashboard</h2>
+                        <p style="font-size: 13px; color: var(--text-muted);" id="adminUserInfo">Logged in as System Admin</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-outline" onclick="loadUsersTable()">🔄 Refresh Users</button>
+                    <button class="btn btn-outline" style="border-color: #EF4444; color: #F87171;" onclick="handleLogout()">🚪 Logout</button>
+                    <button class="close-modal" onclick="closeAdminDashboard()" style="position: static;">✕</button>
+                </div>
+            </div>
+
+            <!-- Admin Stats Row -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Users</span>
+                    <h3 style="font-size: 24px; color: #FFF; margin-top: 4px;" id="statTotalUsers">1</h3>
+                </div>
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Active Subscriptions</span>
+                    <h3 style="font-size: 24px; color: var(--accent); margin-top: 4px;" id="statActiveSubs">Active</h3>
+                </div>
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">MySQL Database</span>
+                    <h3 style="font-size: 24px; color: #818CF8; margin-top: 4px;">antidetactor</h3>
+                </div>
+            </div>
+
+            <!-- Users Management Table -->
+            <h3 style="font-size: 16px; margin-bottom: 12px; color: #FFF;">User Accounts & License Controls</h3>
+            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; max-height: 340px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                            <th style="padding: 12px 16px; color: var(--text-muted);">Name</th>
+                            <th style="padding: 12px 16px; color: var(--text-muted);">Email</th>
+                            <th style="padding: 12px 16px; color: var(--text-muted);">Role</th>
+                            <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
+                            <th style="padding: 12px 16px; color: var(--text-muted);">Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
         function openModal(type) {
             document.getElementById('loginModal').classList.add('active');
@@ -493,6 +550,60 @@ header('Content-Type: text/html; charset=utf-8');
         function closeModal() {
             document.getElementById('loginModal').classList.remove('active');
         }
+        function closeAdminDashboard() {
+            document.getElementById('adminDashboardModal').classList.remove('active');
+        }
+
+        function checkSession() {
+            const token = localStorage.getItem('sessionToken');
+            const userStr = localStorage.getItem('user');
+            if (token && userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    document.getElementById('adminUserInfo').innerText = 'Logged in as ' + user.name + ' (' + user.email + ')';
+                    document.getElementById('adminDashboardModal').classList.add('active');
+                    loadUsersTable();
+                } catch(e){}
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('sessionToken');
+            localStorage.removeItem('user');
+            closeAdminDashboard();
+            alert('Logged out successfully.');
+        }
+
+        async function loadUsersTable() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching database records...</td></tr>';
+            
+            try {
+                const res = await fetch('/api/admin/get-users', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data)) {
+                    document.getElementById('statTotalUsers').innerText = data.data.length;
+                    tbody.innerHTML = data.data.map(u => `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${u.name}</td>
+                            <td style="padding: 12px 16px; color: var(--text-muted);">${u.email}</td>
+                            <td style="padding: 12px 16px;"><span style="background: rgba(99,102,241,0.2); color: #818CF8; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.role}</span></td>
+                            <td style="padding: 12px 16px;"><span style="background: rgba(45,212,191,0.2); color: #2DD4BF; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.accountStatus || 'active'}</span></td>
+                            <td style="padding: 12px 16px; color: var(--text-muted); font-size: 12px;">${u.createdAt ? u.createdAt.substring(0, 10) : 'N/A'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Failed to load users: ' + (data.error || 'Unauthorized') + '</td></tr>';
+                }
+            } catch(err) {
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Network error fetching user data.</td></tr>';
+            }
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
@@ -514,11 +625,17 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Success! Redirecting to Dashboard...';
+                    msg.innerText = 'Success! Opening Admin Dashboard...';
+                    
+                    localStorage.setItem('sessionToken', data.sessionToken);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
                     setTimeout(() => {
-                        alert('Welcome ' + data.user.name + '! Login successful (Token: ' + data.sessionToken.substring(0, 15) + '...)');
                         closeModal();
-                    }, 800);
+                        document.getElementById('adminUserInfo').innerText = 'Logged in as ' + data.user.name + ' (' + data.user.email + ')';
+                        document.getElementById('adminDashboardModal').classList.add('active');
+                        loadUsersTable();
+                    }, 600);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -530,7 +647,11 @@ header('Content-Type: text/html; charset=utf-8');
                 msg.innerText = 'Network error during login.';
             }
         }
+
+        // Auto check session on load
+        window.addEventListener('DOMContentLoaded', checkSession);
     </script>
 </body>
 </html>
+
 
