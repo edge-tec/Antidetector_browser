@@ -200,7 +200,72 @@ switch ($action) {
         if (!$user) {
             respondJson(['success' => false, 'error' => 'Unauthorized or expired session.'], 401);
         }
-        respondJson(['success' => true, 'user' => $user]);
+
+        // Fetch user license & subscription details
+        require_once __DIR__ . '/license.php';
+        $license = validateUserLicenseInternal($user['id']);
+
+        respondJson([
+            'success' => true,
+            'user' => $user,
+            'license' => $license
+        ]);
+        break;
+
+    // ── 5. User Update Profile (Editable: Name, Phone, Password ONLY) ──
+    case 'update-profile':
+        $user = getAuthenticatedUser();
+        if (!$user) {
+            respondJson(['success' => false, 'error' => 'Authentication required.'], 401);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+        // Security Audit: Reject any attempts to mutate protected admin-controlled fields
+        $protectedFields = [
+            'role', 'account_status', 'subscription_plan', 'subscription_status',
+            'subscription_expires_at', 'profile_limit', 'device_limit', 'expires_at',
+            'permissions', 'download_urls', 'application_versions'
+        ];
+
+        foreach ($protectedFields as $pf) {
+            if (isset($input[$pf])) {
+                respondJson([
+                    'success' => false,
+                    'error' => "Access denied. Protected field ('$pf') cannot be modified by user."
+                ], 403);
+            }
+        }
+
+        $name = trim($input['name'] ?? $user['name']);
+        $phone = trim($input['phone'] ?? '');
+        $currentPassword = $input['currentPassword'] ?? null;
+        $newPassword = $input['newPassword'] ?? null;
+
+        if ($newPassword) {
+            if (!$currentPassword || !verifyUserPassword($currentPassword, $user['password_hash'])) {
+                respondJson(['success' => false, 'error' => 'Current password is incorrect.'], 400);
+            }
+            if (strlen($newPassword) < 6) {
+                respondJson(['success' => false, 'error' => 'New password must be at least 6 characters.'], 400);
+            }
+            $passwordHash = hashUserPassword($newPassword);
+            $stmt = $db->prepare("UPDATE users SET name = ?, password_hash = ? WHERE id = ?");
+            $stmt->execute([$name, $passwordHash, $user['id']]);
+        } else {
+            $stmt = $db->prepare("UPDATE users SET name = ? WHERE id = ?");
+            $stmt->execute([$name, $user['id']]);
+        }
+
+        $stmt = $db->prepare("SELECT id, name, email, role, email_verified, account_status, created_at, last_login_at FROM users WHERE id = ?");
+        $stmt->execute([$user['id']]);
+        $updatedUser = $stmt->fetch();
+
+        respondJson([
+            'success' => true,
+            'message' => 'Profile updated successfully.',
+            'user' => $updatedUser
+        ]);
         break;
 
     default:

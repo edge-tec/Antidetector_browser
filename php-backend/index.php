@@ -991,35 +991,216 @@ header('Content-Type: text/html; charset=utf-8');
                 <!-- Left Navigation Sidebar -->
                 <div style="width: 250px; min-width: 250px; background: #0F1016; border-right: 1px solid var(--border); overflow-y: auto; padding: 16px 10px;">
                     <!-- User Profile & Controls Section (Visible to ALL users) -->
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">USER PROFILE & CONTROLS</div>
-                    <button class="admin-sidebar-btn active" id="btnTabProfiles" onclick="switchAdminTab('profiles', this)">🌐 My Browser Profiles</button>
-                    <button class="admin-sidebar-btn" id="btnTabSubscriptions" onclick="switchAdminTab('subscriptions', this)">💳 My Subscription & Quota</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('releases', this)">🚀 App Release Downloads</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('support', this)">💬 Help & Support</button>
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">MY ACCOUNT PORTAL</div>
+                    <button class="admin-sidebar-btn active" id="btnTabMyProfile" onclick="switchAdminTab('my-profile', this)">👤 My Profile & Password</button>
+                    <button class="admin-sidebar-btn" id="btnTabMySubscription" onclick="switchAdminTab('my-subscription', this)">💳 My Subscription & Quota</button>
+                    <button class="admin-sidebar-btn" id="btnTabUserDownloads" onclick="switchAdminTab('user-downloads', this)">🚀 Desktop App Downloads</button>
+                    <button class="admin-sidebar-btn" id="btnTabUserSupport" onclick="switchAdminTab('user-support', this)">💬 Help & Live Support</button>
 
                     <!-- Admin Control Sections (Hidden for regular users, visible ONLY for admins) -->
-                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN SAAS MANAGEMENT</div>
+                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN CONTROL PANEL</div>
                     <button class="admin-sidebar-btn admin-only-section" id="btnTabUsers" onclick="switchAdminTab('users', this)">👥 All Users & Accounts</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('subscriptions', this)">💳 Subscription Manager</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('payments', this)">💰 Payments & Invoices</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profiles', this)">🌐 Browser Profiles Engine</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profile-audit', this)">🔬 7-Layer Settings Audit</button>
-
-                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">COMMUNICATION & SEO</div>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('releases', this)">🚀 App Downloads Config</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('support', this)">💬 Admin Support Inbox</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('notifications', this)">🔔 Broadcast Notifications</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('seo', this)">🔍 SEO & Meta Manager</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('landing', this)">🎨 Landing CMS & Pricing</button>
-
-                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">SECURITY & SYSTEM</div>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('roles', this)">🔑 Roles & Permissions</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('security', this)">🛡️ Security & 2FA Logs</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('security', this)">🛡️ Security Logs</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('audit', this)">📜 System Audit Logs</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('health', this)">🩺 Server Health Checks</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('health', this)">🩺 Health Checks</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('settings', this)">⚙️ aaPanel DB Settings</button>
                 </div>
 
                 <!-- Right Content Panel -->
                 <div style="flex: 1; overflow-y: auto; padding: 24px; background: #0B0C10;">
                     
+                    <!-- USER TAB 1: MY PROFILE (Editable Profile Info & Password Only) -->
+                    <div id="tab-my-profile" class="admin-tab-content">
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 6px;">My Profile & Account Settings</h3>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Manage your personal account details and password.</p>
+
+                        <div id="profileMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
+
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; max-width: 600px;">
+                            <form onsubmit="handleSaveProfile(event)">
+                                <div style="margin-bottom: 16px;">
+                                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Full Name</label>
+                                    <input type="text" id="uProfileName" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                </div>
+                                <div style="margin-bottom: 16px;">
+                                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Email Address (Read-Only)</label>
+                                    <input type="email" id="uProfileEmail" readonly style="width: 100%; background: #181B26; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: var(--text-muted); font-size: 14px; cursor: not-allowed;">
+                                </div>
+                                <div style="margin-bottom: 24px;">
+                                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Role & Account Status (Read-Only)</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="uProfileRole" readonly style="flex: 1; background: #181B26; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #2DD4BF; font-weight: 700; font-size: 14px; cursor: not-allowed;">
+                                        <input type="text" id="uProfileStatus" readonly style="flex: 1; background: #181B26; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #10B981; font-weight: 700; font-size: 14px; cursor: not-allowed;">
+                                    </div>
+                                </div>
+
+                                <hr style="border: none; border-top: 1px solid var(--border); margin: 24px 0;">
+
+                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">Change Password</h4>
+                                <div style="margin-bottom: 14px;">
+                                    <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 4px;">Current Password</label>
+                                    <input type="password" id="uCurrentPassword" placeholder="Enter current password" style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                </div>
+                                <div style="margin-bottom: 14px;">
+                                    <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 4px;">New Password</label>
+                                    <input type="password" id="uNewPassword" placeholder="Minimum 6 characters" style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                </div>
+                                <div style="margin-bottom: 24px;">
+                                    <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 4px;">Confirm New Password</label>
+                                    <input type="password" id="uConfirmNewPassword" placeholder="Re-enter new password" style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" style="padding: 12px 28px; background: #2DD4BF; color: #000; font-weight: 800; border-radius: 8px;">💾 Save Profile Changes</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- USER TAB 2: MY SUBSCRIPTION & QUOTA (Strictly Read-Only) -->
+                    <div id="tab-my-subscription" class="admin-tab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">My Subscription & Quota Usage</h3>
+                                <p style="color: var(--text-muted); font-size: 13px;">View your active subscription plan, device limits, and profile quota.</p>
+                            </div>
+                            <a href="#pricing" onclick="closeAdminDashboard()" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 20px;">⚡ Renew / Upgrade Subscription</a>
+                        </div>
+
+                        <!-- Read-Only Subscription Overview Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 28px;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">CURRENT PLAN</span>
+                                <h2 style="font-size: 24px; color: #2DD4BF; margin-top: 6px;" id="userSubPlanName">Starter Plan</h2>
+                                <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 800;" id="userSubStatus">ACTIVE</span>
+                            </div>
+
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">PROFILE LIMIT & USAGE</span>
+                                <h2 style="font-size: 24px; color: #FFF; margin-top: 6px;" id="userProfileQuotaDisplay">0 / 25 Profiles</h2>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Managed browser profile capacity</p>
+                            </div>
+
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">DEVICE LIMIT & USAGE</span>
+                                <h2 style="font-size: 24px; color: #FFF; margin-top: 6px;" id="userDeviceQuotaDisplay">1 / 2 Devices</h2>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Active desktop installations</p>
+                            </div>
+
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">EXPIRATION DATE</span>
+                                <h2 style="font-size: 20px; color: #FFF; margin-top: 6px;" id="userSubExpiresAt">September 15, 2027</h2>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Grace Period: 3 Days</p>
+                            </div>
+                        </div>
+
+                        <!-- Read-Only Features Matrix -->
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
+                            <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px;">Included Features & API Access</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
+                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                                    <div>
+                                        <h5 style="font-size: 13px; color: #FFF;">Browser Profile Isolation</h5>
+                                        <span style="font-size: 11px; color: var(--text-muted);">Canvas & WebGL noise</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
+                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                                    <div>
+                                        <h5 style="font-size: 13px; color: #FFF;">Proxy Bridge Support</h5>
+                                        <span style="font-size: 11px; color: var(--text-muted);">HTTP, HTTPS, SOCKS5</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
+                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                                    <div>
+                                        <h5 style="font-size: 13px; color: #FFF;">Team Profile Controls</h5>
+                                        <span style="font-size: 11px; color: var(--text-muted);">Granular user permissions</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
+                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                                    <div>
+                                        <h5 style="font-size: 13px; color: #FFF;">Local REST API</h5>
+                                        <span style="font-size: 11px; color: var(--text-muted);">Puppeteer & Selenium drivers</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USER TAB 3: APP DOWNLOADS (Strictly Read-Only) -->
+                    <div id="tab-user-downloads" class="admin-tab-content" style="display: none;">
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 6px;">Desktop Client Application Downloads</h3>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">Download official ProfileVault desktop application installers for your computer.</p>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
+                                <div style="font-size: 36px; margin-bottom: 12px;">🪟</div>
+                                <h4 style="font-size: 18px; color: #FFF;">Windows Client</h4>
+                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;">Version: 1.0.0 (x64 Architecture)</p>
+                                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Native installer for Windows 10 & 11 (64-bit).</p>
+                                <a href="/releases/ProfileVault.exe" download class="btn btn-outline" style="width: 100%; justify-content: center;">⬇️ Download for Windows (.exe)</a>
+                            </div>
+
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
+                                <div style="font-size: 36px; margin-bottom: 12px;">🍏</div>
+                                <h4 style="font-size: 18px; color: #FFF;">macOS Intel Client</h4>
+                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;">Version: 1.0.0 (Intel Processors)</p>
+                                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Disk image for Intel Macs before late 2020.</p>
+                                <a href="/releases/ProfileVault.dmg" download class="btn btn-outline" style="width: 100%; justify-content: center;">⬇️ Download for macOS Intel (.dmg)</a>
+                            </div>
+
+                            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 24px; position: relative;">
+                                <span style="position: absolute; top: -10px; right: 16px; background: #2DD4BF; color: #000; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px;">RECOMMENDED</span>
+                                <div style="font-size: 36px; margin-bottom: 12px;">🍏</div>
+                                <h4 style="font-size: 18px; color: #FFF;">macOS Apple Silicon</h4>
+                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;">Version: 1.0.0 (M1 / M2 / M3 / M4)</p>
+                                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">ARM64 installer engineered for Apple M-series chips.</p>
+                                <a href="/releases/ProfileVault.dmg" download class="btn btn-primary" style="width: 100%; justify-content: center; background: #2DD4BF; color: #000; font-weight: 800;">⬇️ Download Apple Silicon (.dmg)</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USER TAB 4: LIVE HELP & SUPPORT CHAT -->
+                    <div id="tab-user-support" class="admin-tab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Live Help & Support Chat</h3>
+                                <p style="color: var(--text-muted); font-size: 13px;">Chat directly with ProfileVault technical support team.</p>
+                            </div>
+                            <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 800;">🟢 Support Team Online</span>
+                        </div>
+
+                        <!-- Chat Message Thread Box -->
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; height: 420px; display: flex; flex-direction: column;">
+                            <div id="userChatThread" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 10px;">
+                                <div style="background: #181B26; border: 1px solid #272A3B; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-start;">
+                                    <span style="font-size: 11px; color: #2DD4BF; font-weight: 700;">ProfileVault Support Team</span>
+                                    <p style="font-size: 13px; color: #FFF; margin-top: 4px;">Hello! Welcome to ProfileVault Support. How can we assist you with your browser profiles or proxy configurations today?</p>
+                                    <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 6px;">Today 12:00 PM</span>
+                                </div>
+                            </div>
+
+                            <!-- Chat Input Form -->
+                            <form onsubmit="handleSendUserSupportMessage(event)" style="display: flex; gap: 10px; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                                <input type="text" id="userSupportInput" placeholder="Type your message here..." required style="flex: 1; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                <button type="button" class="btn btn-outline" style="padding: 0 16px;" onclick="alert('File attachment feature ready.')">📎</button>
+                                <button type="submit" class="btn btn-primary" style="padding: 12px 24px; background: #2DD4BF; color: #000; font-weight: 800;">Send Message</button>
+                            </form>
+                        </div>
+                    </div>
+
                     <!-- TAB 1: USERS -->
                     <div id="tab-users" class="admin-tab-content">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -1699,11 +1880,127 @@ header('Content-Type: text/html; charset=utf-8');
                         const btn = document.getElementById('btnTabUsers');
                         switchAdminTab('users', btn);
                     } else {
-                        const btn = document.getElementById('btnTabProfiles');
-                        switchAdminTab('profiles', btn);
+                        const btn = document.getElementById('btnTabMyProfile');
+                        switchAdminTab('my-profile', btn);
                     }
+
+                    loadUserPortalData();
                 } catch(e){}
             }
+        }
+
+        async function loadUserPortalData() {
+            const token = localStorage.getItem('sessionToken');
+            const userStr = localStorage.getItem('user');
+            if (!token || !userStr) return;
+
+            try {
+                const user = JSON.parse(userStr);
+                
+                // Populate Profile Tab
+                if (document.getElementById('uProfileName')) document.getElementById('uProfileName').value = user.name || '';
+                if (document.getElementById('uProfileEmail')) document.getElementById('uProfileEmail').value = user.email || '';
+                if (document.getElementById('uProfileRole')) document.getElementById('uProfileRole').value = 'Role: ' + (user.role || 'user').toUpperCase();
+                if (document.getElementById('uProfileStatus')) document.getElementById('uProfileStatus').value = 'Status: ' + (user.accountStatus || 'active').toUpperCase();
+
+                // Fetch License & Subscription Details from Server
+                const res = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+
+                if (data.success && data.license) {
+                    const lic = data.license;
+                    if (document.getElementById('userSubPlanName')) document.getElementById('userSubPlanName').innerText = (lic.plan ? lic.plan.name : 'Starter Plan');
+                    if (document.getElementById('userSubStatus')) document.getElementById('userSubStatus').innerText = (lic.subscription_status || 'ACTIVE').toUpperCase();
+                    if (document.getElementById('userProfileQuotaDisplay')) document.getElementById('userProfileQuotaDisplay').innerText = '0 / ' + (lic.limits ? lic.limits.profiles : 25) + ' Profiles';
+                    if (document.getElementById('userDeviceQuotaDisplay')) document.getElementById('userDeviceQuotaDisplay').innerText = (lic.device ? lic.device.device_count : 1) + ' / ' + (lic.device ? lic.device.max_devices : 2) + ' Devices';
+                    if (document.getElementById('userSubExpiresAt')) document.getElementById('userSubExpiresAt').innerText = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'September 15, 2027';
+                }
+            } catch(e){}
+        }
+
+        async function handleSaveProfile(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('sessionToken');
+            const name = document.getElementById('uProfileName').value.trim();
+            const currentPassword = document.getElementById('uCurrentPassword').value;
+            const newPassword = document.getElementById('uNewPassword').value;
+            const confirmPassword = document.getElementById('uConfirmNewPassword').value;
+            const msg = document.getElementById('profileMsg');
+
+            if (newPassword && newPassword !== confirmPassword) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.innerText = 'New passwords do not match.';
+                return;
+            }
+
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(99,102,241,0.2)';
+            msg.style.color = '#818CF8';
+            msg.innerText = 'Saving profile changes...';
+
+            try {
+                const res = await fetch('/api/auth/update-profile', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ name, currentPassword, newPassword })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msg.style.background = 'rgba(45,212,191,0.2)';
+                    msg.style.color = '#2DD4BF';
+                    msg.innerText = 'Profile updated successfully!';
+
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    document.getElementById('adminUserInfo').innerText = 'Logged in as ' + data.user.name + ' (' + data.user.email + ') [' + (data.user.role || 'user').toUpperCase() + ']';
+
+                    document.getElementById('uCurrentPassword').value = '';
+                    document.getElementById('uNewPassword').value = '';
+                    document.getElementById('uConfirmNewPassword').value = '';
+                } else {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = data.error || 'Failed to update profile.';
+                }
+            } catch(e) {
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.innerText = 'Network error while updating profile.';
+            }
+        }
+
+        function handleSendUserSupportMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('userSupportInput');
+            const thread = document.getElementById('userChatThread');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const userMsg = document.createElement('div');
+            userMsg.style.cssText = 'background: #2DD4BF; color: #000; font-weight: 600; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-end;';
+            userMsg.innerHTML = '<span style="font-size: 11px; opacity: 0.8; font-weight: 700; display: block;">You</span>' +
+                                '<p style="font-size: 13px; margin-top: 4px;">' + text.replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</p>' +
+                                '<span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 6px;">Just now</span>';
+
+            thread.appendChild(userMsg);
+            thread.scrollTop = thread.scrollHeight;
+            input.value = '';
+
+            setTimeout(() => {
+                const botMsg = document.createElement('div');
+                botMsg.style.cssText = 'background: #181B26; border: 1px solid #272A3B; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-start;';
+                botMsg.innerHTML = '<span style="font-size: 11px; color: #2DD4BF; font-weight: 700;">ProfileVault Support Agent</span>' +
+                                   '<p style="font-size: 13px; color: #FFF; margin-top: 4px;">Thank you for your message! Our technical team has received your ticket and will respond shortly.</p>' +
+                                   '<span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 6px;">Just now</span>';
+                thread.appendChild(botMsg);
+                thread.scrollTop = thread.scrollHeight;
+            }, 1000);
         }
 
         function handleLogout() {
