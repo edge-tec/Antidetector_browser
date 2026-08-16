@@ -380,6 +380,37 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
     </section>
 
+    <!-- Desktop Application Downloads Section -->
+    <section id="downloads" class="section container" style="margin-top: 10px;">
+        <div class="section-title">
+            <h2>Download Desktop Application</h2>
+            <p>Get ProfileVault Software for Windows, macOS, and Linux.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; text-align: center; display: flex; flex-direction: column; align-items: center;">
+                <div style="font-size: 42px; margin-bottom: 12px;">🪟</div>
+                <h3 style="color: #FFF; font-size: 20px; margin-bottom: 6px;">Windows App</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Compatible with Windows 10 & 11 (64-bit)</p>
+                <a href="/releases/ProfileVault.exe" id="btnDownloadWin" download class="btn btn-primary" style="width: 100%; justify-content: center;">⬇️ Download (.exe)</a>
+            </div>
+
+            <div style="background: var(--bg-card); border: 1px solid var(--accent); border-radius: 16px; padding: 28px; text-align: center; display: flex; flex-direction: column; align-items: center; position: relative;">
+                <span style="position: absolute; top: -12px; background: var(--accent); color: #000; font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 20px;">RECOMMENDED</span>
+                <div style="font-size: 42px; margin-bottom: 12px;">🍏</div>
+                <h3 style="color: #FFF; font-size: 20px; margin-bottom: 6px;">macOS App</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Compatible with Apple Silicon & Intel Macs</p>
+                <a href="/releases/ProfileVault.dmg" id="btnDownloadMac" download class="btn btn-primary" style="width: 100%; justify-content: center;">⬇️ Download (.dmg)</a>
+            </div>
+
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; text-align: center; display: flex; flex-direction: column; align-items: center;">
+                <div style="font-size: 42px; margin-bottom: 12px;">🐧</div>
+                <h3 style="color: #FFF; font-size: 20px; margin-bottom: 6px;">Linux App</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Compatible with Ubuntu, Debian, RedHat (64-bit)</p>
+                <a href="/releases/ProfileVault.AppImage" id="btnDownloadLinux" download class="btn btn-outline" style="width: 100%; justify-content: center;">⬇️ Download (.AppImage)</a>
+            </div>
+        </div>
+    </section>
+
     <!-- Features Section -->
     <section id="features" class="section container">
         <div class="section-title">
