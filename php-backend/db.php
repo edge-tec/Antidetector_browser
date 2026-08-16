@@ -34,3 +34,9 @@ class Database {
         return self::$instance;
     }
 }
+
+// Global helper wrapper function
+function getDbConnection(): PDO {
+    return Database::getConnection();
+}
+
