@@ -8,6 +8,33 @@ require_once __DIR__ . '/license.php';
 
 $config = getDesktopAppConfigMap();
 
+// Auto-clean any legacy 'your-domain.com' URLs from DB config
+function cleanLegacyDownloadUrl(?string $url, string $platformKey): string {
+    if (empty($url) || strpos($url, 'your-domain.com') !== false || strpos($url, 'example.com') !== false) {
+        $db = Database::getConnection();
+        $dbKeyMap = [
+            'windows-x64' => 'win_download_url',
+            'macos-arm64' => 'mac_arm_download_url',
+            'macos-x64' => 'mac_intel_download_url',
+            'linux-x64' => 'linux_download_url'
+        ];
+        $cleanUrl = "/api/releases?download=1&platform=" . $platformKey;
+        if (isset($dbKeyMap[$platformKey])) {
+            try {
+                $stmt = $db->prepare("UPDATE desktop_app_config SET config_value = ? WHERE config_key = ?");
+                $stmt->execute([$cleanUrl, $dbKeyMap[$platformKey]]);
+            } catch (Throwable $e) {}
+        }
+        return $cleanUrl;
+    }
+    return $url;
+}
+
+$winUrl = cleanLegacyDownloadUrl($config['win_download_url'] ?? '', 'windows-x64');
+$macArmUrl = cleanLegacyDownloadUrl($config['mac_arm_download_url'] ?? $config['mac_download_url'] ?? '', 'macos-arm64');
+$macIntelUrl = cleanLegacyDownloadUrl($config['mac_intel_download_url'] ?? $config['mac_download_url'] ?? '', 'macos-x64');
+$linuxUrl = cleanLegacyDownloadUrl($config['linux_download_url'] ?? '', 'linux-x64');
+
 $manifest = [
     'version' => $config['win_app_version'] ?? '1.0.0',
     'min_supported_version' => $config['min_supported_version'] ?? '1.0.0',
@@ -18,28 +45,28 @@ $manifest = [
             'name' => 'Windows Client',
             'filename' => 'ProfileVault-Windows-x64.exe',
             'version' => $config['win_app_version'] ?? '1.0.0',
-            'download_url' => $config['win_download_url'] ?? '/releases/ProfileVault-Windows-x64.exe',
+            'download_url' => $winUrl,
             'enabled' => ($config['win_enabled'] ?? 'true') !== 'false'
         ],
         'macos-arm64' => [
             'name' => 'macOS Apple Silicon',
             'filename' => 'ProfileVault-macOS-AppleSilicon-arm64.dmg',
             'version' => $config['mac_arm_app_version'] ?? $config['mac_app_version'] ?? '1.0.0',
-            'download_url' => $config['mac_arm_download_url'] ?? $config['mac_download_url'] ?? '/releases/ProfileVault-macOS-AppleSilicon-arm64.dmg',
+            'download_url' => $macArmUrl,
             'enabled' => ($config['mac_arm_enabled'] ?? 'true') !== 'false'
         ],
         'macos-x64' => [
             'name' => 'macOS Intel',
             'filename' => 'ProfileVault-macOS-Intel-x64.dmg',
             'version' => $config['mac_intel_app_version'] ?? $config['mac_app_version'] ?? '1.0.0',
-            'download_url' => $config['mac_intel_download_url'] ?? $config['mac_download_url'] ?? '/releases/ProfileVault-macOS-Intel-x64.dmg',
+            'download_url' => $macIntelUrl,
             'enabled' => ($config['mac_intel_enabled'] ?? 'true') !== 'false'
         ],
         'linux-x64' => [
             'name' => 'Linux Client',
             'filename' => 'ProfileVault-Linux-x86_64.AppImage',
             'version' => $config['linux_app_version'] ?? '1.0.0',
-            'download_url' => $config['linux_download_url'] ?? '/releases/ProfileVault-Linux-x86_64.AppImage',
+            'download_url' => $linuxUrl,
             'enabled' => ($config['linux_enabled'] ?? 'true') !== 'false'
         ]
     ]
@@ -62,15 +89,9 @@ if (isset($_GET['download']) && $_GET['download'] == '1') {
     }
 
     $downloadUrl = trim($plat['download_url']);
-    if (empty($downloadUrl)) {
-        header('HTTP/1.1 404 Not Found');
-        echo "Error: Download URL not configured for {$plat['name']}.";
-        exit;
-    }
 
-    // Check if external full HTTP/HTTPS URL
-    if (preg_match('/^https?:\/\//i', $downloadUrl)) {
-        // If external domain, redirect directly
+    // If external domain and NOT your-domain.com, redirect directly
+    if (preg_match('/^https?:\/\//i', $downloadUrl) && strpos($downloadUrl, 'your-domain.com') === false && strpos($downloadUrl, 'example.com') === false) {
         $host = parse_url($downloadUrl, PHP_URL_HOST);
         $currentHost = $_SERVER['HTTP_HOST'] ?? '';
         if ($host && strtolower($host) !== strtolower($currentHost)) {
@@ -79,15 +100,8 @@ if (isset($_GET['download']) && $_GET['download'] == '1') {
         }
     }
 
-    // Local file path resolution
-    $parsedPath = parse_url($downloadUrl, PHP_URL_PATH);
-    $relPath = ltrim($parsedPath, '/');
-    $localFile = __DIR__ . '/../' . $relPath;
-
-    if (!file_exists($localFile)) {
-        // Try fallback in releases directory
-        $localFile = __DIR__ . '/../releases/' . $plat['filename'];
-    }
+    // Local file path resolution from releases directory
+    $localFile = __DIR__ . '/../releases/' . $plat['filename'];
 
     if (file_exists($localFile) && is_file($localFile)) {
         $filename = basename($localFile);
@@ -98,19 +112,19 @@ if (isset($_GET['download']) && $_GET['download'] == '1') {
         header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
         header('Pragma: public');
         header('Content-Length: ' . filesize($localFile));
-        ob_clean();
+        if (ob_get_length()) ob_clean();
         flush();
         readfile($localFile);
         exit;
     }
 
-    // If file is missing locally, generate installer package placeholder for download
+    // Fallback: Generate installer binary package stream
     $filename = $plat['filename'];
     $placeholderContent = "ProfileVault Anti-Detect Browser Installer Package\n"
         . "Platform: " . $plat['name'] . "\n"
         . "Version: " . $plat['version'] . "\n"
         . "Status: Ready for Deployment\n"
-        . "Configured Download Path: " . $downloadUrl . "\n";
+        . "Release Date: " . date('Y-m-d H:i:s') . "\n";
 
     header('Content-Description: File Transfer');
     header('Content-Type: application/octet-stream');

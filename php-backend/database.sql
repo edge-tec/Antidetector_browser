@@ -97,16 +97,16 @@ CREATE TABLE IF NOT EXISTS `desktop_app_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `desktop_app_config` (`config_key`, `config_value`) VALUES
-('win_download_url', 'https://your-domain.com/downloads/ProfileVault-Windows-x64.exe'),
+('win_download_url', '/api/releases?download=1&platform=windows-x64'),
 ('win_app_version', '1.0.0'),
 ('win_enabled', 'true'),
-('mac_intel_download_url', 'https://your-domain.com/downloads/ProfileVault-macOS-Intel-x64.dmg'),
+('mac_intel_download_url', '/api/releases?download=1&platform=macos-x64'),
 ('mac_intel_app_version', '1.0.0'),
 ('mac_intel_enabled', 'true'),
-('mac_arm_download_url', 'https://your-domain.com/downloads/ProfileVault-macOS-Apple-Silicon-arm64.dmg'),
+('mac_arm_download_url', '/api/releases?download=1&platform=macos-arm64'),
 ('mac_arm_app_version', '1.0.0'),
 ('mac_arm_enabled', 'true'),
-('linux_download_url', 'https://your-domain.com/downloads/ProfileVault-Linux-x86_64.AppImage'),
+('linux_download_url', '/api/releases?download=1&platform=linux-x64'),
 ('linux_app_version', '1.0.0'),
 ('linux_enabled', 'true'),
 ('release_notes', 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.'),
