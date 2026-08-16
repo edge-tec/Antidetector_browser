@@ -1814,16 +1814,33 @@ header('Content-Type: text/html; charset=utf-8');
                 icon.innerText = '−';
             }
         }
-        function openModal(mode) {
-            closeAdminDashboard();
+        window.openModal = function(mode) {
+            window.closeAdminDashboard();
             const modal = document.getElementById('loginModal');
             if (modal) {
                 modal.classList.add('active');
-                switchAuthTab(mode || 'login');
+                modal.style.display = 'flex';
+                window.switchAuthTab(mode || 'login');
             }
-        }
+        };
 
-        function switchAuthTab(mode) {
+        window.closeModal = function() {
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+        };
+
+        window.closeAdminDashboard = function() {
+            const adminModal = document.getElementById('adminDashboardModal');
+            if (adminModal) {
+                adminModal.classList.remove('active');
+                adminModal.style.display = 'none';
+            }
+        };
+
+        window.switchAuthTab = function(mode) {
             const loginForm = document.getElementById('loginForm');
             const regForm = document.getElementById('registerForm');
             const btnLogin = document.getElementById('modalBtnLogin');
@@ -1854,7 +1871,7 @@ header('Content-Type: text/html; charset=utf-8');
                     btnReg.style.color = 'var(--text-muted)';
                 }
             }
-        }
+        };
 
         function handleLogout() {
             localStorage.removeItem('sessionToken');
@@ -1958,12 +1975,7 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        function closeModal() {
-            document.getElementById('loginModal').classList.remove('active');
-        }
-        function closeAdminDashboard() {
-            document.getElementById('adminDashboardModal').classList.remove('active');
-        }
+
 
         function checkSession() {
             const token = localStorage.getItem('sessionToken');
