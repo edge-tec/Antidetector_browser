@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- Initial Admin Account Seed (admin@profilevault.local / Password: admin)
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `email_verified`, `account_status`, `created_at`)
-VALUES ('admin-default', 'System Admin', 'admin@profilevault.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 1, 'active', NOW())
-ON DUPLICATE KEY UPDATE `id`=`id`;
+VALUES ('admin-default', 'System Admin', 'admin@profilevault.local', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'admin', 1, 'active', NOW())
+ON DUPLICATE KEY UPDATE `password_hash`='$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu';
+
 
 -- 2. Pricing Plans Table
 CREATE TABLE IF NOT EXISTS `pricing_plans` (
