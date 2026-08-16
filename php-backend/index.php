@@ -375,8 +375,8 @@ header('Content-Type: text/html; charset=utf-8');
             <li><a href="#contact">Contact</a></li>
         </ul>
         <div style="display: flex; gap: 12px; align-items: center;">
-            <button class="btn btn-outline" style="padding: 8px 18px; font-size: 13px;" onclick="openModal('login')">Sign In</button>
-            <button class="btn btn-primary" style="padding: 8px 20px; font-size: 13px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="openModal('register')">Get Started</button>
+            <a href="/login" class="btn btn-outline" style="padding: 8px 18px; font-size: 13px; text-decoration: none;" onclick="openModal('login'); return false;">Sign In</a>
+            <a href="/register" class="btn btn-primary" style="padding: 8px 20px; font-size: 13px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; text-decoration: none;" onclick="openModal('register'); return false;">Get Started</a>
         </div>
     </nav>
 
@@ -393,7 +393,7 @@ header('Content-Type: text/html; charset=utf-8');
                 Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.
             </p>
             <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
-                <button class="btn btn-primary" style="padding: 14px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;" onclick="openModal('register')">Start Free</button>
+                <a href="/register" class="btn btn-primary" style="padding: 14px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; text-decoration: none;" onclick="openModal('register'); return false;">Start Free</a>
                 <a href="#pricing" class="btn btn-outline" style="padding: 14px 28px; font-size: 15px;">View Pricing</a>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;">⚡ No credit card required • Free trial available • Cancel anytime</p>
@@ -3038,7 +3038,19 @@ header('Content-Type: text/html; charset=utf-8');
 
         // Auto check session and load release download data on load
         window.addEventListener('DOMContentLoaded', () => {
-            checkSession();
+            const path = window.location.pathname.toLowerCase();
+            if (path.includes('/logout')) {
+                localStorage.removeItem('sessionToken');
+                localStorage.removeItem('user');
+                closeAdminDashboard();
+                openModal('login');
+            } else if (path.includes('/login')) {
+                openModal('login');
+            } else if (path.includes('/register')) {
+                openModal('register');
+            } else {
+                checkSession();
+            }
             loadUserPortalData();
         });
     </script>
