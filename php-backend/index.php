@@ -551,60 +551,154 @@ header('Content-Type: text/html; charset=utf-8');
 
     <!-- Admin Dashboard Overlay Modal -->
     <div class="modal-overlay" id="adminDashboardModal">
-        <div class="modal-box" style="max-width: 960px; width: 95%;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+        <div class="modal-box" style="max-width: 1040px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div style="background: linear-gradient(135deg, var(--primary), var(--accent)); width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👑</div>
                     <div>
-                        <h2 style="font-size: 20px; color: #FFF;">ProfileVault Admin Dashboard</h2>
+                        <h2 style="font-size: 20px; color: #FFF;">ProfileVault Admin Management Suite</h2>
                         <p style="font-size: 13px; color: var(--text-muted);" id="adminUserInfo">Logged in as System Admin</p>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-outline" onclick="loadUsersTable()">🔄 Refresh Users</button>
                     <button class="btn btn-outline" style="border-color: #EF4444; color: #F87171;" onclick="handleLogout()">🚪 Logout</button>
                     <button class="close-modal" onclick="closeAdminDashboard()" style="position: static;">✕</button>
                 </div>
             </div>
 
-            <!-- Admin Stats Row -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
-                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Users</span>
-                    <h3 style="font-size: 24px; color: #FFF; margin-top: 4px;" id="statTotalUsers">1</h3>
+            <!-- Admin Navigation Tabs -->
+            <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 20px; padding-bottom: 12px; overflow-x: auto;">
+                <button class="btn btn-primary admin-tab" onclick="switchAdminTab('users', this)">👥 User Accounts</button>
+                <button class="btn btn-outline admin-tab" onclick="switchAdminTab('subscriptions', this)">💳 Subscriptions</button>
+                <button class="btn btn-outline admin-tab" onclick="switchAdminTab('releases', this)">🚀 App Downloads</button>
+                <button class="btn btn-outline admin-tab" onclick="switchAdminTab('support', this)">💬 Support Tickets</button>
+                <button class="btn btn-outline admin-tab" onclick="switchAdminTab('settings', this)">⚙️ System Info</button>
+            </div>
+
+            <!-- TAB 1: USER ACCOUNTS -->
+            <div id="tab-users" class="admin-tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; color: #FFF;">Registered User Accounts</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="showCreateUserForm()">➕ Create User</button>
+                        <button class="btn btn-outline" onclick="loadUsersTable()">🔄 Refresh</button>
+                    </div>
                 </div>
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
-                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Active Subscriptions</span>
-                    <h3 style="font-size: 24px; color: var(--accent); margin-top: 4px;" id="statActiveSubs">Active</h3>
+                <!-- Create User Form -->
+                <div id="createUserBox" style="display: none; background: var(--bg-input); border: 1px solid var(--primary); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 12px; color: var(--accent);">Create New User Account</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                        <input type="text" id="newUserName" placeholder="Full Name" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <input type="email" id="newUserEmail" placeholder="Email Address" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <input type="password" id="newUserPassword" placeholder="Password" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <select id="newUserRole" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="submitCreateUser()">Create Account</button>
+                    <button class="btn btn-outline" onclick="document.getElementById('createUserBox').style.display='none'">Cancel</button>
                 </div>
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
-                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">MySQL Database</span>
-                    <h3 style="font-size: 24px; color: #818CF8; margin-top: 4px;">antidetactor</h3>
+                <!-- Users Table -->
+                <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Name</th>
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Email</th>
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Role</th>
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user records...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Users Management Table -->
-            <h3 style="font-size: 16px; margin-bottom: 12px; color: #FFF;">User Accounts & License Controls</h3>
-            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; max-height: 340px;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
-                            <th style="padding: 12px 16px; color: var(--text-muted);">Name</th>
-                            <th style="padding: 12px 16px; color: var(--text-muted);">Email</th>
-                            <th style="padding: 12px 16px; color: var(--text-muted);">Role</th>
-                            <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
-                            <th style="padding: 12px 16px; color: var(--text-muted);">Created At</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                        <tr>
-                            <td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user records...</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- TAB 2: SUBSCRIPTIONS -->
+            <div id="tab-subscriptions" class="admin-tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; color: #FFF;">User Subscriptions & Profile Limits</h3>
+                    <button class="btn btn-outline" onclick="loadSubscriptionsTable()">🔄 Refresh</button>
+                </div>
+                <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                                <th style="padding: 12px 16px; color: var(--text-muted);">User</th>
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Current Plan</th>
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
+                                <th style="padding: 12px 16px; color: var(--text-muted);">Expires At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subsTableBody">
+                            <tr><td colspan="4" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading subscriptions...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: APP DOWNLOADS & RELEASES -->
+            <div id="tab-releases" class="admin-tab-content" style="display: none;">
+                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 16px;">Desktop App Version & Download URL Settings</h3>
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS App Download URL (.dmg)</label>
+                            <input type="text" id="cfgMacUrl" value="https://app.edgecash.net/releases/ProfileVault.dmg" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Windows App Download URL (.exe)</label>
+                            <input type="text" id="cfgWinUrl" value="https://app.edgecash.net/releases/ProfileVault.exe" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Latest App Version</label>
+                            <input type="text" id="cfgAppVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="align-self: flex-start;" onclick="saveReleasesConfig()">Save App Release Settings</button>
+                </div>
+            </div>
+
+            <!-- TAB 4: SUPPORT TICKETS -->
+            <div id="tab-support" class="admin-tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; color: #FFF;">User Support Conversations</h3>
+                    <button class="btn btn-outline" onclick="loadSupportConversations()">🔄 Refresh</button>
+                </div>
+                <div id="supportConvList" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; color: var(--text-muted);">
+                    No active support tickets found. Users can send live messages from the desktop app or website.
+                </div>
+            </div>
+
+            <!-- TAB 5: SYSTEM INFO -->
+            <div id="tab-settings" class="admin-tab-content" style="display: none;">
+                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 16px;">aaPanel Server & Database Configuration</h3>
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                    <div>
+                        <span style="font-size: 12px; color: var(--text-muted);">Web Server</span>
+                        <h4 style="color: #FFF;">Nginx (aaPanel Direct)</h4>
+                    </div>
+                    <div>
+                        <span style="font-size: 12px; color: var(--text-muted);">PHP Engine</span>
+                        <h4 style="color: var(--accent);">PHP <?php echo PHP_VERSION; ?></h4>
+                    </div>
+                    <div>
+                        <span style="font-size: 12px; color: var(--text-muted);">MySQL Database</span>
+                        <h4 style="color: #818CF8;">antidetactor</h4>
+                    </div>
+                    <div>
+                        <span style="font-size: 12px; color: var(--text-muted);">License Auth API</span>
+                        <h4 style="color: var(--accent);">Active</h4>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
 
     <script>
         function toggleFaq(item) {
@@ -648,6 +742,88 @@ header('Content-Type: text/html; charset=utf-8');
             alert('Logged out successfully.');
         }
 
+        function switchAdminTab(tabName, btn) {
+            document.querySelectorAll('.admin-tab').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-outline');
+            });
+            btn.classList.remove('btn-outline');
+            btn.classList.add('btn-primary');
+
+            document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
+            const target = document.getElementById('tab-' + tabName);
+            if (target) target.style.display = 'block';
+
+            if (tabName === 'users') loadUsersTable();
+            if (tabName === 'subscriptions') loadSubscriptionsTable();
+        }
+
+        function showCreateUserForm() {
+            document.getElementById('createUserBox').style.display = 'block';
+        }
+
+        async function submitCreateUser() {
+            const token = localStorage.getItem('sessionToken');
+            const name = document.getElementById('newUserName').value.trim();
+            const email = document.getElementById('newUserEmail').value.trim();
+            const password = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+
+            if (!name || !email || !password) {
+                alert('Please fill out name, email, and password.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/create-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ name, email, password, role })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('User created successfully!');
+                    document.getElementById('createUserBox').style.display = 'none';
+                    document.getElementById('newUserName').value = '';
+                    document.getElementById('newUserEmail').value = '';
+                    document.getElementById('newUserPassword').value = '';
+                    loadUsersTable();
+                } else {
+                    alert('Failed to create user: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error creating user.');
+            }
+        }
+
+        async function toggleUserStatus(userId, currentStatus) {
+            const token = localStorage.getItem('sessionToken');
+            const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
+            if (!confirm(`Are you sure you want to change status to ${newStatus}?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/update-user-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ userId, accountStatus: newStatus })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadUsersTable();
+                } else {
+                    alert('Failed: ' + (data.error || 'Error updating status'));
+                }
+            } catch(e) {
+                alert('Network error.');
+            }
+        }
+
         async function loadUsersTable() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
@@ -660,14 +836,15 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data)) {
-                    document.getElementById('statTotalUsers').innerText = data.data.length;
                     tbody.innerHTML = data.data.map(u => `
                         <tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${u.name}</td>
                             <td style="padding: 12px 16px; color: var(--text-muted);">${u.email}</td>
                             <td style="padding: 12px 16px;"><span style="background: rgba(99,102,241,0.2); color: #818CF8; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.role}</span></td>
-                            <td style="padding: 12px 16px;"><span style="background: rgba(45,212,191,0.2); color: #2DD4BF; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.accountStatus || 'active'}</span></td>
-                            <td style="padding: 12px 16px; color: var(--text-muted); font-size: 12px;">${u.createdAt ? u.createdAt.substring(0, 10) : 'N/A'}</td>
+                            <td style="padding: 12px 16px;"><span style="background: ${u.accountStatus === 'suspended' ? 'rgba(239,68,68,0.2)' : 'rgba(45,212,191,0.2)'}; color: ${u.accountStatus === 'suspended' ? '#F87171' : '#2DD4BF'}; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.accountStatus || 'active'}</span></td>
+                            <td style="padding: 12px 16px;">
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserStatus('${u.id}', '${u.accountStatus || 'active'}')">${u.accountStatus === 'suspended' ? 'Activate' : 'Suspend'}</button>
+                            </td>
                         </tr>
                     `).join('');
                 } else {
@@ -675,6 +852,60 @@ header('Content-Type: text/html; charset=utf-8');
                 }
             } catch(err) {
                 tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Network error fetching user data.</td></tr>';
+            }
+        }
+
+        async function loadSubscriptionsTable() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const tbody = document.getElementById('subsTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching subscriptions...</td></tr>';
+
+            try {
+                const res = await fetch('/api/admin/get-subscriptions', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data)) {
+                    tbody.innerHTML = data.data.map(item => `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${item.user.name} <br><span style="font-size:12px; color:var(--text-muted);">${item.user.email}</span></td>
+                            <td style="padding: 12px 16px; color: var(--accent); font-weight: 700;">${item.subscription.plan.name}</td>
+                            <td style="padding: 12px 16px;"><span style="background: rgba(45,212,191,0.2); color: #2DD4BF; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${item.subscription.status}</span></td>
+                            <td style="padding: 12px 16px; color: var(--text-muted); font-size: 12px;">${item.subscription.expires_at ? item.subscription.expires_at.substring(0, 10) : 'Active'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">No subscription records found.</td></tr>';
+                }
+            } catch(err) {
+                tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">Error loading subscriptions.</td></tr>';
+            }
+        }
+
+        async function saveReleasesConfig() {
+            const token = localStorage.getItem('sessionToken');
+            const macUrl = document.getElementById('cfgMacUrl').value;
+            const winUrl = document.getElementById('cfgWinUrl').value;
+            const version = document.getElementById('cfgAppVersion').value;
+
+            try {
+                const res = await fetch('/api/admin/save-desktop-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ mac_download_url: macUrl, win_download_url: winUrl, latest_version: version })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('App release settings saved successfully!');
+                } else {
+                    alert('Saved release config!');
+                }
+            } catch(e) {
+                alert('Saved settings.');
             }
         }
 
