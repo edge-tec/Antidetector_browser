@@ -1922,13 +1922,13 @@ header('Content-Type: text/html; charset=utf-8');
                     localStorage.setItem('user', JSON.stringify(data.user));
 
                     if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/');
+                        window.history.replaceState({}, '', '/dashboard');
                     }
 
                     setTimeout(() => {
                         closeModal();
                         checkSession();
-                    }, 500);
+                    }, 400);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -1968,13 +1968,13 @@ header('Content-Type: text/html; charset=utf-8');
                     localStorage.setItem('user', JSON.stringify(data.user));
 
                     if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/');
+                        window.history.replaceState({}, '', '/dashboard');
                     }
 
                     setTimeout(() => {
                         closeModal();
                         checkSession();
-                    }, 500);
+                    }, 400);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -2049,6 +2049,18 @@ header('Content-Type: text/html; charset=utf-8');
                 const res = await fetch('/api/auth/me', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
+
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('sessionToken');
+                    localStorage.removeItem('user');
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', '/login');
+                    }
+                    closeAdminDashboard();
+                    openModal('login');
+                    return;
+                }
+
                 const data = await res.json();
 
                 if (data.success && data.license) {
@@ -3035,19 +3047,19 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Success! Opening Account Dashboard...';
+                    msg.innerText = 'Success! Redirecting to Account Dashboard...';
                     
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
                     if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/');
+                        window.history.replaceState({}, '', '/dashboard');
                     }
 
                     setTimeout(() => {
                         closeModal();
                         checkSession();
-                    }, 500);
+                    }, 400);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -3060,11 +3072,12 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        // Auto check session and load release download data on load
+        // Router & Route Guard on Page Load
         window.addEventListener('DOMContentLoaded', () => {
             const path = window.location.pathname.toLowerCase();
             const token = localStorage.getItem('sessionToken');
             const userStr = localStorage.getItem('user');
+            const isAuthenticated = !!(token && userStr);
 
             if (path.includes('/logout')) {
                 localStorage.removeItem('sessionToken');
@@ -3074,19 +3087,46 @@ header('Content-Type: text/html; charset=utf-8');
                 }
                 closeAdminDashboard();
                 openModal('login');
-            } else if (token && userStr) {
-                if (path.includes('/login') || path.includes('/register')) {
+                return;
+            }
+
+            // Protected Dashboard / Profile Routes (/dashboard, /profile, /admin)
+            if (path.includes('/dashboard') || path.includes('/profile') || path.includes('/admin')) {
+                if (!isAuthenticated) {
                     if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/');
+                        window.history.replaceState({}, '', '/login');
                     }
+                    closeAdminDashboard();
+                    openModal('login');
+                    return;
+                } else {
+                    closeModal();
+                    checkSession();
+                    return;
                 }
+            }
+
+            // Authentication Routes (/login, /register)
+            if (path.includes('/login') || path.includes('/register')) {
+                if (isAuthenticated) {
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', '/dashboard');
+                    }
+                    closeModal();
+                    checkSession();
+                    return;
+                } else {
+                    closeAdminDashboard();
+                    openModal(path.includes('/register') ? 'register' : 'login');
+                    return;
+                }
+            }
+
+            // Default Root / Landing Page Path
+            if (isAuthenticated) {
                 checkSession();
-            } else if (path.includes('/login')) {
-                openModal('login');
-            } else if (path.includes('/register')) {
-                openModal('register');
             } else {
-                checkSession();
+                closeAdminDashboard();
             }
             loadUserPortalData();
         });
