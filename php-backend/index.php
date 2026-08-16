@@ -69,10 +69,14 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
         exit();
     }
 
-    // Auth APIs (/api/auth/login, /api/auth/register, /api/auth/me)
-    if (strpos($requestUri, '/api/auth/') === 0) {
+    // Auth APIs (/api/auth/login, /api/auth/register, /api/auth/google, /api/auth/me)
+    if (strpos($requestUri, '/api/auth') === 0) {
         $action = str_replace('/api/auth/', '', $requestUri);
-        $_GET['action'] = $action;
+        $action = str_replace('/api/auth', '', $action);
+        $action = trim($action, '/');
+        if (!empty($action)) {
+            $_GET['action'] = $action;
+        }
         require_once __DIR__ . '/api/auth.php';
         exit();
     }
@@ -1819,10 +1823,8 @@ header('Content-Type: text/html; charset=utf-8');
 
                     setTimeout(() => {
                         closeModal();
-                        document.getElementById('adminUserInfo').innerText = 'Logged in as ' + data.user.name + ' (' + data.user.email + ')';
-                        document.getElementById('adminDashboardModal').classList.add('active');
-                        loadUsersTable();
-                    }, 800);
+                        checkSession();
+                    }, 500);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -1863,10 +1865,8 @@ header('Content-Type: text/html; charset=utf-8');
 
                     setTimeout(() => {
                         closeModal();
-                        document.getElementById('adminUserInfo').innerText = 'Logged in as ' + data.user.name + ' (' + data.user.email + ')';
-                        document.getElementById('adminDashboardModal').classList.add('active');
-                        loadUsersTable();
-                    }, 800);
+                        checkSession();
+                    }, 500);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
@@ -2775,10 +2775,8 @@ header('Content-Type: text/html; charset=utf-8');
 
                     setTimeout(() => {
                         closeModal();
-                        document.getElementById('adminUserInfo').innerText = 'Logged in as ' + data.user.name + ' (' + data.user.email + ')';
-                        document.getElementById('adminDashboardModal').classList.add('active');
-                        loadUsersTable();
-                    }, 600);
+                        checkSession();
+                    }, 500);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';

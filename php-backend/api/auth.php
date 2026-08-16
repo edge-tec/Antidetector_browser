@@ -115,7 +115,7 @@ switch ($action) {
                 'id' => $userId,
                 'name' => $name,
                 'email' => strtolower($email),
-                'role' => 'user',
+                'role' => $role,
                 'emailVerified' => true,
                 'accountStatus' => 'active'
             ]
