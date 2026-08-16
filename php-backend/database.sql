@@ -90,6 +90,32 @@ CREATE TABLE IF NOT EXISTS `desktop_installations` (
   CONSTRAINT `fk_inst_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `app_releases` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `platform` VARCHAR(50) NOT NULL,
+  `version` VARCHAR(50) NOT NULL,
+  `release_name` VARCHAR(255) NOT NULL,
+  `file_path` VARCHAR(255) DEFAULT NULL,
+  `download_url` TEXT DEFAULT NULL,
+  `original_filename` VARCHAR(255) DEFAULT NULL,
+  `file_size` BIGINT DEFAULT 0,
+  `release_notes` TEXT DEFAULT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'active',
+  `published_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `uploaded_by` VARCHAR(255) DEFAULT 'admin',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_rel_plat_status` (`platform`, `status`),
+  KEY `idx_rel_ver` (`platform`, `version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `app_releases` (`id`, `platform`, `version`, `release_name`, `file_path`, `download_url`, `original_filename`, `file_size`, `release_notes`, `status`, `uploaded_by`) VALUES
+('rel_win_100', 'windows-x64', '1.0.0', 'ProfileVault v1.0.0 Stable Release', 'releases/ProfileVault-Windows-x64.exe', '/download/windows', 'ProfileVault-Windows-x64.exe', 159, 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.', 'active', 'system'),
+('rel_mac_arm_100', 'macos-arm64', '1.0.0', 'ProfileVault Apple Silicon v1.0.0 Stable Release', 'releases/ProfileVault-macOS-AppleSilicon-arm64.dmg', '/download/macos-arm64', 'ProfileVault-macOS-AppleSilicon-arm64.dmg', 159, 'ARM64 build engineered specifically for Apple Silicon M-series chips.', 'active', 'system'),
+('rel_mac_intel_100', 'macos-x64', '1.0.0', 'ProfileVault macOS Intel v1.0.0 Stable Release', 'releases/ProfileVault-macOS-Intel-x64.dmg', '/download/macos-intel', 'ProfileVault-macOS-Intel-x64.dmg', 159, 'x64 build for Intel-based Mac computers.', 'active', 'system'),
+('rel_linux_100', 'linux-x64', '1.0.0', 'ProfileVault Linux v1.0.0 AppImage', 'releases/ProfileVault-Linux-x86_64.AppImage', '/download/linux', 'ProfileVault-Linux-x86_64.AppImage', 159, 'Native Linux AppImage installer package.', 'active', 'system')
+ON DUPLICATE KEY UPDATE `id`=`id`;
+
 -- 5. Desktop App Configuration (Downloads & Releases)
 CREATE TABLE IF NOT EXISTS `desktop_app_config` (
   `config_key` VARCHAR(100) NOT NULL PRIMARY KEY,
@@ -97,16 +123,16 @@ CREATE TABLE IF NOT EXISTS `desktop_app_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `desktop_app_config` (`config_key`, `config_value`) VALUES
-('win_download_url', '/api/releases?download=1&platform=windows-x64'),
+('win_download_url', '/download/windows'),
 ('win_app_version', '1.0.0'),
 ('win_enabled', 'true'),
-('mac_intel_download_url', '/api/releases?download=1&platform=macos-x64'),
+('mac_intel_download_url', '/download/macos-intel'),
 ('mac_intel_app_version', '1.0.0'),
 ('mac_intel_enabled', 'true'),
-('mac_arm_download_url', '/api/releases?download=1&platform=macos-arm64'),
+('mac_arm_download_url', '/download/macos-arm64'),
 ('mac_arm_app_version', '1.0.0'),
 ('mac_arm_enabled', 'true'),
-('linux_download_url', '/api/releases?download=1&platform=linux-x64'),
+('linux_download_url', '/download/linux'),
 ('linux_app_version', '1.0.0'),
 ('linux_enabled', 'true'),
 ('release_notes', 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.'),

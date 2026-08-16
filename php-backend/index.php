@@ -32,6 +32,26 @@ if ($requestUri === '/robots.txt') {
 if ($requestUri === '/llms.txt' || $requestUri === '/llms') {
     require_once __DIR__ . '/llms.php';
     exit();
+// ── 0.1 Direct Application Download Endpoints ──
+if (strpos($requestUri, '/download/') === 0 || $requestUri === '/download') {
+    $subPath = str_replace('/download/', '', $requestUri);
+    $subPath = trim(str_replace('/download', '', $subPath), '/');
+
+    $platformMap = [
+        'windows' => 'windows-x64',
+        'win' => 'windows-x64',
+        'macos-intel' => 'macos-x64',
+        'mac-intel' => 'macos-x64',
+        'macos-arm64' => 'macos-arm64',
+        'apple-silicon' => 'macos-arm64',
+        'mac-arm' => 'macos-arm64',
+        'linux' => 'linux-x64'
+    ];
+
+    $_GET['download'] = '1';
+    $_GET['platform'] = $platformMap[$subPath] ?? 'windows-x64';
+    require_once __DIR__ . '/api/releases.php';
+    exit();
 }
 
 // ── 1. API Route Dispatcher ──
@@ -1360,54 +1380,90 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 6: APP RELEASES -->
                     <div id="tab-releases" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 6px;">Desktop App Version & Download URL Settings</h3>
-                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Configure direct download URLs (Google Drive, GitHub Releases, AWS S3, Dropbox, or custom server URL) for each installer.</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Centralized Application Download & Release Management</h3>
+                                <p style="color: var(--text-muted); font-size: 13px;">Upload installer binaries, publish new app versions, and manage release history across all desktop platforms.</p>
+                            </div>
+                            <button class="btn btn-outline" onclick="loadAppReleasesTable()">🔄 Refresh Release History</button>
+                        </div>
 
                         <div id="releasesConfigMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
 
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Windows Download URL (.exe)</label>
-                                    <input type="text" id="cfgWinUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
-                                    <span style="font-size: 11px; color: var(--text-muted);">Google Drive, GitHub, or server link</span>
-                                </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Windows App Version</label>
-                                    <input type="text" id="cfgWinVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                        <!-- 1. Publish New Release Box -->
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-bottom: 24px;">
+                            <h4 style="color: #2DD4BF; font-size: 15px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                                🚀 Publish New Desktop Application Release
+                            </h4>
+                            <form id="formPublishRelease" onsubmit="handlePublishRelease(event)" enctype="multipart/form-data">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Target Platform</label>
+                                        <select id="relPlatform" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                            <option value="windows-x64">🪟 Windows Client (x64 Architecture)</option>
+                                            <option value="macos-arm64">🍏 macOS Apple Silicon (M1 / M2 / M3 / M4)</option>
+                                            <option value="macos-x64">🍏 macOS Intel (x64 Processors)</option>
+                                            <option value="linux-x64">🐧 Linux Client (.AppImage)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Version Number</label>
+                                        <input type="text" id="relVersion" placeholder="2.1.0" required style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Release Name / Headline</label>
+                                        <input type="text" id="relName" placeholder="ProfileVault v2.1.0 Feature & Performance Release" required style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Publish Status</label>
+                                        <select id="relStatus" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                            <option value="active">Active (Set as current active release)</option>
+                                            <option value="draft">Save as Draft (Not public)</option>
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Apple Silicon URL (.dmg)</label>
-                                    <input type="text" id="cfgMacArmUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
-                                    <span style="font-size: 11px; color: var(--text-muted);">ARM64 (M1/M2/M3/M4) download link</span>
-                                </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Apple Silicon Version</label>
-                                    <input type="text" id="cfgMacArmVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
-                                </div>
-
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Intel URL (.dmg)</label>
-                                    <input type="text" id="cfgMacIntelUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
-                                    <span style="font-size: 11px; color: var(--text-muted);">x64 Intel Mac download link</span>
-                                </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Intel Version</label>
-                                    <input type="text" id="cfgMacIntelVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Upload Application File (.exe, .dmg, .AppImage, .zip)</label>
+                                        <input type="file" id="relFile" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; color: #FFF; margin-top: 6px;">
+                                        <span style="font-size: 11px; color: var(--text-muted);">Directly uploads binary installer file to server storage</span>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">OR External Direct Download URL (Google Drive / S3 / GitHub)</label>
+                                        <input type="url" id="relDirectUrl" placeholder="https://github.com/.../ProfileVault-2.1.0.exe" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                        <span style="font-size: 11px; color: var(--text-muted);">Optional if uploading binary file above</span>
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Linux App Download URL (.AppImage)</label>
-                                    <input type="text" id="cfgLinuxUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                <div style="margin-bottom: 16px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Release Notes & Changelog</label>
+                                    <textarea id="relNotes" rows="3" placeholder="List new features, performance improvements, and security enhancements in this version..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;"></textarea>
                                 </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Linux App Version</label>
-                                    <input type="text" id="cfgLinuxVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
-                                </div>
-                            </div>
 
-                            <button class="btn btn-primary" style="align-self: flex-start; background: #2DD4BF; color: #000; font-weight: 800; margin-top: 10px;" onclick="saveReleasesConfig()">💾 Save Release Download Settings</button>
+                                <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 24px;">🚀 Publish Release & Update User Downloads</button>
+                            </form>
+                        </div>
+
+                        <!-- 2. Release History Table -->
+                        <h4 style="color: #FFF; font-size: 16px; margin-bottom: 12px;">Version History & Published Releases</h4>
+                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Platform</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Version</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Release Name</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">File & Size</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Published Date</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="appReleasesTableBody">
+                                    <tr><td colspan="7" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading application release history...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -2125,7 +2181,7 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'security') loadSecurityTable();
             if (tabName === 'profile-audit') loadProfileAuditTable();
             if (tabName === 'seo') loadSeoPagesTable();
-            if (tabName === 'releases') loadReleasesConfig();
+            if (tabName === 'releases') loadAppReleasesTable();
         }
 
         async function saveProfileEngineSettings() {
@@ -2693,24 +2749,176 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        async function loadReleasesConfig() {
+        async function loadAppReleasesTable() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
+            const tbody = document.getElementById('appReleasesTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">Loading application release history...</td></tr>';
+
             try {
-                const res = await fetch('/api/admin/get-releases-config', { headers: { 'Authorization': 'Bearer ' + token } });
+                const res = await fetch('/api/admin/get-app-releases', { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
-                if (data.success && data.data) {
-                    const c = data.data;
-                    if (document.getElementById('cfgWinUrl')) document.getElementById('cfgWinUrl').value = c.win_download_url || '';
-                    if (document.getElementById('cfgWinVersion')) document.getElementById('cfgWinVersion').value = c.win_app_version || '1.0.0';
-                    if (document.getElementById('cfgMacArmUrl')) document.getElementById('cfgMacArmUrl').value = c.mac_arm_download_url || '';
-                    if (document.getElementById('cfgMacArmVersion')) document.getElementById('cfgMacArmVersion').value = c.mac_arm_app_version || '1.0.0';
-                    if (document.getElementById('cfgMacIntelUrl')) document.getElementById('cfgMacIntelUrl').value = c.mac_intel_download_url || '';
-                    if (document.getElementById('cfgMacIntelVersion')) document.getElementById('cfgMacIntelVersion').value = c.mac_intel_app_version || '1.0.0';
-                    if (document.getElementById('cfgLinuxUrl')) document.getElementById('cfgLinuxUrl').value = c.linux_download_url || '';
-                    if (document.getElementById('cfgLinuxVersion')) document.getElementById('cfgLinuxVersion').value = c.linux_app_version || '1.0.0';
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    const iconMap = {
+                        'windows-x64': '🪟 Windows',
+                        'macos-arm64': '🍏 Mac Apple Silicon',
+                        'macos-x64': '🍏 Mac Intel',
+                        'linux-x64': '🐧 Linux'
+                    };
+
+                    tbody.innerHTML = data.data.map(r => {
+                        const platLabel = iconMap[r.platform] || r.platform;
+                        const isAct = r.status === 'active';
+                        const statusBadge = isAct
+                            ? '<span style="background:rgba(16,185,129,0.2); color:#10B981; padding:3px 10px; border-radius:12px; font-weight:800; font-size:11px;">ACTIVE</span>'
+                            : (r.status === 'draft'
+                                ? '<span style="background:rgba(245,158,11,0.2); color:#F59E0B; padding:3px 10px; border-radius:12px; font-weight:800; font-size:11px;">DRAFT</span>'
+                                : '<span style="background:rgba(148,163,184,0.15); color:#94A3B8; padding:3px 10px; border-radius:12px; font-size:11px;">ARCHIVED</span>');
+
+                        const sizeMb = r.file_size > 0 ? (r.file_size / (1024 * 1024)).toFixed(2) + ' MB' : 'External Link';
+                        const dlLink = r.download_url ? `<a href="${r.download_url}" target="_blank" style="color:#2DD4BF; text-decoration:none; font-weight:600;">Download (${r.original_filename || 'File'})</a>` : 'N/A';
+
+                        return `
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding: 12px 16px; font-weight:700; color:#FFF;">${platLabel}</td>
+                                <td style="padding: 12px 16px;"><span style="background:rgba(45,212,191,0.15); color:#2DD4BF; padding:2px 8px; border-radius:6px; font-weight:800;">v${r.version}</span></td>
+                                <td style="padding: 12px 16px; color:#FFF; font-weight:600;">${r.release_name || 'Release v' + r.version}</td>
+                                <td style="padding: 12px 16px;">${dlLink} <span style="color:var(--text-muted); font-size:11px;">(${sizeMb})</span></td>
+                                <td style="padding: 12px 16px; color:var(--text-muted); font-size:12px;">${r.published_at || r.created_at}</td>
+                                <td style="padding: 12px 16px;">${statusBadge}</td>
+                                <td style="padding: 12px 16px; display:flex; gap:6px;">
+                                    ${!isAct ? `<button class="btn btn-primary" style="padding:3px 8px; font-size:11px; background:#2DD4BF; color:#000; font-weight:800;" onclick="activateAppRelease('${r.id}')">✅ Make Active</button>` : ''}
+                                    <button class="btn btn-outline" style="padding:3px 8px; font-size:11px; border-color:#EF4444; color:#F87171;" onclick="deleteAppRelease('${r.id}')">🗑️ Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">No releases found in release history. Use the form above to publish your first release.</td></tr>';
                 }
-            } catch(e){}
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:#F87171;">Error loading release history records.</td></tr>';
+            }
+        }
+
+        async function handlePublishRelease(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const platform = document.getElementById('relPlatform').value;
+            const version = document.getElementById('relVersion').value.trim();
+            const releaseName = document.getElementById('relName').value.trim();
+            const status = document.getElementById('relStatus').value;
+            const directUrl = document.getElementById('relDirectUrl').value.trim();
+            const notes = document.getElementById('relNotes').value.trim();
+            const fileInput = document.getElementById('relFile');
+
+            if (!version || !releaseName) {
+                alert('Please enter version number and release name.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('platform', platform);
+            formData.append('version', version);
+            formData.append('release_name', releaseName);
+            formData.append('status', status);
+            formData.append('download_url', directUrl);
+            formData.append('release_notes', notes);
+
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+
+            const msg = document.getElementById('releasesConfigMsg');
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(99,102,241,0.2)';
+            msg.style.color = '#818CF8';
+            msg.innerText = 'Publishing application release... Please wait...';
+
+            try {
+                const res = await fetch('/api/admin/publish-app-release', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msg.style.background = 'rgba(45,212,191,0.2)';
+                    msg.style.color = '#2DD4BF';
+                    msg.innerText = data.message;
+
+                    document.getElementById('relVersion').value = '';
+                    document.getElementById('relName').value = '';
+                    document.getElementById('relDirectUrl').value = '';
+                    document.getElementById('relNotes').value = '';
+                    fileInput.value = '';
+
+                    loadAppReleasesTable();
+                    loadUserPortalData();
+                } else {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = data.error || 'Failed to publish release.';
+                }
+            } catch(e) {
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.innerText = 'Network error publishing release.';
+            }
+        }
+
+        async function activateAppRelease(releaseId) {
+            const token = localStorage.getItem('sessionToken');
+            if (!confirm('Are you sure you want to set this release as the current ACTIVE version for users?')) return;
+
+            try {
+                const res = await fetch('/api/admin/activate-app-release', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ releaseId: releaseId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message);
+                    loadAppReleasesTable();
+                    loadUserPortalData();
+                } else {
+                    alert('Failed to activate release: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error activating release.');
+            }
+        }
+
+        async function deleteAppRelease(releaseId) {
+            const token = localStorage.getItem('sessionToken');
+            if (!confirm('Are you sure you want to delete this release record?')) return;
+
+            try {
+                const res = await fetch('/api/admin/delete-app-release', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ releaseId: releaseId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadAppReleasesTable();
+                    loadUserPortalData();
+                } else {
+                    alert('Failed to delete release: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error deleting release.');
+            }
         }
 
         async function saveReleasesConfig() {

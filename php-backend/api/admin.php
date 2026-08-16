@@ -580,6 +580,155 @@ switch ($action) {
         }
         break;
 
+    case 'get-app-releases':
+        try {
+            $stmt = $db->query("SELECT * FROM app_releases ORDER BY created_at DESC");
+            $releases = $stmt->fetchAll();
+            respondJson(['success' => true, 'data' => $releases]);
+        } catch (Throwable $e) {
+            respondJson(['success' => true, 'data' => []]);
+        }
+        break;
+
+    case 'publish-app-release':
+        $platform = trim($_POST['platform'] ?? 'windows-x64');
+        $version = trim($_POST['version'] ?? '1.0.0');
+        $releaseName = trim($_POST['release_name'] ?? "ProfileVault v{$version} Release");
+        $releaseNotes = trim($_POST['release_notes'] ?? '');
+        $status = trim($_POST['status'] ?? 'active');
+        $directUrl = trim($_POST['download_url'] ?? '');
+
+        $releaseId = 'rel_' . bin2hex(random_bytes(8));
+        $filePath = null;
+        $originalFilename = null;
+        $fileSize = 0;
+
+        if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+            $releasesDir = __DIR__ . '/../releases';
+            if (!is_dir($releasesDir)) {
+                mkdir($releasesDir, 0755, true);
+            }
+
+            $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+            $cleanVersion = preg_replace('/[^a-zA-Z0-9\._-]/', '', $version);
+            $targetFilename = "ProfileVault-{$platform}-v{$cleanVersion}.{$ext}";
+            $targetPath = $releasesDir . '/' . $targetFilename;
+
+            if (move_uploaded_file($_FILES['file']['tmp_name'], $targetPath)) {
+                chmod($targetPath, 0644);
+                $filePath = 'releases/' . $targetFilename;
+                $originalFilename = $_FILES['file']['name'];
+                $fileSize = filesize($targetPath);
+            }
+        }
+
+        if (empty($directUrl) && !empty($filePath)) {
+            $slugMap = [
+                'windows-x64' => '/download/windows',
+                'macos-arm64' => '/download/macos-arm64',
+                'macos-x64' => '/download/macos-intel',
+                'linux-x64' => '/download/linux'
+            ];
+            $directUrl = $slugMap[$platform] ?? '/download/windows';
+        }
+
+        if ($status === 'active') {
+            // Archive existing releases for platform
+            $archStmt = $db->prepare("UPDATE app_releases SET status = 'archived' WHERE platform = ?");
+            $archStmt->execute([$platform]);
+
+            // Sync with legacy config
+            $cfgVerKey = $platform === 'windows-x64' ? 'win_app_version' : ($platform === 'macos-arm64' ? 'mac_arm_app_version' : ($platform === 'macos-x64' ? 'mac_intel_app_version' : 'linux_app_version'));
+            $cfgUrlKey = $platform === 'windows-x64' ? 'win_download_url' : ($platform === 'macos-arm64' ? 'mac_arm_download_url' : ($platform === 'macos-x64' ? 'mac_intel_download_url' : 'linux_download_url'));
+
+            $syncStmt = $db->prepare("INSERT INTO desktop_app_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+            $syncStmt->execute([$cfgVerKey, $version]);
+            $syncStmt->execute([$cfgUrlKey, $directUrl]);
+        }
+
+        $insStmt = $db->prepare("
+            INSERT INTO app_releases (id, platform, version, release_name, file_path, download_url, original_filename, file_size, release_notes, status, published_at, uploaded_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
+        ");
+        $insStmt->execute([
+            $releaseId, $platform, $version, $releaseName, $filePath, $directUrl,
+            $originalFilename, $fileSize, $releaseNotes, $status, $adminUser['email']
+        ]);
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'PUBLISH_APP_RELEASE', null, "Published release {$version} for {$platform}");
+
+        respondJson([
+            'success' => true,
+            'message' => "Application release v{$version} for {$platform} published successfully!",
+            'releaseId' => $releaseId
+        ]);
+        break;
+
+    case 'activate-app-release':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $releaseId = $input['releaseId'] ?? '';
+
+        if (!$releaseId) {
+            respondJson(['success' => false, 'error' => 'Release ID required.'], 400);
+        }
+
+        $relStmt = $db->prepare("SELECT * FROM app_releases WHERE id = ?");
+        $relStmt->execute([$releaseId]);
+        $rel = $relStmt->fetch();
+
+        if (!$rel) {
+            respondJson(['success' => false, 'error' => 'Release record not found.'], 404);
+        }
+
+        // Archive all for platform
+        $archStmt = $db->prepare("UPDATE app_releases SET status = 'archived' WHERE platform = ?");
+        $archStmt->execute([$rel['platform']]);
+
+        // Activate specified release
+        $actStmt = $db->prepare("UPDATE app_releases SET status = 'active', published_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $actStmt->execute([$releaseId]);
+
+        // Sync legacy config
+        $platform = $rel['platform'];
+        $cfgVerKey = $platform === 'windows-x64' ? 'win_app_version' : ($platform === 'macos-arm64' ? 'mac_arm_app_version' : ($platform === 'macos-x64' ? 'mac_intel_app_version' : 'linux_app_version'));
+        $cfgUrlKey = $platform === 'windows-x64' ? 'win_download_url' : ($platform === 'macos-arm64' ? 'mac_arm_download_url' : ($platform === 'macos-x64' ? 'mac_intel_download_url' : 'linux_download_url'));
+
+        $syncStmt = $db->prepare("INSERT INTO desktop_app_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+        $syncStmt->execute([$cfgVerKey, $rel['version']]);
+        $syncStmt->execute([$cfgUrlKey, $rel['download_url']]);
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'ACTIVATE_APP_RELEASE', null, "Activated release {$rel['version']} for {$platform}");
+
+        respondJson(['success' => true, 'message' => "Release v{$rel['version']} for {$platform} is now active!"]);
+        break;
+
+    case 'delete-app-release':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $releaseId = $input['releaseId'] ?? '';
+
+        if (!$releaseId) {
+            respondJson(['success' => false, 'error' => 'Release ID required.'], 400);
+        }
+
+        $relStmt = $db->prepare("SELECT * FROM app_releases WHERE id = ?");
+        $relStmt->execute([$releaseId]);
+        $rel = $relStmt->fetch();
+
+        if ($rel) {
+            if (!empty($rel['file_path'])) {
+                $file = __DIR__ . '/../' . ltrim($rel['file_path'], '/');
+                if (file_exists($file) && is_file($file)) {
+                    @unlink($file);
+                }
+            }
+            $delStmt = $db->prepare("DELETE FROM app_releases WHERE id = ?");
+            $delStmt->execute([$releaseId]);
+        }
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'DELETE_APP_RELEASE', null, "Deleted release record {$releaseId}");
+        respondJson(['success' => true, 'message' => 'Release deleted successfully.']);
+        break;
+
     default:
         respondJson(['success' => false, 'error' => 'Invalid admin action.'], 404);
 }
