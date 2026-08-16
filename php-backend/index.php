@@ -1356,27 +1356,54 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 6: APP RELEASES -->
                     <div id="tab-releases" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Desktop App Version & Download URL Settings</h3>
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 6px;">Desktop App Version & Download URL Settings</h3>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Configure direct download URLs (Google Drive, GitHub Releases, AWS S3, Dropbox, or custom server URL) for each installer.</p>
+
+                        <div id="releasesConfigMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
+
                         <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
                                 <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS App Download URL (.dmg)</label>
-                                    <input type="text" id="cfgMacUrl" value="https://app.edgecash.net/releases/ProfileVault.dmg" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Windows Download URL (.exe)</label>
+                                    <input type="text" id="cfgWinUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">Google Drive, GitHub, or server link</span>
                                 </div>
                                 <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Windows App Download URL (.exe)</label>
-                                    <input type="text" id="cfgWinUrl" value="https://app.edgecash.net/releases/ProfileVault.exe" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Windows App Version</label>
+                                    <input type="text" id="cfgWinVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
                                 </div>
+
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Apple Silicon URL (.dmg)</label>
+                                    <input type="text" id="cfgMacArmUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">ARM64 (M1/M2/M3/M4) download link</span>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Apple Silicon Version</label>
+                                    <input type="text" id="cfgMacArmVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                </div>
+
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Intel URL (.dmg)</label>
+                                    <input type="text" id="cfgMacIntelUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">x64 Intel Mac download link</span>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">macOS Intel Version</label>
+                                    <input type="text" id="cfgMacIntelVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                </div>
+
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Linux App Download URL (.AppImage)</label>
-                                    <input type="text" id="cfgLinuxUrl" value="https://app.edgecash.net/releases/ProfileVault.AppImage" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    <input type="text" id="cfgLinuxUrl" placeholder="https://..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
                                 </div>
                                 <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Latest App Version</label>
-                                    <input type="text" id="cfgAppVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Linux App Version</label>
+                                    <input type="text" id="cfgLinuxVersion" value="1.0.0" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
                                 </div>
                             </div>
-                            <button class="btn btn-primary" style="align-self: flex-start;" onclick="saveReleasesConfig()">Save App Release Settings</button>
+
+                            <button class="btn btn-primary" style="align-self: flex-start; background: #2DD4BF; color: #000; font-weight: 800; margin-top: 10px;" onclick="saveReleasesConfig()">💾 Save Release Download Settings</button>
                         </div>
                     </div>
 
@@ -2098,6 +2125,7 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'security') loadSecurityTable();
             if (tabName === 'profile-audit') loadProfileAuditTable();
             if (tabName === 'seo') loadSeoPagesTable();
+            if (tabName === 'releases') loadReleasesConfig();
         }
 
         async function saveProfileEngineSettings() {
@@ -2665,30 +2693,57 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        async function loadReleasesConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/admin/get-releases-config', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const c = data.data;
+                    if (document.getElementById('cfgWinUrl')) document.getElementById('cfgWinUrl').value = c.win_download_url || '';
+                    if (document.getElementById('cfgWinVersion')) document.getElementById('cfgWinVersion').value = c.win_app_version || '1.0.0';
+                    if (document.getElementById('cfgMacArmUrl')) document.getElementById('cfgMacArmUrl').value = c.mac_arm_download_url || '';
+                    if (document.getElementById('cfgMacArmVersion')) document.getElementById('cfgMacArmVersion').value = c.mac_arm_app_version || '1.0.0';
+                    if (document.getElementById('cfgMacIntelUrl')) document.getElementById('cfgMacIntelUrl').value = c.mac_intel_download_url || '';
+                    if (document.getElementById('cfgMacIntelVersion')) document.getElementById('cfgMacIntelVersion').value = c.mac_intel_app_version || '1.0.0';
+                    if (document.getElementById('cfgLinuxUrl')) document.getElementById('cfgLinuxUrl').value = c.linux_download_url || '';
+                    if (document.getElementById('cfgLinuxVersion')) document.getElementById('cfgLinuxVersion').value = c.linux_app_version || '1.0.0';
+                }
+            } catch(e){}
+        }
+
         async function saveReleasesConfig() {
             const token = localStorage.getItem('sessionToken');
-            const macUrl = document.getElementById('cfgMacUrl').value;
-            const winUrl = document.getElementById('cfgWinUrl').value;
-            const linuxUrl = document.getElementById('cfgLinuxUrl') ? document.getElementById('cfgLinuxUrl').value : 'https://app.edgecash.net/releases/ProfileVault.AppImage';
-            const version = document.getElementById('cfgAppVersion').value;
+            const payload = {
+                win_download_url: document.getElementById('cfgWinUrl').value.trim(),
+                win_app_version: document.getElementById('cfgWinVersion').value.trim(),
+                mac_arm_download_url: document.getElementById('cfgMacArmUrl').value.trim(),
+                mac_arm_app_version: document.getElementById('cfgMacArmVersion').value.trim(),
+                mac_intel_download_url: document.getElementById('cfgMacIntelUrl').value.trim(),
+                mac_intel_app_version: document.getElementById('cfgMacIntelVersion').value.trim(),
+                linux_download_url: document.getElementById('cfgLinuxUrl').value.trim(),
+                linux_app_version: document.getElementById('cfgLinuxVersion').value.trim()
+            };
 
             try {
-                const res = await fetch('/api/admin/save-desktop-config', {
+                const res = await fetch('/api/admin/update-releases-config', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ mac_download_url: macUrl, win_download_url: winUrl, linux_download_url: linuxUrl, latest_version: version })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('App release settings saved successfully!');
+                    alert('App Release Settings & Download URLs updated successfully!');
+                    loadUserPortalData();
                 } else {
-                    alert('Saved release config!');
+                    alert('Failed to update release settings: ' + (data.error || 'Unknown error'));
                 }
             } catch(e) {
-                alert('Saved settings.');
+                alert('Network error saving release settings.');
             }
         }
 

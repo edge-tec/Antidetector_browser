@@ -532,6 +532,54 @@ switch ($action) {
         respondJson(['success' => true, 'message' => 'Release configuration updated successfully.']);
         break;
 
+    case 'upload-release-file':
+        if (!isset($_FILES['file'])) {
+            respondJson(['success' => false, 'error' => 'No file uploaded.'], 400);
+        }
+
+        $platform = $_POST['platform'] ?? 'windows-x64';
+        $filenameMap = [
+            'windows-x64' => 'ProfileVault-Windows-x64.exe',
+            'macos-arm64' => 'ProfileVault-macOS-AppleSilicon-arm64.dmg',
+            'macos-x64' => 'ProfileVault-macOS-Intel-x64.dmg',
+            'linux-x64' => 'ProfileVault-Linux-x86_64.AppImage'
+        ];
+
+        $targetName = $filenameMap[$platform] ?? basename($_FILES['file']['name']);
+        $releasesDir = __DIR__ . '/../releases';
+        if (!is_dir($releasesDir)) {
+            mkdir($releasesDir, 0755, true);
+        }
+
+        $targetPath = $releasesDir . '/' . $targetName;
+        if (move_uploaded_file($_FILES['file']['tmp_name'], $targetPath)) {
+            chmod($targetPath, 0644);
+            $downloadUrl = '/api/releases?download=1&platform=' . $platform;
+
+            $configKeyMap = [
+                'windows-x64' => 'win_download_url',
+                'macos-arm64' => 'mac_arm_download_url',
+                'macos-x64' => 'mac_intel_download_url',
+                'linux-x64' => 'linux_download_url'
+            ];
+
+            if (isset($configKeyMap[$platform])) {
+                $stmt = $db->prepare("INSERT INTO desktop_app_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+                $stmt->execute([$configKeyMap[$platform], $downloadUrl]);
+            }
+
+            logAdminAction($adminUser['id'], $adminUser['email'], 'UPLOAD_RELEASE_FILE', null, "Uploaded release binary file for platform {$platform}");
+            respondJson([
+                'success' => true,
+                'message' => "Application binary '{$targetName}' uploaded successfully (" . filesize($targetPath) . " bytes).",
+                'downloadUrl' => $downloadUrl,
+                'fileSize' => filesize($targetPath)
+            ]);
+        } else {
+            respondJson(['success' => false, 'error' => 'Failed to save uploaded release file.'], 500);
+        }
+        break;
+
     default:
         respondJson(['success' => false, 'error' => 'Invalid admin action.'], 404);
 }
