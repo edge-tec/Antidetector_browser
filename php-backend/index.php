@@ -540,7 +540,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <h3 style="font-size: 18px; color: #FFF;">Download for Windows</h3>
                 <span style="font-size: 11px; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; color: var(--text-muted);">x64 Architecture [64-bit]</span>
                 <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native installer for Windows 10 and 11. Includes automatic shortcuts and silent installer options.</p>
-                <a href="/releases/ProfileVault.exe" class="btn btn-outline" style="width: 100%; justify-content: center;">Download Windows .exe (v1.0.0)</a>
+                <button type="button" onclick="handleDownloadApp('windows-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="landingBtnWinDl">Download Windows .exe (v1.0.0)</button>
             </div>
 
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
@@ -548,7 +548,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <h3 style="font-size: 18px; color: #FFF;">Download for Mac — Intel</h3>
                 <span style="font-size: 11px; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; color: var(--text-muted);">Intel Processors [x64]</span>
                 <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native macOS disk image built for Intel-based Mac computers manufactured before late 2020.</p>
-                <a href="/releases/ProfileVault.dmg" class="btn btn-outline" style="width: 100%; justify-content: center;">Download macOS Intel .dmg (v1.0.0)</a>
+                <button type="button" onclick="handleDownloadApp('macos-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="landingBtnMacIntelDl">Download macOS Intel .dmg (v1.0.0)</button>
             </div>
 
             <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 28px; position: relative;">
@@ -557,7 +557,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <h3 style="font-size: 18px; color: #FFF;">Download for Mac — Apple Silicon</h3>
                 <span style="font-size: 11px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px; font-weight: 700;">M1 / M2 / M3 / M4 [arm64]</span>
                 <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native ARM64 build engineered specifically for Apple Silicon M-series processors for maximum speed.</p>
-                <a href="/releases/ProfileVault.dmg" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;">Download Apple Silicon .dmg (v1.0.0)</a>
+                <button type="button" onclick="handleDownloadApp('macos-arm64')" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" id="landingBtnMacArmDl">Download Apple Silicon .dmg (v1.0.0)</button>
             </div>
         </div>
     </section>
@@ -1139,7 +1139,7 @@ header('Content-Type: text/html; charset=utf-8');
                         </div>
                     </div>
 
-                    <!-- USER TAB 3: APP DOWNLOADS (Strictly Read-Only) -->
+                    <!-- USER TAB 3: APP DOWNLOADS (Strictly Read-Only & Admin Controlled) -->
                     <div id="tab-user-downloads" class="admin-tab-content" style="display: none;">
                         <h3 style="font-size: 18px; color: #FFF; margin-bottom: 6px;">Desktop Client Application Downloads</h3>
                         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">Download official ProfileVault desktop application installers for your computer.</p>
@@ -1148,26 +1148,26 @@ header('Content-Type: text/html; charset=utf-8');
                             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
                                 <div style="font-size: 36px; margin-bottom: 12px;">🪟</div>
                                 <h4 style="font-size: 18px; color: #FFF;">Windows Client</h4>
-                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;">Version: 1.0.0 (x64 Architecture)</p>
+                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;" id="userWinVerText">Version: 1.0.0 (x64 Architecture)</p>
                                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Native installer for Windows 10 & 11 (64-bit).</p>
-                                <a href="/releases/ProfileVault.exe" download class="btn btn-outline" style="width: 100%; justify-content: center;">⬇️ Download for Windows (.exe)</a>
+                                <button type="button" onclick="handleDownloadApp('windows-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="userBtnWinDl">⬇️ Download for Windows (.exe)</button>
                             </div>
 
                             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
                                 <div style="font-size: 36px; margin-bottom: 12px;">🍏</div>
                                 <h4 style="font-size: 18px; color: #FFF;">macOS Intel Client</h4>
-                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;">Version: 1.0.0 (Intel Processors)</p>
+                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;" id="userMacIntelVerText">Version: 1.0.0 (Intel Processors)</p>
                                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Disk image for Intel Macs before late 2020.</p>
-                                <a href="/releases/ProfileVault.dmg" download class="btn btn-outline" style="width: 100%; justify-content: center;">⬇️ Download for macOS Intel (.dmg)</a>
+                                <button type="button" onclick="handleDownloadApp('macos-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="userBtnMacIntelDl">⬇️ Download for macOS Intel (.dmg)</button>
                             </div>
 
                             <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 24px; position: relative;">
                                 <span style="position: absolute; top: -10px; right: 16px; background: #2DD4BF; color: #000; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px;">RECOMMENDED</span>
                                 <div style="font-size: 36px; margin-bottom: 12px;">🍏</div>
                                 <h4 style="font-size: 18px; color: #FFF;">macOS Apple Silicon</h4>
-                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;">Version: 1.0.0 (M1 / M2 / M3 / M4)</p>
+                                <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;" id="userMacArmVerText">Version: 1.0.0 (M1 / M2 / M3 / M4)</p>
                                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">ARM64 installer engineered for Apple M-series chips.</p>
-                                <a href="/releases/ProfileVault.dmg" download class="btn btn-primary" style="width: 100%; justify-content: center; background: #2DD4BF; color: #000; font-weight: 800;">⬇️ Download Apple Silicon (.dmg)</a>
+                                <button type="button" onclick="handleDownloadApp('macos-arm64')" class="btn btn-primary" style="width: 100%; justify-content: center; background: #2DD4BF; color: #000; font-weight: 800;" id="userBtnMacArmDl">⬇️ Download Apple Silicon (.dmg)</button>
                             </div>
                         </div>
                     </div>
@@ -1916,8 +1916,52 @@ header('Content-Type: text/html; charset=utf-8');
                     if (document.getElementById('userProfileQuotaDisplay')) document.getElementById('userProfileQuotaDisplay').innerText = '0 / ' + (lic.limits ? lic.limits.profiles : 25) + ' Profiles';
                     if (document.getElementById('userDeviceQuotaDisplay')) document.getElementById('userDeviceQuotaDisplay').innerText = (lic.device ? lic.device.device_count : 1) + ' / ' + (lic.device ? lic.device.max_devices : 2) + ' Devices';
                     if (document.getElementById('userSubExpiresAt')) document.getElementById('userSubExpiresAt').innerText = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'September 15, 2027';
-                }
+                // Fetch Release Manifest from Server
+                try {
+                    const relRes = await fetch('/api/releases');
+                    const relData = await relRes.json();
+                    if (relData.success && relData.data && relData.data.platforms) {
+                        const plats = relData.data.platforms;
+                        
+                        if (plats['windows-x64']) {
+                            const win = plats['windows-x64'];
+                            if (document.getElementById('userWinVerText')) document.getElementById('userWinVerText').innerText = 'Version: ' + win.version + ' (x64 Architecture)';
+                            if (document.getElementById('userBtnWinDl')) document.getElementById('userBtnWinDl').innerText = '⬇️ Download Windows .exe (v' + win.version + ')';
+                            if (document.getElementById('landingBtnWinDl')) document.getElementById('landingBtnWinDl').innerText = 'Download Windows .exe (v' + win.version + ')';
+                        }
+                        if (plats['macos-x64']) {
+                            const macIntel = plats['macos-x64'];
+                            if (document.getElementById('userMacIntelVerText')) document.getElementById('userMacIntelVerText').innerText = 'Version: ' + macIntel.version + ' (Intel Processors)';
+                            if (document.getElementById('userBtnMacIntelDl')) document.getElementById('userBtnMacIntelDl').innerText = '⬇️ Download macOS Intel .dmg (v' + macIntel.version + ')';
+                            if (document.getElementById('landingBtnMacIntelDl')) document.getElementById('landingBtnMacIntelDl').innerText = 'Download macOS Intel .dmg (v' + macIntel.version + ')';
+                        }
+                        if (plats['macos-arm64']) {
+                            const macArm = plats['macos-arm64'];
+                            if (document.getElementById('userMacArmVerText')) document.getElementById('userMacArmVerText').innerText = 'Version: ' + macArm.version + ' (M1 / M2 / M3 / M4)';
+                            if (document.getElementById('userBtnMacArmDl')) document.getElementById('userBtnMacArmDl').innerText = '⬇️ Download Apple Silicon .dmg (v' + macArm.version + ')';
+                            if (document.getElementById('landingBtnMacArmDl')) document.getElementById('landingBtnMacArmDl').innerText = 'Download Apple Silicon .dmg (v' + macArm.version + ')';
+                        }
+                    }
+                } catch(e){}
             } catch(e){}
+        }
+
+        async function handleDownloadApp(platformKey) {
+            try {
+                const res = await fetch('/api/releases');
+                const data = await res.json();
+                if (data.success && data.data && data.data.platforms && data.data.platforms[platformKey]) {
+                    const plat = data.data.platforms[platformKey];
+                    if (!plat.enabled) {
+                        alert('Downloads for ' + (plat.name || platformKey) + ' are currently disabled by administrator.');
+                        return;
+                    }
+                }
+                // Initiate download via API endpoint
+                window.location.href = '/api/releases?download=1&platform=' + platformKey;
+            } catch(e) {
+                window.location.href = '/api/releases?download=1&platform=' + platformKey;
+            }
         }
 
         async function handleSaveProfile(e) {
@@ -2665,8 +2709,11 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        // Auto check session on load
-        window.addEventListener('DOMContentLoaded', checkSession);
+        // Auto check session and load release download data on load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+            loadUserPortalData();
+        });
     </script>
 </body>
 </html>

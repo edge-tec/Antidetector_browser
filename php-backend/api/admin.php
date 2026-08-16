@@ -507,6 +507,31 @@ switch ($action) {
         respondJson(['success' => true, 'data' => $auditSettings]);
         break;
 
+    case 'get-releases-config':
+        $config = getDesktopAppConfigMap();
+        respondJson(['success' => true, 'data' => $config]);
+        break;
+
+    case 'update-releases-config':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $allowedKeys = [
+            'win_app_version', 'win_download_url', 'win_enabled',
+            'mac_arm_app_version', 'mac_arm_download_url', 'mac_arm_enabled',
+            'mac_intel_app_version', 'mac_intel_download_url', 'mac_intel_enabled',
+            'linux_app_version', 'linux_download_url', 'linux_enabled',
+            'min_supported_version', 'release_notes'
+        ];
+
+        $stmt = $db->prepare("INSERT INTO desktop_app_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+        foreach ($allowedKeys as $k) {
+            if (isset($input[$k])) {
+                $stmt->execute([$k, (string)$input[$k]]);
+            }
+        }
+        logAdminAction($adminUser['id'], $adminUser['email'], 'UPDATE_RELEASES_CONFIG', null, 'Admin updated desktop release download links and versions');
+        respondJson(['success' => true, 'message' => 'Release configuration updated successfully.']);
+        break;
+
     default:
         respondJson(['success' => false, 'error' => 'Invalid admin action.'], 404);
 }
