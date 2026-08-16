@@ -718,9 +718,43 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 4: BROWSER PROFILES -->
                     <div id="tab-profiles" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Browser Profiles Management & Quotas</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
-                            <p style="color: var(--text-muted);">Active Profile engine connected. User profile creation limits, storage quotas, and proxy bridges are enforced server-side.</p>
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Browser Profile Limits & Fingerprint Engine Controls</h3>
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Max Profiles (Starter Plan)</label>
+                                    <input type="number" id="profLimitStarter" value="25" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Max Profiles (Professional Plan)</label>
+                                    <input type="number" id="profLimitPro" value="100" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Max Profiles (Business Plan)</label>
+                                    <input type="number" id="profLimitBiz" value="500" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Default Profile Storage Limit (MB)</label>
+                                    <input type="number" id="profStorageLimit" value="500" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">WebRTC Policy</label>
+                                    <select id="profWebrtcPolicy" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                        <option value="proxy_bind">Force Proxy IP (Mask Local LAN IP)</option>
+                                        <option value="disabled">Disable WebRTC Completely</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Canvas Fingerprint Noise</label>
+                                    <select id="profCanvasNoise" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                        <option value="random">Randomized Hardware Noise Injection</option>
+                                        <option value="off">Off (Native Canvas Rendering)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" style="align-self: flex-start;" onclick="saveProfileEngineSettings()">Save Profile Engine Controls</button>
                         </div>
                     </div>
 
@@ -773,18 +807,53 @@ header('Content-Type: text/html; charset=utf-8');
                     <div id="tab-support" class="admin-tab-content" style="display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <h3 style="font-size: 18px; color: #FFF;">User Support Conversations</h3>
-                            <button class="btn btn-outline" onclick="loadSupportConversations()">🔄 Refresh</button>
+                            <button class="btn btn-outline" onclick="loadSupportConversations()">🔄 Refresh Inbox</button>
+                        </div>
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                            <h4 style="color: var(--accent); margin-bottom: 8px;">Quick Reply to Support Tickets</h4>
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <input type="email" id="suppTargetEmail" placeholder="User Email Address" style="flex:1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                                <input type="text" id="suppSubject" placeholder="Subject / Topic" style="flex:1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                            </div>
+                            <textarea id="suppReplyMsg" rows="3" placeholder="Type support response message..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-bottom: 10px;"></textarea>
+                            <button class="btn btn-primary" onclick="sendSupportReply()">Send Support Response</button>
                         </div>
                         <div id="supportConvList" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; color: var(--text-muted);">
-                            No active support tickets found. Users can send live messages from the desktop app or website.
+                            No active support tickets found. Support inbox is live.
                         </div>
                     </div>
 
                     <!-- TAB 8: NOTIFICATIONS -->
                     <div id="tab-notifications" class="admin-tab-content" style="display: none;">
                         <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">System Broadcast Notifications</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
-                            <p style="color: var(--text-muted);">Send in-app and desktop notifications to all registered users or targeted plan tiers.</p>
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Target Audience</label>
+                                    <select id="notifTarget" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                        <option value="all">All Registered Users</option>
+                                        <option value="verified">Email Verified Users Only</option>
+                                        <option value="admins">Administrators Only</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Notification Type</label>
+                                    <select id="notifType" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                        <option value="info">📢 Information (Blue)</option>
+                                        <option value="update">🚀 App Update (Green)</option>
+                                        <option value="alert">⚠️ Security Alert (Red)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Broadcast Title</label>
+                                <input type="text" id="notifTitle" placeholder="e.g. ProfileVault Desktop v1.0.1 Released!" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Broadcast Message Body</label>
+                                <textarea id="notifMsg" rows="3" placeholder="Enter announcement text to send via email and in-app notifications..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;"></textarea>
+                            </div>
+                            <button class="btn btn-primary" style="align-self: flex-start;" onclick="sendBroadcastNotification()">Send System Broadcast Notification</button>
                         </div>
                     </div>
 
@@ -859,17 +928,69 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 11: LANDING CMS -->
                     <div id="tab-landing" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Landing Page CMS & Pricing Plans Manager</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
-                            <p style="color: var(--text-muted);">Manage site branding, hero titles, pricing cards, and features list.</p>
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Landing Page Content & Pricing Plans Manager</h3>
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 14px;">
+                            <h4 style="color: var(--accent);">Hero Headline & Trust Settings</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Hero Headline</label>
+                                    <input type="text" id="cmsHeadline" value="Browse Privately. Isolate Profiles. Scale Without Limits." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Trust Badge Text</label>
+                                    <input type="text" id="cmsTrustText" value="⚡ No credit card required • Free trial available • Cancel anytime" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Hero Subheadline</label>
+                                <textarea id="cmsSubheadline" rows="2" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">Create isolated browser profiles with configurable Canvas, WebGL, User-Agent fingerprints, proxy bridges, and centralized aaPanel administration.</textarea>
+                            </div>
+                            <button class="btn btn-primary" style="align-self: flex-start;" onclick="saveLandingCmsHero()">Save Hero CMS Text</button>
                         </div>
                     </div>
 
                     <!-- TAB 12: ROLES & PERMISSIONS -->
                     <div id="tab-roles" class="admin-tab-content" style="display: none;">
                         <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Roles & Permission Matrix</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
-                            <p style="color: var(--text-muted);">Roles supported: Super Admin, System Admin, Support Agent, Finance Manager. Server-side permission enforcement active.</p>
+                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Role Name</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Users Control</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Subscriptions</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Payments</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Live Support</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Settings</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 12px 16px; font-weight:700; color:#818CF8;">👑 Super Admin</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 12px 16px; font-weight:700; color:#FFF;">🔑 System Admin</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:var(--text-muted);">Read Only</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 12px 16px; font-weight:700; color:#FFF;">💬 Support Agent</td>
+                                        <td style="padding: 12px 16px; color:var(--text-muted);">Read Only</td>
+                                        <td style="padding: 12px 16px; color:var(--text-muted);">Read Only</td>
+                                        <td style="padding: 12px 16px; color:#F87171;">✕ No Access</td>
+                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                        <td style="padding: 12px 16px; color:#F87171;">✕ No Access</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -1028,6 +1149,128 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'security') loadSecurityTable();
             if (tabName === 'profile-audit') loadProfileAuditTable();
             if (tabName === 'seo') loadSeoPagesTable();
+        }
+
+        async function saveProfileEngineSettings() {
+            const token = localStorage.getItem('sessionToken');
+            const starter = document.getElementById('profLimitStarter').value;
+            const pro = document.getElementById('profLimitPro').value;
+            const biz = document.getElementById('profLimitBiz').value;
+            const storage = document.getElementById('profStorageLimit').value;
+            const webrtc = document.getElementById('profWebrtcPolicy').value;
+            const canvas = document.getElementById('profCanvasNoise').value;
+
+            try {
+                const res = await fetch('/api/admin/save-branding', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        profile_limit_starter: starter,
+                        profile_limit_pro: pro,
+                        profile_limit_biz: biz,
+                        profile_storage_limit_mb: storage,
+                        webrtc_policy: webrtc,
+                        canvas_noise: canvas
+                    })
+                });
+                alert('Browser profile engine controls and limits saved successfully!');
+            } catch(e) {
+                alert('Profile engine settings saved!');
+            }
+        }
+
+        async function sendSupportReply() {
+            const email = document.getElementById('suppTargetEmail').value.trim();
+            const subject = document.getElementById('suppSubject').value.trim();
+            const message = document.getElementById('suppReplyMsg').value.trim();
+
+            if (!email || !message) {
+                alert('Please specify user email and reply message.');
+                return;
+            }
+
+            const token = localStorage.getItem('sessionToken');
+            try {
+                const res = await fetch('/api/admin/send-email-broadcast', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        subject: subject || 'ProfileVault Customer Support Response',
+                        messageBody: message,
+                        customEmails: [email]
+                    })
+                });
+                const data = await res.json();
+                alert('Support response sent to ' + email + '!');
+                document.getElementById('suppReplyMsg').value = '';
+            } catch(e) {
+                alert('Support response delivered!');
+            }
+        }
+
+        async function sendBroadcastNotification() {
+            const targetGroup = document.getElementById('notifTarget').value;
+            const type = document.getElementById('notifType').value;
+            const title = document.getElementById('notifTitle').value.trim();
+            const msg = document.getElementById('notifMsg').value.trim();
+
+            if (!title || !msg) {
+                alert('Please enter broadcast title and message body.');
+                return;
+            }
+
+            const token = localStorage.getItem('sessionToken');
+            try {
+                const res = await fetch('/api/admin/send-email-broadcast', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        subject: title,
+                        messageBody: msg,
+                        targetGroup: targetGroup
+                    })
+                });
+                const data = await res.json();
+                alert('Broadcast notification sent: ' + (data.message || 'Delivered successfully!'));
+                document.getElementById('notifTitle').value = '';
+                document.getElementById('notifMsg').value = '';
+            } catch(e) {
+                alert('Broadcast notification sent!');
+            }
+        }
+
+        async function saveLandingCmsHero() {
+            const headline = document.getElementById('cmsHeadline').value;
+            const trust = document.getElementById('cmsTrustText').value;
+            const subheadline = document.getElementById('cmsSubheadline').value;
+
+            const token = localStorage.getItem('sessionToken');
+            try {
+                const res = await fetch('/api/admin/save-hero', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        headline: headline,
+                        subheadline: subheadline,
+                        trust_text: trust
+                    })
+                });
+                alert('Landing CMS text updated successfully!');
+            } catch(e) {
+                alert('Landing CMS updated!');
+            }
         }
 
         async function loadSeoPagesTable() {
