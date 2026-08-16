@@ -86,6 +86,41 @@ function ensureDatabaseTablesExist() {
               `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
+
+        // 4. Desktop Installations Table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `desktop_installations` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL,
+              `installation_id` VARCHAR(100) NOT NULL UNIQUE,
+              `platform` VARCHAR(50) NOT NULL,
+              `device_name` VARCHAR(255) DEFAULT NULL,
+              `app_version` VARCHAR(50) DEFAULT '1.0.0',
+              `last_seen_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `revoked_at` DATETIME DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        // 5. App Releases Table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `app_releases` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `platform` VARCHAR(50) NOT NULL,
+              `version` VARCHAR(50) NOT NULL,
+              `release_name` VARCHAR(255) NOT NULL,
+              `file_path` VARCHAR(500) NOT NULL,
+              `original_file_name` VARCHAR(255) NOT NULL,
+              `file_size` BIGINT NOT NULL DEFAULT 0,
+              `release_notes` TEXT DEFAULT NULL,
+              `status` VARCHAR(20) NOT NULL DEFAULT 'published',
+              `published_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `uploaded_by` VARCHAR(36) DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
     } catch (Throwable $e) {}
 }
 

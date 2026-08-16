@@ -1877,66 +1877,6 @@ header('Content-Type: text/html; charset=utf-8');
                 answer.style.display = 'block';
                 icon.innerText = '−';
             }
-        }
-        window.openModal = function(mode) {
-            window.closeAdminDashboard();
-            const modal = document.getElementById('loginModal');
-            if (modal) {
-                modal.classList.add('active');
-                modal.style.display = 'flex';
-                window.switchAuthTab(mode || 'login');
-            }
-        };
-
-        window.closeModal = function() {
-            const modal = document.getElementById('loginModal');
-            if (modal) {
-                modal.classList.remove('active');
-                modal.style.display = 'none';
-            }
-        };
-
-        window.closeAdminDashboard = function() {
-            const adminModal = document.getElementById('adminDashboardModal');
-            if (adminModal) {
-                adminModal.classList.remove('active');
-                adminModal.style.display = 'none';
-            }
-        };
-
-        window.switchAuthTab = function(mode) {
-            const loginForm = document.getElementById('loginForm');
-            const regForm = document.getElementById('registerForm');
-            const btnLogin = document.getElementById('modalBtnLogin');
-            const btnReg = document.getElementById('modalBtnRegister');
-            const msg = document.getElementById('loginMsg');
-            if (msg) msg.style.display = 'none';
-
-            if (mode === 'register') {
-                if (loginForm) loginForm.style.display = 'none';
-                if (regForm) regForm.style.display = 'block';
-                if (btnReg) {
-                    btnReg.style.background = 'var(--primary)';
-                    btnReg.style.color = '#FFF';
-                }
-                if (btnLogin) {
-                    btnLogin.style.background = 'transparent';
-                    btnLogin.style.color = 'var(--text-muted)';
-                }
-            } else {
-                if (regForm) regForm.style.display = 'none';
-                if (loginForm) loginForm.style.display = 'block';
-                if (btnLogin) {
-                    btnLogin.style.background = 'var(--primary)';
-                    btnLogin.style.color = '#FFF';
-                }
-                if (btnReg) {
-                    btnReg.style.background = 'transparent';
-                    btnReg.style.color = 'var(--text-muted)';
-                }
-            }
-        };
-
         function handleLogout() {
             localStorage.removeItem('sessionToken');
             localStorage.removeItem('user');
@@ -2052,19 +1992,26 @@ header('Content-Type: text/html; charset=utf-8');
         function checkSession() {
             const token = localStorage.getItem('sessionToken');
             const userStr = localStorage.getItem('user');
+            const adminModal = document.getElementById('adminDashboardModal');
             if (token && userStr) {
                 try {
                     const user = JSON.parse(userStr);
                     const isAdmin = user.role === 'admin';
 
-                    document.getElementById('adminUserInfo').innerText = 'Logged in as ' + user.name + ' (' + user.email + ') [' + (user.role || 'user').toUpperCase() + ']';
+                    const infoEl = document.getElementById('adminUserInfo');
+                    if (infoEl) {
+                        infoEl.innerText = 'Logged in as ' + user.name + ' (' + user.email + ') [' + (user.role || 'user').toUpperCase() + ']';
+                    }
 
                     // Role-Based Sidebar Navigation Filtering
                     document.querySelectorAll('.admin-only-section').forEach(el => {
                         el.style.display = isAdmin ? 'block' : 'none';
                     });
 
-                    document.getElementById('adminDashboardModal').classList.add('active');
+                    if (adminModal) {
+                        adminModal.classList.add('active');
+                        adminModal.style.display = 'flex';
+                    }
 
                     if (isAdmin) {
                         const btn = document.getElementById('btnTabUsers');
@@ -2076,6 +2023,11 @@ header('Content-Type: text/html; charset=utf-8');
 
                     loadUserPortalData();
                 } catch(e){}
+            } else {
+                if (adminModal) {
+                    adminModal.classList.remove('active');
+                    adminModal.style.display = 'none';
+                }
             }
         }
 
