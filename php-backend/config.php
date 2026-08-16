@@ -7,9 +7,9 @@
 define('DB_DRIVER', 'mysql'); // 'mysql' or 'sqlite'
 define('DB_HOST', '127.0.0.1');
 define('DB_PORT', '3306');
-define('DB_NAME', 'profilevault');
-define('DB_USER', 'profilevault_user');
-define('DB_PASS', 'secure_password_here');
+define('DB_NAME', 'antidetactor');
+define('DB_USER', 'antidetactor');
+define('DB_PASS', 'antidetactor');
 
 // SQLite Fallback Path (if DB_DRIVER == 'sqlite')
 define('SQLITE_PATH', __DIR__ . '/profilevault.sqlite');
@@ -24,6 +24,7 @@ define('CORS_ORIGIN', '*');
 define('APP_NAME', 'ProfileVault');
 define('APP_VERSION', '1.0.0');
 
-// Error reporting for production
-error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
-ini_set('display_errors', '0');
+// Error reporting
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
