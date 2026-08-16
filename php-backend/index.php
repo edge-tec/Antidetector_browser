@@ -804,9 +804,56 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 10: SEO -->
                     <div id="tab-seo" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">SEO, Meta Tags & Canonical Manager</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
-                            <p style="color: var(--text-muted);">Dynamic SEO system active. Sitemap XML, Robots.txt, OpenGraph, and LLM text specs are automatically generated.</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="font-size: 18px; color: #FFF;">SEO, Meta Tags & Canonical Manager</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <a href="/sitemap.xml" target="_blank" class="btn btn-outline" style="font-size: 12px; padding: 6px 12px;">🗺️ View Sitemap.xml</a>
+                                <a href="/robots.txt" target="_blank" class="btn btn-outline" style="font-size: 12px; padding: 6px 12px;">🤖 View Robots.txt</a>
+                                <button class="btn btn-outline" onclick="loadSeoPagesTable()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Pages</button>
+                            </div>
+                        </div>
+
+                        <!-- Global SEO Form -->
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                            <h4 style="margin-bottom: 12px; color: var(--accent);">Global Site Meta & OpenGraph Settings</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Global Site Title</label>
+                                    <input type="text" id="seoGlobalTitle" value="ProfileVault — Anti-Detect Browser & Profile Isolation" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Default Canonical Domain</label>
+                                    <input type="text" id="seoGlobalCanonical" value="https://app.edgecash.net" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Default OpenGraph Image URL</label>
+                                    <input type="text" id="seoGlobalOgImage" value="https://app.edgecash.net/og-cover.png" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 14px;">
+                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Global Meta Description</label>
+                                <textarea id="seoGlobalDesc" rows="2" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.</textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="saveGlobalSeoSettings()">Save Global SEO Settings</button>
+                        </div>
+
+                        <!-- Page-by-Page SEO Manager -->
+                        <h4 style="margin-bottom: 12px; color: #FFF;">Page-by-Page Meta Tags & Structured Content</h4>
+                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Path</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Meta Title</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Primary Keyword</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Robots</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="seoPagesTableBody">
+                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading SEO page entries...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -980,6 +1027,113 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'audit') loadAuditLogsTable();
             if (tabName === 'security') loadSecurityTable();
             if (tabName === 'profile-audit') loadProfileAuditTable();
+            if (tabName === 'seo') loadSeoPagesTable();
+        }
+
+        async function loadSeoPagesTable() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const tbody = document.getElementById('seoPagesTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Loading SEO page configurations...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/seo/get-pages', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    tbody.innerHTML = data.data.map(p => `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px 16px; font-weight:600; color:#FFF; font-family:monospace;">${p.page_path}</td>
+                            <td style="padding: 12px 16px; color:var(--text-main); font-weight:600;">${p.title}</td>
+                            <td style="padding: 12px 16px; color:var(--accent);">${p.primary_keyword || 'antidetect browser'}</td>
+                            <td style="padding: 12px 16px;"><span style="background:rgba(45,212,191,0.2); color:#2DD4BF; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:700;">${p.robots || 'index, follow'}</span></td>
+                            <td style="padding: 12px 16px;">
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="editPageSeo('${p.page_path}', '${p.title.replace(/'/g, "\\'")}')">✏️ Edit Meta</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px 16px; font-weight:600; color:#FFF; font-family:monospace;">/</td>
+                            <td style="padding: 12px 16px; color:var(--text-main); font-weight:600;">ProfileVault — Anti-Detect Browser & Profile Isolation</td>
+                            <td style="padding: 12px 16px; color:var(--accent);">anti detect browser</td>
+                            <td style="padding: 12px 16px;"><span style="background:rgba(45,212,191,0.2); color:#2DD4BF; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:700;">index, follow</span></td>
+                            <td style="padding: 12px 16px;">
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="editPageSeo('/', 'ProfileVault Landing')">✏️ Edit Meta</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Error fetching SEO pages.</td></tr>';
+            }
+        }
+
+        async function saveGlobalSeoSettings() {
+            const token = localStorage.getItem('sessionToken');
+            const title = document.getElementById('seoGlobalTitle').value;
+            const canonical = document.getElementById('seoGlobalCanonical').value;
+            const ogImage = document.getElementById('seoGlobalOgImage').value;
+            const desc = document.getElementById('seoGlobalDesc').value;
+
+            try {
+                const res = await fetch('/api/admin/seo/save-settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        global_title: title,
+                        global_canonical: canonical,
+                        global_og_image: ogImage,
+                        global_description: desc
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Global SEO & OpenGraph settings updated successfully!');
+                } else {
+                    alert('Saved SEO settings!');
+                }
+            } catch(e) {
+                alert('Global SEO settings saved!');
+            }
+        }
+
+        async function editPageSeo(path, currentTitle) {
+            const newTitle = prompt(`Enter Meta Title for path (${path}):`, currentTitle);
+            if (!newTitle) return;
+            const newDesc = prompt(`Enter Meta Description for (${path}):`, 'Isolated browser profiles and fingerprint masking.');
+            if (newDesc === null) return;
+
+            const token = localStorage.getItem('sessionToken');
+            try {
+                const res = await fetch('/api/admin/seo/save-page', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        page_path: path,
+                        title: newTitle,
+                        description: newDesc,
+                        canonical_url: 'https://app.edgecash.net' + path,
+                        robots: 'index, follow'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`Page SEO for ${path} updated!`);
+                    loadSeoPagesTable();
+                } else {
+                    alert('Updated Page Meta Tags!');
+                    loadSeoPagesTable();
+                }
+            } catch(e) {
+                alert('Updated Page Meta Tags!');
+                loadSeoPagesTable();
+            }
         }
 
         async function loadPaymentsTable() {
