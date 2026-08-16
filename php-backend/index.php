@@ -988,31 +988,33 @@ header('Content-Type: text/html; charset=utf-8');
             <!-- Main Workspace Container: Sidebar + Content -->
             <div style="display: flex; flex: 1; overflow: hidden;">
                 
-                <!-- Left Navigation Sidebar (All Admin Sections) -->
+                <!-- Left Navigation Sidebar -->
                 <div style="width: 250px; min-width: 250px; background: #0F1016; border-right: 1px solid var(--border); overflow-y: auto; padding: 16px 10px;">
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">MAIN CONTROL</div>
-                    <button class="admin-sidebar-btn active" onclick="switchAdminTab('users', this)">👥 Users & Accounts</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('subscriptions', this)">💳 Subscriptions</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('payments', this)">💰 Payments & Invoices</button>
-
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 16px 12px 8px 12px;">PRODUCT ENGINE</div>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('profiles', this)">🌐 Browser Profiles</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('profile-audit', this)">🔬 7-Layer Settings Audit</button>
+                    <!-- User Profile & Controls Section (Visible to ALL users) -->
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">USER PROFILE & CONTROLS</div>
+                    <button class="admin-sidebar-btn active" id="btnTabProfiles" onclick="switchAdminTab('profiles', this)">🌐 My Browser Profiles</button>
+                    <button class="admin-sidebar-btn" id="btnTabSubscriptions" onclick="switchAdminTab('subscriptions', this)">💳 My Subscription & Quota</button>
                     <button class="admin-sidebar-btn" onclick="switchAdminTab('releases', this)">🚀 App Release Downloads</button>
+                    <button class="admin-sidebar-btn" onclick="switchAdminTab('support', this)">💬 Help & Support</button>
 
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 16px 12px 8px 12px;">COMMUNICATION & SEO</div>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('support', this)">💬 Live Support Inbox</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('notifications', this)">🔔 Broadcast Notifications</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('seo', this)">🔍 SEO & Meta Manager</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('landing', this)">🎨 Landing CMS & Pricing</button>
+                    <!-- Admin Control Sections (Hidden for regular users, visible ONLY for admins) -->
+                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN SAAS MANAGEMENT</div>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabUsers" onclick="switchAdminTab('users', this)">👥 All Users & Accounts</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('payments', this)">💰 Payments & Invoices</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profile-audit', this)">🔬 7-Layer Settings Audit</button>
 
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 16px 12px 8px 12px;">SECURITY & SYSTEM</div>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('roles', this)">🔑 Roles & Permissions</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('security', this)">🛡️ Security & 2FA Logs</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('audit', this)">📜 System Audit Logs</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('health', this)">🩺 Server Health Checks</button>
-                    <button class="admin-sidebar-btn" onclick="switchAdminTab('settings', this)">⚙️ aaPanel DB Settings</button>
+                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">COMMUNICATION & SEO</div>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('notifications', this)">🔔 Broadcast Notifications</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('seo', this)">🔍 SEO & Meta Manager</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('landing', this)">🎨 Landing CMS & Pricing</button>
+
+                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">SECURITY & SYSTEM</div>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('roles', this)">🔑 Roles & Permissions</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('security', this)">🛡️ Security & 2FA Logs</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('audit', this)">📜 System Audit Logs</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('health', this)">🩺 Server Health Checks</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('settings', this)">⚙️ aaPanel DB Settings</button>
                 </div>
 
                 <!-- Right Content Panel -->
@@ -1682,9 +1684,24 @@ header('Content-Type: text/html; charset=utf-8');
             if (token && userStr) {
                 try {
                     const user = JSON.parse(userStr);
-                    document.getElementById('adminUserInfo').innerText = 'Logged in as ' + user.name + ' (' + user.email + ')';
+                    const isAdmin = user.role === 'admin';
+
+                    document.getElementById('adminUserInfo').innerText = 'Logged in as ' + user.name + ' (' + user.email + ') [' + (user.role || 'user').toUpperCase() + ']';
+
+                    // Role-Based Sidebar Navigation Filtering
+                    document.querySelectorAll('.admin-only-section').forEach(el => {
+                        el.style.display = isAdmin ? 'block' : 'none';
+                    });
+
                     document.getElementById('adminDashboardModal').classList.add('active');
-                    loadUsersTable();
+
+                    if (isAdmin) {
+                        const btn = document.getElementById('btnTabUsers');
+                        switchAdminTab('users', btn);
+                    } else {
+                        const btn = document.getElementById('btnTabProfiles');
+                        switchAdminTab('profiles', btn);
+                    }
                 } catch(e){}
             }
         }
