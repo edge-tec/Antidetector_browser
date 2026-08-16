@@ -723,50 +723,54 @@ header('Content-Type: text/html; charset=utf-8');
             <h2>Frequently Asked Questions</h2>
             <p>Have questions about ProfileVault? Find answers below.</p>
         </div>
-        <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+        <div style="max-width: 840px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
                     <span>What is an anti-detect browser?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
                 </div>
-                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
-                    An anti-detect browser isolates browser profiles so each runs with its own cookies, local storage, proxy, and digital fingerprint (WebGL, Canvas, User-Agent, WebRTC).
+                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+                    An anti-detect browser is a specialized browser platform designed to run multiple isolated browser environments simultaneously. Each profile operates with its own distinct cookies, cache, local storage, dedicated proxy connection, and unique digital hardware fingerprint (including WebGL, Canvas noise, User-Agent, WebRTC IP masking, screen resolution, and audio context). This prevents websites from tracking or linking your accounts together.
                 </div>
             </div>
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
                     <span>What is a browser profile?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
                 </div>
-                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
-                    A browser profile is an isolated browsing environment containing its own cookies, browser history, passwords, extensions, and hardware fingerprint settings.
+                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+                    A browser profile is an entirely isolated virtual browsing session. It stores its own independent cookies, browsing history, saved credentials, browser extensions, and hardware parameters. Running a profile is like launching a separate physical computer with its own browser environment, ensuring complete data separation between different social media, e-commerce, or advertising accounts.
                 </div>
             </div>
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
                     <span>Can I use HTTP, SOCKS4, and SOCKS5 proxies?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
                 </div>
-                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
-                    Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with connection testing and automated IP detection per profile.
+                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+                    Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with full authentication (username/password or IP whitelist). You can configure proxies per profile, test connections in real time, auto-detect geographical location, and automatically route WebRTC and DNS traffic through your proxy to prevent IP leaks.
                 </div>
             </div>
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
                     <span>Can I upgrade or downgrade my plan at any time?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
                 </div>
-                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
-                    Yes, you can upgrade, downgrade, or cancel your subscription plan at any time from your central web account dashboard.
+                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+                    Absolutely! You can upgrade, downgrade, or change your subscription plan whenever needed directly from your account dashboard. Upgrades take effect immediately with prorated billing, and you can manage device limits, profile quotas, and active licenses with complete control.
                 </div>
             </div>
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
                     <span>Does ProfileVault offer an Automation API?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
                 </div>
-                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
-                    Yes! ProfileVault provides a local REST API and WebSockets endpoint for Puppeteer, Selenium, Playwright, and custom automation scripts.
+                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+                    Yes! ProfileVault includes a robust local REST API and WebSocket endpoints compatible with Selenium, Puppeteer, Playwright, and custom automation tools. You can programmatically launch profiles, manage browser sessions, inspect runtime status, and automate multi-account workflows at scale.
                 </div>
             </div>
         </div>
