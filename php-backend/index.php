@@ -232,6 +232,66 @@ header('Content-Type: text/html; charset=utf-8');
     <meta property="og:url" content="<?php echo htmlspecialchars($pageCanonical); ?>">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json"><?php echo json_encode($schemas, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); ?></script>
+    <script>
+        window.openModal = function(mode) {
+            window.closeAdminDashboard();
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+                window.switchAuthTab(mode || 'login');
+            }
+        };
+
+        window.closeModal = function() {
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+        };
+
+        window.closeAdminDashboard = function() {
+            const adminModal = document.getElementById('adminDashboardModal');
+            if (adminModal) {
+                adminModal.classList.remove('active');
+                adminModal.style.display = 'none';
+            }
+        };
+
+        window.switchAuthTab = function(mode) {
+            const loginForm = document.getElementById('loginForm');
+            const regForm = document.getElementById('registerForm');
+            const btnLogin = document.getElementById('modalBtnLogin');
+            const btnReg = document.getElementById('modalBtnRegister');
+            const msg = document.getElementById('loginMsg');
+            if (msg) msg.style.display = 'none';
+
+            if (mode === 'register') {
+                if (loginForm) loginForm.style.display = 'none';
+                if (regForm) regForm.style.display = 'block';
+                if (btnReg) {
+                    btnReg.style.background = 'var(--primary)';
+                    btnReg.style.color = '#FFF';
+                }
+                if (btnLogin) {
+                    btnLogin.style.background = 'transparent';
+                    btnLogin.style.color = 'var(--text-muted)';
+                }
+            } else {
+                if (regForm) regForm.style.display = 'none';
+                if (loginForm) loginForm.style.display = 'block';
+                if (btnLogin) {
+                    btnLogin.style.background = 'var(--primary)';
+                    btnLogin.style.color = '#FFF';
+                }
+                if (btnReg) {
+                    btnReg.style.background = 'transparent';
+                    btnReg.style.color = 'var(--text-muted)';
+                }
+            }
+        };
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
