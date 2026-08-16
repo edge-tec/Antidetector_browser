@@ -540,7 +540,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <h3 style="font-size: 18px; color: #FFF;">Download for Windows</h3>
                 <span style="font-size: 11px; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; color: var(--text-muted);">x64 Architecture [64-bit]</span>
                 <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native installer for Windows 10 and 11. Includes automatic shortcuts and silent installer options.</p>
-                <button type="button" onclick="handleDownloadApp('windows-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="landingBtnWinDl">Download Windows .exe (v1.0.0)</button>
+                <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center;" id="landingBtnWinDl">Download Windows .exe (v1.0.0)</a>
             </div>
 
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
@@ -548,7 +548,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <h3 style="font-size: 18px; color: #FFF;">Download for Mac — Intel</h3>
                 <span style="font-size: 11px; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; color: var(--text-muted);">Intel Processors [x64]</span>
                 <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native macOS disk image built for Intel-based Mac computers manufactured before late 2020.</p>
-                <button type="button" onclick="handleDownloadApp('macos-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="landingBtnMacIntelDl">Download macOS Intel .dmg (v1.0.0)</button>
+                <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center;" id="landingBtnMacIntelDl">Download macOS Intel .dmg (v1.0.0)</a>
             </div>
 
             <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 28px; position: relative;">
@@ -557,7 +557,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <h3 style="font-size: 18px; color: #FFF;">Download for Mac — Apple Silicon</h3>
                 <span style="font-size: 11px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px; font-weight: 700;">M1 / M2 / M3 / M4 [arm64]</span>
                 <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native ARM64 build engineered specifically for Apple Silicon M-series processors for maximum speed.</p>
-                <button type="button" onclick="handleDownloadApp('macos-arm64')" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" id="landingBtnMacArmDl">Download Apple Silicon .dmg (v1.0.0)</button>
+                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" id="landingBtnMacArmDl">Download Apple Silicon .dmg (v1.0.0)</a>
             </div>
         </div>
     </section>
@@ -1150,7 +1150,7 @@ header('Content-Type: text/html; charset=utf-8');
                                 <h4 style="font-size: 18px; color: #FFF;">Windows Client</h4>
                                 <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;" id="userWinVerText">Version: 1.0.0 (x64 Architecture)</p>
                                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Native installer for Windows 10 & 11 (64-bit).</p>
-                                <button type="button" onclick="handleDownloadApp('windows-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="userBtnWinDl">⬇️ Download for Windows (.exe)</button>
+                                <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center;" id="userBtnWinDl">⬇️ Download for Windows (.exe)</a>
                             </div>
 
                             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
@@ -1158,7 +1158,7 @@ header('Content-Type: text/html; charset=utf-8');
                                 <h4 style="font-size: 18px; color: #FFF;">macOS Intel Client</h4>
                                 <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;" id="userMacIntelVerText">Version: 1.0.0 (Intel Processors)</p>
                                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Disk image for Intel Macs before late 2020.</p>
-                                <button type="button" onclick="handleDownloadApp('macos-x64')" class="btn btn-outline" style="width: 100%; justify-content: center;" id="userBtnMacIntelDl">⬇️ Download for macOS Intel (.dmg)</button>
+                                <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center;" id="userBtnMacIntelDl">⬇️ Download for macOS Intel (.dmg)</a>
                             </div>
 
                             <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 24px; position: relative;">
@@ -1167,7 +1167,7 @@ header('Content-Type: text/html; charset=utf-8');
                                 <h4 style="font-size: 18px; color: #FFF;">macOS Apple Silicon</h4>
                                 <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;" id="userMacArmVerText">Version: 1.0.0 (M1 / M2 / M3 / M4)</p>
                                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">ARM64 installer engineered for Apple M-series chips.</p>
-                                <button type="button" onclick="handleDownloadApp('macos-arm64')" class="btn btn-primary" style="width: 100%; justify-content: center; background: #2DD4BF; color: #000; font-weight: 800;" id="userBtnMacArmDl">⬇️ Download Apple Silicon (.dmg)</button>
+                                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; background: #2DD4BF; color: #000; font-weight: 800;" id="userBtnMacArmDl">⬇️ Download Apple Silicon (.dmg)</a>
                             </div>
                         </div>
                     </div>
@@ -1925,21 +1925,42 @@ header('Content-Type: text/html; charset=utf-8');
                         
                         if (plats['windows-x64']) {
                             const win = plats['windows-x64'];
+                            const dlUrl = win.download_url || '/api/releases?download=1&platform=windows-x64';
                             if (document.getElementById('userWinVerText')) document.getElementById('userWinVerText').innerText = 'Version: ' + win.version + ' (x64 Architecture)';
-                            if (document.getElementById('userBtnWinDl')) document.getElementById('userBtnWinDl').innerText = '⬇️ Download Windows .exe (v' + win.version + ')';
-                            if (document.getElementById('landingBtnWinDl')) document.getElementById('landingBtnWinDl').innerText = 'Download Windows .exe (v' + win.version + ')';
+                            if (document.getElementById('userBtnWinDl')) {
+                                document.getElementById('userBtnWinDl').innerText = '⬇️ Download for Windows (.exe)';
+                                document.getElementById('userBtnWinDl').href = dlUrl;
+                            }
+                            if (document.getElementById('landingBtnWinDl')) {
+                                document.getElementById('landingBtnWinDl').innerText = 'Download Windows .exe (v' + win.version + ')';
+                                document.getElementById('landingBtnWinDl').href = dlUrl;
+                            }
                         }
                         if (plats['macos-x64']) {
                             const macIntel = plats['macos-x64'];
+                            const dlUrl = macIntel.download_url || '/api/releases?download=1&platform=macos-x64';
                             if (document.getElementById('userMacIntelVerText')) document.getElementById('userMacIntelVerText').innerText = 'Version: ' + macIntel.version + ' (Intel Processors)';
-                            if (document.getElementById('userBtnMacIntelDl')) document.getElementById('userBtnMacIntelDl').innerText = '⬇️ Download macOS Intel .dmg (v' + macIntel.version + ')';
-                            if (document.getElementById('landingBtnMacIntelDl')) document.getElementById('landingBtnMacIntelDl').innerText = 'Download macOS Intel .dmg (v' + macIntel.version + ')';
+                            if (document.getElementById('userBtnMacIntelDl')) {
+                                document.getElementById('userBtnMacIntelDl').innerText = '⬇️ Download for macOS Intel (.dmg)';
+                                document.getElementById('userBtnMacIntelDl').href = dlUrl;
+                            }
+                            if (document.getElementById('landingBtnMacIntelDl')) {
+                                document.getElementById('landingBtnMacIntelDl').innerText = 'Download macOS Intel .dmg (v' + macIntel.version + ')';
+                                document.getElementById('landingBtnMacIntelDl').href = dlUrl;
+                            }
                         }
                         if (plats['macos-arm64']) {
                             const macArm = plats['macos-arm64'];
+                            const dlUrl = macArm.download_url || '/api/releases?download=1&platform=macos-arm64';
                             if (document.getElementById('userMacArmVerText')) document.getElementById('userMacArmVerText').innerText = 'Version: ' + macArm.version + ' (M1 / M2 / M3 / M4)';
-                            if (document.getElementById('userBtnMacArmDl')) document.getElementById('userBtnMacArmDl').innerText = '⬇️ Download Apple Silicon .dmg (v' + macArm.version + ')';
-                            if (document.getElementById('landingBtnMacArmDl')) document.getElementById('landingBtnMacArmDl').innerText = 'Download Apple Silicon .dmg (v' + macArm.version + ')';
+                            if (document.getElementById('userBtnMacArmDl')) {
+                                document.getElementById('userBtnMacArmDl').innerText = '⬇️ Download Apple Silicon (.dmg)';
+                                document.getElementById('userBtnMacArmDl').href = dlUrl;
+                            }
+                            if (document.getElementById('landingBtnMacArmDl')) {
+                                document.getElementById('landingBtnMacArmDl').innerText = 'Download Apple Silicon .dmg (v' + macArm.version + ')';
+                                document.getElementById('landingBtnMacArmDl').href = dlUrl;
+                            }
                         }
                     }
                 } catch(e){}
