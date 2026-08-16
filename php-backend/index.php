@@ -128,13 +128,14 @@ try {
 }
 
 
+$appBaseUrl = defined('APP_URL') ? APP_URL : 'https://app.edgecash.net';
 $pageTitle = $pageSeo['title'] ?? 'ProfileVault — Anti-Detect Browser & Profile Isolation';
 $pageDesc = $pageSeo['description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.';
-$pageCanonical = $pageSeo['canonical_url'] ?? (rtrim(APP_URL ?? 'https://profilevault.local', '/') . $requestUri);
+$pageCanonical = $pageSeo['canonical_url'] ?? (rtrim($appBaseUrl, '/') . $requestUri);
 $pageRobots = $pageSeo['robots'] ?? 'index, follow';
 $ogTitle = $pageSeo['og_title'] ?? $pageTitle;
 $ogDesc = $pageSeo['og_description'] ?? $pageDesc;
-$ogImage = $pageSeo['og_image'] ?? 'https://profilevault.local/og-cover.png';
+$ogImage = $pageSeo['og_image'] ?? ($appBaseUrl . '/og-cover.png');
 
 // Schema.org JSON-LD Generation
 $schemas = [
@@ -142,7 +143,8 @@ $schemas = [
         "@context" => "https://schema.org",
         "@type" => "Organization",
         "name" => "ProfileVault Software Inc.",
-        "url" => APP_URL ?? "https://profilevault.local",
+        "url" => $appBaseUrl,
+
         "logo" => "https://profilevault.local/logo.png",
         "sameAs" => [
             "https://x.com/ProfileVaultApp",

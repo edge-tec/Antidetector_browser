@@ -16,7 +16,7 @@ $row = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!empty($row['value'])) {
     echo $row['value'];
 } else {
-    $baseUrl = APP_URL ?? 'https://profilevault.local';
+    $baseUrl = defined('APP_URL') ? APP_URL : 'https://app.edgecash.net';
     echo "User-agent: *\n";
     echo "Allow: /\n";
     echo "Disallow: /admin/\n";

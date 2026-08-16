@@ -23,6 +23,8 @@ define('CORS_ORIGIN', '*');
 // App Info
 define('APP_NAME', 'ProfileVault');
 define('APP_VERSION', '1.0.0');
+define('APP_URL', 'https://app.edgecash.net');
+
 
 // Error reporting
 error_reporting(E_ALL);

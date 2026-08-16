@@ -17,7 +17,7 @@ foreach ($rows as $r) {
 }
 
 $brandName = $settings['entity_brand_name'] ?? 'ProfileVault Software Inc.';
-$siteUrl = $settings['site_url'] ?? APP_URL ?? 'https://profilevault.local';
+$siteUrl = $settings['site_url'] ?? (defined('APP_URL') ? APP_URL : 'https://app.edgecash.net');
 
 echo "# {$brandName} — AI Machine-Readable Summary Specification\n";
 echo "> Primary Website: {$siteUrl}\n";

@@ -52,7 +52,7 @@ header('Content-Type: application/xml; charset=utf-8');
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
-$baseUrl = APP_URL ?? 'https://profilevault.local';
+$baseUrl = defined('APP_URL') ? APP_URL : 'https://app.edgecash.net';
 
 foreach ($pages as $p) {
     $loc = $p['canonical_url'] ?: (rtrim($baseUrl, '/') . $p['page_path']);
