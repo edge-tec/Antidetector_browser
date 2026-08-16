@@ -6,6 +6,91 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 
+// Auto Ensure Core Database Tables Exist
+function ensureDatabaseTablesExist() {
+    static $executed = false;
+    if ($executed) return;
+    $executed = true;
+
+    try {
+        $db = Database::getConnection();
+
+        // 1. Users Table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `users` (
+              `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+              `name` VARCHAR(255) NOT NULL,
+              `email` VARCHAR(255) NOT NULL UNIQUE,
+              `password_hash` VARCHAR(255) DEFAULT NULL,
+              `role` VARCHAR(50) NOT NULL DEFAULT 'user',
+              `email_verified` TINYINT(1) NOT NULL DEFAULT 1,
+              `account_status` VARCHAR(50) NOT NULL DEFAULT 'active',
+              `google_id` VARCHAR(255) DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              `last_login_at` DATETIME DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        try {
+            $db->exec("ALTER TABLE `users` ADD COLUMN `last_login_at` DATETIME DEFAULT NULL");
+        } catch (Throwable $e) {}
+
+        // 2. Pricing Plans Table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `pricing_plans` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `name` VARCHAR(100) NOT NULL,
+              `slug` VARCHAR(100) NOT NULL UNIQUE,
+              `description` TEXT NOT NULL,
+              `monthly_price` DECIMAL(10,2) NOT NULL,
+              `yearly_price` DECIMAL(10,2) NOT NULL,
+              `yearly_discount` INT DEFAULT 20,
+              `currency` VARCHAR(10) DEFAULT '$',
+              `profile_limit` INT NOT NULL,
+              `team_limit` INT NOT NULL,
+              `api_limit` VARCHAR(100) DEFAULT 'Basic',
+              `badge` VARCHAR(100) DEFAULT '',
+              `button_text` VARCHAR(100) NOT NULL,
+              `button_url` VARCHAR(255) NOT NULL,
+              `is_popular` TINYINT(1) DEFAULT 0,
+              `is_active` TINYINT(1) DEFAULT 1,
+              `sort_order` INT DEFAULT 0,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $db->exec("
+            INSERT INTO `pricing_plans` (`id`, `name`, `slug`, `description`, `monthly_price`, `yearly_price`, `profile_limit`, `team_limit`, `api_limit`, `badge`, `button_text`, `button_url`, `is_popular`, `sort_order`)
+            VALUES
+            ('plan_free', 'Free', 'free', 'Ideal for testing & personal profile management', 0.00, 0.00, 3, 1, '—', '', 'Start Free', '#register', 0, 1),
+            ('plan_starter', 'Starter', 'starter', 'Essential features for solo operators & small tasks', 19.00, 15.00, 25, 2, 'Basic API', '', 'Start Trial', '#register', 0, 2),
+            ('plan_pro', 'Professional', 'professional', 'Advanced fingerprint controls & team features', 49.00, 39.00, 100, 10, 'Full API', 'Most Popular', 'Get Started', '#register', 1, 3),
+            ('plan_business', 'Business', 'business', 'Maximum power for large scale multi-profile teams', 99.00, 79.00, 500, 25, 'High Limit API', 'Best Value', 'Contact Sales', '#contact', 0, 4)
+            ON DUPLICATE KEY UPDATE `id`=`id`;
+        ");
+
+        // 3. Subscriptions Table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `subscriptions` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL UNIQUE,
+              `plan_id` VARCHAR(50) NOT NULL,
+              `status` VARCHAR(50) NOT NULL DEFAULT 'active',
+              `starts_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `expires_at` DATETIME NOT NULL,
+              `grace_period_days` INT DEFAULT 3,
+              `auto_renew` TINYINT(1) DEFAULT 1,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+    } catch (Throwable $e) {}
+}
+
+ensureDatabaseTablesExist();
+
 // Set CORS and JSON Headers
 function sendJsonHeader() {
     header('Content-Type: application/json; charset=utf-8');
