@@ -824,6 +824,27 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        async function loginAsUser(userId) {
+            const token = localStorage.getItem('sessionToken');
+            if (!confirm('Log in as this user for authorized administration support?')) return;
+            try {
+                const res = await fetch('/api/admin/login-as-user?id=' + userId, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('sessionToken', data.sessionToken);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    alert('Now logged in as ' + data.user.email);
+                    window.location.reload();
+                } else {
+                    alert('Login as User failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error during login as user.');
+            }
+        }
+
         async function loadUsersTable() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
@@ -842,8 +863,9 @@ header('Content-Type: text/html; charset=utf-8');
                             <td style="padding: 12px 16px; color: var(--text-muted);">${u.email}</td>
                             <td style="padding: 12px 16px;"><span style="background: rgba(99,102,241,0.2); color: #818CF8; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.role}</span></td>
                             <td style="padding: 12px 16px;"><span style="background: ${u.accountStatus === 'suspended' ? 'rgba(239,68,68,0.2)' : 'rgba(45,212,191,0.2)'}; color: ${u.accountStatus === 'suspended' ? '#F87171' : '#2DD4BF'}; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.accountStatus || 'active'}</span></td>
-                            <td style="padding: 12px 16px;">
+                            <td style="padding: 12px 16px; display: flex; gap: 6px;">
                                 <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserStatus('${u.id}', '${u.accountStatus || 'active'}')">${u.accountStatus === 'suspended' ? 'Activate' : 'Suspend'}</button>
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; border-color: #818CF8; color: #818CF8;" onclick="loginAsUser('${u.id}')">🔑 Login as User</button>
                             </td>
                         </tr>
                     `).join('');

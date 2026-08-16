@@ -426,6 +426,133 @@ CREATE TABLE IF NOT EXISTS `seo_audit_reports` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 10. Audit Logs, Login History, Security & System Health Tables
+CREATE TABLE IF NOT EXISTS `login_history` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `ip_address` VARCHAR(50) DEFAULT NULL,
+  `user_agent` TEXT DEFAULT NULL,
+  `location` VARCHAR(100) DEFAULT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'success',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_lh_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `admin_id` VARCHAR(36) NOT NULL,
+  `admin_email` VARCHAR(255) NOT NULL,
+  `action` VARCHAR(100) NOT NULL,
+  `target_user_id` VARCHAR(36) DEFAULT NULL,
+  `ip_address` VARCHAR(50) DEFAULT NULL,
+  `details` TEXT DEFAULT NULL,
+  `previous_value` TEXT DEFAULT NULL,
+  `new_value` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_audit_admin` (`admin_id`),
+  KEY `idx_audit_action` (`action`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `security_events` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `event_type` VARCHAR(100) NOT NULL,
+  `severity` VARCHAR(20) NOT NULL DEFAULT 'warning',
+  `user_id` VARCHAR(36) DEFAULT NULL,
+  `ip_address` VARCHAR(50) DEFAULT NULL,
+  `details` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `payments` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `subscription_id` VARCHAR(50) DEFAULT NULL,
+  `transaction_id` VARCHAR(100) NOT NULL,
+  `amount` DECIMAL(10,2) NOT NULL,
+  `currency` VARCHAR(10) DEFAULT '$',
+  `gateway` VARCHAR(50) NOT NULL DEFAULT 'manual',
+  `status` VARCHAR(50) NOT NULL DEFAULT 'successful',
+  `payment_method` VARCHAR(50) DEFAULT 'credit_card',
+  `invoice_url` VARCHAR(255) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_pay_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `payment_gateways` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `gateway_key` VARCHAR(50) NOT NULL UNIQUE,
+  `name` VARCHAR(100) NOT NULL,
+  `is_enabled` TINYINT(1) DEFAULT 1,
+  `is_test_mode` TINYINT(1) DEFAULT 0,
+  `config_json` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `profile_configurations` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `profile_name` VARCHAR(255) NOT NULL,
+  `browser_type` VARCHAR(50) DEFAULT 'chromium',
+  `fingerprint_json` LONGTEXT DEFAULT NULL,
+  `proxy_config_json` TEXT DEFAULT NULL,
+  `storage_limit_mb` INT DEFAULT 500,
+  `status` VARCHAR(50) DEFAULT 'active',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_prof_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `profile_settings_audit` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `setting_key` VARCHAR(100) NOT NULL UNIQUE,
+  `layer_ui` VARCHAR(20) DEFAULT 'working',
+  `layer_state` VARCHAR(20) DEFAULT 'working',
+  `layer_api` VARCHAR(20) DEFAULT 'working',
+  `layer_db` VARCHAR(20) DEFAULT 'working',
+  `layer_profile_config` VARCHAR(20) DEFAULT 'working',
+  `layer_launch` VARCHAR(20) DEFAULT 'working',
+  `layer_actual_browser` VARCHAR(20) DEFAULT 'working',
+  `status` VARCHAR(20) DEFAULT 'working',
+  `last_checked_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `smtp_settings` (
+  `key` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `value` TEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `email_templates` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `template_key` VARCHAR(100) NOT NULL UNIQUE,
+  `subject` VARCHAR(255) NOT NULL,
+  `body_html` LONGTEXT NOT NULL,
+  `body_text` LONGTEXT NOT NULL,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `email_logs` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `recipient` VARCHAR(255) NOT NULL,
+  `subject` VARCHAR(255) NOT NULL,
+  `template_key` VARCHAR(100) DEFAULT NULL,
+  `status` VARCHAR(50) DEFAULT 'sent',
+  `error_message` TEXT DEFAULT NULL,
+  `sent_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `target_type` VARCHAR(50) NOT NULL DEFAULT 'all',
+  `target_id` VARCHAR(50) DEFAULT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `message` TEXT NOT NULL,
+  `type` VARCHAR(50) DEFAULT 'info',
+  `is_read` TINYINT(1) DEFAULT 0,
+  `scheduled_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;
+
 
 

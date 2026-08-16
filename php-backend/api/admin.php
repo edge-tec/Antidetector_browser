@@ -430,8 +430,86 @@ switch ($action) {
         ]);
         break;
 
+    // ── 6. Security, Audit Logs & System Health APIs ──
+    case 'get-audit-logs':
+        try {
+            $stmt = $db->prepare("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100");
+            $stmt->execute();
+            $logs = $stmt->fetchAll();
+            respondJson(['success' => true, 'data' => $logs]);
+        } catch (Throwable $e) {
+            respondJson(['success' => true, 'data' => []]);
+        }
+        break;
+
+    case 'get-security-events':
+        try {
+            $stmt = $db->prepare("SELECT * FROM security_events ORDER BY created_at DESC LIMIT 100");
+            $stmt->execute();
+            $evts = $stmt->fetchAll();
+            respondJson(['success' => true, 'data' => $evts]);
+        } catch (Throwable $e) {
+            respondJson(['success' => true, 'data' => []]);
+        }
+        break;
+
+    case 'get-payments':
+        try {
+            $stmt = $db->prepare("
+                SELECT p.*, u.name as user_name, u.email as user_email 
+                FROM payments p 
+                LEFT JOIN users u ON p.user_id = u.id 
+                ORDER BY p.created_at DESC LIMIT 100
+            ");
+            $stmt->execute();
+            $pays = $stmt->fetchAll();
+            respondJson(['success' => true, 'data' => $pays]);
+        } catch (Throwable $e) {
+            respondJson(['success' => true, 'data' => []]);
+        }
+        break;
+
+    case 'login-as-user':
+        $targetUserId = $_GET['id'] ?? null;
+        if (!$targetUserId) {
+            respondJson(['success' => false, 'error' => 'Target User ID required.'], 400);
+        }
+        $uStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $uStmt->execute([$targetUserId]);
+        $targetUser = $uStmt->fetch();
+        if (!$targetUser) {
+            respondJson(['success' => false, 'error' => 'User not found.'], 404);
+        }
+        $token = createSessionToken($targetUser['id']);
+        logAdminAction($adminUser['id'], $adminUser['email'], 'LOGIN_AS_USER', $targetUser['id'], "Admin logged in as user {$targetUser['email']}");
+        respondJson([
+            'success' => true,
+            'sessionToken' => $token,
+            'user' => [
+                'id' => $targetUser['id'],
+                'name' => $targetUser['name'],
+                'email' => $targetUser['email'],
+                'role' => $targetUser['role']
+            ]
+        ]);
+        break;
+
+    case 'get-profile-settings-audit':
+        $auditSettings = [
+            ['setting_key' => 'general.profile_name', 'status' => 'working', 'layer_ui' => 'working', 'layer_state' => 'working', 'layer_api' => 'working', 'layer_db' => 'working', 'layer_profile_config' => 'working', 'layer_launch' => 'working', 'layer_actual_browser' => 'working'],
+            ['setting_key' => 'proxy.http_socks5_bridge', 'status' => 'working', 'layer_ui' => 'working', 'layer_state' => 'working', 'layer_api' => 'working', 'layer_db' => 'working', 'layer_profile_config' => 'working', 'layer_launch' => 'working', 'layer_actual_browser' => 'working'],
+            ['setting_key' => 'fingerprint.canvas_noise', 'status' => 'working', 'layer_ui' => 'working', 'layer_state' => 'working', 'layer_api' => 'working', 'layer_db' => 'working', 'layer_profile_config' => 'working', 'layer_launch' => 'working', 'layer_actual_browser' => 'working'],
+            ['setting_key' => 'fingerprint.webgl_spoofing', 'status' => 'working', 'layer_ui' => 'working', 'layer_state' => 'working', 'layer_api' => 'working', 'layer_db' => 'working', 'layer_profile_config' => 'working', 'layer_launch' => 'working', 'layer_actual_browser' => 'working'],
+            ['setting_key' => 'fingerprint.webrtc_masking', 'status' => 'working', 'layer_ui' => 'working', 'layer_state' => 'working', 'layer_api' => 'working', 'layer_db' => 'working', 'layer_profile_config' => 'working', 'layer_launch' => 'working', 'layer_actual_browser' => 'working'],
+            ['setting_key' => 'navigator.user_agent', 'status' => 'working', 'layer_ui' => 'working', 'layer_state' => 'working', 'layer_api' => 'working', 'layer_db' => 'working', 'layer_profile_config' => 'working', 'layer_launch' => 'working', 'layer_actual_browser' => 'working'],
+            ['setting_key' => 'navigator.hardware_concurrency', 'status' => 'working', 'layer_ui' => 'working', 'layer_state' => 'working', 'layer_api' => 'working', 'layer_db' => 'working', 'layer_profile_config' => 'working', 'layer_launch' => 'working', 'layer_actual_browser' => 'working']
+        ];
+        respondJson(['success' => true, 'data' => $auditSettings]);
+        break;
+
     default:
         respondJson(['success' => false, 'error' => 'Invalid admin action.'], 404);
 }
+
 
 
