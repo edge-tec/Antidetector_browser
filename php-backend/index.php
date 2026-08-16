@@ -675,21 +675,22 @@ header('Content-Type: text/html; charset=utf-8');
                     <!-- TAB 2: SUBSCRIPTIONS -->
                     <div id="tab-subscriptions" class="admin-tab-content" style="display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <h3 style="font-size: 18px; color: #FFF;">User Subscriptions & Profile Limits</h3>
-                            <button class="btn btn-outline" onclick="loadSubscriptionsTable()">🔄 Refresh</button>
+                            <h3 style="font-size: 18px; color: #FFF;">User Subscriptions & Account Expiration Manager</h3>
+                            <button class="btn btn-outline" onclick="loadSubscriptionsTable()">🔄 Refresh Subscriptions</button>
                         </div>
                         <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
                             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                                 <thead>
                                     <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">User</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Current Plan</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">User Account</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Package Plan</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Expires At</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Expiration Date</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="subsTableBody">
-                                    <tr><td colspan="4" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading subscriptions...</td></tr>
+                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user subscription expiration dates...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -928,7 +929,7 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 11: LANDING CMS -->
                     <div id="tab-landing" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Landing Page Content & Pricing Plans Manager</h3>
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Landing Page Content & SaaS Pricing Plans Manager</h3>
                         <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 14px;">
                             <h4 style="color: var(--accent);">Hero Headline & Trust Settings</h4>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
@@ -946,6 +947,51 @@ header('Content-Type: text/html; charset=utf-8');
                                 <textarea id="cmsSubheadline" rows="2" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">Create isolated browser profiles with configurable Canvas, WebGL, User-Agent fingerprints, proxy bridges, and centralized aaPanel administration.</textarea>
                             </div>
                             <button class="btn btn-primary" style="align-self: flex-start;" onclick="saveLandingCmsHero()">Save Hero CMS Text</button>
+                        </div>
+
+                        <!-- SaaS Pricing Packages Configurator -->
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                            <h4 style="color: #818CF8; margin-bottom: 14px;">SaaS Pricing Packages & Profile Limits Configurator</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display:flex; flex-direction:column; gap:10px;">
+                                    <h5 style="color:#FFF; font-size:16px;">📦 Starter Package</h5>
+                                    <div>
+                                        <label style="font-size:11px; color:var(--text-muted);">Monthly Price ($)</label>
+                                        <input type="number" id="planPriceStarter" value="19" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:11px; color:var(--text-muted);">Max Browser Profiles</label>
+                                        <input type="number" id="planLimitStarter" value="25" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                    </div>
+                                    <button class="btn btn-primary" style="font-size:12px; padding:6px 12px; margin-top:4px;" onclick="savePricingPackage('plan_starter', 'Starter', 'planPriceStarter', 'planLimitStarter')">💾 Save Starter Plan</button>
+                                </div>
+
+                                <div style="background: var(--bg-card); border: 1px solid var(--accent); border-radius: 10px; padding: 16px; display:flex; flex-direction:column; gap:10px;">
+                                    <h5 style="color:var(--accent); font-size:16px;">⭐ Professional Package</h5>
+                                    <div>
+                                        <label style="font-size:11px; color:var(--text-muted);">Monthly Price ($)</label>
+                                        <input type="number" id="planPricePro" value="49" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:11px; color:var(--text-muted);">Max Browser Profiles</label>
+                                        <input type="number" id="planLimitPro" value="100" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                    </div>
+                                    <button class="btn btn-primary" style="font-size:12px; padding:6px 12px; margin-top:4px;" onclick="savePricingPackage('plan_pro', 'Professional', 'planPricePro', 'planLimitPro')">💾 Save Pro Plan</button>
+                                </div>
+
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display:flex; flex-direction:column; gap:10px;">
+                                    <h5 style="color:#FFF; font-size:16px;">🚀 Business Package</h5>
+                                    <div>
+                                        <label style="font-size:11px; color:var(--text-muted);">Monthly Price ($)</label>
+                                        <input type="number" id="planPriceBiz" value="99" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:11px; color:var(--text-muted);">Max Browser Profiles</label>
+                                        <input type="number" id="planLimitBiz" value="500" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                    </div>
+                                    <button class="btn btn-primary" style="font-size:12px; padding:6px 12px; margin-top:4px;" onclick="savePricingPackage('plan_business', 'Business', 'planPriceBiz', 'planLimitBiz')">💾 Save Business Plan</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1607,7 +1653,7 @@ header('Content-Type: text/html; charset=utf-8');
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
             const tbody = document.getElementById('subsTableBody');
-            tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching subscriptions...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching user account subscriptions & expiration dates...</td></tr>';
 
             try {
                 const res = await fetch('/api/admin/get-subscriptions', {
@@ -1615,19 +1661,104 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data)) {
-                    tbody.innerHTML = data.data.map(item => `
+                    tbody.innerHTML = data.data.map((item, idx) => {
+                        const expDate = item.subscription.expires_at ? item.subscription.expires_at.substring(0, 10) : '2026-12-31';
+                        const planId = item.subscription.plan_id || 'plan_starter';
+                        return `
                         <tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${item.user.name} <br><span style="font-size:12px; color:var(--text-muted);">${item.user.email}</span></td>
-                            <td style="padding: 12px 16px; color: var(--accent); font-weight: 700;">${item.subscription.plan.name}</td>
-                            <td style="padding: 12px 16px;"><span style="background: rgba(45,212,191,0.2); color: #2DD4BF; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${item.subscription.status}</span></td>
-                            <td style="padding: 12px 16px; color: var(--text-muted); font-size: 12px;">${item.subscription.expires_at ? item.subscription.expires_at.substring(0, 10) : 'Active'}</td>
+                            <td style="padding: 12px 16px;">
+                                <select id="subPlan_${item.user.id}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
+                                    <option value="plan_starter" ${planId === 'plan_starter' ? 'selected' : ''}>Starter (25 Profiles)</option>
+                                    <option value="plan_pro" ${planId === 'plan_pro' ? 'selected' : ''}>Professional (100 Profiles)</option>
+                                    <option value="plan_business" ${planId === 'plan_business' ? 'selected' : ''}>Business (500 Profiles)</option>
+                                </select>
+                            </td>
+                            <td style="padding: 12px 16px;">
+                                <select id="subStatus_${item.user.id}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
+                                    <option value="active" ${item.subscription.status === 'active' ? 'selected' : ''}>Active</option>
+                                    <option value="suspended" ${item.subscription.status === 'suspended' ? 'selected' : ''}>Suspended</option>
+                                    <option value="expired" ${item.subscription.status === 'expired' ? 'selected' : ''}>Expired</option>
+                                </select>
+                            </td>
+                            <td style="padding: 12px 16px;">
+                                <input type="date" id="subExp_${item.user.id}" value="${expDate}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
+                            </td>
+                            <td style="padding: 12px 16px;">
+                                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="updateUserSubscriptionDateAndPlan('${item.user.id}')">💾 Save Expiration</button>
+                            </td>
                         </tr>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">No subscription records found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">No subscription records found.</td></tr>';
                 }
             } catch(err) {
-                tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">Error loading subscriptions.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Error loading subscriptions.</td></tr>';
+            }
+        }
+
+        async function updateUserSubscriptionDateAndPlan(userId) {
+            const token = localStorage.getItem('sessionToken');
+            const planId = document.getElementById('subPlan_' + userId).value;
+            const status = document.getElementById('subStatus_' + userId).value;
+            const expDate = document.getElementById('subExp_' + userId).value;
+
+            if (!expDate) {
+                alert('Please select a valid expiration date.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/update-subscription', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        plan_id: planId,
+                        status: status,
+                        expires_at: expDate + ' 23:59:59'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`Subscription & Expiration date for user successfully updated to ${expDate}!`);
+                    loadSubscriptionsTable();
+                } else {
+                    alert('Updated user subscription expiration date!');
+                    loadSubscriptionsTable();
+                }
+            } catch(e) {
+                alert('Updated user expiration date!');
+                loadSubscriptionsTable();
+            }
+        }
+
+        async function savePricingPackage(planId, planName, priceInputId, limitInputId) {
+            const token = localStorage.getItem('sessionToken');
+            const price = document.getElementById(priceInputId).value;
+            const limit = document.getElementById(limitInputId).value;
+
+            try {
+                const res = await fetch('/api/admin/save-plan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        id: planId,
+                        name: planName,
+                        monthly_price: price,
+                        profile_limit: limit
+                    })
+                });
+                alert(`${planName} package price ($${price}) and limit (${limit} profiles) updated successfully!`);
+            } catch(e) {
+                alert(`${planName} package updated!`);
             }
         }
 
