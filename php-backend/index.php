@@ -1957,11 +1957,17 @@ header('Content-Type: text/html; charset=utf-8');
                         return;
                     }
                 }
-                // Initiate download via API endpoint
-                window.location.href = '/api/releases?download=1&platform=' + platformKey;
-            } catch(e) {
-                window.location.href = '/api/releases?download=1&platform=' + platformKey;
+            } catch(e){}
+
+            // Seamless binary download via hidden iframe (zero page navigation, zero tab switching)
+            let iframe = document.getElementById('dlHiddenIframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'dlHiddenIframe';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
             }
+            iframe.src = '/api/releases?download=1&platform=' + platformKey;
         }
 
         async function handleSaveProfile(e) {
