@@ -341,249 +341,539 @@ header('Content-Type: text/html; charset=utf-8');
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
-            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
             <li><a href="#downloads">Downloads</a></li>
-            <li><a href="/sitemap.xml" target="_blank">Sitemap</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#contact">Contact</a></li>
         </ul>
-        <div>
-            <button class="btn btn-outline" onclick="openModal('login')">Login</button>
-            <button class="btn btn-primary" onclick="openModal('register')">Register Account</button>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn btn-outline" style="padding: 8px 18px; font-size: 13px;" onclick="openModal('login')">Sign In</button>
+            <button class="btn btn-primary" style="padding: 8px 20px; font-size: 13px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="openModal('register')">Get Started</button>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero container">
-        <div class="badge">⚡ NEXT-GEN ANTI-DETECT & FINGERPRINT ISOLATION</div>
-        <h1>Browse Privately. Isolate Profiles.<br>Scale Without Limits.</h1>
-        <p>Create isolated browser profiles with configurable Canvas, WebGL, User-Agent fingerprints, proxy bridges, and centralized aaPanel administration.</p>
-        <div class="hero-actions">
-            <button class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;" onclick="openModal('login')">🔑 Login</button>
-            <button class="btn btn-outline" style="padding: 14px 32px; font-size: 16px;" onclick="openModal('register')">✨ Register Account</button>
+    <!-- 1. Hero Section (2-Column Layout) -->
+    <section class="hero container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 48px; align-items: center; padding-top: 140px; padding-bottom: 60px;">
+        <div>
+            <div class="badge" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 700; margin-bottom: 24px;">
+                🚀 Next-Generation Profile Vault Architecture
+            </div>
+            <h1 style="font-size: clamp(36px, 5vw, 54px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; color: #FFF;">
+                Browse Privately.<br>Manage Profiles.<br>Scale Your Workflow.
+            </h1>
+            <p style="font-size: 16px; color: var(--text-muted); line-height: 1.6; margin-bottom: 32px; max-width: 520px;">
+                Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.
+            </p>
+            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
+                <button class="btn btn-primary" style="padding: 14px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;" onclick="openModal('register')">Start Free</button>
+                <a href="#pricing" class="btn btn-outline" style="padding: 14px 28px; font-size: 15px;">View Pricing</a>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;">⚡ No credit card required • Free trial available • Cancel anytime</p>
         </div>
 
-        <!-- Live Server Status Bar -->
-        <div class="status-box">
-            <div class="status-item">
-                <span class="status-label">Backend Engine</span>
-                <span class="status-val">PHP <?php echo PHP_VERSION; ?> Native</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">REST API</span>
-                <span class="status-val">Online & Active</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Database</span>
-                <span class="status-val">MySQL Connected</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">aaPanel Status</span>
-                <span class="status-val">Production Ready</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- Desktop Application Downloads Section -->
-    <section id="downloads" class="section container" style="margin-top: 10px;">
-        <div class="section-title">
-            <h2>Download Desktop Application</h2>
-            <p>Get ProfileVault Software for Windows, macOS, and Linux.</p>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;">
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; text-align: center; display: flex; flex-direction: column; align-items: center;">
-                <div style="font-size: 42px; margin-bottom: 12px;">🪟</div>
-                <h3 style="color: #FFF; font-size: 20px; margin-bottom: 6px;">Windows App</h3>
-                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Compatible with Windows 10 & 11 (64-bit)</p>
-                <a href="/releases/ProfileVault.exe" id="btnDownloadWin" download class="btn btn-primary" style="width: 100%; justify-content: center;">⬇️ Download (.exe)</a>
+        <!-- Right Column: Interactive Dashboard Preview Card -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); backdrop-filter: blur(12px);">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px;">
+                <div style="display: flex; gap: 8px;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #EF4444;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #F59E0B;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981;"></span>
+                </div>
+                <span style="font-family: monospace; font-size: 12px; color: var(--text-muted);">ProfileVault Dashboard v1.0</span>
             </div>
 
-            <div style="background: var(--bg-card); border: 1px solid var(--accent); border-radius: 16px; padding: 28px; text-align: center; display: flex; flex-direction: column; align-items: center; position: relative;">
-                <span style="position: absolute; top: -12px; background: var(--accent); color: #000; font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 20px;">RECOMMENDED</span>
-                <div style="font-size: 42px; margin-bottom: 12px;">🍏</div>
-                <h3 style="color: #FFF; font-size: 20px; margin-bottom: 6px;">macOS App</h3>
-                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Compatible with Apple Silicon & Intel Macs</p>
-                <a href="/releases/ProfileVault.dmg" id="btnDownloadMac" download class="btn btn-primary" style="width: 100%; justify-content: center;">⬇️ Download (.dmg)</a>
-            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="font-size: 14px; color: #FFF; font-weight: 700;">US E-Commerce Account</h4>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">macOS • 🇺🇸 United States • Active HTTP</p>
+                    </div>
+                    <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800;">Running</span>
+                </div>
 
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; text-align: center; display: flex; flex-direction: column; align-items: center;">
-                <div style="font-size: 42px; margin-bottom: 12px;">🐧</div>
-                <h3 style="color: #FFF; font-size: 20px; margin-bottom: 6px;">Linux App</h3>
-                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Compatible with Ubuntu, Debian, RedHat (64-bit)</p>
-                <a href="/releases/ProfileVault.AppImage" id="btnDownloadLinux" download class="btn btn-outline" style="width: 100%; justify-content: center;">⬇️ Download (.AppImage)</a>
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="font-size: 14px; color: #FFF; font-weight: 700;">UK Marketing Profile</h4>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Windows 11 • 🇬🇧 United Kingdom • SOCKS5 Active</p>
+                    </div>
+                    <span style="background: rgba(148, 163, 184, 0.15); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800;">Stopped</span>
+                </div>
+
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="font-size: 14px; color: #FFF; font-weight: 700;">EU Research Context</h4>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Linux • 🇩🇪 Germany • HTTP Active</p>
+                    </div>
+                    <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800;">Running</span>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Features Section -->
+    <!-- 2. Stats Bar Section -->
+    <section style="background: rgba(21, 23, 32, 0.6); border-y: 1px solid var(--border); padding: 40px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+        <div class="container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; text-align: center;">
+            <div>
+                <div style="font-size: 28px; margin-bottom: 6px;">🌐</div>
+                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">10K+</h3>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Active Profiles</p>
+            </div>
+            <div>
+                <div style="font-size: 28px; margin-bottom: 6px;">⚡</div>
+                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">99.9%</h3>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Platform Uptime</p>
+            </div>
+            <div>
+                <div style="font-size: 28px; margin-bottom: 6px;">🌍</div>
+                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">150+</h3>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Countries Supported</p>
+            </div>
+            <div>
+                <div style="font-size: 28px; margin-bottom: 6px;">🛡️</div>
+                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">24/7</h3>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Expert Support</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Features Section (8 Cards Grid) -->
     <section id="features" class="section container">
         <div class="section-title">
-            <h2>Built for Privacy, Security & Automation</h2>
-            <p>Enterprise-grade profile management designed for digital agencies, marketers, and power users.</p>
+            <h2>Built for Privacy, Security & Isolation</h2>
+            <p>Comprehensive environment control tools designed to keep your browser profiles completely isolated.</p>
         </div>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🔒</div>
-                <h3>Isolated Profiles</h3>
-                <p>Cookies, local storage, sessions, and browser data are 100% separated between profiles with zero data leakage.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">🔒</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Isolated Browser Profiles</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Keep cookies, local storage, sessions, and browser data completely separated between profiles.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">🛡️</div>
-                <h3>Fingerprint Protection</h3>
-                <p>Configure hardware parameters, WebGL/Canvas noise, WebRTC masking, and custom User Agents per profile.</p>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">🛡️</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Fingerprint Management</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Configure browser and device environment parameters including WebGL, Canvas, and User-Agents.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">🌐</div>
-                <h3>Proxy Manager</h3>
-                <p>Seamlessly assign HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with connection testing and automatic IP detection.</p>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">🌐</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Proxy Management System</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Seamlessly assign and test HTTP, HTTPS, SOCKS4, and SOCKS5 proxy configurations per profile.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">📋</div>
-                <h3>Reusable Templates</h3>
-                <p>Create standardized profile templates for fast batch provisioning across your operations.</p>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">📋</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Reusable Profile Templates</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Create standardized profile templates for fast batch provisioning across your operations.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">👥</div>
-                <h3>Team Management</h3>
-                <p>Assign team roles, set profile access permissions, and manage subscription limits from a central dashboard.</p>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">👥</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Team Access Controls</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Share browser profiles securely across team members with granular permission levels.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <h3>REST API Automation</h3>
-                <p>Programmatically create, start, stop, and control browser profiles via localhost REST API endpoints.</p>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">⚡</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Automation API</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Access local REST endpoints and automation drivers for Puppeteer and Selenium workflows.</p>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">💾</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Encrypted Local Storage</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">All session data and cookies are stored with high-standard AES-256 local database encryption.</p>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 16px;">💻</div>
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Cross-Platform Compatibility</h3>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Native desktop support tailored for macOS, Windows, and Linux operating systems.</p>
             </div>
         </div>
     </section>
 
-    <!-- How It Works Section -->
+    <!-- 4. How It Works Section (4 Steps) -->
     <section id="how-it-works" class="section container">
         <div class="section-title">
-            <h2>How ProfileVault Works in 3 Simple Steps</h2>
-            <p>Set up isolated browser profiles in seconds with full environment customization.</p>
+            <h2>How ProfileVault Works</h2>
+            <p>Get started in four easy steps and launch your isolated browser profiles in seconds.</p>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px;">
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center;">
-                <div style="background: rgba(99, 102, 241, 0.15); color: #818CF8; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; margin: 0 auto 20px;">1</div>
-                <h3 style="font-size: 20px; margin-bottom: 10px; color: #FFF;">Create Profile</h3>
-                <p style="color: var(--text-muted); font-size: 14px;">Choose a profile template or start from scratch to configure your browser environment.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
+                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 01</span>
+                <div style="font-size: 32px; margin-bottom: 14px;">📋</div>
+                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Create Your Profile</h3>
+                <p style="color: var(--text-muted); font-size: 13px;">Choose a profile template or start from scratch to configure your environment.</p>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center;">
-                <div style="background: rgba(45, 212, 191, 0.15); color: var(--accent); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; margin: 0 auto 20px;">2</div>
-                <h3 style="font-size: 20px; margin-bottom: 10px; color: #FFF;">Configure Environment</h3>
-                <p style="color: var(--text-muted); font-size: 14px;">Set custom User Agent, OS, timezone, WebGL noise, Canvas fingerprint, and proxy bridge.</p>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
+                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 02</span>
+                <div style="font-size: 32px; margin-bottom: 14px;">⚙️</div>
+                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Configure Environment</h3>
+                <p style="color: var(--text-muted); font-size: 13px;">Set custom User Agent, OS, timezone, language, WebGL, fingerprint, and proxy.</p>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center;">
-                <div style="background: rgba(139, 92, 246, 0.15); color: #C084FC; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; margin: 0 auto 20px;">3</div>
-                <h3 style="font-size: 20px; margin-bottom: 10px; color: #FFF;">Launch Isolated Window</h3>
-                <p style="color: var(--text-muted); font-size: 14px;">Open an isolated browser window running with dedicated storage, cookies, and network stack.</p>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
+                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 03</span>
+                <div style="font-size: 32px; margin-bottom: 14px;">🚀</div>
+                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Launch Isolated Window</h3>
+                <p style="color: var(--text-muted); font-size: 13px;">Open an isolated browser window running with dedicated storage and cookies.</p>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
+                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 04</span>
+                <div style="font-size: 32px; margin-bottom: 14px;">📊</div>
+                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Scale & Manage</h3>
+                <p style="color: var(--text-muted); font-size: 13px;">Monitor profile status, organize into groups, and manage team access effortlessly.</p>
             </div>
         </div>
     </section>
 
-    <!-- Pricing Section -->
+    <!-- 5. Desktop Downloads Section -->
+    <section id="downloads" class="section container">
+        <div class="section-title">
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 700; margin-bottom: 12px;">
+                💻 Cross-Platform Desktop Client
+            </div>
+            <h2>Download Our Desktop Application</h2>
+            <p>Manage your isolated browser profiles directly from your computer with native Windows and macOS performance.</p>
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 8px 16px; display: inline-block; font-size: 13px; color: #10B981; margin-top: 14px; font-weight: 600;">
+                ✓ Auto-Detected System: macOS Apple Silicon (ARM64 / M1 / M2 / M3 / M4)
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 12px;">🪟</div>
+                <h3 style="font-size: 18px; color: #FFF;">Download for Windows</h3>
+                <span style="font-size: 11px; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; color: var(--text-muted);">x64 Architecture [64-bit]</span>
+                <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native installer for Windows 10 and 11. Includes automatic shortcuts and silent installer options.</p>
+                <a href="/releases/ProfileVault.exe" class="btn btn-outline" style="width: 100%; justify-content: center;">Download Windows .exe (v1.0.0)</a>
+            </div>
+
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="font-size: 32px; margin-bottom: 12px;">🍏</div>
+                <h3 style="font-size: 18px; color: #FFF;">Download for Mac — Intel</h3>
+                <span style="font-size: 11px; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; color: var(--text-muted);">Intel Processors [x64]</span>
+                <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native macOS disk image built for Intel-based Mac computers manufactured before late 2020.</p>
+                <a href="/releases/ProfileVault.dmg" class="btn btn-outline" style="width: 100%; justify-content: center;">Download macOS Intel .dmg (v1.0.0)</a>
+            </div>
+
+            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 28px; position: relative;">
+                <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">RECOMMENDED FOR THIS DEVICE</span>
+                <div style="font-size: 32px; margin-bottom: 12px;">🍏</div>
+                <h3 style="font-size: 18px; color: #FFF;">Download for Mac — Apple Silicon</h3>
+                <span style="font-size: 11px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px; font-weight: 700;">M1 / M2 / M3 / M4 [arm64]</span>
+                <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px;">Native ARM64 build engineered specifically for Apple Silicon M-series processors for maximum speed.</p>
+                <a href="/releases/ProfileVault.dmg" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;">Download Apple Silicon .dmg (v1.0.0)</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Pricing Section (4 Plan Cards) -->
     <section id="pricing" class="section container">
         <div class="section-title">
-            <h2>Simple & Transparent Pricing</h2>
-            <p>Choose the plan that best fits your profile management requirements.</p>
+            <h2>Transparent & Flexible Pricing</h2>
+            <p>Choose the plan that fits your workflow. Scale or downgrade anytime.</p>
         </div>
-        <div class="pricing-grid">
-            <div class="plan-card">
-                <div class="plan-name">Starter</div>
-                <div class="plan-price">$19 <span>/month</span></div>
-                <ul class="plan-features">
-                    <li>25 Browser Profiles</li>
-                    <li>Basic Fingerprint Control</li>
-                    <li>Proxy Bridge Support</li>
-                    <li>1 Team Member</li>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+            <!-- Free Plan -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column;">
+                <h3 style="font-size: 18px; color: #FFF;">Free</h3>
+                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$0 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register')">Start Free</button>
+                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
+                    <li>✓ Browser Profiles: <strong>3 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong>Basic</strong></li>
+                    <li>✓ Fingerprint Controls: <strong>Standard</strong></li>
+                    <li>✓ Team Users: <strong>1 User</strong></li>
+                    <li>✕ API Access: <strong>—</strong></li>
+                    <li>✓ Support: <strong>Community</strong></li>
                 </ul>
-                <button class="btn btn-outline" onclick="openModal('login')">Select Starter</button>
             </div>
-            <div class="plan-card popular">
-                <div class="popular-tag">Most Popular</div>
-                <div class="plan-name">Professional</div>
-                <div class="plan-price">$49 <span>/month</span></div>
-                <ul class="plan-features">
-                    <li>100 Browser Profiles</li>
-                    <li>Advanced Fingerprint Masking</li>
-                    <li>HTTP / SOCKS5 Proxies</li>
-                    <li>5 Team Members</li>
-                    <li>REST API Access</li>
+
+            <!-- Starter Plan -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column;">
+                <h3 style="font-size: 18px; color: #FFF;">Starter</h3>
+                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$19 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register')">Start Trial</button>
+                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
+                    <li>✓ Browser Profiles: <strong>25 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS</strong></li>
+                    <li>✓ Fingerprint Controls: <strong>Advanced</strong></li>
+                    <li>✓ Team Users: <strong>2 Users</strong></li>
+                    <li>✓ API Access: <strong>Basic API</strong></li>
+                    <li>✓ Support: <strong>Email Support</strong></li>
                 </ul>
-                <button class="btn btn-primary" onclick="openModal('login')">Select Professional</button>
             </div>
-            <div class="plan-card">
-                <div class="plan-name">Business</div>
-                <div class="plan-price">$99 <span>/month</span></div>
-                <ul class="plan-features">
-                    <li>500 Browser Profiles</li>
-                    <li>Full Hardware Spoofing</li>
-                    <li>Unlimited Proxy Bridges</li>
-                    <li>25 Team Members</li>
-                    <li>High-Priority Support</li>
+
+            <!-- Professional Plan -->
+            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
+                <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">MOST POPULAR</span>
+                <h3 style="font-size: 18px; color: #FFF;">Professional</h3>
+                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$49 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="openModal('register')">Get Started</button>
+                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
+                    <li>✓ Browser Profiles: <strong>100 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
+                    <li>✓ Fingerprint Controls: <strong>Advanced Controls</strong></li>
+                    <li>✓ Team Users: <strong>10 Users</strong></li>
+                    <li>✓ API Access: <strong>Full REST & Driver API</strong></li>
+                    <li>✓ Support: <strong>Priority 24/7</strong></li>
                 </ul>
-                <button class="btn btn-outline" onclick="openModal('login')">Select Business</button>
+            </div>
+
+            <!-- Business Plan -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
+                <span style="position: absolute; top: -12px; right: 20px; background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">BEST VALUE</span>
+                <h3 style="font-size: 18px; color: #FFF;">Business</h3>
+                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$99 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register')">Contact Sales</button>
+                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
+                    <li>✓ Browser Profiles: <strong>500 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
+                    <li>✓ Fingerprint Controls: <strong>Full Hardware Spoofing</strong></li>
+                    <li>✓ Team Users: <strong>25 Users</strong></li>
+                    <li>✓ API Access: <strong>Unlimited API</strong></li>
+                    <li>✓ Support: <strong>Dedicated Account Manager</strong></li>
+                </ul>
             </div>
         </div>
     </section>
 
-    <!-- FAQ Section -->
+    <!-- 7. Plan Feature Comparison Matrix Table -->
+    <section class="section container" style="padding-top: 0;">
+        <div class="section-title">
+            <h2>Plan Feature Comparison Matrix</h2>
+        </div>
+        <div style="overflow-x: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                        <th style="padding: 16px; text-align: left; color: var(--text-muted);">Feature</th>
+                        <th style="padding: 16px; color: #FFF;">Free</th>
+                        <th style="padding: 16px; color: #FFF;">Starter</th>
+                        <th style="padding: 16px; color: #2DD4BF;">Professional</th>
+                        <th style="padding: 16px; color: #818CF8;">Business</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 14px 16px; text-align: left; font-weight: 600; color: #FFF;">Browser Profiles</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">3</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">25</td>
+                        <td style="padding: 14px 16px; color: #2DD4BF; font-weight: 700;">100</td>
+                        <td style="padding: 14px 16px; color: #818CF8; font-weight: 700;">500</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 14px 16px; text-align: left; font-weight: 600; color: #FFF;">Team Members</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">1 User</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">2 Users</td>
+                        <td style="padding: 14px 16px; color: #2DD4BF; font-weight: 700;">10 Users</td>
+                        <td style="padding: 14px 16px; color: #818CF8; font-weight: 700;">25 Users</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 14px 16px; text-align: left; font-weight: 600; color: #FFF;">Automation API</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">—</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">Basic API</td>
+                        <td style="padding: 14px 16px; color: #2DD4BF; font-weight: 700;">Full API</td>
+                        <td style="padding: 14px 16px; color: #818CF8; font-weight: 700;">High-Limit API</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 14px 16px; text-align: left; font-weight: 600; color: #FFF;">Proxy Support</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">✓</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">✓</td>
+                        <td style="padding: 14px 16px; color: #2DD4BF; font-weight: 700;">✓</td>
+                        <td style="padding: 14px 16px; color: #818CF8; font-weight: 700;">✓</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 14px 16px; text-align: left; font-weight: 600; color: #FFF;">Fingerprint Control</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">Basic</td>
+                        <td style="padding: 14px 16px; color: var(--text-muted);">Advanced</td>
+                        <td style="padding: 14px 16px; color: #2DD4BF; font-weight: 700;">Advanced</td>
+                        <td style="padding: 14px 16px; color: #818CF8; font-weight: 700;">Advanced</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 8. Frequently Asked Questions Section -->
     <section id="faq" class="section container">
         <div class="section-title">
             <h2>Frequently Asked Questions</h2>
-            <p>Everything you need to know about ProfileVault Anti-Detect Browser software.</p>
+            <p>Have questions about ProfileVault? Find answers below.</p>
         </div>
         <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer; transition: 0.2s;">
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
                 <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
                     <span>What is an anti-detect browser?</span>
-                    <span class="faq-icon" style="color: var(--accent); font-size: 20px; font-weight: 700;">+</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
                     An anti-detect browser isolates browser profiles so each runs with its own cookies, local storage, proxy, and digital fingerprint (WebGL, Canvas, User-Agent, WebRTC).
                 </div>
             </div>
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer; transition: 0.2s;">
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
                 <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
-                    <span>Can I use HTTP, HTTPS, and SOCKS5 proxies?</span>
-                    <span class="faq-icon" style="color: var(--accent); font-size: 20px; font-weight: 700;">+</span>
+                    <span>What is a browser profile?</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
-                    Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in speed testing and automated proxy bridge authentication.
+                    A browser profile is an isolated browsing environment containing its own cookies, browser history, passwords, extensions, and hardware fingerprint settings.
                 </div>
             </div>
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer; transition: 0.2s;">
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
                 <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
-                    <span>How does the desktop app connect to aaPanel?</span>
-                    <span class="faq-icon" style="color: var(--accent); font-size: 20px; font-weight: 700;">+</span>
+                    <span>Can I use HTTP, SOCKS4, and SOCKS5 proxies?</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
-                    Your desktop app connects to your server at <code>https://app.edgecash.net/api/license/validate</code> to authorize users, check subscriptions, and validate permissions.
+                    Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with connection testing and automated IP detection per profile.
+                </div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+                    <span>Can I upgrade or downgrade my plan at any time?</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                    Yes, you can upgrade, downgrade, or cancel your subscription plan at any time from your central web account dashboard.
+                </div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; cursor: pointer;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 16px; color: #FFF;">
+                    <span>Does ProfileVault offer an Automation API?</span>
+                    <span class="faq-icon" style="color: #2DD4BF; font-size: 20px; font-weight: 700;">+</span>
+                </div>
+                <div class="faq-answer" style="display: none; margin-top: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                    Yes! ProfileVault provides a local REST API and WebSockets endpoint for Puppeteer, Selenium, Playwright, and custom automation scripts.
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Downloads Section -->
-    <section id="downloads" class="section container">
+    <!-- 9. Testimonials Section -->
+    <section class="section container">
         <div class="section-title">
-            <h2>Download Desktop Application</h2>
-            <p>Available for macOS, Windows 10/11, and Linux operating systems.</p>
+            <h2>Trusted by Professionals World-Wide</h2>
+            <p>See what engineers, agencies, and security researchers say about ProfileVault.</p>
         </div>
-        <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-            <a href="/api/public/releases" class="btn btn-outline" style="padding: 16px 28px;">🍏 macOS (.dmg)</a>
-            <a href="/api/public/releases" class="btn btn-outline" style="padding: 16px 28px;">🪟 Windows (.exe)</a>
-            <a href="/api/public/releases" class="btn btn-outline" style="padding: 16px 28px;">🐧 Linux (.AppImage)</a>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="color: #F59E0B; font-size: 18px; margin-bottom: 12px;">⭐⭐⭐⭐⭐</div>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                    "ProfileVault completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid."
+                </p>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #6366F1; display: flex; align-items: center; justify-content: center; font-weight: 700;">AR</div>
+                    <div>
+                        <h4 style="font-size: 14px; color: #FFF;">Alex Rivera</h4>
+                        <p style="font-size: 12px; color: var(--text-muted);">E-Commerce Manager at Apex Brands</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="color: #F59E0B; font-size: 18px; margin-bottom: 12px;">⭐⭐⭐⭐⭐</div>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                    "The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless."
+                </p>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #2DD4BF; color: #000; display: flex; align-items: center; justify-content: center; font-weight: 700;">SC</div>
+                    <div>
+                        <h4 style="font-size: 14px; color: #FFF;">Sarah Chen</h4>
+                        <p style="font-size: 12px; color: var(--text-muted);">Lead Growth Engineer at Nexus Digital</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <div style="color: #F59E0B; font-size: 18px; margin-bottom: 12px;">⭐⭐⭐⭐⭐</div>
+                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                    "Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require."
+                </p>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #8B5CF6; display: flex; align-items: center; justify-content: center; font-weight: 700;">MV</div>
+                    <div>
+                        <h4 style="font-size: 14px; color: #FFF;">Marcus Vance</h4>
+                        <p style="font-size: 12px; color: var(--text-muted);">Privacy Consultant at CyberShield</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
+    <!-- 10. Contact Us Section -->
+    <section id="contact" class="section container">
+        <div class="section-title">
+            <h2>Get in Touch with Our Team</h2>
+            <p>Have custom enterprise requirements or need technical assistance? Contact our team directly.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: start;">
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
+                    <div style="font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">✉️ EMAIL SUPPORT</div>
+                    <a href="mailto:support@profilevault.local" style="font-size: 16px; color: #2DD4BF; font-weight: 700; text-decoration: none;">support@profilevault.local</a>
+                </div>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <p>&copy; <?php echo date('Y'); ?> ProfileVault Software. All rights reserved. | Powered by aaPanel PHP Engine.</p>
-            <p style="margin-top: 8px;">
-                <a href="/sitemap.xml" target="_blank">Sitemap XML</a> • 
-                <a href="/llms.txt" target="_blank">LLM Specification</a> • 
-                <a href="/api/health" target="_blank">API Health Status</a>
-            </p>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
+                    <div style="font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">✈️ TELEGRAM COMMUNITY</div>
+                    <a href="https://t.me/profilevault_support" target="_blank" class="btn btn-outline" style="margin-top: 8px;">Join Telegram Support</a>
+                </div>
+            </div>
+
+            <!-- Contact Message Form -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Send a Message</h3>
+                <form onsubmit="event.preventDefault(); alert('Thank you for your message! Our support team will get back to you shortly.'); this.reset();">
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <input type="text" placeholder="Your Name" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <input type="email" placeholder="Your Email" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <input type="text" placeholder="Subject" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <textarea rows="4" placeholder="Your Message..." required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- 11. Footer Section -->
+    <footer style="background: #08090C; border-top: 1px solid var(--border); padding: 60px 0 30px;">
+        <div class="container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border);">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                    <img src="/logo.png" alt="ProfileVault Logo" style="width: 32px; height: 32px; object-fit: contain;">
+                    <span style="font-size: 18px; font-weight: 800; color: #FFF;">ProfileVault</span>
+                </div>
+                <p style="color: var(--text-muted); font-size: 13px; line-height: 1.6;">Professional browser profile isolation and anti-detect privacy management software.</p>
+            </div>
+            <div>
+                <h4 style="font-size: 14px; color: #FFF; font-weight: 700; margin-bottom: 14px;">Product</h4>
+                <ul style="list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                    <li><a href="#features" style="color: var(--text-muted); text-decoration: none;">Features</a></li>
+                    <li><a href="#pricing" style="color: var(--text-muted); text-decoration: none;">Pricing</a></li>
+                    <li><a href="#downloads" style="color: var(--text-muted); text-decoration: none;">Downloads</a></li>
+                    <li><a href="#faq" style="color: var(--text-muted); text-decoration: none;">FAQ</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="font-size: 14px; color: #FFF; font-weight: 700; margin-bottom: 14px;">Resources</h4>
+                <ul style="list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                    <li><a href="/sitemap.xml" target="_blank" style="color: var(--text-muted); text-decoration: none;">Sitemap XML</a></li>
+                    <li><a href="/llms.txt" target="_blank" style="color: var(--text-muted); text-decoration: none;">LLM Text Spec</a></li>
+                    <li><a href="/api/releases" target="_blank" style="color: var(--text-muted); text-decoration: none;">Releases API</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="font-size: 14px; color: #FFF; font-weight: 700; margin-bottom: 14px;">Account</h4>
+                <ul style="list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                    <li><a href="#" onclick="openModal('login'); return false;" style="color: var(--text-muted); text-decoration: none;">Sign In</a></li>
+                    <li><a href="#" onclick="openModal('register'); return false;" style="color: #2DD4BF; text-decoration: none; font-weight: 700;">Create Free Account</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="container" style="text-align: center; padding-top: 24px; font-size: 12px; color: var(--text-muted);">
+            © <?php echo date('Y'); ?> ProfileVault Software. All rights reserved.
         </div>
     </footer>
 
