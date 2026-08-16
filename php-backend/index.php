@@ -308,6 +308,7 @@ header('Content-Type: text/html; charset=utf-8');
 
         /* Login Modal */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        #loginModal { z-index: 3000 !important; }
         .modal-overlay.active { display: flex; }
         .modal-box { background: var(--bg-card); border: 1px solid var(--border-hover); width: 100%; max-width: 440px; border-radius: 20px; padding: 36px; position: relative; box-shadow: 0 25px 50px rgba(0,0,0,0.6); }
         .close-modal { position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
@@ -1812,8 +1813,12 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
         function openModal(mode) {
-            document.getElementById('loginModal').classList.add('active');
-            switchAuthTab(mode || 'login');
+            closeAdminDashboard();
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.add('active');
+                switchAuthTab(mode || 'login');
+            }
         }
 
         function switchAuthTab(mode) {
@@ -1825,20 +1830,36 @@ header('Content-Type: text/html; charset=utf-8');
             if (msg) msg.style.display = 'none';
 
             if (mode === 'register') {
-                loginForm.style.display = 'none';
-                regForm.style.display = 'block';
-                btnReg.style.background = 'var(--primary)';
-                btnReg.style.color = '#FFF';
-                btnLogin.style.background = 'transparent';
-                btnLogin.style.color = 'var(--text-muted)';
+                if (loginForm) loginForm.style.display = 'none';
+                if (regForm) regForm.style.display = 'block';
+                if (btnReg) {
+                    btnReg.style.background = 'var(--primary)';
+                    btnReg.style.color = '#FFF';
+                }
+                if (btnLogin) {
+                    btnLogin.style.background = 'transparent';
+                    btnLogin.style.color = 'var(--text-muted)';
+                }
             } else {
-                regForm.style.display = 'none';
-                loginForm.style.display = 'block';
-                btnLogin.style.background = 'var(--primary)';
-                btnLogin.style.color = '#FFF';
-                btnReg.style.background = 'transparent';
-                btnReg.style.color = 'var(--text-muted)';
+                if (regForm) regForm.style.display = 'none';
+                if (loginForm) loginForm.style.display = 'block';
+                if (btnLogin) {
+                    btnLogin.style.background = 'var(--primary)';
+                    btnLogin.style.color = '#FFF';
+                }
+                if (btnReg) {
+                    btnReg.style.background = 'transparent';
+                    btnReg.style.color = 'var(--text-muted)';
+                }
             }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('sessionToken');
+            localStorage.removeItem('user');
+            closeAdminDashboard();
+            closeModal();
+            openModal('login');
         }
 
         async function handleRegister(e) {
