@@ -198,9 +198,11 @@ header('Content-Type: text/html; charset=utf-8');
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc); ?>">
     <meta name="robots" content="<?php echo htmlspecialchars($pageRobots); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($pageCanonical); ?>">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="shortcut icon" href="/logo.png">
     <meta property="og:title" content="<?php echo htmlspecialchars($ogTitle); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($ogDesc); ?>">
-    <meta property="og:image" content="<?php echo htmlspecialchars($ogImage); ?>">
+    <meta property="og:image" content="https://app.edgecash.net/logo.png">
     <meta property="og:url" content="<?php echo htmlspecialchars($pageCanonical); ?>">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json"><?php echo json_encode($schemas, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); ?></script>
@@ -334,7 +336,7 @@ header('Content-Type: text/html; charset=utf-8');
     <!-- Navbar -->
     <nav class="navbar">
         <a href="/" class="logo">
-            <div class="logo-icon">🛡️</div>
+            <img src="/logo.png" alt="ProfileVault Logo" style="width: 36px; height: 36px; object-fit: contain;">
             <span>ProfileVault</span>
         </a>
         <ul class="nav-links">
@@ -641,7 +643,7 @@ header('Content-Type: text/html; charset=utf-8');
             <!-- Top Bar Header -->
             <div style="padding: 14px 24px; background: #151720; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="background: linear-gradient(135deg, var(--primary), var(--accent)); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;">👑</div>
+                    <img src="/logo.png" alt="ProfileVault Logo" style="width: 38px; height: 38px; object-fit: contain;">
                     <div>
                         <h2 style="font-size: 18px; color: #FFF;">ProfileVault Anti-Detect Browser — Central Web Control Center</h2>
                         <p style="font-size: 12px; color: var(--text-muted);" id="adminUserInfo">Logged in as System Admin</p>
