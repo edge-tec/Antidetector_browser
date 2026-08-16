@@ -1981,6 +1981,10 @@ header('Content-Type: text/html; charset=utf-8');
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
 
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', '/');
+                    }
+
                     setTimeout(() => {
                         closeModal();
                         checkSession();
@@ -2022,6 +2026,10 @@ header('Content-Type: text/html; charset=utf-8');
 
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
+
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', '/');
+                    }
 
                     setTimeout(() => {
                         closeModal();
@@ -3075,10 +3083,14 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Success! Opening Admin Dashboard...';
+                    msg.innerText = 'Success! Opening Account Dashboard...';
                     
                     localStorage.setItem('sessionToken', data.sessionToken);
                     localStorage.setItem('user', JSON.stringify(data.user));
+
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', '/');
+                    }
 
                     setTimeout(() => {
                         closeModal();
@@ -3099,11 +3111,24 @@ header('Content-Type: text/html; charset=utf-8');
         // Auto check session and load release download data on load
         window.addEventListener('DOMContentLoaded', () => {
             const path = window.location.pathname.toLowerCase();
+            const token = localStorage.getItem('sessionToken');
+            const userStr = localStorage.getItem('user');
+
             if (path.includes('/logout')) {
                 localStorage.removeItem('sessionToken');
                 localStorage.removeItem('user');
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, '', '/login');
+                }
                 closeAdminDashboard();
                 openModal('login');
+            } else if (token && userStr) {
+                if (path.includes('/login') || path.includes('/register')) {
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', '/');
+                    }
+                }
+                checkSession();
             } else if (path.includes('/login')) {
                 openModal('login');
             } else if (path.includes('/register')) {
