@@ -14,8 +14,13 @@ CREATE TABLE IF NOT EXISTS `users` (
   `role` VARCHAR(50) NOT NULL DEFAULT 'user',
   `permissions` TEXT DEFAULT NULL,
   `auth_version` INT NOT NULL DEFAULT 1,
-  `email_verified` TINYINT(1) NOT NULL DEFAULT 1,
-  `account_status` VARCHAR(50) NOT NULL DEFAULT 'active',
+  `email_verified` TINYINT(1) NOT NULL DEFAULT 0,
+  `email_verified_at` DATETIME DEFAULT NULL,
+  `verification_token_hash` VARCHAR(64) DEFAULT NULL,
+  `verification_token_expires_at` DATETIME DEFAULT NULL,
+  `verification_created_at` DATETIME DEFAULT NULL,
+  `verification_attempts` INT DEFAULT 0,
+  `account_status` VARCHAR(50) NOT NULL DEFAULT 'pending',
   `google_id` VARCHAR(255) DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -23,9 +28,23 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Initial Admin Account Seed (admin@profilevault.local / Password: admin)
-INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `permissions`, `auth_version`, `email_verified`, `account_status`, `created_at`)
-VALUES ('admin-default', 'System Admin', 'admin@profilevault.local', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'super_admin', '["*"]', 1, 1, 'active', NOW())
-ON DUPLICATE KEY UPDATE `password_hash`='$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', `role`='super_admin', `permissions`='["*"]';
+INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `permissions`, `auth_version`, `email_verified`, `email_verified_at`, `account_status`, `created_at`)
+VALUES ('admin-default', 'System Admin', 'admin@profilevault.local', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'super_admin', '["*"]', 1, 1, NOW(), 'active', NOW())
+ON DUPLICATE KEY UPDATE `password_hash`='$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', `role`='super_admin', `permissions`='["*"]', `email_verified`=1, `account_status`='active';
+
+-- 1.0 Verification Tokens Table
+CREATE TABLE IF NOT EXISTS `verification_tokens` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL UNIQUE,
+  `expires_at` DATETIME NOT NULL,
+  `used` TINYINT(1) NOT NULL DEFAULT 0,
+  `attempts` INT DEFAULT 0,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_vtok_user` (`user_id`, `used`),
+  KEY `idx_vtok_hash` (`token_hash`),
+  CONSTRAINT `fk_vtok_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 1.1 Real-Time Outbox Events Table
 CREATE TABLE IF NOT EXISTS `realtime_events` (

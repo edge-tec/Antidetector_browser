@@ -36,6 +36,19 @@ export function setupAuthIPC(): void {
       const centralRes = await centralApi.register(name, email, password)
       if (centralRes.success && centralRes.user) {
         const u = centralRes.user
+        
+        if (centralRes.requiresVerification) {
+          return {
+            success: true,
+            requiresVerification: true,
+            emailSent: centralRes.emailSent,
+            message: centralRes.message,
+            user: u,
+            token: centralRes.token,
+            verificationUrl: centralRes.verificationUrl
+          }
+        }
+
         // Upsert into local SQLite for offline profile association
         try {
           if (!userRepo.getById(u.id)) {
@@ -182,7 +195,12 @@ export function setupAuthIPC(): void {
       }
 
       if (centralRes.error && !centralRes.error.includes('Unable to connect')) {
-        return { success: false, error: centralRes.error }
+        return {
+          success: false,
+          requiresVerification: centralRes.requiresVerification || false,
+          error: centralRes.error,
+          email: centralRes.email || cleanEmail
+        }
       }
 
       // 2. Offline / Local SQLite Fallback
@@ -358,12 +376,20 @@ export function setupAuthIPC(): void {
         if (centralRes && centralRes.success) {
           return {
             success: true,
-            sentViaSmtp: centralRes.sentViaSmtp,
+            emailSent: centralRes.emailSent,
+            sentViaSmtp: centralRes.sentViaSmtp || centralRes.emailSent,
+            token: centralRes.token,
+            verificationUrl: centralRes.verificationUrl,
             message: centralRes.message || 'A new confirmation link has been sent to your email address.'
           }
         }
         if (centralRes && !centralRes.success && centralRes.error && !centralRes.error.includes('Unable to connect')) {
-          return { success: false, error: centralRes.error }
+          return {
+            success: false,
+            cooldown: centralRes.cooldown || false,
+            cooldownSeconds: centralRes.cooldownSeconds || 0,
+            error: centralRes.error
+          }
         }
       } catch {}
 

@@ -2,7 +2,7 @@
 // ProfileVault — Email Verification Screen & Handler
 // ──────────────────────────────────────────────
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 interface Props {
@@ -17,13 +17,46 @@ export const VerifyEmailPage: React.FC<Props> = ({ email: initialEmail, initialD
   const [tokenInput, setTokenInput] = useState('')
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
-  const [devLink, setDevLink] = useState(initialDevUrl || '')
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendStatusMessage, setResendStatusMessage] = useState('')
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown(prev => (prev > 1 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
+  const handlePerformVerification = useCallback(async (tokenToVerify: string) => {
+    const cleanToken = tokenToVerify.trim()
+    if (!cleanToken) return
+    setStatus('verifying')
+    setMessage('')
+    setResendStatusMessage('')
+
+    try {
+      const res = await verifyEmail(cleanToken)
+      if (res.success || res.alreadyVerified) {
+        setStatus('success')
+        setMessage(res.message || 'Your account has been verified successfully! You are now fully activated.')
+      } else {
+        setStatus('error')
+        setMessage(res.error || 'Invalid or expired verification token.')
+      }
+    } catch (err: any) {
+      setStatus('error')
+      setMessage(err.message || 'Verification failed. Please check your internet connection.')
+    }
+  }, [verifyEmail])
 
   useEffect(() => {
-    // Check if token is in URL query parameters
+    // Check URL parameters for token
     const urlParams = new URLSearchParams(window.location.search)
     const tokenParam = urlParams.get('token')
     if (tokenParam) {
+      setTokenInput(tokenParam)
       handlePerformVerification(tokenParam)
     } else if (initialDevUrl) {
       const match = initialDevUrl.match(/token=([a-f0-9]+)/i)
@@ -31,48 +64,58 @@ export const VerifyEmailPage: React.FC<Props> = ({ email: initialEmail, initialD
         setTokenInput(match[1])
       }
     }
-  }, [initialDevUrl])
+  }, [initialDevUrl, handlePerformVerification])
 
-  const handlePerformVerification = async (tokenToVerify: string) => {
-    if (!tokenToVerify) return
-    setStatus('verifying')
-    setMessage('')
+  // Real-time listener: If account verified from web browser, auto-activate desktop UI!
+  useEffect(() => {
+    if (typeof window === 'undefined' || !(window as any).api?.onRealtimeSyncEvent) return
 
-    try {
-      const res = await verifyEmail(tokenToVerify)
-      if (res.success) {
+    const unsubRealtime = (window as any).api.onRealtimeSyncEvent((_e: any, evt: any) => {
+      if (evt && (evt.eventType === 'user.email_verified' || evt.type === 'user.email_verified')) {
         setStatus('success')
-        setMessage('Your account has been verified successfully! Redirecting...')
-      } else {
-        setStatus('error')
-        setMessage(res.error || 'Invalid or expired verification token.')
+        setMessage('Your email was verified from your browser! You can now continue.')
       }
-    } catch (err: any) {
-      setStatus('error')
-      setMessage(err.message || 'Verification failed.')
+    })
+
+    const unsubAuth = (window as any).api.onAuthStateUpdated?.((_e: any, auth: any) => {
+      if (auth && auth.emailVerified) {
+        setStatus('success')
+        setMessage('Your email is verified! Access granted.')
+      }
+    })
+
+    return () => {
+      unsubRealtime?.()
+      unsubAuth?.()
     }
-  }
+  }, [])
 
   const handleResend = async () => {
-    if (!emailInput) {
-      setMessage('Please enter your email address to resend the verification link.')
+    const cleanEmail = emailInput.trim().toLowerCase()
+    if (!cleanEmail) {
+      setResendStatusMessage('Please enter your email address to resend the verification link.')
       return
     }
 
+    if (resendCooldown > 0) return
+
+    setResendStatusMessage('Sending new confirmation email...')
     try {
-      const res = await resendVerification(emailInput)
+      const res = await resendVerification(cleanEmail)
       if (res.success) {
-        setMessage('A new verification email has been sent!')
-        if (res.verificationUrl) {
-          setDevLink(res.verificationUrl)
-          const match = res.verificationUrl.match(/token=([a-f0-9]+)/i)
-          if (match && match[1]) setTokenInput(match[1])
+        setResendCooldown(45)
+        setResendStatusMessage(res.message || 'A new verification email has been dispatched to your address!')
+        if (res.token) {
+          setTokenInput(res.token)
         }
+      } else if (res.cooldown) {
+        setResendCooldown(res.cooldownSeconds || 45)
+        setResendStatusMessage(res.error || 'Please wait before requesting another email.')
       } else {
-        setMessage(res.error || 'Failed to resend verification email.')
+        setResendStatusMessage(res.error || 'Failed to resend verification email.')
       }
     } catch (err: any) {
-      setMessage(err.message || 'Failed to resend email.')
+      setResendStatusMessage(err.message || 'Failed to resend email.')
     }
   }
 
@@ -106,12 +149,12 @@ export const VerifyEmailPage: React.FC<Props> = ({ email: initialEmail, initialD
         </div>
 
         <h2 style={{ margin: '0 0 10px', fontSize: '22px', color: '#F1F5F9', fontWeight: 700 }}>
-          {status === 'success' ? 'Email Verified!' : 'Verification Required'}
+          {status === 'success' ? 'Email Verified Successfully!' : 'Verification Required'}
         </h2>
 
         <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#94A3B8', lineHeight: '1.6' }}>
           {status === 'success'
-            ? 'Your account is now fully active. You have full access to profile management.'
+            ? message || 'Your account is now fully active across Web, Windows, macOS, and Linux.'
             : status === 'error'
               ? message
               : 'Your account has been created. Please check your email and click the confirmation link to activate your account.'}
@@ -132,79 +175,68 @@ export const VerifyEmailPage: React.FC<Props> = ({ email: initialEmail, initialD
           </div>
         )}
 
-        {status !== 'success' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textTransform: 'none' }}>
-            {devLink && (
-              <div style={{
-                backgroundColor: '#10B98115',
-                border: '1px solid #10B98150',
-                padding: '12px 14px',
+        {status === 'success' ? (
+          <div style={{ marginTop: '20px' }}>
+            <button
+              type="button"
+              onClick={onNavigateLogin}
+              style={{
+                width: '100%',
+                padding: '12px 20px',
                 borderRadius: '8px',
-                fontSize: '12px',
-                textAlign: 'left'
-              }}>
-                <div style={{ fontWeight: 600, color: '#10B981', marginBottom: '4px' }}>⚡ Verification Token Ready:</div>
-                <div style={{ color: '#94A3B8', wordBreak: 'break-all', fontFamily: 'monospace' }}>{tokenInput}</div>
+                backgroundColor: '#2DD4BF',
+                color: '#0F0F17',
+                fontWeight: 800,
+                fontSize: '14px',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(45,212,191,0.3)'
+              }}
+            >
+              Continue to Sign In ➔
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textTransform: 'none' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', textAlign: 'left' }}>
+                Verification Token (Paste manually if needed)
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={tokenInput}
+                  onChange={e => setTokenInput(e.target.value)}
+                  placeholder="Paste verification token..."
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#14141F',
+                    border: '1px solid #2C2C3E',
+                    color: '#FFF',
+                    fontSize: '13px'
+                  }}
+                />
                 <button
                   type="button"
                   onClick={() => handlePerformVerification(tokenInput)}
+                  disabled={!tokenInput.trim() || status === 'verifying'}
                   style={{
-                    marginTop: '10px',
-                    width: '100%',
-                    padding: '8px',
-                    backgroundColor: '#10B981',
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: '#2DD4BF',
                     color: '#0F0F17',
                     fontWeight: 700,
                     border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    opacity: (!tokenInput.trim() || status === 'verifying') ? 0.6 : 1
                   }}
                 >
-                  Click Here To Confirm & Activate Account
+                  {status === 'verifying' ? 'Verifying...' : 'Verify'}
                 </button>
               </div>
-            )}
-
-            {!devLink && (
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', textAlign: 'left' }}>
-                  Verification Token (Paste manually if needed)
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    value={tokenInput}
-                    onChange={e => setTokenInput(e.target.value)}
-                    placeholder="Paste verification token..."
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      backgroundColor: '#14141F',
-                      border: '1px solid #2C2C3E',
-                      color: '#FFF',
-                      fontSize: '13px'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handlePerformVerification(tokenInput)}
-                    disabled={!tokenInput || status === 'verifying'}
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: '8px',
-                      backgroundColor: '#2DD4BF',
-                      color: '#0F0F17',
-                      fontWeight: 700,
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Verify
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
 
             <div style={{ borderTop: '1px solid #2C2C3E', paddingTop: '16px' }}>
               <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '8px', textAlign: 'left' }}>
@@ -229,19 +261,26 @@ export const VerifyEmailPage: React.FC<Props> = ({ email: initialEmail, initialD
                 <button
                   type="button"
                   onClick={handleResend}
+                  disabled={resendCooldown > 0}
                   style={{
                     padding: '10px 16px',
                     borderRadius: '8px',
                     backgroundColor: '#1C1C28',
                     border: '1px solid #2C2C3E',
-                    color: '#CBD5E1',
+                    color: resendCooldown > 0 ? '#64748B' : '#CBD5E1',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap'
                   }}
                 >
-                  Resend Link
+                  {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend Link'}
                 </button>
               </div>
+              {resendStatusMessage && (
+                <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#38BDF8', textAlign: 'left' }}>
+                  {resendStatusMessage}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -266,3 +305,4 @@ export const VerifyEmailPage: React.FC<Props> = ({ email: initialEmail, initialD
     </div>
   )
 }
+

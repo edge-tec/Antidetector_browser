@@ -32,6 +32,18 @@ switch ($action) {
             respondJson(['success' => false, 'error' => 'Your account has been suspended by an administrator. Please contact support.'], 403);
         }
 
+        // Enforce Email Verification Requirement (except default system admin)
+        if ((int)$user['email_verified'] !== 1 && $user['id'] !== 'admin-default') {
+            recordSecurityEvent('SESSION_BLOCKED_UNVERIFIED_USER', 'warning', $user['id'], "Login attempt blocked for unverified user {$email}");
+            respondJson([
+                'success' => false,
+                'requiresVerification' => true,
+                'emailVerified' => false,
+                'error' => 'Please verify your email address before continuing.',
+                'email' => $user['email']
+            ], 403);
+        }
+
         // Update last login timestamp
         $updateStmt = $db->prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?");
         $updateStmt->execute([$user['id']]);
@@ -105,6 +117,10 @@ switch ($action) {
             respondJson(['success' => false, 'error' => 'Name, email, and password are required.'], 400);
         }
 
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            respondJson(['success' => false, 'error' => 'Please enter a valid email address.'], 400);
+        }
+
         if (strlen($password) < 6) {
             respondJson(['success' => false, 'error' => 'Password must be at least 6 characters.'], 400);
         }
@@ -124,11 +140,11 @@ switch ($action) {
 
         $insertStmt = $db->prepare("
             INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, 0, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ");
         $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role]);
 
-        // Create default starter subscription (expires in 30 days or 1 year)
+        // Create default starter subscription (expires in 1 year)
         $subId = 'sub_' . $userId;
         $insertSub = $db->prepare("
             INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
@@ -136,19 +152,31 @@ switch ($action) {
         ");
         $insertSub->execute([$subId, $userId]);
 
-        $sessionToken = createSessionToken($userId);
+        // Automatically dispatch cryptographically secure verification email
+        $emailRes = sendVerificationEmailPhp($userId, $name, $email);
+
+        recordSecurityEvent('USER_REGISTERED', 'info', $userId, "User registered with email {$email}");
+
+        $sentSmtp = (bool)($emailRes['sentViaSmtp'] ?? false);
+        $message = $sentSmtp
+            ? 'Your account has been created. Please check your email and click the confirmation link to activate your account.'
+            : 'Your account was created, but we could not send the verification email. Please try Resend Verification Email.';
 
         respondJson([
             'success' => true,
-            'sessionToken' => $sessionToken,
+            'requiresVerification' => true,
+            'emailSent' => $sentSmtp,
+            'message' => $message,
             'user' => [
                 'id' => $userId,
                 'name' => $name,
                 'email' => strtolower($email),
                 'role' => $role,
-                'emailVerified' => true,
-                'accountStatus' => 'active'
-            ]
+                'emailVerified' => false,
+                'accountStatus' => 'pending'
+            ],
+            'token' => $emailRes['token'] ?? null,
+            'verificationUrl' => $emailRes['verificationUrl'] ?? null
         ]);
         break;
 
@@ -352,7 +380,7 @@ switch ($action) {
     // ── 3.6. Resend Email Verification Token & Link ──
     case 'resend-verification':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $email = trim($input['email'] ?? '');
+        $email = strtolower(trim($input['email'] ?? ''));
         if (!$email) {
             respondJson(['success' => false, 'error' => 'Email address is required.'], 400);
         }
@@ -362,19 +390,48 @@ switch ($action) {
         $targetUser = $userStmt->fetch();
 
         if (!$targetUser) {
-            // Generic success to prevent email enumeration
-            respondJson(['success' => true, 'message' => 'If an account exists, a new confirmation link has been sent.']);
+            // Safe response to prevent email enumeration
+            respondJson([
+                'success' => true,
+                'message' => 'If an account exists, a new verification link has been sent to your email.'
+            ]);
         }
 
-        if ($targetUser['email_verified']) {
-            respondJson(['success' => false, 'error' => 'Your email address is already verified. Please sign in.'], 400);
+        if ((int)$targetUser['email_verified'] === 1) {
+            respondJson([
+                'success' => true,
+                'alreadyVerified' => true,
+                'message' => 'Your email address is already verified. Please sign in.'
+            ]);
+        }
+
+        // Rate limiting cooldown (45 seconds between resends)
+        if (!empty($targetUser['verification_created_at'])) {
+            $lastSent = strtotime($targetUser['verification_created_at']);
+            $elapsed = time() - $lastSent;
+            if ($elapsed < 45) {
+                $wait = 45 - $elapsed;
+                respondJson([
+                    'success' => false,
+                    'cooldown' => true,
+                    'cooldownSeconds' => $wait,
+                    'error' => "Please wait {$wait} seconds before requesting another verification email."
+                ], 429);
+            }
         }
 
         $emailRes = sendVerificationEmailPhp($targetUser['id'], $targetUser['name'], $targetUser['email']);
+        $sentSmtp = (bool)($emailRes['sentViaSmtp'] ?? false);
+
+        recordSecurityEvent('VERIFICATION_RESENT', 'info', $targetUser['id'], "Verification email resent to {$email}");
+
         respondJson([
             'success' => true,
-            'message' => 'A new confirmation link has been sent to your email address.',
-            'sentViaSmtp' => $emailRes['sentViaSmtp'] ?? false,
+            'emailSent' => $sentSmtp,
+            'message' => $sentSmtp
+                ? 'A new confirmation link has been sent to your email address.'
+                : 'A new token was generated, but SMTP could not dispatch the email. Please check SMTP settings.',
+            'verificationUrl' => $emailRes['verificationUrl'] ?? null,
             'token' => $emailRes['token'] ?? null
         ]);
         break;
@@ -388,43 +445,136 @@ switch ($action) {
         }
 
         $tokenHash = hash('sha256', $plainToken);
-        $tokStmt = $db->prepare("SELECT * FROM verification_tokens WHERE token_hash = ? AND used = 0");
+
+        // Check if token exists in verification_tokens
+        $tokStmt = $db->prepare("SELECT * FROM verification_tokens WHERE token_hash = ? ORDER BY id DESC LIMIT 1");
         $tokStmt->execute([$tokenHash]);
         $tokenRecord = $tokStmt->fetch();
 
         if (!$tokenRecord) {
-            respondJson(['success' => false, 'error' => 'Invalid or expired confirmation token.'], 400);
-        }
-
-        if (strtotime($tokenRecord['expires_at']) < time()) {
-            respondJson(['success' => false, 'error' => 'Confirmation token has expired. Please request a new link.'], 400);
+            recordSecurityEvent('VERIFICATION_ATTEMPT_FAILED', 'warning', null, "Invalid verification token hash attempted");
+            respondJson(['success' => false, 'error' => 'Invalid verification token. Please check the link or paste a valid token.'], 400);
         }
 
         $userId = $tokenRecord['user_id'];
-        $db->prepare("UPDATE verification_tokens SET used = 1 WHERE id = ?")->execute([$tokenRecord['id']]);
-        $db->prepare("UPDATE users SET email_verified = 1, account_status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$userId]);
 
         $uStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
         $uStmt->execute([$userId]);
-        $verifiedUser = $uStmt->fetch();
+        $targetUser = $uStmt->fetch();
 
-        if ($verifiedUser) {
-            @sendAccountVerifiedConfirmationPhp($verifiedUser['name'], $verifiedUser['email']);
+        if (!$targetUser) {
+            respondJson(['success' => false, 'error' => 'Associated user account not found.'], 404);
         }
 
+        // Already verified check
+        if ((int)$targetUser['email_verified'] === 1) {
+            respondJson([
+                'success' => true,
+                'alreadyVerified' => true,
+                'message' => 'Your email address has already been verified. You can sign in now.'
+            ]);
+        }
+
+        // Check token expiration
+        if (strtotime($tokenRecord['expires_at']) < time()) {
+            recordSecurityEvent('VERIFICATION_TOKEN_EXPIRED', 'warning', $userId, "Expired token attempted for user {$targetUser['email']}");
+            respondJson([
+                'success' => false,
+                'expired' => true,
+                'error' => 'Your verification link has expired. Please request a new verification email.'
+            ], 400);
+        }
+
+        // Mark token as used
+        $db->prepare("UPDATE verification_tokens SET used = 1 WHERE id = ?")->execute([$tokenRecord['id']]);
+
+        // Invalidate any other open tokens for this user
+        $db->prepare("UPDATE verification_tokens SET used = 1 WHERE user_id = ? AND id != ?")->execute([$userId, $tokenRecord['id']]);
+
+        // Mark user email verified
+        $newAuthVersion = (int)($targetUser['auth_version'] ?? 1) + 1;
+        $db->prepare("
+            UPDATE users SET
+                email_verified = 1,
+                email_verified_at = CURRENT_TIMESTAMP,
+                account_status = 'active',
+                auth_version = ?,
+                verification_token_hash = NULL,
+                verification_token_expires_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ")->execute([$newAuthVersion, $userId]);
+
+        // Security & Audit log
+        recordSecurityEvent('EMAIL_VERIFIED', 'info', $userId, "Email verified successfully for {$targetUser['email']}");
+        logAdminAction($userId, $targetUser['email'], 'EMAIL_VERIFIED', $userId, "User email verified via token");
+
+        // Publish real-time event for connected clients (Web + Desktop)
+        publishRealtimeEvent($db, $userId, 'user.email_verified', [
+            'type' => 'user.email_verified',
+            'userId' => $userId,
+            'email' => $targetUser['email'],
+            'version' => $newAuthVersion,
+            'timestamp' => date('c')
+        ], null, $newAuthVersion);
+
+        // Send confirmation email
+        @sendAccountVerifiedConfirmationPhp($targetUser['name'], $targetUser['email']);
+
+        // Generate session token
         $sessionToken = createSessionToken($userId);
+        $permissions = resolveUserPermissions($targetUser['role'] ?? 'user', $targetUser['permissions'] ?? null);
+
         respondJson([
             'success' => true,
             'sessionToken' => $sessionToken,
-            'user' => $verifiedUser ? [
-                'id' => $verifiedUser['id'],
-                'name' => $verifiedUser['name'],
-                'email' => $verifiedUser['email'],
-                'role' => $verifiedUser['role'],
+            'user' => [
+                'id' => $targetUser['id'],
+                'name' => $targetUser['name'],
+                'email' => $targetUser['email'],
+                'role' => $targetUser['role'],
+                'permissions' => $permissions,
+                'authVersion' => $newAuthVersion,
                 'emailVerified' => true,
-                'accountStatus' => 'active'
-            ] : null,
-            'message' => 'Your email has been verified successfully! You are now fully activated.'
+                'accountStatus' => 'active',
+                'createdAt' => $targetUser['created_at'],
+                'lastLoginAt' => date('c')
+            ],
+            'authorization' => [
+                'role' => $targetUser['role'],
+                'permissions' => $permissions,
+                'authVersion' => $newAuthVersion,
+                'accountStatus' => 'active',
+                'isAuthorized' => true
+            ],
+            'message' => 'Email verified successfully! Welcome to ProfileVault.'
+        ]);
+        break;
+
+    // ── 3.8. Get Email Verification Status ──
+    case 'verification-status':
+        $email = trim($_GET['email'] ?? '');
+        $token = getBearerToken();
+        $user = null;
+
+        if ($token) {
+            $user = getAuthenticatedUser();
+        } elseif ($email) {
+            $uStmt = $db->prepare("SELECT id, email, email_verified, email_verified_at, account_status FROM users WHERE LOWER(email) = LOWER(?)");
+            $uStmt->execute([$email]);
+            $user = $uStmt->fetch();
+        }
+
+        if (!$user) {
+            respondJson(['success' => false, 'error' => 'User not found.'], 404);
+        }
+
+        respondJson([
+            'success' => true,
+            'email' => $user['email'],
+            'emailVerified' => (bool)($user['email_verified'] ?? 0),
+            'emailVerifiedAt' => $user['email_verified_at'] ?? null,
+            'accountStatus' => $user['account_status'] ?? 'pending'
         ]);
         break;
 

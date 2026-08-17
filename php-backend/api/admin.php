@@ -685,26 +685,57 @@ switch ($action) {
         }
         break;
 
+    case 'resend-user-verification':
+    case 'resend-verification':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $_GET['id'] ?? $input['userId'] ?? $input['id'] ?? null;
+        if (!$userId) {
+            respondJson(['success' => false, 'error' => 'User ID required.'], 400);
+        }
+
+        $userStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $userStmt->execute([$userId]);
+        $targetUser = $userStmt->fetch();
+
+        if (!$targetUser) {
+            respondJson(['success' => false, 'error' => 'User not found.'], 404);
+        }
+
+        $emailRes = sendVerificationEmailPhp($targetUser['id'], $targetUser['name'], $targetUser['email']);
+        logAdminAction($admin['id'], $admin['email'], 'RESENT_USER_VERIFICATION', $userId, "Resent verification link to {$targetUser['email']}");
+
+        respondJson([
+            'success' => true,
+            'emailSent' => $emailRes['sentViaSmtp'] ?? false,
+            'message' => ($emailRes['sentViaSmtp'] ?? false)
+                ? "Verification email resent successfully to {$targetUser['email']}."
+                : "Verification link generated. (SMTP connection issue).",
+            'verificationUrl' => $emailRes['verificationUrl'] ?? null,
+            'token' => $emailRes['token'] ?? null
+        ]);
+        break;
+
     case 'test-smtp-config':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $host = trim($input['host'] ?? '');
-        $port = (int)($input['port'] ?? 587);
-        $user = trim($input['user'] ?? '');
-        $secure = isset($input['secure']) && ($input['secure'] === true || $input['secure'] === 'true');
+        $diag = testSmtpDiagnosticsPhp($input);
 
-        if (!$host || !$user) {
-            respondJson(['success' => false, 'message' => 'SMTP Host and Username are required for testing connection.'], 400);
+        $testRecipient = trim($input['testRecipient'] ?? $input['test_recipient'] ?? '');
+        $testEmailSent = false;
+        if (!empty($testRecipient) && $diag['success']) {
+            $testHtml = "<div style='font-family:sans-serif; background:#0F0F17; color:#FFF; padding:24px; border-radius:8px;'><h2>ProfileVault SMTP Test Successful</h2><p>This test confirms that your central SMTP mailer is properly configured and operational.</p></div>";
+            $testEmailSent = sendSmtpMailPhp($testRecipient, 'ProfileVault SMTP Diagnostic Test', $testHtml, $input);
+            $diag['steps']['testEmail'] = [
+                'status' => $testEmailSent ? 'PASS' : 'FAIL',
+                'detail' => $testEmailSent ? "Delivered to {$testRecipient}" : "Failed to deliver to {$testRecipient}"
+            ];
         }
 
-        $remoteHost = $secure ? "ssl://{$host}" : $host;
-        $connection = @fsockopen($remoteHost, $port, $errno, $errstr, 5);
-
-        if (is_resource($connection)) {
-            fclose($connection);
-            respondJson(['success' => true, 'message' => "Successfully connected to SMTP server {$host}:{$port}"]);
-        } else {
-            respondJson(['success' => false, 'message' => "SMTP Connection failed: {$errstr} (Error {$errno})"]);
-        }
+        respondJson([
+            'success' => $diag['success'],
+            'message' => $diag['success'] ? 'All SMTP Connection and Authentication tests PASSED.' : ($diag['error'] ?? 'SMTP diagnostic failed.'),
+            'diagnostics' => $diag['steps'],
+            'testEmailSent' => $testEmailSent
+        ]);
         break;
 
     case 'send-email-broadcast':

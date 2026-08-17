@@ -23,8 +23,15 @@ function ensureDatabaseTablesExist() {
               `email` VARCHAR(255) NOT NULL UNIQUE,
               `password_hash` VARCHAR(255) DEFAULT NULL,
               `role` VARCHAR(50) NOT NULL DEFAULT 'user',
-              `email_verified` TINYINT(1) NOT NULL DEFAULT 1,
-              `account_status` VARCHAR(50) NOT NULL DEFAULT 'active',
+              `permissions` TEXT DEFAULT NULL,
+              `auth_version` INT NOT NULL DEFAULT 1,
+              `email_verified` TINYINT(1) NOT NULL DEFAULT 0,
+              `email_verified_at` DATETIME DEFAULT NULL,
+              `verification_token_hash` VARCHAR(64) DEFAULT NULL,
+              `verification_token_expires_at` DATETIME DEFAULT NULL,
+              `verification_created_at` DATETIME DEFAULT NULL,
+              `verification_attempts` INT DEFAULT 0,
+              `account_status` VARCHAR(50) NOT NULL DEFAULT 'pending',
               `google_id` VARCHAR(255) DEFAULT NULL,
               `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
               `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -32,9 +39,29 @@ function ensureDatabaseTablesExist() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
-        try {
-            $db->exec("ALTER TABLE `users` ADD COLUMN `last_login_at` DATETIME DEFAULT NULL");
-        } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `last_login_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `permissions` TEXT DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `auth_version` INT NOT NULL DEFAULT 1"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `email_verified_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `verification_token_hash` VARCHAR(64) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `verification_token_expires_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `verification_created_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `verification_attempts` INT DEFAULT 0"); } catch (Throwable $e) {}
+
+        // 1.0 Verification Tokens Table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `verification_tokens` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL,
+              `token_hash` VARCHAR(64) NOT NULL UNIQUE,
+              `expires_at` DATETIME NOT NULL,
+              `used` TINYINT(1) NOT NULL DEFAULT 0,
+              `attempts` INT DEFAULT 0,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              KEY `idx_vtok_user` (`user_id`, `used`),
+              KEY `idx_vtok_hash` (`token_hash`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
 
         // 2. Pricing Plans Table
         $db->exec("
@@ -338,22 +365,33 @@ function getSmtpSettingsPhp(): array {
         $rows = $stmt->fetchAll();
         $map = [];
         foreach ($rows as $r) { $map[$r['key']] = $r['value']; }
+
+        $host = $map['smtp_host'] ?? getenv('SMTP_HOST') ?: '';
+        $port = (int)($map['smtp_port'] ?? getenv('SMTP_PORT') ?: 587);
+        $user = $map['smtp_user'] ?? getenv('SMTP_USER') ?: '';
+        $pass = $map['smtp_password'] ?? getenv('SMTP_PASSWORD') ?: '';
+        $from = $map['smtp_from_email'] ?? getenv('SMTP_FROM_EMAIL') ?: ($user ?: 'noreply@app.edgecash.net');
+        $fromName = $map['smtp_from_name'] ?? getenv('SMTP_FROM_NAME') ?: 'ProfileVault';
+        $secure = ($map['smtp_secure'] ?? (getenv('SMTP_SECURE') ?: 'false')) === 'true';
+        $enabled = ($map['smtp_enabled'] ?? (getenv('SMTP_ENABLED') ?: 'true')) === 'true';
+
         return [
-            'host' => $map['smtp_host'] ?? '',
-            'port' => (int)($map['smtp_port'] ?? 587),
-            'user' => $map['smtp_user'] ?? '',
-            'password' => $map['smtp_password'] ?? '',
-            'fromEmail' => $map['smtp_from_email'] ?? 'noreply@profilevault.local',
-            'secure' => ($map['smtp_secure'] ?? 'false') === 'true',
-            'enabled' => ($map['smtp_enabled'] ?? 'false') === 'true'
+            'host' => $host,
+            'port' => $port,
+            'user' => $user,
+            'password' => $pass,
+            'fromEmail' => $from,
+            'fromName' => $fromName,
+            'secure' => $secure,
+            'enabled' => $enabled && !empty($host) && !empty($user)
         ];
     } catch (Exception $e) {
         return ['enabled' => false];
     }
 }
 
-function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody): bool {
-    $smtp = getSmtpSettingsPhp();
+function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?array $overrideConfig = null): bool {
+    $smtp = $overrideConfig ?? getSmtpSettingsPhp();
     if (!$smtp['enabled'] || empty($smtp['host']) || empty($smtp['user'])) {
         return false;
     }
@@ -363,6 +401,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody): bo
     $user = $smtp['user'];
     $pass = $smtp['password'];
     $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $user;
+    $fromName = !empty($smtp['fromName']) ? $smtp['fromName'] : 'ProfileVault';
     $secure = (bool)($smtp['secure'] ?? false);
 
     $timeout = 15;
@@ -454,7 +493,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody): bo
 
     // Message payload
     $headers = [];
-    $headers[] = "From: ProfileVault System <{$from}>";
+    $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>";
     $headers[] = "To: <{$toEmail}>";
     $headers[] = "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=";
     $headers[] = "MIME-Version: 1.0";
@@ -473,58 +512,230 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody): bo
     return substr($sentRes, 0, 3) === '250';
 }
 
+function testSmtpDiagnosticsPhp(?array $config = null): array {
+    $smtp = $config ?? getSmtpSettingsPhp();
+    $host = $smtp['host'] ?? '';
+    $port = (int)($smtp['port'] ?? 587);
+    $user = $smtp['user'] ?? '';
+    $pass = $smtp['password'] ?? '';
+    $from = $smtp['fromEmail'] ?? $user;
+    $secure = (bool)($smtp['secure'] ?? false);
+
+    $results = [
+        'connection' => ['status' => 'FAIL', 'detail' => 'Not tested'],
+        'ehlo' => ['status' => 'FAIL', 'detail' => 'Not tested'],
+        'tls' => ['status' => 'PASS', 'detail' => 'Plain / Direct SSL'],
+        'auth' => ['status' => 'FAIL', 'detail' => 'Not tested'],
+        'sender' => ['status' => 'FAIL', 'detail' => 'Not tested']
+    ];
+
+    if (empty($host) || empty($port)) {
+        $results['connection'] = ['status' => 'FAIL', 'detail' => 'Host or Port is missing.'];
+        return ['success' => false, 'steps' => $results, 'error' => 'Missing SMTP Host or Port'];
+    }
+
+    $timeout = 10;
+    $errno = 0;
+    $errstr = '';
+    $socketHost = ($secure || $port === 465) ? "ssl://{$host}" : $host;
+    $socket = @fsockopen($socketHost, $port, $errno, $errstr, $timeout);
+
+    if (!$socket) {
+        $results['connection'] = ['status' => 'FAIL', 'detail' => "Connection to {$host}:{$port} failed: {$errstr} ({$errno})"];
+        return ['success' => false, 'steps' => $results, 'error' => "Connection failed: {$errstr}"];
+    }
+
+    $results['connection'] = ['status' => 'PASS', 'detail' => "Connected to {$socketHost}:{$port} successfully."];
+
+    $read = function() use ($socket) {
+        $data = '';
+        while ($str = fgets($socket, 515)) {
+            $data .= $str;
+            if (substr($str, 3, 1) === ' ' || substr($str, 3, 1) === "\r" || substr($str, 3, 1) === "\n") break;
+        }
+        return $data;
+    };
+    $write = function(string $cmd) use ($socket) { fputs($socket, $cmd . "\r\n"); };
+
+    $banner = $read();
+    $serverHost = $_SERVER['SERVER_NAME'] ?? 'app.edgecash.net';
+    $write("EHLO " . $serverHost);
+    $ehloRes = $read();
+
+    $results['ehlo'] = ['status' => 'PASS', 'detail' => 'Handshake completed with server.'];
+
+    if (!$secure && $port !== 465 && strpos($ehloRes, 'STARTTLS') !== false) {
+        $write("STARTTLS");
+        $tlsRes = $read();
+        if (substr($tlsRes, 0, 3) === '220') {
+            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            $write("EHLO " . $serverHost);
+            $read();
+            $results['tls'] = ['status' => 'PASS', 'detail' => 'STARTTLS encryption negotiated.'];
+        }
+    }
+
+    if (!empty($user) && !empty($pass)) {
+        $write("AUTH LOGIN");
+        $read();
+        $write(base64_encode($user));
+        $read();
+        $write(base64_encode($pass));
+        $authRes = $read();
+        if (substr($authRes, 0, 3) === '235') {
+            $results['auth'] = ['status' => 'PASS', 'detail' => "Authenticated as {$user}."];
+        } else {
+            $results['auth'] = ['status' => 'FAIL', 'detail' => "Auth rejected: " . trim($authRes)];
+            $write("QUIT");
+            fclose($socket);
+            return ['success' => false, 'steps' => $results, 'error' => "Authentication failed."];
+        }
+    } else {
+        $results['auth'] = ['status' => 'PASS', 'detail' => 'Anonymous / No auth configured.'];
+    }
+
+    $write("MAIL FROM: <{$from}>");
+    $mailRes = $read();
+    if (substr($mailRes, 0, 3) === '250') {
+        $results['sender'] = ['status' => 'PASS', 'detail' => "Sender <{$from}> accepted."];
+    } else {
+        $results['sender'] = ['status' => 'FAIL', 'detail' => "Sender rejected: " . trim($mailRes)];
+    }
+
+    $write("QUIT");
+    fclose($socket);
+
+    $isAllPassed = $results['connection']['status'] === 'PASS' && $results['auth']['status'] === 'PASS' && $results['sender']['status'] === 'PASS';
+    return ['success' => $isAllPassed, 'steps' => $results, 'error' => $isAllPassed ? null : 'Diagnostics revealed issues.'];
+}
+
 function sendVerificationEmailPhp(string $userId, string $userName, string $email): array {
     $db = Database::getConnection();
+
+    // 1. Invalidate any previous unused tokens for this user
+    $invStmt = $db->prepare("UPDATE verification_tokens SET used = 1 WHERE user_id = ? AND used = 0");
+    $invStmt->execute([$userId]);
+
+    // 2. Generate a cryptographically secure random 64-char hex token
     $plainToken = bin2hex(random_bytes(32));
     $tokenHash = hash('sha256', $plainToken);
     $tokenId = 'tok_' . bin2hex(random_bytes(8));
 
+    // 3. Store hashed token in verification_tokens with 24 hours expiry
     $stmt = $db->prepare("
-        INSERT INTO verification_tokens (id, user_id, token_hash, expires_at, used)
-        VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), 0)
+        INSERT INTO verification_tokens (id, user_id, token_hash, expires_at, used, attempts, created_at)
+        VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), 0, 0, CURRENT_TIMESTAMP)
     ");
     $stmt->execute([$tokenId, $userId, $tokenHash]);
 
-    $baseUrl = defined('APP_BASE_URL') ? APP_BASE_URL : 'app://profilevault';
-    $verificationUrl = $baseUrl . '/verify-email?token=' . $plainToken;
+    // 4. Update user state
+    $updUser = $db->prepare("
+        UPDATE users SET
+            verification_token_hash = ?,
+            verification_token_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR),
+            verification_created_at = CURRENT_TIMESTAMP,
+            verification_attempts = 0
+        WHERE id = ?
+    ");
+    $updUser->execute([$tokenHash, $userId]);
 
+    // 5. Build authoritative verification URL
+    $host = $_SERVER['HTTP_HOST'] ?? 'app.edgecash.net';
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'https://';
+    $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ($protocol . $host);
+    $verificationUrl = rtrim($baseUrl, '/') . '/verify-email?token=' . $plainToken;
+    $deepLinkUrl = 'profilevault://verify-email?token=' . $plainToken;
+
+    // 6. Responsive HTML Email Content
     $html = "
-    <div style='font-family: sans-serif; background:#0F0F17; color:#CBD5E1; padding:30px;'>
-      <div style='max-width:560px; margin:0 auto; background:#1C1C28; padding:30px; border-radius:12px; border:1px solid #2C2C3E;'>
-        <h2 style='color:#F1F5F9; font-size:20px;'>Verify your ProfileVault Account</h2>
-        <p>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
-        <p>Thank you for registering with ProfileVault! Please verify your email to activate your account:</p>
-        <p style='text-align:center; margin:24px 0;'>
-          <a href='" . $verificationUrl . "' style='background:#2DD4BF; color:#0F0F17; font-weight:700; padding:12px 28px; text-decoration:none; border-radius:8px;'>Verify Email Account</a>
-        </p>
-        <p style='font-size:12px; color:#64748B;'>Or copy & paste: " . $verificationUrl . "</p>
-      </div>
-    </div>";
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset='utf-8'>
+      <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+      <title>Verify Your ProfileVault Account</title>
+    </head>
+    <body style='margin:0; padding:0; background-color:#0A0A0F; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#0A0A0F; padding:40px 10px;'>
+        <tr>
+          <td align='center'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#161622; border-radius:16px; border:1px solid #2C2C3E; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+              <tr>
+                <td style='padding:36px 36px 20px 36px; text-align:center;'>
+                  <div style='display:inline-block; padding:12px; border-radius:12px; background:linear-gradient(135deg, rgba(45,212,191,0.2), rgba(59,130,246,0.2)); border:1px solid rgba(45,212,191,0.3); margin-bottom:16px;'>
+                    <span style='font-size:28px;'>🛡️</span>
+                  </div>
+                  <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Verify Your Account</h1>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>Welcome to ProfileVault Central Anti-Detect Ecosystem</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='padding:0 36px 30px 36px;'>
+                  <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your ProfileVault account has been registered successfully. To activate full browser profile isolation, proxies, and team capabilities, please confirm your email address by clicking the button below:</p>
+                  
+                  <div style='text-align:center; margin:32px 0;'>
+                    <a href='" . $verificationUrl . "' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#0F0F17; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block; box-shadow:0 4px 16px rgba(45,212,191,0.35);'>Verify Email Address</a>
+                  </div>
 
-    $sent = sendSmtpMailPhp($email, 'Confirm your ProfileVault Account', $html);
+                  <div style='background:#0F0F17; border:1px solid #2C2C3E; border-radius:10px; padding:16px; margin-bottom:24px;'>
+                    <p style='margin:0 0 6px 0; font-size:12px; color:#94A3B8;'>Manual Verification Token:</p>
+                    <code style='color:#2DD4BF; font-family:monospace; font-size:13px; word-break:break-all;'>" . htmlspecialchars($plainToken) . "</code>
+                  </div>
+
+                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0 0 10px 0;'>Or copy & paste this URL into your browser:<br>
+                    <a href='" . $verificationUrl . "' style='color:#38BDF8; text-decoration:underline; word-break:break-all;'>" . $verificationUrl . "</a>
+                  </p>
+                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0;'>⏳ This verification link expires in <strong>24 hours</strong>. If you did not create this account, you can safely disregard this message.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='background:#0F0F17; padding:20px 36px; border-top:1px solid #2C2C3E; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " ProfileVault Anti-Detect Browser. Unified Web & Desktop Security.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>";
+
+    $sent = sendSmtpMailPhp($email, 'Verify Your ProfileVault Account', $html);
+
+    if ($sent) {
+        recordSecurityEvent('VERIFICATION_EMAIL_SENT', 'info', $userId, "Verification token dispatched to {$email}");
+    } else {
+        recordSecurityEvent('VERIFICATION_EMAIL_FAILED', 'warning', $userId, "SMTP failed to deliver verification token to {$email}");
+    }
 
     return [
         'success' => true,
         'token' => $plainToken,
         'verificationUrl' => $verificationUrl,
+        'deepLinkUrl' => $deepLinkUrl,
         'sentViaSmtp' => $sent
     ];
 }
 
 function sendAccountVerifiedConfirmationPhp(string $userName, string $email): bool {
     $html = "
-    <div style='font-family: sans-serif; background:#0F0F17; color:#CBD5E1; padding:30px;'>
-      <div style='max-width:560px; margin:0 auto; background:#1C1C28; padding:30px; border-radius:12px; border:1px solid #2C2C3E;'>
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>ProfileVault Account Confirmed</title></head>
+    <body style='background-color:#0A0A0F; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:560px; margin:0 auto; background:#161622; padding:32px; border-radius:14px; border:1px solid #2C2C3E;'>
         <div style='text-align:center;'>
-          <span style='background:#10B98120; border:1px solid #10B98140; color:#34D399; padding:4px 12px; border-radius:16px; font-size:12px; font-weight:600;'>✓ Email Verified Successfully</span>
-          <h2 style='color:#F1F5F9; font-size:22px; margin-top:12px;'>Welcome to ProfileVault, " . htmlspecialchars($userName) . "!</h2>
+          <span style='background:#10B98125; border:1px solid #10B98150; color:#34D399; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>✓ Email Verified Successfully</span>
+          <h2 style='color:#FFFFFF; font-size:22px; margin:16px 0 8px 0;'>Welcome aboard, " . htmlspecialchars($userName) . "!</h2>
         </div>
-        <p>Your email address (<strong>" . htmlspecialchars($email) . "</strong>) has been verified. Your account is now fully active and ready to create isolated browser profiles and proxies.</p>
-        <p style='text-align:center; margin:24px 0;'>
-          <a href='app://profilevault' style='background:#2DD4BF; color:#0F0F17; font-weight:700; padding:12px 28px; text-decoration:none; border-radius:8px;'>Launch ProfileVault App</a>
-        </p>
+        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your email address (<strong>" . htmlspecialchars($email) . "</strong>) has been verified. Your account is now fully active across Web, Windows, macOS, and Linux.</p>
+        <div style='text-align:center; margin:28px 0;'>
+          <a href='https://app.edgecash.net/#login' style='background:#2DD4BF; color:#0F0F17; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Access Control Center</a>
+        </div>
       </div>
-    </div>";
+    </body>
+    </html>";
 
     return sendSmtpMailPhp($email, '🎉 ProfileVault Account Confirmed & Ready!', $html);
 }

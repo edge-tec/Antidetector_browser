@@ -56,6 +56,12 @@ if (strpos($requestUri, '/download/') === 0 || $requestUri === '/download') {
     exit();
 }
 
+// ── 0.2 Web Email Verification Page ──
+if ($requestUri === '/verify-email' || $requestUri === '/verify') {
+    require_once __DIR__ . '/verify-email.php';
+    exit();
+}
+
 // ── 1. API Route Dispatcher ──
 if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
     
@@ -1373,6 +1379,7 @@ header('Content-Type: text/html; charset=utf-8');
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Name</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Email</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Role</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Verification</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Action</th>
                                     </tr>
@@ -3550,7 +3557,7 @@ header('Content-Type: text/html; charset=utf-8');
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
             const tbody = document.getElementById('usersTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching database records...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching database records...</td></tr>';
             
             try {
                 const res = await fetch('/api/admin/get-users', {
@@ -3558,23 +3565,53 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data)) {
-                    tbody.innerHTML = data.data.map(u => `
+                    tbody.innerHTML = data.data.map(u => {
+                        const isVerified = (u.emailVerified === true || u.emailVerified === 1 || u.email_verified === 1);
+                        return `
                         <tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${u.name}</td>
                             <td style="padding: 12px 16px; color: var(--text-muted);">${u.email}</td>
                             <td style="padding: 12px 16px;"><span style="background: rgba(99,102,241,0.2); color: #818CF8; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.role}</span></td>
+                            <td style="padding: 12px 16px;"><span style="background: ${isVerified ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; color: ${isVerified ? '#34D399' : '#FBBF24'}; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${isVerified ? '✓ Verified' : '⚠ Unverified'}</span></td>
                             <td style="padding: 12px 16px;"><span style="background: ${u.accountStatus === 'suspended' ? 'rgba(239,68,68,0.2)' : 'rgba(45,212,191,0.2)'}; color: ${u.accountStatus === 'suspended' ? '#F87171' : '#2DD4BF'}; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.accountStatus || 'active'}</span></td>
-                            <td style="padding: 12px 16px; display: flex; gap: 6px;">
+                            <td style="padding: 12px 16px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                ${!isVerified ? `<button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; border-color: #FBBF24; color: #FBBF24;" onclick="resendUserVerification('${u.id}', '${u.email}')">✉️ Resend Verification</button>` : ''}
                                 <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserStatus('${u.id}', '${u.accountStatus || 'active'}')">${u.accountStatus === 'suspended' ? 'Activate' : 'Suspend'}</button>
                                 <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; border-color: #818CF8; color: #818CF8;" onclick="loginAsUser('${u.id}')">🔑 Login as User</button>
                             </td>
                         </tr>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Failed to load users: ' + (data.error || 'Unauthorized') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#F87171;">Failed to load users: ' + (data.error || 'Unauthorized') + '</td></tr>';
                 }
             } catch(err) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Network error fetching user data.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#F87171;">Network error fetching user data.</td></tr>';
+            }
+        }
+
+        async function resendUserVerification(userId, userEmail) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            if (!confirm(`Resend verification link to ${userEmail}?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/resend-user-verification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ userId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || `Verification link successfully sent to ${userEmail}!`);
+                } else {
+                    alert('Error resending verification: ' + (data.error || data.message || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Network error while resending verification.');
             }
         }
 
