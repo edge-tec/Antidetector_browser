@@ -25,6 +25,12 @@ class ProfileManager {
 
     this.chromiumPath = await findChromiumPath(customPath?.value)
 
+    if (this.chromiumPath && !customPath?.value) {
+      try {
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('chromiumPath', ?)").run(this.chromiumPath)
+      } catch {}
+    }
+
     // Clean up any orphaned running statuses from crashes
     processTracker.cleanupOrphans()
 
@@ -44,15 +50,31 @@ class ProfileManager {
       throw new Error(`Profile "${profile.name}" is already running.`)
     }
 
-    if (!this.chromiumPath) {
-      this.chromiumPath = await findChromiumPath()
-      if (!this.chromiumPath) {
-        throw new Error('Chrome/Chromium not found. Please install Google Chrome or set the path in Settings.')
+    // Check existing path or auto-detect
+    if (!this.chromiumPath || !fs.existsSync(this.chromiumPath)) {
+      const db = getDatabase()
+      const customPathRow = db.prepare("SELECT value FROM settings WHERE key = 'chromiumPath'").get() as { value: string } | undefined
+      this.chromiumPath = await findChromiumPath(customPathRow?.value)
+
+      if (this.chromiumPath) {
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('chromiumPath', ?)").run(this.chromiumPath)
+      } else {
+        throw new Error(
+          'Chrome/Chromium executable not found. Please install Google Chrome, or click Settings -> Browser Engine to Auto-Detect or Browse.'
+        )
       }
+    }
+
+    // Ensure profile data directory is accessible and created
+    try {
+      ensureProfileDataDir(profileId)
+    } catch (dirErr: any) {
+      throw new Error(`Cannot access profile data directory: ${dirErr.message}`)
     }
 
     // Update status to launching
     profileRepo.setStatus(profileId, 'launching')
+    logger.info('browser', `[BrowserLaunch] Launching profile "${profile.name}" (${profileId}) with browser: ${this.chromiumPath}`)
 
     try {
       const result = await launchBrowser(profile, this.chromiumPath)
@@ -62,10 +84,12 @@ class ProfileManager {
 
       // Update status to running
       profileRepo.setStatus(profileId, 'running', result.pid)
+      logger.info('browser', `[BrowserLaunch] Process started successfully: PID ${result.pid}`)
 
       return { pid: result.pid, wsEndpoint: result.wsEndpoint }
     } catch (err: any) {
       profileRepo.setStatus(profileId, 'error')
+      logger.error('browser', `[BrowserLaunch] Failed to launch profile ${profileId}: ${err.message}`)
       throw err
     }
   }

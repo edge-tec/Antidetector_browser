@@ -17,6 +17,7 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { LandingPage } from './pages/LandingPage'
 import { SupportChatWidget } from './components/SupportChatWidget'
+import { BrowserSetupModal } from './components/BrowserSetupModal'
 import logoImg from './assets/logo.png'
 
 // ═══════════════════════════════════════════
@@ -290,6 +291,8 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
   const [showCreate, setShowCreate] = useState(false)
   const [showBulk, setShowBulk] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showBrowserSetup, setShowBrowserSetup] = useState(false)
+  const [pendingProfile, setPendingProfile] = useState<Profile | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [editProfile, setEditProfile] = useState<Profile | null>(null)
 
@@ -307,6 +310,27 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
     const unsub = window.api.onProfileStatusChanged((_e, _data) => loadProfiles())
     return unsub
   }, [loadProfiles])
+
+  const handleStartProfile = async (p: Profile) => {
+    if (!sessionToken) return
+    const r = await window.api.startProfile(sessionToken, p.id)
+    if (r.success) {
+      showToast('success', `Started "${p.name}"`)
+    } else {
+      const err = r.error || ''
+      showToast('error', err || 'Failed to start profile')
+      if (
+        err.toLowerCase().includes('chrome') ||
+        err.toLowerCase().includes('chromium') ||
+        err.toLowerCase().includes('not found') ||
+        err.toLowerCase().includes('executable')
+      ) {
+        setPendingProfile(p)
+        setShowBrowserSetup(true)
+      }
+    }
+    loadProfiles()
+  }
 
   const handleSaveProfile = async (input: any) => {
     if (!sessionToken) return
@@ -379,9 +403,12 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           <h1 className="page-title">Profiles</h1>
           <p className="page-subtitle">{profiles.length} browser profile{profiles.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="page-actions" style={{ display: 'flex', gap: 8 }}>
+        <div className="page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn btn-ghost btn-icon" onClick={loadProfiles} title="Refresh">
             <span style={{ width: 16, height: 16, display: 'flex' }}>{Icons.refresh}</span>
+          </button>
+          <button className="btn btn-secondary" onClick={() => setShowBrowserSetup(true)} title="Configure Browser Engine">
+            🌐 Browser Setup
           </button>
           <button className="btn btn-secondary" onClick={() => setShowTemplates(true)}>
             🎨 Templates
@@ -425,13 +452,7 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
               key={p.id}
               profile={p}
               proxies={proxies}
-              onStart={async () => {
-                if (!sessionToken) return
-                const r = await window.api.startProfile(sessionToken, p.id)
-                if (r.success) showToast('success', `Started "${p.name}"`)
-                else showToast('error', r.error || 'Failed to start')
-                loadProfiles()
-              }}
+              onStart={() => handleStartProfile(p)}
               onStop={async () => {
                 if (!sessionToken) return
                 const r = await window.api.stopProfile(sessionToken, p.id)
@@ -497,12 +518,24 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
         />
       </ErrorBoundary>
 
-
+      <ErrorBoundary fallbackTitle="Browser Setup Modal Error">
+        <BrowserSetupModal
+          isOpen={showBrowserSetup}
+          onClose={() => { setShowBrowserSetup(false); setPendingProfile(null) }}
+          onLaunchProfile={() => {
+            if (pendingProfile) {
+              const toStart = pendingProfile
+              setPendingProfile(null)
+              setShowBrowserSetup(false)
+              handleStartProfile(toStart)
+            }
+          }}
+          showToast={showToast}
+        />
+      </ErrorBoundary>
     </div>
   )
 }
-
-
 
 // ═══════════════════════════════════════════
 // Groups Page
@@ -842,19 +875,105 @@ curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \\
 
 function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme: (t: string) => void; showToast: (type: ToastItem['type'], msg: string) => void }) {
   const [chromiumPath, setChromiumPath] = useState<string | null>(null)
+  const [engineType, setEngineType] = useState<string>('Google Chrome')
   const [version, setVersion] = useState('')
+  const [isDetecting, setIsDetecting] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
+  const [testResult, setTestResult] = useState<any | null>(null)
+  const [diagnostics, setDiagnostics] = useState<any | null>(null)
+  const [discoveredBrowsers, setDiscoveredBrowsers] = useState<any[]>([])
 
   useEffect(() => {
-    window.api.getChromiumPath().then((r) => { if (r.success) setChromiumPath(r.data ?? null) })
+    window.api.getChromiumPath().then((r) => {
+      if (r.success && r.data) {
+        setChromiumPath(r.data)
+        runTest(r.data)
+      }
+    })
     window.api.getAppVersion().then((r) => { if (r.success) setVersion(r.data!) })
+    runDiagnostics()
   }, [])
+
+  const runTest = async (pathToTest?: string) => {
+    const target = pathToTest || chromiumPath
+    if (!target) {
+      setTestResult(null)
+      return
+    }
+    setIsTesting(true)
+    try {
+      const res = await window.api.testBrowser(target)
+      if (res.success && res.data) {
+        setTestResult(res.data)
+      }
+    } catch {
+      // Ignored
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
+  const runDiagnostics = async () => {
+    try {
+      const res = await window.api.getBrowserDiagnostics()
+      if (res.success && res.data) {
+        setDiagnostics(res.data)
+      }
+    } catch {}
+  }
+
+  const handleAutoDetect = async () => {
+    setIsDetecting(true)
+    try {
+      const res = await window.api.autoDetectBrowser()
+      if (res.success && res.data) {
+        if (res.data.detectedPath) {
+          setChromiumPath(res.data.detectedPath)
+          showToast('success', `Detected: ${res.data.detectedPath}`)
+          runTest(res.data.detectedPath)
+        } else {
+          showToast('warning', 'No Chrome/Chromium found in standard locations.')
+        }
+        if (Array.isArray(res.data.allBrowsers)) {
+          setDiscoveredBrowsers(res.data.allBrowsers)
+        }
+        runDiagnostics()
+      }
+    } catch (e: any) {
+      showToast('error', 'Auto-detection failed: ' + e.message)
+    } finally {
+      setIsDetecting(false)
+    }
+  }
+
+  const handleBrowse = async () => {
+    const r = await window.api.selectFile([
+      { name: 'Browser Executable', extensions: ['exe', 'app', '*'] },
+      { name: 'All Files', extensions: ['*'] }
+    ])
+    if (r.success && r.data) {
+      await window.api.setChromiumPath(r.data)
+      setChromiumPath(r.data)
+      showToast('success', 'Browser path updated')
+      runTest(r.data)
+      runDiagnostics()
+    }
+  }
+
+  const handleReset = async () => {
+    await window.api.setChromiumPath('')
+    setChromiumPath(null)
+    setTestResult(null)
+    showToast('info', 'Chromium path reset')
+    runDiagnostics()
+  }
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Application configuration</p>
+          <p className="page-subtitle">Application configuration & browser engine control</p>
         </div>
       </div>
 
@@ -879,31 +998,201 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
       </div>
 
       <div className="section">
-        <h3 className="section-title">Browser Engine</h3>
-        <div className="card">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>Chromium Path</div>
-              <div className="text-sm text-secondary" style={{ marginTop: 2 }}>{chromiumPath || 'Auto-detect (using system Chrome)'}</div>
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 className="section-title" style={{ margin: 0 }}>Browser Engine & Path</h3>
+          <span className="text-sm text-secondary">Windows & macOS Multi-Engine Support</span>
+        </div>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Preferred Engine
+            </label>
+            <select
+              className="form-input"
+              value={engineType}
+              onChange={(e) => setEngineType(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <option value="Google Chrome">Google Chrome (Default / Recommended)</option>
+              <option value="Chromium">Chromium</option>
+              <option value="Microsoft Edge">Microsoft Edge (Chromium Engine)</option>
+              <option value="Brave">Brave Browser</option>
+              <option value="Custom">Custom Binary</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Browser Executable Path
+            </label>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-sm btn-secondary" onClick={async () => {
-                const r = await window.api.selectFile([{ name: 'Executables', extensions: ['*'] }])
-                if (r.success && r.data) {
-                  await window.api.setChromiumPath(r.data)
-                  setChromiumPath(r.data)
-                  showToast('success', 'Chromium path updated')
-                }
-              }}>Browse...</button>
-              {chromiumPath && (
-                <button className="btn btn-sm btn-ghost" onClick={async () => {
-                  await window.api.setChromiumPath('')
-                  setChromiumPath(null)
-                  showToast('info', 'Chromium path reset to auto-detect')
-                }}>Reset to Auto</button>
-              )}
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Click Auto-Detect or Browse for chrome.exe"
+                value={chromiumPath || ''}
+                onChange={async (e) => {
+                  setChromiumPath(e.target.value)
+                  if (e.target.value) {
+                    await window.api.setChromiumPath(e.target.value)
+                    runTest(e.target.value)
+                  }
+                }}
+                style={{ flex: 1, fontFamily: 'monospace', fontSize: 12 }}
+              />
+              <button className="btn btn-secondary" onClick={handleBrowse}>
+                Browse...
+              </button>
             </div>
           </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary btn-sm" disabled={isDetecting} onClick={handleAutoDetect}>
+              {isDetecting ? '🔍 Scanning...' : '🔍 Auto-Detect Chrome'}
+            </button>
+            <button className="btn btn-secondary btn-sm" disabled={isTesting || !chromiumPath} onClick={() => runTest()}>
+              {isTesting ? 'Testing...' : '⚡ Test Browser'}
+            </button>
+            {chromiumPath && (
+              <button className="btn btn-ghost btn-sm" onClick={handleReset}>
+                Reset
+              </button>
+            )}
+          </div>
+
+          {/* Discovered Browsers */}
+          {discoveredBrowsers.length > 0 && (
+            <div style={{ background: 'var(--color-bg-tertiary)', borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>
+                Discovered Browsers
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {discoveredBrowsers.map((b, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: chromiumPath === b.path ? 'rgba(45,212,191,0.1)' : 'var(--color-bg-secondary)',
+                      border: chromiumPath === b.path ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      borderRadius: 6,
+                      padding: '8px 12px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>
+                        {b.name} <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 400 }}>v{b.version}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'monospace', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.path}
+                      </div>
+                    </div>
+                    <button
+                      className={`btn btn-sm ${chromiumPath === b.path ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={async () => {
+                        await window.api.setChromiumPath(b.path)
+                        setChromiumPath(b.path)
+                        showToast('success', `Selected ${b.name}`)
+                        runTest(b.path)
+                        runDiagnostics()
+                      }}
+                    >
+                      {chromiumPath === b.path ? '✓ In Use' : 'Use'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Test Result Card */}
+          {testResult && (
+            <div
+              style={{
+                background: testResult.valid ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                border: `1px solid ${testResult.valid ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                borderRadius: 8,
+                padding: 12
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 16 }}>{testResult.valid ? '✅' : '❌'}</span>
+                <strong style={{ color: testResult.valid ? '#22C55E' : '#EF4444' }}>
+                  {testResult.valid ? 'Browser Validated Successfully' : 'Browser Validation Failed'}
+                </strong>
+              </div>
+              {testResult.valid ? (
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                  <div><strong>Engine:</strong> {testResult.engine}</div>
+                  <div><strong>Version:</strong> {testResult.version}</div>
+                  <div style={{ fontFamily: 'monospace' }}><strong>Path:</strong> {testResult.path}</div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#EF4444' }}>{testResult.error}</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Browser Diagnostics Section */}
+      <div className="section">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 className="section-title" style={{ margin: 0 }}>Browser Diagnostics & Health Check</h3>
+          <button className="btn btn-secondary btn-sm" onClick={runDiagnostics}>
+            🔄 Refresh Diagnostics
+          </button>
+        </div>
+        <div className="card">
+          {diagnostics ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { title: 'Browser Engine', item: diagnostics.engine },
+                { title: 'Executable Path', item: diagnostics.executablePath },
+                { title: 'Executable Exists', item: diagnostics.executableExists },
+                { title: 'Version Detection', item: diagnostics.versionDetection },
+                { title: 'Profile Data Directory', item: diagnostics.profileDirectory },
+                { title: 'Process Launch Permission', item: diagnostics.processLaunch }
+              ].map((row, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    background: 'var(--color-bg-tertiary)',
+                    border: '1px solid var(--color-border)'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{row.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                      {row.item?.detail || row.item?.path || 'Checked'}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: row.item?.status === 'pass' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
+                      color: row.item?.status === 'pass' ? '#22C55E' : '#EF4444'
+                    }}
+                  >
+                    {row.item?.status === 'pass' ? 'PASS' : 'FAIL'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-text-secondary)' }}>
+              Checking browser subsystem...
+            </div>
+          )}
         </div>
       </div>
 

@@ -5,6 +5,7 @@
 import { ipcMain, app, shell, dialog } from 'electron'
 import { getDatabase } from '../database/connection'
 import { profileManager } from '../browser/profile-manager'
+import { findChromiumPath, detectAllBrowsers, testBrowserExecutable, runBrowserDiagnostics } from '../browser/chromium-resolver'
 import { startApiServer, stopApiServer, isApiRunning, getApiToken } from '../automation/server'
 import { rotateApiToken } from '../security/api-auth'
 import { logger } from '../logging/logger'
@@ -43,6 +44,38 @@ export function registerSettingsHandlers(): void {
     try {
       await profileManager.setChromiumPath(path)
       return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('settings:autoDetectBrowser', async () => {
+    try {
+      const detected = await findChromiumPath()
+      const all = await detectAllBrowsers()
+      if (detected) {
+        await profileManager.setChromiumPath(detected)
+      }
+      return { success: true, data: { detectedPath: detected, allBrowsers: all } }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('settings:testBrowser', async (_event, executablePath: string) => {
+    try {
+      const result = await testBrowserExecutable(executablePath)
+      return { success: true, data: result }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('settings:browserDiagnostics', async () => {
+    try {
+      const currentPath = profileManager.getChromiumPath()
+      const result = await runBrowserDiagnostics(currentPath || undefined)
+      return { success: true, data: result }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

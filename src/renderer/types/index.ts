@@ -207,6 +207,9 @@ declare global {
       updateSetting: (key: string, value: string) => Promise<IpcResult>
       getChromiumPath: () => Promise<IpcResult<string | null>>
       setChromiumPath: (path: string) => Promise<IpcResult>
+      autoDetectBrowser: () => Promise<IpcResult<{ detectedPath: string | null; allBrowsers: Array<{ name: string; engine: string; path: string; version: string }> }>>
+      testBrowser: (executablePath: string) => Promise<IpcResult<{ valid: boolean; exists: boolean; isExecutable: boolean; version: string; engine: string; path: string; error?: string }>>
+      getBrowserDiagnostics: () => Promise<IpcResult<any>>
       getApiToken: () => Promise<IpcResult<string>>
       rotateApiToken: () => Promise<IpcResult<string>>
       startApi: () => Promise<IpcResult>

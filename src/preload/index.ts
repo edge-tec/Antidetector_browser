@@ -96,6 +96,9 @@ const api = {
   updateSetting: (key: string, value: string) => ipcRenderer.invoke('settings:update', key, value),
   getChromiumPath: () => ipcRenderer.invoke('settings:chromiumPath'),
   setChromiumPath: (path: string) => ipcRenderer.invoke('settings:setChromiumPath', path),
+  autoDetectBrowser: () => ipcRenderer.invoke('settings:autoDetectBrowser'),
+  testBrowser: (executablePath: string) => ipcRenderer.invoke('settings:testBrowser', executablePath),
+  getBrowserDiagnostics: () => ipcRenderer.invoke('settings:browserDiagnostics'),
 
   // ── Automation API ──
   getApiToken: () => ipcRenderer.invoke('api:getToken'),
