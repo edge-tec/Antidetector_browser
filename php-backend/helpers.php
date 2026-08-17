@@ -196,20 +196,50 @@ function decodeSessionToken(string $jwt): ?string {
     return $data['user_id'];
 }
 
-// Get Auth Bearer Token from HTTP Headers
+// Get Auth Bearer Token from HTTP Headers (robust multi-server support)
 function getBearerToken(): ?string {
     $headers = null;
-    if (isset($_SERVER['Authorization'])) {
-        $headers = trim($_SERVER["Authorization"]);
-    } else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
-    } else if (function_exists('apache_request_headers')) {
-        $requestHeaders = apache_request_headers();
-        $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-        if (isset($requestHeaders['Authorization'])) {
-            $headers = trim($requestHeaders['Authorization']);
+
+    // Strategy 1: Standard HTTP_AUTHORIZATION (most common)
+    if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
+        $headers = trim($_SERVER['HTTP_AUTHORIZATION']);
+    }
+    // Strategy 2: REDIRECT_HTTP_AUTHORIZATION (Apache mod_rewrite with [E=] flag)
+    else if (!empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $headers = trim($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+    }
+    // Strategy 3: Direct Authorization key (some CGI configurations)
+    else if (!empty($_SERVER['Authorization'])) {
+        $headers = trim($_SERVER['Authorization']);
+    }
+    // Strategy 4: getallheaders() / apache_request_headers() (Apache module mode)
+    else if (function_exists('getallheaders')) {
+        $allHeaders = getallheaders();
+        if ($allHeaders) {
+            // Case-insensitive search for Authorization header
+            foreach ($allHeaders as $key => $value) {
+                if (strtolower($key) === 'authorization') {
+                    $headers = trim($value);
+                    break;
+                }
+            }
         }
     }
+    // Strategy 5: apache_request_headers() fallback (Apache only)
+    else if (function_exists('apache_request_headers')) {
+        $requestHeaders = apache_request_headers();
+        if ($requestHeaders) {
+            $requestHeaders = array_combine(
+                array_map('ucwords', array_keys($requestHeaders)),
+                array_values($requestHeaders)
+            );
+            if (isset($requestHeaders['Authorization'])) {
+                $headers = trim($requestHeaders['Authorization']);
+            }
+        }
+    }
+
+    // Extract Bearer token from header value
     if (!empty($headers)) {
         if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
             return $matches[1];

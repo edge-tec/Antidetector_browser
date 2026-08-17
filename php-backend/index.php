@@ -1968,6 +1968,9 @@ header('Content-Type: text/html; charset=utf-8');
                         window.history.pushState({}, '', '/dashboard');
                     }
 
+                    // Set grace period flag to prevent immediate /api/auth/me re-validation
+                    window._pvJustLoggedIn = true;
+
                     setTimeout(() => {
                         closeModal();
                         checkSession();
@@ -2041,6 +2044,9 @@ header('Content-Type: text/html; charset=utf-8');
                     if (window.history && window.history.pushState) {
                         window.history.pushState({}, '', '/dashboard');
                     }
+
+                    // Set grace period flag to prevent immediate /api/auth/me re-validation
+                    window._pvJustLoggedIn = true;
 
                     setTimeout(() => {
                         closeModal();
@@ -2133,19 +2139,39 @@ header('Content-Type: text/html; charset=utf-8');
                 if (document.getElementById('uProfileRole')) document.getElementById('uProfileRole').value = 'Role: ' + (user.role || 'user').toUpperCase();
                 if (document.getElementById('uProfileStatus')) document.getElementById('uProfileStatus').value = 'Status: ' + (user.accountStatus || 'active').toUpperCase();
 
+                // Skip server re-validation if user just logged in (grace period)
+                if (window._pvJustLoggedIn) {
+                    window._pvJustLoggedIn = false;
+                    console.log('[ProfileVault] Skipping /api/auth/me re-validation (just logged in)');
+                    return;
+                }
+
                 // Fetch License & Subscription Details from Server
                 const res = await fetch('/api/auth/me', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
 
                 if (res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('sessionToken');
-                    localStorage.removeItem('user');
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', '/login');
+                    // Don't immediately destroy session — log the issue first
+                    console.warn('[ProfileVault] /api/auth/me returned ' + res.status + '. Token may be expired or server may not be receiving Authorization header.');
+                    
+                    // Only clear session if the token is genuinely expired (not a server config issue)
+                    // Verify by checking if the response body explicitly says expired
+                    try {
+                        const errData = await res.json();
+                        if (errData.error && (errData.error.includes('expired') || errData.error.includes('Unauthorized'))) {
+                            console.warn('[ProfileVault] Session confirmed expired. Clearing session.');
+                            localStorage.removeItem('sessionToken');
+                            localStorage.removeItem('user');
+                            if (window.history && window.history.replaceState) {
+                                window.history.replaceState({}, '', '/login');
+                            }
+                            closeAdminDashboard();
+                            openModal('login');
+                        }
+                    } catch(jsonErr) {
+                        console.warn('[ProfileVault] Could not parse 401 response body.');
                     }
-                    closeAdminDashboard();
-                    openModal('login');
                     return;
                 }
 
@@ -3170,6 +3196,9 @@ header('Content-Type: text/html; charset=utf-8');
                     if (window.history && window.history.pushState) {
                         window.history.pushState({}, '', '/dashboard');
                     }
+
+                    // Set grace period flag to prevent immediate /api/auth/me re-validation
+                    window._pvJustLoggedIn = true;
 
                     setTimeout(() => {
                         closeModal();

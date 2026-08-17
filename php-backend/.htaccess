@@ -5,7 +5,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
-    
+
+    # Pass Authorization header through to PHP (critical for Bearer token auth)
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
     # Protect sensitive files
     RewriteRule ^(config\.php|db\.php|database\.sql|profilevault\.sqlite|\.env|\.git) - [F,L]
 
@@ -13,4 +16,9 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Fallback: SetEnvIf for servers where RewriteRule [E=] doesn't work
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 </IfModule>
