@@ -836,9 +836,23 @@ switch ($action) {
     // ── Payment Gateways & Transactions Admin APIs ──
     case 'get-payment-gateways':
         try {
+            ensureDatabaseTablesExist();
             $stmt = $db->prepare("SELECT * FROM payment_gateways ORDER BY gateway_key ASC");
             $stmt->execute();
             $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Re-seed default gateways if empty
+            if (empty($gateways)) {
+                $db->exec("
+                    INSERT INTO `payment_gateways` (`id`, `gateway_key`, `name`, `is_enabled`, `is_test_mode`, `public_key`, `secret_key`, `webhook_secret`, `currency`, `config_json`)
+                    VALUES
+                    ('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{\"checkout_title\":\"ProfileVault Subscription\",\"allow_promotion_codes\":true,\"billing_address_collection\":\"auto\"}'),
+                    ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{\"provider\":\"nowpayments\",\"supported_coins\":[\"BTC\",\"ETH\",\"USDT\",\"USDC\"],\"network\":\"TRC20,ERC20,BTC\",\"min_amount\":10,\"confirmations_required\":2}')
+                    ON DUPLICATE KEY UPDATE `id`=`id`;
+                ");
+                $stmt->execute();
+                $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
 
             // Mask secrets safely before returning to Admin UI
             foreach ($gateways as &$gw) {
@@ -861,7 +875,11 @@ switch ($action) {
                 unset($gw['secret_key']);
                 unset($gw['webhook_secret']);
             }
-            respondJson(['success' => true, 'gateways' => $gateways]);
+            respondJson([
+                'success' => true,
+                'data' => $gateways,
+                'gateways' => $gateways
+            ]);
         } catch (Throwable $e) {
             respondJson(['success' => false, 'error' => $e->getMessage()], 500);
         }

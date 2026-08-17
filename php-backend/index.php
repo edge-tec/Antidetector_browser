@@ -4285,10 +4285,11 @@ header('Content-Type: text/html; charset=utf-8');
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 const data = await res.json();
+                const list = (data.data && Array.isArray(data.data)) ? data.data : (data.gateways && Array.isArray(data.gateways) ? data.gateways : null);
 
-                if (data.success && Array.isArray(data.data)) {
-                    _cachedGateways = data.data;
-                    renderGatewayCards(data.data);
+                if (data.success && Array.isArray(list)) {
+                    _cachedGateways = list;
+                    renderGatewayCards(list);
                 } else {
                     container.innerHTML = `<div style="grid-column:1/-1; color:#F87171; text-align:center; padding:30px;">${data.error || 'Failed to load payment gateways.'}</div>`;
                 }
