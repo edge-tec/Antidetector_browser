@@ -342,48 +342,62 @@ switch ($action) {
             respondJson(['success' => false, 'error' => 'You cannot delete your own admin account.'], 400);
         }
 
-        $db->beginTransaction();
         try {
             $userStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
             $userStmt->execute([$userId]);
             $userRec = $userStmt->fetch();
 
             if (!$userRec) {
-                $db->rollBack();
                 respondJson(['success' => false, 'error' => 'User not found.'], 404);
             }
 
             $userEmail = $userRec['email'];
             $userName = $userRec['name'] ?: 'User';
 
-            // Revoke sessions and installations
-            try { $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'User deleted', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
-            try { $db->prepare("UPDATE desktop_installations SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
-
-            // Clean up related user records
+            // Clean up dependent child records safely to release child locks
+            try { $db->prepare("DELETE FROM email_verification_tokens WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
+            try { $db->prepare("DELETE FROM user_sessions WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
+            try { $db->prepare("DELETE FROM desktop_installations WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
             try { $db->prepare("DELETE FROM subscriptions WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
             try { $db->prepare("DELETE FROM profiles WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
             try { $db->prepare("DELETE FROM account_notifications WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
-            
-            // Delete user
-            $db->prepare("DELETE FROM users WHERE id = ?")->execute([$userId]);
+            try { $db->prepare("DELETE FROM password_resets WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
 
-            logAdminAction($admin['id'], $admin['email'], 'USER_DELETED', $userId, "Deleted user {$userEmail}" . ($reason ? " (Reason: {$reason})" : ''));
+            // Delete user with retry on lock/deadlock
+            $deleted = false;
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                try {
+                    $delStmt = $db->prepare("DELETE FROM users WHERE id = ?");
+                    $delStmt->execute([$userId]);
+                    $deleted = true;
+                    break;
+                } catch (PDOException $pe) {
+                    if ($attempt < 3 && ($pe->getCode() == '40001' || strpos($pe->getMessage(), '1213') !== false)) {
+                        usleep(150000); // 150ms backoff
+                        continue;
+                    }
+                    throw $pe;
+                }
+            }
 
-            publishRealtimeEvent($db, $userId, 'user.deleted', [
-                'type' => 'user.deleted',
-                'userId' => $userId,
-                'timestamp' => date('c')
-            ]);
+            // Log action & publish event
+            try {
+                logAdminAction($admin['id'], $admin['email'], 'USER_DELETED', $userId, "Deleted user {$userEmail}" . ($reason ? " (Reason: {$reason})" : ''));
+            } catch (Throwable $e) {}
 
-            $db->commit();
+            try {
+                publishRealtimeEvent($db, $userId, 'user.deleted', [
+                    'type' => 'user.deleted',
+                    'userId' => $userId,
+                    'timestamp' => date('c')
+                ]);
+            } catch (Throwable $e) {}
 
             // Automatically dispatch account deletion notification email
             @sendAccountDeletionNotificationPhp($userName, $userEmail, $reason ?: null, $userId);
 
             respondJson(['success' => true, 'message' => "User {$userEmail} deleted and notification email dispatched."]);
         } catch (Throwable $e) {
-            if ($db->inTransaction()) $db->rollBack();
             respondJson(['success' => false, 'error' => 'Failed to delete user: ' . $e->getMessage()], 500);
         }
         break;
