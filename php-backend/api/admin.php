@@ -1048,11 +1048,15 @@ switch ($action) {
                 $config['supported_coins'] = $input['supported_coins'];
             }
 
+            // Ensure payment_gateways table has all required columns
+            try { $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (Throwable $e) {}
+            try { $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"); } catch (Throwable $e) {}
+
             if (!$existing) {
                 $gwId = 'gw_' . $key;
                 $ins = $db->prepare("
-                    INSERT INTO payment_gateways (id, gateway_key, name, is_enabled, is_test_mode, public_key, secret_key, webhook_secret, currency, config_json, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    INSERT INTO payment_gateways (id, gateway_key, name, is_enabled, is_test_mode, public_key, secret_key, webhook_secret, currency, config_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $ins->execute([$gwId, $key, ucfirst($key), $isEnabled, $isTestMode, $publicKey, $secretKey, $webhookSecret, $currency, json_encode($config)]);
             } else {
@@ -1064,8 +1068,7 @@ switch ($action) {
                         secret_key = ?,
                         webhook_secret = ?,
                         currency = ?,
-                        config_json = ?,
-                        updated_at = CURRENT_TIMESTAMP
+                        config_json = ?
                     WHERE gateway_key = ?
                 ");
                 $upd->execute([
