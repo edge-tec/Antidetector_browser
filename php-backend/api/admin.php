@@ -395,16 +395,17 @@ switch ($action) {
             $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
             $stmt = $db->prepare("REPLACE INTO settings (`key`, `value`) VALUES (?, ?)");
 
-            if (isset($input['host'])) $stmt->execute(['smtp_host', (string)$input['host']]);
-            if (isset($input['port'])) $stmt->execute(['smtp_port', (string)$input['port']]);
-            if (isset($input['user'])) $stmt->execute(['smtp_user', (string)$input['user']]);
-            if (isset($input['password'])) $stmt->execute(['smtp_password', (string)$input['password']]);
-            if (isset($input['fromEmail'])) $stmt->execute(['smtp_from_email', (string)$input['fromEmail']]);
-            if (isset($input['secure'])) $stmt->execute(['smtp_secure', $input['secure'] ? 'true' : 'false']);
-            if (isset($input['enabled'])) $stmt->execute(['smtp_enabled', $input['enabled'] ? 'true' : 'false']);
+            if (isset($input['host'])) $stmt->execute(['smtp_host', trim((string)$input['host'])]);
+            if (isset($input['port'])) $stmt->execute(['smtp_port', (string)(int)$input['port']]);
+            if (isset($input['user'])) $stmt->execute(['smtp_user', trim((string)$input['user'])]);
+            if (isset($input['password']) && $input['password'] !== '') $stmt->execute(['smtp_password', (string)$input['password']]);
+            if (isset($input['fromEmail'])) $stmt->execute(['smtp_from_email', trim((string)$input['fromEmail'])]);
+            if (isset($input['secure'])) $stmt->execute(['smtp_secure', ($input['secure'] === true || $input['secure'] === 'true') ? 'true' : 'false']);
+            if (isset($input['enabled'])) $stmt->execute(['smtp_enabled', ($input['enabled'] === true || $input['enabled'] === 'true') ? 'true' : 'false']);
 
-            respondJson(['success' => true]);
-        } catch (Exception $e) {
+            logAdminAction($adminUser['id'], $adminUser['email'], 'Updated SMTP Configuration', null, 'Host: ' . ($input['host'] ?? ''));
+            respondJson(['success' => true, 'message' => 'SMTP configuration saved successfully and activated for Website & Application!']);
+        } catch (Throwable $e) {
             respondJson(['success' => false, 'error' => $e->getMessage()], 500);
         }
         break;

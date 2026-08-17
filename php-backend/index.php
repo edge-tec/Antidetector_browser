@@ -1698,15 +1698,61 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 9: EMAIL & SMTP -->
                     <div id="tab-smtp" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">SMTP & System Email Configuration</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                                <input type="text" id="smtpHost" placeholder="SMTP Host (e.g. smtp.mailgun.org)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
-                                <input type="number" id="smtpPort" placeholder="SMTP Port (587)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
-                                <input type="text" id="smtpUser" placeholder="SMTP Username" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
-                                <input type="password" id="smtpPass" placeholder="SMTP Password" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">SMTP & System Email Configuration</h3>
+                                <p style="font-size: 13px; color: var(--text-muted);">Configure outgoing transactional email server for Account Verification, Password Resets, Support Notifications, and Broadcasts (shared across Website and Application).</p>
                             </div>
-                            <button class="btn btn-primary" style="align-self: flex-start;">Save SMTP Configuration</button>
+                            <button class="btn btn-outline" onclick="loadSmtpConfig()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Config</button>
+                        </div>
+
+                        <div id="smtpAdminMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
+
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 18px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP System Status</label>
+                                    <select id="smtpEnabled" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                        <option value="true">✅ Enabled (Send Emails via SMTP)</option>
+                                        <option value="false">❌ Disabled (Email system off)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Security / Encryption</label>
+                                    <select id="smtpSecure" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                        <option value="false">TLS / STARTTLS (Port 587)</option>
+                                        <option value="true">SSL (Port 465)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">From Email Address</label>
+                                    <input type="email" id="smtpFromEmail" placeholder="e.g. noreply@edgecash.net" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 24px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Host</label>
+                                    <input type="text" id="smtpHost" placeholder="e.g. mail.tolet24.com or smtp.mailgun.org" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Port</label>
+                                    <input type="number" id="smtpPort" placeholder="587" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Username / Account</label>
+                                    <input type="text" id="smtpUser" placeholder="e.g. info@tolet24.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Password</label>
+                                    <input type="password" id="smtpPass" placeholder="••••••••••••" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <button class="btn btn-primary" id="btnSaveSmtp" onclick="saveSmtpConfig()" style="padding: 10px 24px; font-weight: 700;">💾 Save SMTP Configuration</button>
+                                <button class="btn btn-outline" id="btnTestSmtp" onclick="testSmtpConnection()" style="padding: 10px 20px;">🧪 Test SMTP Connection</button>
+                            </div>
                         </div>
                     </div>
 
@@ -2523,6 +2569,200 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'releases') loadAppReleasesTable();
             if (tabName === 'google-oauth') loadGoogleOAuthConfig();
             if (tabName === 'support') loadSupportConversations();
+            if (tabName === 'smtp') loadSmtpConfig();
+        }
+
+        async function loadSmtpConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const msg = document.getElementById('smtpAdminMsg');
+            if (msg) msg.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/admin/get-smtp-config', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const cfg = data.data;
+                    const hostInput = document.getElementById('smtpHost');
+                    const portInput = document.getElementById('smtpPort');
+                    const userInput = document.getElementById('smtpUser');
+                    const passInput = document.getElementById('smtpPass');
+                    const fromEmailInput = document.getElementById('smtpFromEmail');
+                    const secureSelect = document.getElementById('smtpSecure');
+                    const enabledSelect = document.getElementById('smtpEnabled');
+
+                    if (hostInput) hostInput.value = cfg.host || '';
+                    if (portInput) portInput.value = cfg.port || 587;
+                    if (userInput) userInput.value = cfg.user || '';
+                    if (passInput && cfg.password) passInput.placeholder = '•••••••••••• (Saved)';
+                    if (fromEmailInput) fromEmailInput.value = cfg.fromEmail || '';
+                    if (secureSelect) secureSelect.value = cfg.secure ? 'true' : 'false';
+                    if (enabledSelect) enabledSelect.value = cfg.enabled ? 'true' : 'false';
+                }
+            } catch(e) {
+                console.warn('[SMTP Config] Failed to load:', e);
+            }
+        }
+
+        async function saveSmtpConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const host = document.getElementById('smtpHost').value.trim();
+            const port = parseInt(document.getElementById('smtpPort').value, 10) || 587;
+            const user = document.getElementById('smtpUser').value.trim();
+            const pass = document.getElementById('smtpPass').value;
+            const fromEmail = document.getElementById('smtpFromEmail').value.trim();
+            const secure = document.getElementById('smtpSecure').value === 'true';
+            const enabled = document.getElementById('smtpEnabled').value === 'true';
+            const msg = document.getElementById('smtpAdminMsg');
+            const saveBtn = document.getElementById('btnSaveSmtp');
+
+            if (!host || !user) {
+                if (msg) {
+                    msg.style.display = 'block';
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = '❌ SMTP Host and Username are required.';
+                }
+                return;
+            }
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerText = 'Saving SMTP Configuration...';
+            }
+
+            if (msg) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(99,102,241,0.2)';
+                msg.style.color = '#818CF8';
+                msg.innerText = 'Saving SMTP configuration to central database...';
+            }
+
+            try {
+                const payload = {
+                    host: host,
+                    port: port,
+                    user: user,
+                    fromEmail: fromEmail,
+                    secure: secure,
+                    enabled: enabled
+                };
+                if (pass) {
+                    payload.password = pass;
+                }
+
+                const res = await fetch('/api/admin/save-smtp-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    if (msg) {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = '✅ ' + (data.message || 'SMTP settings saved and active for both Website and Application!');
+                    }
+                    const passInput = document.getElementById('smtpPass');
+                    if (passInput) passInput.placeholder = '•••••••••••• (Saved)';
+                } else {
+                    if (msg) {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = '❌ Failed to save: ' + (data.error || 'Unknown error');
+                    }
+                }
+            } catch(e) {
+                if (msg) {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = '❌ Network error saving SMTP configuration.';
+                }
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = '💾 Save SMTP Configuration';
+                }
+            }
+        }
+
+        async function testSmtpConnection() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const host = document.getElementById('smtpHost').value.trim();
+            const port = parseInt(document.getElementById('smtpPort').value, 10) || 587;
+            const user = document.getElementById('smtpUser').value.trim();
+            const secure = document.getElementById('smtpSecure').value === 'true';
+            const msg = document.getElementById('smtpAdminMsg');
+            const testBtn = document.getElementById('btnTestSmtp');
+
+            if (!host || !user) {
+                alert('Please enter SMTP Host and Username before testing.');
+                return;
+            }
+
+            if (testBtn) {
+                testBtn.disabled = true;
+                testBtn.innerText = 'Testing Connection...';
+            }
+
+            if (msg) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(99,102,241,0.2)';
+                msg.style.color = '#818CF8';
+                msg.innerText = `Connecting to ${host}:${port}...`;
+            }
+
+            try {
+                const res = await fetch('/api/admin/test-smtp-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        host: host,
+                        port: port,
+                        user: user,
+                        secure: secure
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    if (msg) {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = '✅ ' + (data.message || 'SMTP Connection Test Passed!');
+                    }
+                } else {
+                    if (msg) {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = '❌ ' + (data.message || 'SMTP Connection Test Failed.');
+                    }
+                }
+            } catch(e) {
+                if (msg) {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = '❌ Error testing SMTP connection.';
+                }
+            } finally {
+                if (testBtn) {
+                    testBtn.disabled = false;
+                    testBtn.innerText = '🧪 Test SMTP Connection';
+                }
+            }
         }
 
         async function loadSupportConversations() {
