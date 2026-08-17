@@ -144,13 +144,8 @@ switch ($action) {
         ");
         $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role]);
 
-        // Create default starter subscription (expires in 1 year)
-        $subId = 'sub_' . $userId;
-        $insertSub = $db->prepare("
-            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
-            VALUES (?, ?, 'plan_starter', 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 3)
-        ");
-        $insertSub->execute([$subId, $userId]);
+        // Automatically provision Free plan subscription for new user
+        ensureUserFreeSubscription($db, $userId, $role);
 
         // Automatically dispatch cryptographically secure verification email
         $emailRes = sendVerificationEmailPhp($userId, $name, $email);
@@ -260,13 +255,8 @@ switch ($action) {
             ");
             $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $googleId]);
 
-            // Create default starter subscription (1 year active)
-            $subId = 'sub_' . $userId;
-            $insertSub = $db->prepare("
-                INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
-                VALUES (?, ?, 'plan_starter', 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 3)
-            ");
-            $insertSub->execute([$subId, $userId]);
+            // Automatically provision Free plan subscription for new user
+            ensureUserFreeSubscription($db, $userId, $role);
 
             $stmt->execute([$email]);
             $user = $stmt->fetch();

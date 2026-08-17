@@ -74,14 +74,8 @@ switch ($action) {
         ");
         $stmt->execute([$userId, $name, strtolower($email), $hash, $role]);
 
-        // Create default subscription
-        $subId = 'sub_' . $userId;
-        $planId = $role === 'admin' ? 'plan_pro' : 'plan_starter';
-        $subStmt = $db->prepare("
-            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
-            VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 3)
-        ");
-        $subStmt->execute([$subId, $userId, $planId]);
+        // Automatically provision Free plan (or Pro for admin)
+        ensureUserFreeSubscription($db, $userId, $role);
 
         respondJson(['success' => true, 'data' => ['id' => $userId, 'name' => $name, 'email' => $email, 'role' => $role]]);
         break;

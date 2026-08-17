@@ -1250,4 +1250,47 @@ function revokeAllUserSessions(PDO $db, string $userId, string $reason = 'Admini
     $stmt2->execute([$userId]);
 }
 
+/**
+ * Automatically ensure every user has a valid active subscription (Free Plan for users, Pro for admins).
+ */
+function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'user'): array {
+    try {
+        $stmt = $db->prepare("SELECT s.*, p.name as plan_name, p.profile_limit, p.team_limit FROM subscriptions s LEFT JOIN pricing_plans p ON s.plan_id = p.id WHERE s.user_id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $sub = $stmt->fetch();
+
+        if ($sub) {
+            return $sub;
+        }
+
+        // Determine plan: Admin gets Pro, regular user gets Free
+        $isAdmin = ($role === 'admin' || $role === 'super_admin');
+        $planId = $isAdmin ? 'plan_pro' : 'plan_free';
+
+        // Check if plan_free exists in pricing_plans
+        $planCheck = $db->prepare("SELECT id FROM pricing_plans WHERE id = ? LIMIT 1");
+        $planCheck->execute([$planId]);
+        if (!$planCheck->fetch()) {
+            $planId = 'plan_free';
+        }
+
+        $subId = 'sub_' . bin2hex(random_bytes(8));
+        $deviceLimit = $isAdmin ? 10 : 1;
+
+        $insert = $db->prepare("
+            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
+            VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 3, ?)
+            ON DUPLICATE KEY UPDATE status = 'active'
+        ");
+        $insert->execute([$subId, $userId, $planId, $deviceLimit]);
+
+        $stmt->execute([$userId]);
+        return $stmt->fetch() ?: [];
+    } catch (Throwable $e) {
+        error_log("[ProfileVault] Error in ensureUserFreeSubscription: " . $e->getMessage());
+        return [];
+    }
+}
+
+
 

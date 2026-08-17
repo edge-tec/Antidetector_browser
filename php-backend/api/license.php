@@ -78,34 +78,18 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
     }
 
     // 3. Subscription & Plan Resolution (to determine dynamic device limit)
-    $subStmt = $db->prepare("SELECT * FROM subscriptions WHERE user_id = ?");
-    $subStmt->execute([$userId]);
-    $sub = $subStmt->fetch();
-
-    if (!$sub) {
-        $subId = 'sub_' . $userId;
-        $userRole = strtolower($user['role'] ?? 'user');
-        $defaultPlanId = ($userRole === 'admin' || $userRole === 'super_admin') ? 'plan_pro' : 'plan_starter';
-        $createSub = $db->prepare("
-            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
-            VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 3, 2)
-        ");
-        $createSub->execute([$subId, $userId, $defaultPlanId]);
-
-        $subStmt->execute([$userId]);
-        $sub = $subStmt->fetch();
-    }
+    $sub = ensureUserFreeSubscription($db, $userId, $user['role'] ?? 'user');
 
     $planStmt = $db->prepare("SELECT * FROM pricing_plans WHERE id = ?");
-    $planStmt->execute([$sub['plan_id']]);
+    $planStmt->execute([$sub['plan_id'] ?? 'plan_free']);
     $plan = $planStmt->fetch() ?: [
-        'id' => 'plan_starter',
-        'name' => 'Starter',
-        'monthly_price' => 19,
-        'yearly_price' => 15,
-        'profile_limit' => 25,
-        'team_limit' => 2,
-        'api_limit' => 'Basic API'
+        'id' => 'plan_free',
+        'name' => 'Free',
+        'monthly_price' => 0,
+        'yearly_price' => 0,
+        'profile_limit' => 3,
+        'team_limit' => 1,
+        'api_limit' => '—'
     ];
 
     // 4. Device Count Limit Check (Per-User Subscription Override > Plan Limit > Global Config)
