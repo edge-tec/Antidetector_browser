@@ -982,7 +982,7 @@ header('Content-Type: text/html; charset=utf-8');
             <div id="loginMsg" style="display: none; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
 
             <!-- Login Form (Matches User Screenshot Exactly) -->
-            <form id="loginForm" onsubmit="handleLogin(event)">
+            <form id="loginForm" onsubmit="handleLogin(event); return false;">
                 <div class="form-group" style="margin-bottom: 14px;">
                     <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Email Address</label>
                     <input type="email" id="loginEmail" placeholder="user@example.com" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
@@ -1013,7 +1013,7 @@ header('Content-Type: text/html; charset=utf-8');
             </form>
 
             <!-- Register Form (Matches User Screenshot Exactly) -->
-            <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
+            <form id="registerForm" style="display: none;" onsubmit="handleRegister(event); return false;">
                 <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px; text-align: center;">Register to start managing antidetect browser profiles</p>
                 
                 <div class="form-group" style="margin-bottom: 14px;">
@@ -2184,6 +2184,8 @@ header('Content-Type: text/html; charset=utf-8');
                     if (document.getElementById('userProfileQuotaDisplay')) document.getElementById('userProfileQuotaDisplay').innerText = '0 / ' + (lic.limits ? lic.limits.profiles : 25) + ' Profiles';
                     if (document.getElementById('userDeviceQuotaDisplay')) document.getElementById('userDeviceQuotaDisplay').innerText = (lic.device ? lic.device.device_count : 1) + ' / ' + (lic.device ? lic.device.max_devices : 2) + ' Devices';
                     if (document.getElementById('userSubExpiresAt')) document.getElementById('userSubExpiresAt').innerText = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'September 15, 2027';
+                }
+
                 // Fetch Release Manifest from Server
                 try {
                     const relRes = await fetch('/api/releases');
