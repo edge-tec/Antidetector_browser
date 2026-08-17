@@ -157,14 +157,36 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
     respondJson(['success' => false, 'error' => 'API endpoint not found.'], 404);
 }
 
-// ── 2. Serve Static Frontend Web UI & Single Page App (SPA) ──
-$rendererPath = __DIR__ . '/public';
-
-if ($requestUri !== '/' && file_exists($rendererPath . $requestUri) && !is_dir($rendererPath . $requestUri)) {
-    $mime = mime_content_type($rendererPath . $requestUri);
-    header('Content-Type: ' . $mime);
-    readfile($rendererPath . $requestUri);
-    exit();
+// ── 2. Serve Static Frontend Web UI, Images & Single Page App Assets ──
+if ($requestUri !== '/') {
+    $candidatePaths = [
+        __DIR__ . $requestUri,
+        __DIR__ . '/public' . $requestUri,
+        __DIR__ . '/..' . $requestUri,
+        __DIR__ . '/../public' . $requestUri,
+        dirname(__DIR__) . $requestUri
+    ];
+    foreach ($candidatePaths as $candidate) {
+        if (file_exists($candidate) && !is_dir($candidate)) {
+            $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
+            $mimes = [
+                'png' => 'image/png',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'ico' => 'image/x-icon',
+                'svg' => 'image/svg+xml',
+                'webp' => 'image/webp',
+                'css' => 'text/css',
+                'js' => 'application/javascript',
+                'json' => 'application/json'
+            ];
+            $mime = $mimes[$ext] ?? mime_content_type($candidate) ?? 'application/octet-stream';
+            header('Content-Type: ' . $mime);
+            header('Cache-Control: public, max-age=86400');
+            readfile($candidate);
+            exit();
+        }
+    }
 }
 
 // Load Page SEO Data from Database for HTML Injection (with safety fallback)
