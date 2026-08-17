@@ -3915,16 +3915,108 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // GOOGLE OAUTH 2.0 & GOOGLE IDENTITY SERVICES (GSI)
+        // ═══════════════════════════════════════════════════════════════════
+        window.GOOGLE_CLIENT_ID = '';
+        window.GOOGLE_OAUTH_ONETAP = true;
+        window._googleTokenClient = null;
+
+        async function initGoogleOAuth() {
+            try {
+                const res = await fetch('/api/auth/google-config');
+                const json = await res.json();
+                if (json && json.success && json.data) {
+                    const cfg = json.data;
+                    if (cfg.clientId) {
+                        window.GOOGLE_CLIENT_ID = cfg.clientId;
+                        window.GOOGLE_OAUTH_ONETAP = !!cfg.oneTap;
+                        setupGoogleGsi();
+                    }
+                }
+            } catch (e) {
+                console.warn('[Google OAuth] Config fetch failed:', e);
+            }
+        }
+
+        function setupGoogleGsi() {
+            if (!window.GOOGLE_CLIENT_ID) return;
+
+            // Wait for Google Identity script if still loading
+            if (typeof google === 'undefined' || !google.accounts) {
+                setTimeout(setupGoogleGsi, 200);
+                return;
+            }
+
+            try {
+                // 1. Initialize Google ID (One-Tap & Credential callback)
+                google.accounts.id.initialize({
+                    client_id: window.GOOGLE_CLIENT_ID,
+                    callback: handleGoogleCredentialResponse,
+                    auto_select: false,
+                    cancel_on_tap_outside: true
+                });
+
+                if (window.GOOGLE_OAUTH_ONETAP) {
+                    try {
+                        google.accounts.id.prompt();
+                    } catch(e) {}
+                }
+
+                // 2. Initialize OAuth 2.0 Token Client for instant Popup on button click
+                if (google.accounts.oauth2 && google.accounts.oauth2.initTokenClient) {
+                    window._googleTokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: window.GOOGLE_CLIENT_ID,
+                        scope: 'email profile openid',
+                        callback: async (tokenResponse) => {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                await handleGoogleAccessToken(tokenResponse.access_token);
+                            } else if (tokenResponse && tokenResponse.error) {
+                                console.warn('[Google OAuth] Access token request error:', tokenResponse.error);
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('[Google GSI] Setup exception:', e);
+            }
+        }
+
         async function handleGoogleSignIn() {
-            // Check if Google Identity Services (GSI) One Tap is available
-            if (window.google && window.google.accounts && window.google.accounts.id) {
+            // Priority 1: Google OAuth2 native token popup client
+            if (window._googleTokenClient) {
+                try {
+                    window._googleTokenClient.requestAccessToken({ prompt: 'select_account' });
+                    return;
+                } catch(e) {
+                    console.warn('[Google OAuth] TokenClient prompt failed:', e);
+                }
+            }
+
+            // Priority 2: Google One Tap prompt if available
+            if (window.google && window.google.accounts && window.google.accounts.id && window.GOOGLE_CLIENT_ID) {
                 try {
                     window.google.accounts.id.prompt();
+                    return;
                 } catch(e) {}
             }
 
-            // Open dedicated, sleek Google Authentication modal
+            // Priority 3: If Client ID is not configured yet in Admin Settings, open modal with direct email & instructions
             openGoogleAuthModal();
+        }
+
+        async function handleGoogleAccessToken(accessToken) {
+            const msg = document.getElementById('loginMsg') || document.getElementById('googleAuthMsg');
+            const btn = document.getElementById('googleSignInBtnLogin') || document.getElementById('googleSignInBtnRegister');
+            return await submitGoogleAuthPayload({ access_token: accessToken }, msg, btn);
+        }
+
+        async function handleGoogleCredentialResponse(response) {
+            if (response && response.credential) {
+                const msg = document.getElementById('loginMsg') || document.getElementById('googleAuthMsg');
+                const btn = document.getElementById('googleSignInBtnLogin') || document.getElementById('googleSignInBtnRegister');
+                return await submitGoogleAuthPayload({ credential: response.credential }, msg, btn);
+            }
         }
 
         async function submitGoogleDirectAuth(e) {
@@ -7261,6 +7353,7 @@ header('Content-Type: text/html; charset=utf-8');
         // Router & Route Guard on Page Load
         window.addEventListener('DOMContentLoaded', () => {
             initCaptchaSystem();
+            initGoogleOAuth();
             checkUrlEmailVerificationToken();
             const path = window.location.pathname.toLowerCase();
             const token = localStorage.getItem('sessionToken');

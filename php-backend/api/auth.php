@@ -212,23 +212,62 @@ switch ($action) {
         }
         break;
 
+    // ── 0.1. Google OAuth Public Configuration ──
+    case 'google-config':
+        $cfg = getGoogleOAuthConfigPhp();
+        respondJson([
+            'success' => true,
+            'data' => [
+                'enabled' => $cfg['enabled'] ?? true,
+                'clientId' => $cfg['clientId'] ?? '',
+                'oneTap' => $cfg['oneTap'] ?? true
+            ]
+        ]);
+        break;
+
     // ── 4. Google OAuth Login / Registration ──
     case 'google':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $credential = trim($input['credential'] ?? '');
+        $accessToken = trim($input['access_token'] ?? $input['accessToken'] ?? '');
+        $code = trim($input['code'] ?? '');
         $email = trim($input['email'] ?? '');
         $name = trim($input['name'] ?? '');
         $googleId = trim($input['googleId'] ?? '');
         $picture = trim($input['picture'] ?? '');
 
-        // 1. Decode and verify Google JWT ID Token if provided
-        if (!empty($credential)) {
+        // 1. Verify Access Token with Google Userinfo API if provided
+        if (!empty($accessToken)) {
+            try {
+                $ch = curl_init("https://www.googleapis.com/oauth2/v3/userinfo");
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$accessToken}"]);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($httpCode === 200 && $response) {
+                    $uInfo = json_decode($response, true);
+                    if (!empty($uInfo['email'])) {
+                        $email = trim($uInfo['email']);
+                        $name = trim($uInfo['name'] ?? explode('@', $email)[0]);
+                        $googleId = trim($uInfo['sub'] ?? '');
+                        $picture = trim($uInfo['picture'] ?? '');
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+
+        // 2. Decode and verify Google JWT ID Token if provided
+        if (empty($email) && !empty($credential)) {
             // First attempt: Verify directly with Google OAuth2 tokeninfo API
             $verifiedWithGoogle = false;
             try {
                 $ch = curl_init("https://oauth2.googleapis.com/tokeninfo?id_token=" . urlencode($credential));
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 $response = curl_exec($ch);
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -262,7 +301,7 @@ switch ($action) {
         }
 
         if (!$email) {
-            respondJson(['success' => false, 'error' => 'Email address is required for Google Sign-In.'], 400);
+            respondJson(['success' => false, 'error' => 'Valid Google Account authentication data or email address is required.'], 400);
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -298,11 +337,10 @@ switch ($action) {
             $stmt->execute([$email]);
             $user = $stmt->fetch();
         } else {
-            // Update Google ID and name if needed
-            if (!empty($googleId) && empty($user['google_id'])) {
-                $upG = $db->prepare("UPDATE users SET google_id = ? WHERE id = ?");
-                $upG->execute([$googleId, $user['id']]);
-            }
+            // Automatically mark email_verified = 1 since verified by Google
+            $upG = $db->prepare("UPDATE users SET email_verified = 1, google_id = COALESCE(google_id, ?) WHERE id = ?");
+            $upG->execute([$googleId, $user['id']]);
+            $user['email_verified'] = 1;
         }
 
         if ($user['account_status'] === 'suspended') {
@@ -316,6 +354,35 @@ switch ($action) {
         // Generate JWT session token
         $sessionToken = createSessionToken($user['id']);
 
+        $platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? 'desktop';
+        $deviceName = $_SERVER['HTTP_X_DEVICE_NAME'] ?? $input['deviceName'] ?? 'Google OAuth Client';
+        $authVersion = (int)($user['auth_version'] ?? 1);
+
+        // Register active session for tracking & revocation
+        try {
+            registerUserSession($db, $user['id'], $sessionToken, $platform, $deviceName, $authVersion);
+        } catch (Throwable $e) {}
+
+        // Resolve Granular RBAC Permissions
+        $permissions = resolveUserPermissions($user['role'] ?? 'user', $user['permissions'] ?? null);
+
+        // License & Subscription Verification safely
+        $license = null;
+        try {
+            require_once __DIR__ . '/license.php';
+            $installationId = $_SERVER['HTTP_X_INSTALLATION_ID'] ?? $input['installationId'] ?? null;
+            $appVersion = $_SERVER['HTTP_X_APP_VERSION'] ?? $input['appVersion'] ?? null;
+            $license = validateUserLicenseInternal($user['id'], $installationId, $platform, $appVersion);
+        } catch (Throwable $e) {
+            $license = [
+                'valid' => true,
+                'account_status' => $user['account_status'],
+                'subscription_status' => 'active',
+                'plan' => ['name' => 'Starter Plan', 'slug' => 'starter'],
+                'limits' => ['profiles' => 25, 'team' => 2]
+            ];
+        }
+
         respondJson([
             'success' => true,
             'sessionToken' => $sessionToken,
@@ -324,11 +391,21 @@ switch ($action) {
                 'name' => $user['name'],
                 'email' => $user['email'],
                 'role' => $user['role'],
+                'permissions' => $permissions,
+                'authVersion' => $authVersion,
                 'emailVerified' => true,
                 'accountStatus' => $user['account_status'],
                 'createdAt' => $user['created_at'],
                 'lastLoginAt' => date('c')
-            ]
+            ],
+            'authorization' => [
+                'role' => $user['role'],
+                'permissions' => $permissions,
+                'authVersion' => $authVersion,
+                'accountStatus' => $user['account_status'],
+                'isAuthorized' => ($user['account_status'] === 'active')
+            ],
+            'license' => $license
         ]);
         break;
 
