@@ -749,6 +749,24 @@ header('Content-Type: text/html; charset=utf-8');
             .admin-table-container table, table.admin-table {
                 min-width: 560px;
             }
+
+            /* Center Footer Brand & Logo on Mobile */
+            .footer-grid {
+                text-align: center;
+            }
+            .footer-brand {
+                display: flex;
+                flex-direction: column;
+                align-items: center !important;
+                text-align: center !important;
+            }
+            .footer-logo-wrapper {
+                justify-content: center !important;
+                width: 100%;
+            }
+            footer ul {
+                align-items: center !important;
+            }
         }
 
         @media(max-width: 640px) {
@@ -1609,12 +1627,12 @@ header('Content-Type: text/html; charset=utf-8');
 
     <!-- 11. Footer Section -->
     <footer style="background: #08090C; border-top: 1px solid var(--border); padding: 60px 0 30px;">
-        <div class="container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border);">
-            <div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <div class="container footer-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border);">
+            <div class="footer-brand">
+                <div class="footer-logo-wrapper" style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
                     <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
                 </div>
-                <p style="color: var(--text-muted); font-size: 13px; line-height: 1.6;">Professional browser profile isolation and anti-detect privacy management software.</p>
+                <p style="color: var(--text-muted); font-size: 13px; line-height: 1.6; max-width: 320px;">Professional browser profile isolation and anti-detect privacy management software.</p>
             </div>
             <div>
                 <h4 style="font-size: 14px; color: #FFF; font-weight: 700; margin-bottom: 14px;">Product</h4>
