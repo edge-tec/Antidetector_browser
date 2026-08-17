@@ -3,6 +3,8 @@
 -- Import this SQL into aaPanel MySQL Database
 -- ──────────────────────────────────────────────
 
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. Users Table
@@ -209,6 +211,7 @@ INSERT INTO `desktop_app_config` (`config_key`, `config_value`) VALUES
 ON DUPLICATE KEY UPDATE `config_key`=`config_key`;
 
 -- 6. Landing Page CMS Tables
+DROP TABLE IF EXISTS `landing_branding`;
 CREATE TABLE IF NOT EXISTS `landing_branding` (
   `config_key` VARCHAR(100) NOT NULL PRIMARY KEY,
   `config_value` TEXT NOT NULL
@@ -216,13 +219,14 @@ CREATE TABLE IF NOT EXISTS `landing_branding` (
 
 INSERT INTO `landing_branding` (`config_key`, `config_value`) VALUES
 ('site_name', 'ProfileVault'),
-('logo_text', '🛡️ ProfileVault'),
+('logo_text', 'ProfileVault'),
 ('primary_color', '#6366F1'),
 ('secondary_color', '#8B5CF6'),
 ('accent_color', '#2DD4BF'),
-('contact_email', 'support@your-domain.com')
+('contact_email', 'support@antiprofiles.com')
 ON DUPLICATE KEY UPDATE `config_key`=`config_key`;
 
+DROP TABLE IF EXISTS `landing_hero`;
 CREATE TABLE IF NOT EXISTS `landing_hero` (
   `id` INT NOT NULL PRIMARY KEY,
   `headline` TEXT NOT NULL,
@@ -235,9 +239,10 @@ CREATE TABLE IF NOT EXISTS `landing_hero` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `landing_hero` (`id`, `headline`, `subheadline`, `cta_primary_text`, `cta_primary_url`, `cta_secondary_text`, `cta_secondary_url`, `trust_text`)
-VALUES (1, 'Browse Privately. Manage Profiles. Scale Your Workflow.', 'Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.', 'Start Free', '#register', 'View Pricing', '#pricing', '⚡ No credit card required • Free trial available • Cancel anytime')
+VALUES (1, 'Browse Privately. Manage Profiles. Scale Your Workflow.', 'Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.', 'Start Free', '#register', 'View Pricing', '#pricing', 'No credit card required - Free trial available - Cancel anytime')
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
+DROP TABLE IF EXISTS `landing_stats`;
 CREATE TABLE IF NOT EXISTS `landing_stats` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `number` VARCHAR(50) NOT NULL,
@@ -248,12 +253,13 @@ CREATE TABLE IF NOT EXISTS `landing_stats` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `landing_stats` (`id`, `number`, `label`, `icon`, `sort_order`) VALUES
-('stat_1', '10K+', 'Active Profiles', '🌐', 1),
-('stat_2', '99.9%', 'Platform Uptime', '⚡', 2),
-('stat_3', '150+', 'Countries Supported', '🌍', 3),
-('stat_4', '24/7', 'Expert Support', '🛡️', 4)
+('stat_1', '10K+', 'Active Profiles', 'globe', 1),
+('stat_2', '99.9%', 'Platform Uptime', 'zap', 2),
+('stat_3', '150+', 'Countries Supported', 'earth', 3),
+('stat_4', '24/7', 'Expert Support', 'shield', 4)
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
+DROP TABLE IF EXISTS `landing_features`;
 CREATE TABLE IF NOT EXISTS `landing_features` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
@@ -266,12 +272,13 @@ CREATE TABLE IF NOT EXISTS `landing_features` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `landing_features` (`id`, `title`, `description`, `icon`, `sort_order`) VALUES
-('feat_1', 'Isolated Browser Profiles', 'Keep cookies, local storage, sessions, and browser data completely separated between profiles.', '🔒', 1),
-('feat_2', 'Fingerprint Management', 'Configure browser and device environment parameters including WebGL, Canvas, and User Agents.', '🛡️', 2),
-('feat_3', 'Proxy Management System', 'Seamlessly assign and test HTTP, HTTPS, SOCKS4, and SOCKS5 proxy configurations per profile.', '🌐', 3),
-('feat_4', 'Reusable Profile Templates', 'Create standardized profile templates for fast batch provisioning across your operations.', '📋', 4)
+('feat_1', 'Isolated Browser Profiles', 'Keep cookies, local storage, sessions, and browser data completely separated between profiles.', 'lock', 1),
+('feat_2', 'Fingerprint Management', 'Configure browser and device environment parameters including WebGL, Canvas, and User Agents.', 'shield', 2),
+('feat_3', 'Proxy Management System', 'Seamlessly assign and test HTTP, HTTPS, SOCKS4, and SOCKS5 proxy configurations per profile.', 'globe', 3),
+('feat_4', 'Reusable Profile Templates', 'Create standardized profile templates for fast batch provisioning across your operations.', 'list', 4)
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
+DROP TABLE IF EXISTS `landing_steps`;
 CREATE TABLE IF NOT EXISTS `landing_steps` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `step_number` INT NOT NULL,
@@ -282,9 +289,9 @@ CREATE TABLE IF NOT EXISTS `landing_steps` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `landing_steps` (`id`, `step_number`, `title`, `description`, `icon`, `sort_order`) VALUES
-('step_1', 1, 'Create Your Profile', 'Choose a profile template or start from scratch to configure your environment.', '📋', 1),
-('step_2', 2, 'Configure Environment', 'Set custom User Agent, OS, timezone, language, WebGL fingerprint, and proxy.', '⚡', 2),
-('step_3', 3, 'Launch Isolated Window', 'Open an isolated browser window running with dedicated storage and cookies.', '🌐', 3)
+('step_1', 1, 'Create Your Profile', 'Choose a profile template or start from scratch to configure your environment.', 'list', 1),
+('step_2', 2, 'Configure Environment', 'Set custom User Agent, OS, timezone, language, WebGL fingerprint, and proxy.', 'zap', 2),
+('step_3', 3, 'Launch Isolated Window', 'Open an isolated browser window running with dedicated storage and cookies.', 'globe', 3)
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
 CREATE TABLE IF NOT EXISTS `landing_faqs` (
