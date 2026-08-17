@@ -574,124 +574,154 @@ function getSmtpSettingsPhp(): array {
 
 function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?array $overrideConfig = null): bool {
     $smtp = $overrideConfig ?? getSmtpSettingsPhp();
-    if (!$smtp['enabled'] || empty($smtp['host']) || empty($smtp['user'])) {
-        return false;
-    }
+    
+    // 1. Try Custom SMTP Socket if Enabled
+    if (!empty($smtp['enabled']) && !empty($smtp['host']) && !empty($smtp['user'])) {
+        $host = $smtp['host'];
+        $port = (int)($smtp['port'] ?? 587);
+        $user = $smtp['user'];
+        $pass = $smtp['password'] ?? '';
+        $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $user;
+        $fromName = !empty($smtp['fromName']) ? $smtp['fromName'] : 'ProfileVault';
+        $secure = (bool)($smtp['secure'] ?? false);
 
-    $host = $smtp['host'];
-    $port = (int)($smtp['port'] ?? 587);
-    $user = $smtp['user'];
-    $pass = $smtp['password'];
-    $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $user;
-    $fromName = !empty($smtp['fromName']) ? $smtp['fromName'] : 'ProfileVault';
-    $secure = (bool)($smtp['secure'] ?? false);
+        $timeout = 15;
+        $errno = 0;
+        $errstr = '';
 
-    $timeout = 15;
-    $errno = 0;
-    $errstr = '';
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            ]
+        ]);
 
-    $socketHost = ($secure || $port === 465) ? "ssl://{$host}" : $host;
-    $socket = @fsockopen($socketHost, $port, $errno, $errstr, $timeout);
+        $socketHost = ($secure || $port === 465) ? "ssl://{$host}:{$port}" : "tcp://{$host}:{$port}";
+        $socket = @stream_socket_client($socketHost, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
 
-    if (!$socket) {
-        error_log("[SMTP Error] Could not connect to {$host}:{$port} - {$errstr} ({$errno})");
-        return false;
-    }
+        if ($socket) {
+            $read = function() use ($socket) {
+                $data = '';
+                while ($str = fgets($socket, 515)) {
+                    $data .= $str;
+                    if (substr($str, 3, 1) === ' ' || substr($str, 3, 1) === "\r" || substr($str, 3, 1) === "\n") break;
+                }
+                return $data;
+            };
 
-    $read = function() use ($socket) {
-        $data = '';
-        while ($str = fgets($socket, 515)) {
-            $data .= $str;
-            if (substr($str, 3, 1) === ' ' || substr($str, 3, 1) === "\r" || substr($str, 3, 1) === "\n") break;
-        }
-        return $data;
-    };
+            $write = function(string $cmd) use ($socket) {
+                fputs($socket, $cmd . "\r\n");
+            };
 
-    $write = function(string $cmd) use ($socket) {
-        fputs($socket, $cmd . "\r\n");
-    };
+            $read(); // Initial greeting banner (220)
 
-    $read(); // Initial greeting banner (220)
-
-    $serverHost = $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com';
-    $write("EHLO " . $serverHost);
-    $ehloRes = $read();
-
-    // If port 587 and STARTTLS is supported and not already SSL
-    if (!$secure && $port !== 465 && strpos($ehloRes, 'STARTTLS') !== false) {
-        $write("STARTTLS");
-        $tlsRes = $read();
-        if (substr($tlsRes, 0, 3) === '220') {
-            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            $serverHost = $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com';
             $write("EHLO " . $serverHost);
-            $read();
-        }
-    }
+            $ehloRes = $read();
 
-    // AUTH LOGIN
-    if (!empty($user) && !empty($pass)) {
-        $write("AUTH LOGIN");
-        $read();
-        $write(base64_encode($user));
-        $read();
-        $write(base64_encode($pass));
-        $authRes = $read();
-        if (substr($authRes, 0, 3) !== '235') {
-            error_log("[SMTP Auth Error] Authentication failed: " . trim($authRes));
+            // STARTTLS for port 587 or if supported
+            if (!$secure && $port !== 465 && strpos($ehloRes, 'STARTTLS') !== false) {
+                $write("STARTTLS");
+                $tlsRes = $read();
+                if (substr($tlsRes, 0, 3) === '220') {
+                    $cryptoMethod = STREAM_CRYPTO_METHOD_TLS_CLIENT;
+                    if (defined('STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT')) {
+                        $cryptoMethod |= STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
+                    }
+                    if (defined('STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT')) {
+                        $cryptoMethod |= STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT;
+                    }
+                    @stream_socket_enable_crypto($socket, true, $cryptoMethod);
+                    $write("EHLO " . $serverHost);
+                    $read();
+                }
+            }
+
+            // AUTH LOGIN
+            if (!empty($user) && !empty($pass)) {
+                $write("AUTH LOGIN");
+                $read();
+                $write(base64_encode($user));
+                $read();
+                $write(base64_encode($pass));
+                $authRes = $read();
+                if (substr($authRes, 0, 3) !== '235') {
+                    error_log("[SMTP Auth Error] Authentication failed: " . trim($authRes));
+                    $write("QUIT");
+                    fclose($socket);
+                    goto fallback_native_mail;
+                }
+            }
+
+            // MAIL FROM
+            $write("MAIL FROM: <{$from}>");
+            $mailFromRes = $read();
+            if (substr($mailFromRes, 0, 3) !== '250') {
+                $write("QUIT");
+                fclose($socket);
+                goto fallback_native_mail;
+            }
+
+            // RCPT TO
+            $write("RCPT TO: <{$toEmail}>");
+            $rcptRes = $read();
+            if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
+                $write("QUIT");
+                fclose($socket);
+                goto fallback_native_mail;
+            }
+
+            // DATA
+            $write("DATA");
+            $dataRes = $read();
+            if (substr($dataRes, 0, 3) !== '354') {
+                $write("QUIT");
+                fclose($socket);
+                goto fallback_native_mail;
+            }
+
+            // Headers & Body
+            $headers = [];
+            $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>";
+            $headers[] = "To: <{$toEmail}>";
+            $headers[] = "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=";
+            $headers[] = "MIME-Version: 1.0";
+            $headers[] = "Content-Type: text/html; charset=UTF-8";
+            $headers[] = "Content-Transfer-Encoding: base64";
+            $headers[] = "X-Mailer: ProfileVault-Mailer/1.0";
+
+            $payload = implode("\r\n", $headers) . "\r\n\r\n" . chunk_split(base64_encode($htmlBody)) . "\r\n.";
+            $write($payload);
+            $sendRes = $read();
+
             $write("QUIT");
             fclose($socket);
-            return false;
+
+            if (substr($sendRes, 0, 3) === '250') {
+                return true;
+            }
         }
     }
 
-    // MAIL FROM
-    $write("MAIL FROM: <{$from}>");
-    $mailFromRes = $read();
-    if (substr($mailFromRes, 0, 3) !== '250') {
-        error_log("[SMTP Error] MAIL FROM rejected: " . trim($mailFromRes));
-        $write("QUIT");
-        fclose($socket);
+    // 2. Fallback to PHP native mail()
+    fallback_native_mail:
+    try {
+        $fromName = $smtp['fromName'] ?? 'ProfileVault';
+        $fromEmail = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : (!empty($smtp['user']) ? $smtp['user'] : 'noreply@antiprofiles.com');
+
+        $headers = [
+            'MIME-Version: 1.0',
+            'Content-type: text/html; charset=UTF-8',
+            'From: =?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>',
+            'Reply-To: ' . $fromEmail,
+            'X-Mailer: PHP/' . phpversion()
+        ];
+
+        return @mail($toEmail, '=?UTF-8?B?' . base64_encode($subject) . '?=', $htmlBody, implode("\r\n", $headers));
+    } catch (Throwable $e) {
         return false;
     }
-
-    // RCPT TO
-    $write("RCPT TO: <{$toEmail}>");
-    $rcptRes = $read();
-    if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
-        error_log("[SMTP Error] RCPT TO rejected: " . trim($rcptRes));
-        $write("QUIT");
-        fclose($socket);
-        return false;
-    }
-
-    // DATA
-    $write("DATA");
-    $dataRes = $read();
-    if (substr($dataRes, 0, 3) !== '354') {
-        $write("QUIT");
-        fclose($socket);
-        return false;
-    }
-
-    // Message payload
-    $headers = [];
-    $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>";
-    $headers[] = "To: <{$toEmail}>";
-    $headers[] = "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=";
-    $headers[] = "MIME-Version: 1.0";
-    $headers[] = "Content-Type: text/html; charset=UTF-8";
-    $headers[] = "Content-Transfer-Encoding: 8bit";
-    $headers[] = "Date: " . date('r');
-    $headers[] = "Message-ID: <" . md5(uniqid(microtime(true), true)) . "@" . $serverHost . ">";
-
-    $message = implode("\r\n", $headers) . "\r\n\r\n" . $htmlBody . "\r\n.";
-    $write($message);
-    $sentRes = $read();
-
-    $write("QUIT");
-    fclose($socket);
-
-    return substr($sentRes, 0, 3) === '250';
 }
 
 function testSmtpDiagnosticsPhp(?array $config = null): array {
