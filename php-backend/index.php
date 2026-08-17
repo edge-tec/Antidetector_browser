@@ -429,10 +429,87 @@ header('Content-Type: text/html; charset=utf-8');
         .form-group input { width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; color: #FFF; font-size: 15px; outline: none; }
         .form-group input:focus { border-color: var(--primary); }
 
+        /* Admin Dashboard Layout & Responsive Styling */
+        .admin-viewport-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            background: #08090E;
+            padding: 28px 24px 60px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .admin-tab-content {
+            width: 100%;
+            max-width: 1240px;
+            margin: 0 auto;
+            animation: tabFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .admin-card-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            margin-bottom: 24px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .admin-grid-2col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 24px;
+            width: 100%;
+            align-items: start;
+        }
+
+        .admin-table-container {
+            width: 100%;
+            overflow-x: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .admin-table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .admin-table-container th {
+            padding: 14px 18px;
+            color: var(--text-muted);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            background: #11131C;
+            white-space: nowrap;
+        }
+
+        .admin-table-container td {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #E2E8F0;
+        }
+
+        .admin-table-container tr:hover td {
+            background: rgba(45, 212, 191, 0.03);
+        }
+
+        @keyframes tabFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         /* Sidebar Navigation Buttons */
         .admin-sidebar-btn {
             width: 100%;
-            padding: 10px 14px;
+            padding: 11px 14px;
             margin-bottom: 4px;
             border-radius: 8px;
             background: transparent;
@@ -445,21 +522,32 @@ header('Content-Type: text/html; charset=utf-8');
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
         .admin-sidebar-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.06);
             color: #FFF;
+            transform: translateX(2px);
         }
         .admin-sidebar-btn.active {
             background: linear-gradient(135deg, var(--primary), #4F46E5);
             color: #FFF;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+            font-weight: 700;
         }
 
         /* Footer */
         footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 14px; }
         footer a { color: var(--accent); text-decoration: none; }
+
+        @media(max-width: 900px) {
+            .admin-grid-2col {
+                grid-template-columns: 1fr;
+            }
+            .admin-viewport-wrapper {
+                padding: 16px 12px;
+            }
+        }
 
         @media(max-width: 768px) {
             .hero h1 { font-size: 36px; }
@@ -1183,40 +1271,49 @@ header('Content-Type: text/html; charset=utf-8');
                 </div>
 
                 <!-- Right Content Panel -->
-                <div style="flex: 1; overflow-y: auto; padding: 24px; background: #0B0C10;">
+                <div class="admin-viewport-wrapper">
                     
                     <!-- USER TAB 1: MY PROFILE (Editable Profile Info & Password Only) -->
                     <div id="tab-my-profile" class="admin-tab-content">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">My Personal Account Settings</h3>
-                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Manage your personal profile details, contact email, and secure password.</p>
+                        <div style="margin-bottom: 24px;">
+                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 6px;">My Personal Account Settings</h3>
+                            <p style="color: var(--text-muted); font-size: 13px;">Manage your personal profile details, contact email, and secure password.</p>
+                        </div>
                         
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 600px;">
-                            <form id="formMyProfile" onsubmit="return updateMyProfileInfo(event)">
-                                <div style="margin-bottom: 16px;">
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Full Name</label>
-                                    <input type="text" id="myProfileName" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
-                                </div>
-                                <div style="margin-bottom: 20px;">
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Email Address</label>
-                                    <input type="email" id="myProfileEmail" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
-                                </div>
-                                <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">💾 Update Profile Information</button>
-                            </form>
+                        <div class="admin-grid-2col">
+                            <div class="admin-card-box">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>👤</span> Profile Information
+                                </h4>
+                                <form id="formMyProfile" onsubmit="return updateMyProfileInfo(event)">
+                                    <div style="margin-bottom: 16px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Full Name</label>
+                                        <input type="text" id="myProfileName" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                    </div>
+                                    <div style="margin-bottom: 24px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Email Address</label>
+                                        <input type="email" id="myProfileEmail" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px 20px; font-weight: 700;">💾 Update Profile Information</button>
+                                </form>
+                            </div>
 
-                            <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;">
-
-                            <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">Change Security Password</h4>
-                            <form id="formMyPassword" onsubmit="return updateMyPassword(event)">
-                                <div style="margin-bottom: 14px;">
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Current Password</label>
-                                    <input type="password" id="myCurrentPassword" required placeholder="••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
-                                </div>
-                                <div style="margin-bottom: 20px;">
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">New Secure Password</label>
-                                    <input type="password" id="myNewPassword" required minlength="6" placeholder="At least 6 characters" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
-                                </div>
-                                <button type="submit" class="btn btn-outline" style="padding: 10px 20px;">🔒 Change Password</button>
-                            </form>
+                            <div class="admin-card-box">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>🔒</span> Change Security Password
+                                </h4>
+                                <form id="formMyPassword" onsubmit="return updateMyPassword(event)">
+                                    <div style="margin-bottom: 16px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Current Password</label>
+                                        <input type="password" id="myCurrentPassword" required placeholder="••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                    </div>
+                                    <div style="margin-bottom: 24px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">New Secure Password</label>
+                                        <input type="password" id="myNewPassword" required minlength="6" placeholder="At least 6 characters" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                    </div>
+                                    <button type="submit" class="btn btn-outline" style="width: 100%; padding: 11px 20px; font-weight: 700; border-color: var(--primary); color: #818CF8;">🔒 Change Password</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
 
@@ -1709,97 +1806,143 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 8: NOTIFICATIONS -->
                     <div id="tab-notifications" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">System Broadcast Notifications</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Target Audience</label>
-                                    <select id="notifTarget" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
-                                        <option value="all">All Registered Users</option>
-                                        <option value="verified">Email Verified Users Only</option>
-                                        <option value="admins">Administrators Only</option>
-                                    </select>
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">System Broadcast Notifications</h3>
+                            <p style="font-size: 13px; color: var(--text-muted);">Send multi-channel announcement broadcasts to active desktop application users and web accounts.</p>
+                        </div>
+
+                        <div class="admin-grid-2col">
+                            <!-- Left: Compose Form -->
+                            <div class="admin-card-box">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>📢</span> Compose Broadcast
+                                </h4>
+                                <div style="display: flex; flex-direction: column; gap: 16px;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;">
+                                        <div>
+                                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Target Audience</label>
+                                            <select id="notifTarget" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                                <option value="all">👥 All Registered Users</option>
+                                                <option value="verified">✅ Email Verified Users Only</option>
+                                                <option value="admins">👑 Administrators Only</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Notification Type</label>
+                                            <select id="notifType" onchange="updateBroadcastLivePreview()" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                                <option value="info">📢 Information (Blue)</option>
+                                                <option value="update">🚀 App Update (Green)</option>
+                                                <option value="alert">⚠️ Security Alert (Red)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Broadcast Title</label>
+                                        <input type="text" id="notifTitle" oninput="updateBroadcastLivePreview()" placeholder="e.g. ProfileVault Desktop v1.0.1 Released!" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Broadcast Message Body</label>
+                                        <textarea id="notifMsg" oninput="updateBroadcastLivePreview()" rows="4" placeholder="Enter announcement text to send via email and in-app notifications..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;"></textarea>
+                                    </div>
+                                    <button class="btn btn-primary" style="padding: 12px 24px; font-weight: 700; align-self: flex-start;" onclick="sendBroadcastNotification()">🚀 Send System Broadcast</button>
                                 </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Notification Type</label>
-                                    <select id="notifType" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
-                                        <option value="info">📢 Information (Blue)</option>
-                                        <option value="update">🚀 App Update (Green)</option>
-                                        <option value="alert">⚠️ Security Alert (Red)</option>
-                                    </select>
+                            </div>
+
+                            <!-- Right: Live Preview & Delivery Info -->
+                            <div class="admin-card-box" style="background: #11131C;">
+                                <h4 style="font-size: 16px; color: #818CF8; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>👁️</span> Live Notification Preview
+                                </h4>
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <span id="previewNotifBadge" style="background: rgba(99,102,241,0.2); color: #818CF8; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px;">ANNOUNCEMENT</span>
+                                        <span style="font-size: 11px; color: var(--text-muted);">Just now</span>
+                                    </div>
+                                    <h5 id="previewNotifTitle" style="color: #FFF; font-size: 14px; margin-bottom: 6px;">ProfileVault Desktop v1.0.1 Released!</h5>
+                                    <p id="previewNotifMsg" style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Enter announcement text to send via email and in-app notifications...</p>
+                                </div>
+
+                                <div style="background: rgba(45,212,191,0.05); border: 1px solid rgba(45,212,191,0.2); border-radius: 12px; padding: 16px;">
+                                    <h5 style="color: #2DD4BF; font-size: 13px; margin-bottom: 8px;">📡 Delivery Channels</h5>
+                                    <ul style="font-size: 12px; color: var(--text-muted); padding-left: 18px; line-height: 1.6;">
+                                        <li><strong>Windows Desktop Software:</strong> Real-time in-app toast & notification bell.</li>
+                                        <li><strong>Web Dashboard:</strong> Broadcast banner upon user login.</li>
+                                        <li><strong>Transactional Email:</strong> Automated broadcast dispatch to verified recipient mailboxes.</li>
+                                    </ul>
                                 </div>
                             </div>
-                            <div>
-                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Broadcast Title</label>
-                                <input type="text" id="notifTitle" placeholder="e.g. ProfileVault Desktop v1.0.1 Released!" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
-                            </div>
-                            <div>
-                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Broadcast Message Body</label>
-                                <textarea id="notifMsg" rows="3" placeholder="Enter announcement text to send via email and in-app notifications..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;"></textarea>
-                            </div>
-                            <button class="btn btn-primary" style="align-self: flex-start;" onclick="sendBroadcastNotification()">Send System Broadcast Notification</button>
                         </div>
                     </div>
 
                     <!-- TAB 8.5: GOOGLE OAUTH CONFIGURATION -->
                     <div id="tab-google-oauth" class="admin-tab-content" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                             <div>
-                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Google OAuth 2.0 & Social Login Configuration</h3>
+                                <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">Google OAuth 2.0 & Social Login Configuration</h3>
                                 <p style="font-size: 13px; color: var(--text-muted);">Manage Google Single Sign-On (SSO) credentials, Client ID, and authentication policies.</p>
                             </div>
-                            <button class="btn btn-outline" onclick="loadGoogleOAuthConfig()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Config</button>
+                            <button class="btn btn-outline" onclick="loadGoogleOAuthConfig()" style="font-size: 12px; padding: 6px 14px;">🔄 Refresh Config</button>
                         </div>
 
                         <div id="googleOauthAdminMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
 
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-bottom: 18px;">
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Status</label>
-                                    <select id="googleOauthEnabled" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                        <option value="true">✅ Enabled (Users can Sign In with Google)</option>
-                                        <option value="false">❌ Disabled (Hide Google Sign In)</option>
-                                    </select>
+                        <div class="admin-grid-2col">
+                            <!-- Left: Credentials Card -->
+                            <div class="admin-card-box">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>🔑</span> OAuth Credentials
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 18px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Status</label>
+                                        <select id="googleOauthEnabled" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                            <option value="true">✅ Enabled (Allow Google Login)</option>
+                                            <option value="false">❌ Disabled (Hide Google Sign In)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google One-Tap Prompt</label>
+                                        <select id="googleOauthOneTap" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                            <option value="true">⚡ Enabled (One-Tap Popup)</option>
+                                            <option value="false">Off (Standard Button Only)</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google One-Tap Prompt</label>
-                                    <select id="googleOauthOneTap" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                        <option value="true">⚡ Enabled (Show Google One-Tap Prompt)</option>
-                                        <option value="false">Off (Modal button only)</option>
-                                    </select>
+
+                                <div style="margin-bottom: 18px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Client ID</label>
+                                    <input type="text" id="googleOauthClientId" placeholder="e.g. 1234567890-abcdefg.apps.googleusercontent.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Obtained from Google Cloud Console > APIs & Services > Credentials.</p>
                                 </div>
+
+                                <div style="margin-bottom: 24px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Client Secret (Optional)</label>
+                                    <input type="password" id="googleOauthClientSecret" placeholder="••••••••••••••••••••••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+
+                                <button class="btn btn-primary" id="btnSaveGoogleOauth" onclick="saveGoogleOAuthConfig()" style="width: 100%; padding: 11px 24px; font-weight: 700;">💾 Save Google OAuth Configuration</button>
                             </div>
 
-                            <div style="margin-bottom: 18px;">
-                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Client ID</label>
-                                <input type="text" id="googleOauthClientId" placeholder="e.g. 1234567890-abcdefg.apps.googleusercontent.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Obtained from Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client IDs.</p>
-                            </div>
-
-                            <div style="margin-bottom: 24px;">
-                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Client Secret (Optional)</label>
-                                <input type="password" id="googleOauthClientSecret" placeholder="••••••••••••••••••••••••••••" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                            </div>
-
-                            <button class="btn btn-primary" id="btnSaveGoogleOauth" onclick="saveGoogleOAuthConfig()" style="padding: 10px 24px; font-weight: 700;">💾 Save Google OAuth Configuration</button>
-                        </div>
-
-                        <!-- Google Cloud Setup Help Card -->
-                        <div style="background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 20px;">
-                            <h4 style="color: #818CF8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                                <span>📋 Google Cloud Console Setup Helper</span>
-                            </h4>
-                            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">When configuring your OAuth 2.0 Web Application in <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #2DD4BF;">Google Cloud Console</a>, use these exact URLs:</p>
-                            
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; font-size: 12px;">
-                                <div style="background: var(--bg-card); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);">
-                                    <span style="color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 700;">Authorized JavaScript origins:</span>
-                                    <code style="color: #2DD4BF; word-break: break-all;"><?php echo APP_URL; ?></code>
+                            <!-- Right: Google Cloud Setup Helper -->
+                            <div class="admin-card-box" style="background: #11131C;">
+                                <h4 style="color: #818CF8; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <span>📋</span> Google Cloud Console Setup Helper
+                                </h4>
+                                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">When configuring your OAuth 2.0 Web Application in <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #2DD4BF; font-weight: 700; text-decoration: underline;">Google Cloud Console</a>, paste these exact URLs:</p>
+                                
+                                <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+                                    <div style="background: var(--bg-card); padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border);">
+                                        <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 4px;">Authorized JavaScript origins</span>
+                                        <code style="color: #2DD4BF; font-size: 13px; word-break: break-all;"><?php echo APP_URL; ?></code>
+                                    </div>
+                                    <div style="background: var(--bg-card); padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border);">
+                                        <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 4px;">Authorized redirect URIs</span>
+                                        <code style="color: #2DD4BF; font-size: 13px; word-break: break-all;"><?php echo APP_URL; ?>/api/auth/google</code>
+                                    </div>
                                 </div>
-                                <div style="background: var(--bg-card); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);">
-                                    <span style="color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 700;">Authorized redirect URIs:</span>
-                                    <code style="color: #2DD4BF; word-break: break-all;"><?php echo APP_URL; ?>/api/auth/google</code>
+
+                                <div style="background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 10px; padding: 14px; font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+                                    💡 <strong>Setup Checklist:</strong> Enable <em>Google Identity Services</em> in Cloud Console, add your domain to <em>OAuth consent screen</em>, and ensure user profile scopes (<code style="color: #818CF8;">email, profile, openid</code>) are active.
                                 </div>
                             </div>
                         </div>
@@ -1807,60 +1950,86 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 9: EMAIL & SMTP -->
                     <div id="tab-smtp" class="admin-tab-content" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                             <div>
-                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">SMTP & System Email Configuration</h3>
-                                <p style="font-size: 13px; color: var(--text-muted);">Configure outgoing transactional email server for Account Verification, Password Resets, Support Notifications, and Broadcasts (shared across Website and Application).</p>
+                                <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">SMTP & System Email Configuration</h3>
+                                <p style="font-size: 13px; color: var(--text-muted);">Configure outgoing transactional email server for Account Verification, Password Resets, Support Notifications, and Broadcasts.</p>
                             </div>
-                            <button class="btn btn-outline" onclick="loadSmtpConfig()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Config</button>
+                            <button class="btn btn-outline" onclick="loadSmtpConfig()" style="font-size: 12px; padding: 6px 14px;">🔄 Refresh Config</button>
                         </div>
 
                         <div id="smtpAdminMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
 
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 18px;">
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP System Status</label>
-                                    <select id="smtpEnabled" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                        <option value="true">✅ Enabled (Send Emails via SMTP)</option>
-                                        <option value="false">❌ Disabled (Email system off)</option>
-                                    </select>
+                        <div class="admin-grid-2col">
+                            <!-- Left: SMTP Form -->
+                            <div class="admin-card-box">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>📧</span> Outgoing Mail Server (SMTP)
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP System Status</label>
+                                        <select id="smtpEnabled" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                            <option value="true">✅ Enabled (Send via SMTP)</option>
+                                            <option value="false">❌ Disabled (Fallback to PHP mail)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Security / Encryption</label>
+                                        <select id="smtpSecure" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                            <option value="false">TLS / STARTTLS (Port 587)</option>
+                                            <option value="true">SSL (Port 465)</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Security / Encryption</label>
-                                    <select id="smtpSecure" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                        <option value="false">TLS / STARTTLS (Port 587)</option>
-                                        <option value="true">SSL (Port 465)</option>
-                                    </select>
-                                </div>
-                                <div>
+
+                                <div style="margin-bottom: 14px;">
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">From Email Address</label>
-                                    <input type="email" id="smtpFromEmail" placeholder="e.g. noreply@antiprofiles.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    <input type="email" id="smtpFromEmail" placeholder="e.g. noreply@antiprofiles.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Host</label>
+                                        <input type="text" id="smtpHost" placeholder="e.g. smtp.gmail.com or mail.domain.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Port</label>
+                                        <input type="number" id="smtpPort" placeholder="587" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Username / Account</label>
+                                        <input type="text" id="smtpUser" placeholder="e.g. info@antiprofiles.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Password</label>
+                                        <input type="password" id="smtpPass" placeholder="••••••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                    <button class="btn btn-primary" id="btnSaveSmtp" onclick="saveSmtpConfig()" style="flex: 1; padding: 11px 20px; font-weight: 700;">💾 Save SMTP Settings</button>
                                 </div>
                             </div>
 
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 24px;">
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Host</label>
-                                    <input type="text" id="smtpHost" placeholder="e.g. mail.tolet24.com or smtp.mailgun.org" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Port</label>
-                                    <input type="number" id="smtpPort" placeholder="587" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Username / Account</label>
-                                    <input type="text" id="smtpUser" placeholder="e.g. info@tolet24.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Password</label>
-                                    <input type="password" id="smtpPass" placeholder="••••••••••••" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                </div>
-                            </div>
+                            <!-- Right: Diagnostics & Live Test -->
+                            <div class="admin-card-box" style="background: #11131C;">
+                                <h4 style="color: #2DD4BF; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <span>🧪</span> Diagnostics & Real-time Test
+                                </h4>
+                                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">Test your SMTP handshake, authentication, and dispatch a real test verification message.</p>
 
-                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                                <button class="btn btn-primary" id="btnSaveSmtp" onclick="saveSmtpConfig()" style="padding: 10px 24px; font-weight: 700;">💾 Save SMTP Configuration</button>
-                                <button class="btn btn-outline" id="btnTestSmtp" onclick="testSmtpConnection()" style="padding: 10px 20px;">🧪 Test SMTP Connection</button>
+                                <div style="margin-bottom: 18px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Test Recipient Email Address</label>
+                                    <input type="email" id="smtpTestRecipient" placeholder="e.g. your-email@gmail.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                </div>
+
+                                <button class="btn btn-outline" id="btnTestSmtp" onclick="testSmtpConnection()" style="width: 100%; padding: 11px 20px; font-weight: 700; border-color: #2DD4BF; color: #2DD4BF; margin-bottom: 18px;">🧪 Run Connection & Dispatch Test</button>
+
+                                <div id="smtpDiagResults" style="display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-size: 12px;"></div>
                             </div>
                         </div>
                     </div>
@@ -2039,43 +2208,47 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 12: ROLES & PERMISSIONS -->
                     <div id="tab-roles" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Roles & Permission Matrix</h3>
-                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
-                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">Roles & Permission Matrix</h3>
+                            <p style="font-size: 13px; color: var(--text-muted);">View role-based access control (RBAC) levels across all management modules and sub-systems.</p>
+                        </div>
+
+                        <div class="admin-table-container">
+                            <table>
                                 <thead>
-                                    <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Role Name</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Users Control</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Subscriptions</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Payments</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Live Support</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Settings</th>
+                                    <tr>
+                                        <th>Role Name</th>
+                                        <th>Users Control</th>
+                                        <th>Subscriptions</th>
+                                        <th>Payments & Invoices</th>
+                                        <th>Live Support Inbox</th>
+                                        <th>Settings & Logs</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr style="border-bottom: 1px solid var(--border);">
-                                        <td style="padding: 12px 16px; font-weight:700; color:#818CF8;">👑 Super Admin</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
+                                    <tr>
+                                        <td style="font-weight: 700; color: #818CF8; font-size: 14px;">👑 Super Admin</td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
                                     </tr>
-                                    <tr style="border-bottom: 1px solid var(--border);">
-                                        <td style="padding: 12px 16px; font-weight:700; color:#FFF;">🔑 System Admin</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:var(--text-muted);">Read Only</td>
+                                    <tr>
+                                        <td style="font-weight: 700; color: #FFF; font-size: 14px;">🔑 System Admin</td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(255,255,255,0.06); color: var(--text-muted); padding: 3px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">Read Only</span></td>
                                     </tr>
-                                    <tr style="border-bottom: 1px solid var(--border);">
-                                        <td style="padding: 12px 16px; font-weight:700; color:#FFF;">💬 Support Agent</td>
-                                        <td style="padding: 12px 16px; color:var(--text-muted);">Read Only</td>
-                                        <td style="padding: 12px 16px; color:var(--text-muted);">Read Only</td>
-                                        <td style="padding: 12px 16px; color:#F87171;">✕ No Access</td>
-                                        <td style="padding: 12px 16px; color:#2DD4BF;">✓ Full Access</td>
-                                        <td style="padding: 12px 16px; color:#F87171;">✕ No Access</td>
+                                    <tr>
+                                        <td style="font-weight: 700; color: #FFF; font-size: 14px;">💬 Support Agent</td>
+                                        <td><span style="background: rgba(255,255,255,0.06); color: var(--text-muted); padding: 3px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">Read Only</span></td>
+                                        <td><span style="background: rgba(255,255,255,0.06); color: var(--text-muted); padding: 3px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">Read Only</span></td>
+                                        <td><span style="background: rgba(239,68,68,0.15); color: #F87171; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✕ No Access</span></td>
+                                        <td><span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✓ Full Access</span></td>
+                                        <td><span style="background: rgba(239,68,68,0.15); color: #F87171; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;">✕ No Access</span></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2084,20 +2257,23 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 13: SECURITY -->
                     <div id="tab-security" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Security Dashboard & 2FA Logs</h3>
-                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
-                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">Security Dashboard & 2FA Logs</h3>
+                            <p style="font-size: 13px; color: var(--text-muted);">Real-time audit stream of security logins, email verification attempts, and brute-force defenses.</p>
+                        </div>
+                        <div class="admin-table-container">
+                            <table>
                                 <thead>
-                                    <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Event Type</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Severity</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">IP Address</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Details</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Timestamp</th>
+                                    <tr>
+                                        <th>Event Type</th>
+                                        <th>Severity</th>
+                                        <th>IP Address</th>
+                                        <th>Details</th>
+                                        <th>Timestamp</th>
                                     </tr>
                                 </thead>
                                 <tbody id="securityTableBody">
-                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading security events...</td></tr>
+                                    <tr><td colspan="5" style="padding: 24px; text-align: center; color: var(--text-muted);">Loading security events...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2105,21 +2281,24 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 14: AUDIT LOGS -->
                     <div id="tab-audit" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">System Audit Logs</h3>
-                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
-                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">System Audit Logs</h3>
+                            <p style="font-size: 13px; color: var(--text-muted);">Comprehensive tracking of administrative changes, user quota modifications, and payment status updates.</p>
+                        </div>
+                        <div class="admin-table-container">
+                            <table>
                                 <thead>
-                                    <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Admin</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Action</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Target User</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">IP Address</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Details</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Timestamp</th>
+                                    <tr>
+                                        <th>Admin User</th>
+                                        <th>Action Executed</th>
+                                        <th>Target Account</th>
+                                        <th>IP Address</th>
+                                        <th>Details</th>
+                                        <th>Timestamp</th>
                                     </tr>
                                 </thead>
                                 <tbody id="auditLogsTableBody">
-                                    <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading admin audit logs...</td></tr>
+                                    <tr><td colspan="6" style="padding: 24px; text-align: center; color: var(--text-muted);">Loading admin audit logs...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2127,46 +2306,56 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 15: SYSTEM HEALTH -->
                     <div id="tab-health" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Server Diagnostic Health Checks</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">MySQL Database</span>
-                                <h4 style="color: #2DD4BF;">✓ Operational</h4>
-                            </div>
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">License Auth API</span>
-                                <h4 style="color: #2DD4BF;">✓ Operational</h4>
-                            </div>
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">Nginx Web Server</span>
-                                <h4 style="color: #2DD4BF;">✓ Operational</h4>
-                            </div>
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">PHP 8.1 Engine</span>
-                                <h4 style="color: #2DD4BF;">✓ Operational</h4>
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">Server Diagnostic Health Checks</h3>
+                            <p style="font-size: 13px; color: var(--text-muted);">Real-time microservices connectivity and operational status report.</p>
+                        </div>
+                        <div class="admin-card-box">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">MySQL Database</span>
+                                    <h4 style="color: #2DD4BF; font-size: 18px; margin-top: 6px;">✓ Operational (Connected)</h4>
+                                </div>
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">License Auth Engine</span>
+                                    <h4 style="color: #2DD4BF; font-size: 18px; margin-top: 6px;">✓ Operational (Online)</h4>
+                                </div>
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Nginx Web Gateway</span>
+                                    <h4 style="color: #2DD4BF; font-size: 18px; margin-top: 6px;">✓ Operational (Active)</h4>
+                                </div>
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">PHP Runtime Engine</span>
+                                    <h4 style="color: #2DD4BF; font-size: 18px; margin-top: 6px;">✓ PHP 8.1 FPM Active</h4>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- TAB 16: SYSTEM SETTINGS -->
                     <div id="tab-settings" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">aaPanel Server & Database Configuration</h3>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">Web Server</span>
-                                <h4 style="color: #FFF;">Nginx (aaPanel Direct)</h4>
-                            </div>
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">PHP Engine</span>
-                                <h4 style="color: var(--accent);">PHP <?php echo PHP_VERSION; ?></h4>
-                            </div>
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">MySQL Database</span>
-                                <h4 style="color: #818CF8;">antidetactor</h4>
-                            </div>
-                            <div>
-                                <span style="font-size: 12px; color: var(--text-muted);">License Auth API</span>
-                                <h4 style="color: var(--accent);">Active</h4>
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">aaPanel Server & Database Configuration</h3>
+                            <p style="font-size: 13px; color: var(--text-muted);">Central host and environment parameters verified across all connected software nodes.</p>
+                        </div>
+                        <div class="admin-card-box">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Web Server</span>
+                                    <h4 style="color: #FFF; font-size: 17px; margin-top: 6px;">Nginx (aaPanel Direct)</h4>
+                                </div>
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">PHP Engine</span>
+                                    <h4 style="color: var(--accent); font-size: 17px; margin-top: 6px;">PHP <?php echo PHP_VERSION; ?></h4>
+                                </div>
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">MySQL Database</span>
+                                    <h4 style="color: #818CF8; font-size: 17px; margin-top: 6px;">antidetactor (UTF8MB4)</h4>
+                                </div>
+                                <div style="background: var(--bg-input); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">License Auth API</span>
+                                    <h4 style="color: var(--accent); font-size: 17px; margin-top: 6px;">Active & Synchronized</h4>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3709,6 +3898,34 @@ header('Content-Type: text/html; charset=utf-8');
                 document.getElementById('suppReplyMsg').value = '';
             } catch(e) {
                 alert('Support response delivered!');
+            }
+        }
+
+        function updateBroadcastLivePreview() {
+            const type = document.getElementById('notifType')?.value || 'info';
+            const title = document.getElementById('notifTitle')?.value.trim() || 'ProfileVault Desktop Update';
+            const msg = document.getElementById('notifMsg')?.value.trim() || 'Enter announcement text to send via email and in-app notifications...';
+            
+            const badge = document.getElementById('previewNotifBadge');
+            const titleEl = document.getElementById('previewNotifTitle');
+            const msgEl = document.getElementById('previewNotifMsg');
+
+            if (titleEl) titleEl.innerText = title;
+            if (msgEl) msgEl.innerText = msg;
+            if (badge) {
+                if (type === 'update') {
+                    badge.style.background = 'rgba(16,185,129,0.2)';
+                    badge.style.color = '#10B981';
+                    badge.innerText = 'APP UPDATE';
+                } else if (type === 'alert') {
+                    badge.style.background = 'rgba(239,68,68,0.2)';
+                    badge.style.color = '#F87171';
+                    badge.innerText = 'SECURITY ALERT';
+                } else {
+                    badge.style.background = 'rgba(99,102,241,0.2)';
+                    badge.style.color = '#818CF8';
+                    badge.innerText = 'ANNOUNCEMENT';
+                }
             }
         }
 
