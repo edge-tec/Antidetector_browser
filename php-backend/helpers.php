@@ -171,6 +171,18 @@ function ensureDatabaseTablesExist() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
+        try {
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `public_key` VARCHAR(255) DEFAULT NULL;");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `secret_key` TEXT DEFAULT NULL;");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `webhook_secret` TEXT DEFAULT NULL;");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `currency` VARCHAR(10) DEFAULT 'USD';");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `config_json` TEXT DEFAULT NULL;");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `is_enabled` TINYINT(1) DEFAULT 0;");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `is_test_mode` TINYINT(1) DEFAULT 1;");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `name` VARCHAR(100) NOT NULL DEFAULT 'Payment Gateway';");
+            $db->exec("ALTER TABLE `payment_gateways` ADD COLUMN IF NOT EXISTS `gateway_key` VARCHAR(50) DEFAULT NULL;");
+        } catch (Throwable $e) {}
+
         // Seed default gateways if empty
         try {
             $db->exec("
