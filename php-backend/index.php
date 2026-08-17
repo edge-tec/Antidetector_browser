@@ -128,6 +128,14 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
         exit();
     }
 
+    // Payment Gateway & Webhook APIs (/api/payments/*)
+    if (strpos($requestUri, '/api/payments/') === 0) {
+        $action = str_replace('/api/payments/', '', $requestUri);
+        $_GET['action'] = $action;
+        require_once __DIR__ . '/api/payments.php';
+        exit();
+    }
+
     // Support APIs (/api/support/*)
     if (strpos($requestUri, '/api/support/') === 0) {
         $action = str_replace('/api/support/', '', $requestUri);
@@ -717,7 +725,7 @@ header('Content-Type: text/html; charset=utf-8');
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column;">
                 <h3 style="font-size: 18px; color: #FFF;">Starter</h3>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$19 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register')">Start Trial</button>
+                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">⚡ Pay & Upgrade ($19)</button>
                 <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
                     <li>✓ Browser Profiles: <strong>25 Profiles</strong></li>
                     <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS</strong></li>
@@ -733,7 +741,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">MOST POPULAR</span>
                 <h3 style="font-size: 18px; color: #FFF;">Professional</h3>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$49 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="openModal('register')">Get Started</button>
+                <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">⚡ Pay & Upgrade ($49)</button>
                 <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
                     <li>✓ Browser Profiles: <strong>100 Profiles</strong></li>
                     <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
@@ -749,7 +757,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <span style="position: absolute; top: -12px; right: 20px; background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">BEST VALUE</span>
                 <h3 style="font-size: 18px; color: #FFF;">Business</h3>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$99 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register')">Contact Sales</button>
+                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">⚡ Pay & Upgrade ($99)</button>
                 <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
                     <li>✓ Browser Profiles: <strong>500 Profiles</strong></li>
                     <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
@@ -1156,6 +1164,7 @@ header('Content-Type: text/html; charset=utf-8');
                     <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN CONTROL PANEL</div>
                     <button class="admin-sidebar-btn admin-only-section" id="btnTabUsers" onclick="switchAdminTab('users', this)">👥 All Users & Accounts</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('subscriptions', this)">💳 Subscription Manager</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('gateways', this)">⚡ Payment Gateways</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('payments', this)">💰 Payments & Invoices</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profiles', this)">🌐 Browser Profiles Engine</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profile-audit', this)">🔬 7-Layer Settings Audit</button>
@@ -1178,46 +1187,35 @@ header('Content-Type: text/html; charset=utf-8');
                     
                     <!-- USER TAB 1: MY PROFILE (Editable Profile Info & Password Only) -->
                     <div id="tab-my-profile" class="admin-tab-content">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 6px;">My Profile & Account Settings</h3>
-                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Manage your personal account details and password.</p>
-
-                        <div id="profileMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
-
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; max-width: 600px;">
-                            <form onsubmit="handleSaveProfile(event)">
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">My Personal Account Settings</h3>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Manage your personal profile details, contact email, and secure password.</p>
+                        
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 600px;">
+                            <form id="formMyProfile" onsubmit="return updateMyProfileInfo(event)">
                                 <div style="margin-bottom: 16px;">
-                                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Full Name</label>
-                                    <input type="text" id="uProfileName" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Full Name</label>
+                                    <input type="text" id="myProfileName" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
                                 </div>
-                                <div style="margin-bottom: 16px;">
-                                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Email Address (Read-Only)</label>
-                                    <input type="email" id="uProfileEmail" readonly style="width: 100%; background: #181B26; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: var(--text-muted); font-size: 14px; cursor: not-allowed;">
+                                <div style="margin-bottom: 20px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Email Address</label>
+                                    <input type="email" id="myProfileEmail" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
                                 </div>
-                                <div style="margin-bottom: 24px;">
-                                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Role & Account Status (Read-Only)</label>
-                                    <div style="display: flex; gap: 10px;">
-                                        <input type="text" id="uProfileRole" readonly style="flex: 1; background: #181B26; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #2DD4BF; font-weight: 700; font-size: 14px; cursor: not-allowed;">
-                                        <input type="text" id="uProfileStatus" readonly style="flex: 1; background: #181B26; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #10B981; font-weight: 700; font-size: 14px; cursor: not-allowed;">
-                                    </div>
-                                </div>
+                                <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">💾 Update Profile Information</button>
+                            </form>
 
-                                <hr style="border: none; border-top: 1px solid var(--border); margin: 24px 0;">
+                            <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;">
 
-                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">Change Password</h4>
+                            <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">Change Security Password</h4>
+                            <form id="formMyPassword" onsubmit="return updateMyPassword(event)">
                                 <div style="margin-bottom: 14px;">
-                                    <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 4px;">Current Password</label>
-                                    <input type="password" id="uCurrentPassword" placeholder="Enter current password" style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Current Password</label>
+                                    <input type="password" id="myCurrentPassword" required placeholder="••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
                                 </div>
-                                <div style="margin-bottom: 14px;">
-                                    <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 4px;">New Password</label>
-                                    <input type="password" id="uNewPassword" placeholder="Minimum 6 characters" style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                                <div style="margin-bottom: 20px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">New Secure Password</label>
+                                    <input type="password" id="myNewPassword" required minlength="6" placeholder="At least 6 characters" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
                                 </div>
-                                <div style="margin-bottom: 24px;">
-                                    <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 4px;">Confirm New Password</label>
-                                    <input type="password" id="uConfirmNewPassword" placeholder="Re-enter new password" style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
-                                </div>
-
-                                <button type="submit" class="btn btn-primary" style="padding: 12px 28px; background: #2DD4BF; color: #000; font-weight: 800; border-radius: 8px;">💾 Save Profile Changes</button>
+                                <button type="submit" class="btn btn-outline" style="padding: 10px 20px;">🔒 Change Password</button>
                             </form>
                         </div>
                     </div>
@@ -1273,37 +1271,34 @@ header('Content-Type: text/html; charset=utf-8');
                                 <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
                                     <span style="color: #10B981; font-size: 18px;">✓</span>
                                     <div>
-                                        <h5 style="font-size: 13px; color: #FFF;">Proxy Bridge Support</h5>
-                                        <span style="font-size: 11px; color: var(--text-muted);">HTTP, HTTPS, SOCKS5</span>
+                                        <h5 style="font-size: 13px; color: #FFF;">Proxy Manager</h5>
+                                        <span style="font-size: 11px; color: var(--text-muted);">HTTP / SOCKS5 bridge</span>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
                                     <span style="color: #10B981; font-size: 18px;">✓</span>
                                     <div>
-                                        <h5 style="font-size: 13px; color: #FFF;">Team Profile Controls</h5>
-                                        <span style="font-size: 11px; color: var(--text-muted);">Granular user permissions</span>
+                                        <h5 style="font-size: 13px; color: #FFF;">Cross-Platform Desktop Client</h5>
+                                        <span style="font-size: 11px; color: var(--text-muted);">Windows, macOS & Linux</span>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
                                     <span style="color: #10B981; font-size: 18px;">✓</span>
                                     <div>
-                                        <h5 style="font-size: 13px; color: #FFF;">Local REST API</h5>
-                                        <span style="font-size: 11px; color: var(--text-muted);">Puppeteer & Selenium drivers</span>
+                                        <h5 style="font-size: 13px; color: #FFF;">Local Storage Encryption</h5>
+                                        <span style="font-size: 11px; color: var(--text-muted);">AES-256 GCM</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- USER TAB 3: APP DOWNLOADS (Strictly Read-Only & Admin Controlled) -->
+                    <!-- USER TAB 3: DESKTOP APP DOWNLOADS -->
                     <div id="tab-user-downloads" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 6px;">Desktop Client Application Downloads</h3>
-                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">Download official ProfileVault desktop application installers for your computer.</p>
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Download Official Desktop Software</h3>
+                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Download and install the native ProfileVault application for Windows, macOS, or Linux.</p>
 
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
-                                <div style="font-size: 36px; margin-bottom: 12px;">🪟</div>
-                                <h4 style="font-size: 18px; color: #FFF;">Windows Client</h4>
                                 <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 12px;" id="userWinVerText">Version: 1.0.0 (x64 Architecture)</p>
                                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Native installer for Windows 10 & 11 (64-bit).</p>
                                 <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center;" id="userBtnWinDl">⬇️ Download for Windows (.exe)</a>
@@ -1426,24 +1421,91 @@ header('Content-Type: text/html; charset=utf-8');
                         </div>
                     </div>
 
-                    <!-- TAB 3: PAYMENTS -->
+                    <!-- TAB: PAYMENT GATEWAY MANAGER -->
+                    <div id="tab-gateways" class="admin-tab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Payment Gateway Manager</h3>
+                                <p style="color: var(--text-muted); font-size: 13px;">Manage active payment gateways, API credentials, Webhook endpoints, and live connection diagnostics.</p>
+                            </div>
+                            <button class="btn btn-outline" onclick="loadPaymentGatewaysTable()">🔄 Refresh Gateways</button>
+                        </div>
+
+                        <!-- Gateway Cards Grid -->
+                        <div id="gatewayCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; margin-bottom: 28px;">
+                            <!-- Injected dynamically via loadPaymentGatewaysTable() -->
+                        </div>
+                    </div>
+
+                    <!-- TAB: PAYMENTS & INVOICES -->
                     <div id="tab-payments" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Payments, Invoices & Transaction History</h3>
-                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Payments, Invoices & Transaction History</h3>
+                                <p style="color: var(--text-muted); font-size: 13px;">Track all user subscription orders, verified gateway transactions, and live webhook logs.</p>
+                            </div>
+                            <button class="btn btn-outline" onclick="loadPaymentsTable()">🔄 Refresh Transactions</button>
+                        </div>
+
+                        <!-- Filters -->
+                        <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                            <input type="text" id="paySearchInput" placeholder="Search by customer email, name, invoice or transaction ID..." style="flex: 1; min-width: 240px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: #FFF;" oninput="loadPaymentsTable()">
+                            <select id="payGatewayFilter" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: #FFF;" onchange="loadPaymentsTable()">
+                                <option value="">All Gateways</option>
+                                <option value="stripe">Stripe</option>
+                                <option value="crypto">Cryptocurrency</option>
+                            </select>
+                            <select id="payStatusFilter" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: #FFF;" onchange="loadPaymentsTable()">
+                                <option value="">All Statuses</option>
+                                <option value="paid">Paid</option>
+                                <option value="pending">Pending</option>
+                                <option value="refunded">Refunded</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+
+                        <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 24px;">
                             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                                 <thead>
                                     <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">User</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Transaction ID</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Amount</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Invoice #</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Customer</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Plan</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Gateway</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Amount</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Date</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="paymentsTableBody">
-                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading payment records...</td></tr>
+                                    <tr><td colspan="8" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading payment records...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Webhook Event Audit Log Sub-Panel -->
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="font-size: 15px; color: #FFF;">Webhook Ingestion & Idempotency Audit Log</h4>
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="loadWebhookEventsTable()">🔄 Refresh Webhook Logs</button>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 8px 12px;">Provider</th>
+                                            <th style="padding: 8px 12px;">Event ID</th>
+                                            <th style="padding: 8px 12px;">Event Type</th>
+                                            <th style="padding: 8px 12px;">Status</th>
+                                            <th style="padding: 8px 12px;">Received At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="webhookEventsTableBody">
+                                        <tr><td colspan="5" style="padding: 14px; text-align: center; color: var(--text-muted);">No webhook events recorded yet.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -2090,7 +2152,125 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
     </div>
 
+    <!-- MODAL: PAYMENT GATEWAY CONFIGURATION (ADMIN) -->
+    <div id="modalGatewayConfig" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
+        <div class="modal-card" style="max-width: 600px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; color: #FFF;" id="modalGwTitle">Configure Payment Gateway</h3>
+                <button onclick="closeGatewayConfigModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+            
+            <form id="formGatewayConfig" onsubmit="return saveGatewayConfig(event)">
+                <input type="hidden" id="gwEditKey">
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: #FFF; font-size: 14px; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" id="gwEditEnabled" style="transform: scale(1.2);"> Enable Gateway
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; color: #F59E0B; font-size: 14px; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" id="gwEditTestMode" style="transform: scale(1.2);"> Test Mode / Sandbox
+                    </label>
+                </div>
 
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Billing Currency</label>
+                    <select id="gwEditCurrency" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="CAD">CAD ($)</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 14px;" id="gwFieldPublicKeyGroup">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;" id="gwLabelPublicKey">Publishable / Public API Key</label>
+                    <input type="text" id="gwEditPublicKey" placeholder="pk_live_..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;" id="gwLabelSecretKey">Secret Key / Merchant API Key</label>
+                    <input type="password" id="gwEditSecretKey" placeholder="sk_live_... (Enter new key or leave as-is)" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
+                    <span style="font-size: 11px; color: var(--text-muted);">Stored securely on server. Masked for security.</span>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;" id="gwLabelWebhookSecret">Webhook Signing Secret / IPN Secret</label>
+                    <input type="password" id="gwEditWebhookSecret" placeholder="whsec_... (Enter new secret or leave as-is)" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
+                    <div style="margin-top: 6px; background: rgba(255,255,255,0.03); border: 1px dashed var(--border); border-radius: 6px; padding: 8px; font-size: 11px; color: var(--text-muted);">
+                        <span>Webhook URL: </span>
+                        <strong id="gwWebhookUrlDisplay" style="color: #2DD4BF; font-family: monospace;">https://antiprofiles.com/api/payments/stripe/webhook</strong>
+                    </div>
+                </div>
+
+                <!-- Dynamic Crypto Fields (Shown when editing Crypto Gateway) -->
+                <div id="gwCryptoSpecificSection" style="display: none; margin-bottom: 16px; background: rgba(129, 140, 248, 0.05); border: 1px solid rgba(129, 140, 248, 0.2); border-radius: 8px; padding: 12px;">
+                    <label style="font-size: 12px; color: #818CF8; font-weight: 700; display: block; margin-bottom: 6px;">Supported Cryptocurrencies</label>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;">
+                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinUSDT" checked> USDT</label>
+                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinBTC" checked> BTC</label>
+                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinETH" checked> ETH</label>
+                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinUSDC" checked> USDC</label>
+                    </div>
+                    <label style="font-size: 12px; color: #818CF8; font-weight: 700; display: block; margin-bottom: 4px;">Direct Deposit Wallet Address (Fallback)</label>
+                    <input type="text" id="gwEditCryptoWallet" placeholder="e.g. TRC20 USDT Deposit Address" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: #FFF; font-size: 12px; font-family: monospace;">
+                </div>
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn btn-outline" onclick="closeGatewayConfigModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">💾 Save Gateway Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CUSTOMER PAYMENT & GATEWAY SELECTION -->
+    <div id="modalCheckoutPayment" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
+        <div class="modal-card" style="max-width: 520px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 18px; color: #FFF;" id="checkoutModalTitle">Complete Subscription Upgrade</h3>
+                <button onclick="closeCheckoutModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+
+            <!-- Order Summary Card -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">SELECTED PLAN</span>
+                    <h4 style="font-size: 18px; color: #FFF; margin-top: 2px;" id="checkoutPlanNameDisplay">Professional Plan</h4>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">TOTAL DUE</span>
+                    <h3 style="font-size: 24px; color: #2DD4BF; font-weight: 800;" id="checkoutAmountDisplay">$49.00</h3>
+                </div>
+            </div>
+
+            <!-- Gateway Selection State -->
+            <div id="checkoutGatewaySelectSection">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 10px;">CHOOSE PAYMENT METHOD</label>
+                <div id="checkoutGatewaysList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <!-- Injected dynamically -->
+                </div>
+                <button class="btn btn-primary" id="btnProceedToPay" style="width: 100%; justify-content: center; padding: 12px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;" onclick="submitCheckoutPayment()">🔒 Proceed to Secure Payment</button>
+            </div>
+
+            <!-- Crypto Invoice Display State -->
+            <div id="checkoutCryptoInvoiceSection" style="display: none; text-align: center;">
+                <div style="background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 16px; font-size: 13px; color: #2DD4BF;">
+                    ⚡ Send exactly <strong id="cryptoPayAmountDisplay">49.00 USDT</strong> to the address below:
+                </div>
+                <div style="margin: 16px 0;">
+                    <img id="cryptoQrCodeImg" src="" alt="Payment QR Code" style="width: 160px; height: 160px; border-radius: 10px; border: 2px solid #FFF;">
+                </div>
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 16px;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Deposit Address</span>
+                    <input type="text" id="cryptoAddressInput" readonly style="width: 100%; background: transparent; border: none; color: #FFF; font-family: monospace; font-size: 13px; text-align: center;" onclick="this.select()">
+                </div>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 8px; color: #F59E0B; font-size: 13px;">
+                    <span class="pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
+                    Awaiting blockchain network confirmation...
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         function toggleFaq(item) {
@@ -2633,6 +2813,7 @@ header('Content-Type: text/html; charset=utf-8');
 
             if (tabName === 'users') loadUsersTable();
             if (tabName === 'subscriptions') loadSubscriptionsTable();
+            if (tabName === 'gateways') loadPaymentGatewaysTable();
             if (tabName === 'payments') loadPaymentsTable();
             if (tabName === 'audit') loadAuditLogsTable();
             if (tabName === 'security') loadSecurityTable();
@@ -3372,30 +3553,469 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // PAYMENT GATEWAY MANAGER & WEB/DESKTOP CHECKOUT SYSTEM
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let _cachedGateways = [];
+        let _activeCheckoutPlan = null;
+        let _cryptoPollTimer = null;
+
+        async function loadPaymentGatewaysTable() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const container = document.getElementById('gatewayCardsContainer');
+            if (!container) return;
+
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 40px; color: var(--text-muted);">Loading payment gateway providers...</div>';
+
+            try {
+                const res = await fetch('/api/admin/get-payment-gateways', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+
+                if (data.success && Array.isArray(data.data)) {
+                    _cachedGateways = data.data;
+                    renderGatewayCards(data.data);
+                } else {
+                    container.innerHTML = `<div style="grid-column:1/-1; color:#F87171; text-align:center; padding:30px;">${data.error || 'Failed to load payment gateways.'}</div>`;
+                }
+            } catch(e) {
+                container.innerHTML = '<div style="grid-column:1/-1; color:#F87171; text-align:center; padding:30px;">Network error connecting to payment gateway service.</div>';
+            }
+        }
+
+        function renderGatewayCards(gateways) {
+            const container = document.getElementById('gatewayCardsContainer');
+            if (!container) return;
+
+            container.innerHTML = gateways.map(gw => {
+                const isEnabled = gw.is_enabled === 1 || gw.is_enabled === '1' || gw.is_enabled === true;
+                const isTestMode = gw.test_mode === 1 || gw.test_mode === '1' || gw.test_mode === true;
+                const isStripe = gw.gateway_key === 'stripe';
+                const isCrypto = gw.gateway_key === 'crypto';
+
+                return `
+                    <div style="background: var(--bg-card); border: 1px solid ${isEnabled ? '#2DD4BF' : 'var(--border)'}; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span style="font-size: 28px;">${isStripe ? '💳' : '🪙'}</span>
+                                    <div>
+                                        <h4 style="font-size: 18px; color: #FFF; margin: 0;">${gw.name}</h4>
+                                        <span style="font-size: 11px; color: var(--text-muted); font-family: monospace;">Provider ID: ${gw.gateway_key}</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <span style="background: ${isEnabled ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.2)'}; color: ${isEnabled ? '#10B981' : '#94A3B8'}; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${isEnabled ? 'ENABLED' : 'DISABLED'}</span>
+                                    <span style="background: ${isTestMode ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}; color: ${isTestMode ? '#F59E0B' : '#818CF8'}; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${isTestMode ? 'TEST MODE' : 'LIVE'}</span>
+                                </div>
+                            </div>
+
+                            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+                                ${isStripe ? 'Official Stripe Checkout integration supporting Credit/Debit Cards, Apple Pay, Google Pay, and SEPA.' : 'Cryptocurrency payment gateway supporting USDT, Bitcoin, Ethereum, and multi-chain tokens.'}
+                            </p>
+
+                            <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span style="color: var(--text-muted);">Currency:</span>
+                                    <strong style="color: #FFF;">${gw.currency || 'USD'}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span style="color: var(--text-muted);">Public Key:</span>
+                                    <span style="color: #818CF8; font-family: monospace;">${gw.public_key ? gw.public_key.substring(0, 16) + '...' : 'Not configured'}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--text-muted);">Secret Key:</span>
+                                    <span style="color: #2DD4BF; font-family: monospace;">${gw.secret_key ? '••••••••••••••••' : 'Not configured'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" style="flex: 1; padding: 8px 12px; font-size: 12px;" onclick="openGatewayConfigModal('${gw.gateway_key}')">⚙️ Configure</button>
+                            <button class="btn btn-outline" style="flex: 1; padding: 8px 12px; font-size: 12px;" onclick="toggleGateway('${gw.gateway_key}', ${!isEnabled})">${isEnabled ? '🔴 Disable' : '🟢 Enable'}</button>
+                            <button class="btn btn-outline" style="padding: 8px 12px; font-size: 12px; color: #2DD4BF;" onclick="testGatewayConnection('${gw.gateway_key}')">🩺 Test Connection</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openGatewayConfigModal(gatewayKey) {
+            const gw = _cachedGateways.find(g => g.gateway_key === gatewayKey);
+            if (!gw) return;
+
+            document.getElementById('gwEditKey').value = gw.gateway_key;
+            document.getElementById('modalGwTitle').innerText = 'Configure ' + gw.name;
+            document.getElementById('gwEditEnabled').checked = (gw.is_enabled == 1 || gw.is_enabled === true);
+            document.getElementById('gwEditTestMode').checked = (gw.test_mode == 1 || gw.test_mode === true);
+            document.getElementById('gwEditCurrency').value = gw.currency || 'USD';
+            document.getElementById('gwEditPublicKey').value = gw.public_key || '';
+            document.getElementById('gwEditSecretKey').value = gw.secret_key || '';
+            document.getElementById('gwEditWebhookSecret').value = gw.webhook_secret || '';
+
+            const isCrypto = gw.gateway_key === 'crypto';
+            const cryptoSec = document.getElementById('gwCryptoSpecificSection');
+            if (cryptoSec) cryptoSec.style.display = isCrypto ? 'block' : 'none';
+
+            const origin = window.location.origin || 'https://antiprofiles.com';
+            document.getElementById('gwWebhookUrlDisplay').innerText = `${origin}/api/payments/${gw.gateway_key}/webhook`;
+
+            if (isCrypto && gw.supported_coins) {
+                try {
+                    const coins = typeof gw.supported_coins === 'string' ? JSON.parse(gw.supported_coins) : gw.supported_coins;
+                    if (Array.isArray(coins)) {
+                        ['USDT', 'BTC', 'ETH', 'USDC'].forEach(coin => {
+                            const el = document.getElementById('cryptoCoin' + coin);
+                            if (el) el.checked = coins.includes(coin);
+                        });
+                    }
+                } catch(e) {}
+            }
+
+            document.getElementById('modalGatewayConfig').style.display = 'flex';
+        }
+
+        function closeGatewayConfigModal() {
+            document.getElementById('modalGatewayConfig').style.display = 'none';
+        }
+
+        async function saveGatewayConfig(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return false;
+
+            const gatewayKey = document.getElementById('gwEditKey').value;
+            const isCrypto = gatewayKey === 'crypto';
+
+            let supportedCoins = [];
+            if (isCrypto) {
+                ['USDT', 'BTC', 'ETH', 'USDC'].forEach(coin => {
+                    const el = document.getElementById('cryptoCoin' + coin);
+                    if (el && el.checked) supportedCoins.push(coin);
+                });
+            }
+
+            const payload = {
+                gateway_key: gatewayKey,
+                is_enabled: document.getElementById('gwEditEnabled').checked ? 1 : 0,
+                test_mode: document.getElementById('gwEditTestMode').checked ? 1 : 0,
+                currency: document.getElementById('gwEditCurrency').value,
+                public_key: document.getElementById('gwEditPublicKey').value.trim(),
+                secret_key: document.getElementById('gwEditSecretKey').value.trim(),
+                webhook_secret: document.getElementById('gwEditWebhookSecret').value.trim(),
+                supported_coins: supportedCoins
+            };
+
+            try {
+                const res = await fetch('/api/admin/save-payment-gateway', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('✓ Payment gateway credentials successfully updated!');
+                    closeGatewayConfigModal();
+                    loadPaymentGatewaysTable();
+                } else {
+                    alert('Error saving gateway: ' + (data.error || 'Unknown error'));
+                }
+            } catch(err) {
+                alert('Network error communicating with server.');
+            }
+            return false;
+        }
+
+        async function toggleGateway(gatewayKey, enable) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/admin/toggle-payment-gateway', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ gateway_key: gatewayKey, is_enabled: enable ? 1 : 0 })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadPaymentGatewaysTable();
+                } else {
+                    alert('Failed to toggle gateway: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error toggling gateway.');
+            }
+        }
+
+        async function testGatewayConnection(gatewayKey) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            alert('Testing live API connection with ' + gatewayKey.toUpperCase() + ' servers... Please wait.');
+
+            try {
+                const res = await fetch('/api/admin/test-gateway-connection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ gateway_key: gatewayKey })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('🎉 Gateway Connection Test SUCCESSFUL!\n\nDetails: ' + data.message + '\nLatency: ' + (data.latency_ms || '< 100') + 'ms');
+                } else {
+                    alert('❌ Gateway Connection FAILED:\n\n' + (data.error || 'Unable to connect to payment provider API.'));
+                }
+            } catch(e) {
+                alert('Network error testing gateway connection.');
+            }
+        }
+
         async function loadPaymentsTable() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
             const tbody = document.getElementById('paymentsTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Loading payment transactions...</td></tr>';
+            if (!tbody) return;
+
+            const search = (document.getElementById('paySearchInput') ? document.getElementById('paySearchInput').value : '').toLowerCase();
+            const gatewayFilter = document.getElementById('payGatewayFilter') ? document.getElementById('payGatewayFilter').value : '';
+            const statusFilter = document.getElementById('payStatusFilter') ? document.getElementById('payStatusFilter').value : '';
+
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--text-muted);">Loading payment transactions...</td></tr>';
             try {
-                const res = await fetch('/api/admin/get-payments', { headers: { 'Authorization': 'Bearer ' + token } });
+                const res = await fetch('/api/admin/get-payment-transactions', { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-                    tbody.innerHTML = data.data.map(p => `
+                    let filtered = data.data.filter(p => {
+                        if (gatewayFilter && p.gateway !== gatewayFilter) return false;
+                        if (statusFilter && p.status !== statusFilter) return false;
+                        if (search) {
+                            const hay = `${p.invoice_number || ''} ${p.user_name || ''} ${p.user_email || ''} ${p.transaction_id || ''}`.toLowerCase();
+                            if (!hay.includes(search)) return false;
+                        }
+                        return true;
+                    });
+
+                    if (filtered.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--text-muted);">No payment records match the filter criteria.</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = filtered.map(p => {
+                        const isPaid = p.status === 'paid';
+                        const isRefunded = p.status === 'refunded';
+                        const statusColor = isPaid ? '#10B981' : (isRefunded ? '#F59E0B' : '#EF4444');
+                        const statusBg = isPaid ? 'rgba(16,185,129,0.15)' : (isRefunded ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)');
+
+                        return `
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding: 12px 16px; font-weight:700; color:#818CF8; font-family:monospace;">${p.invoice_number || ('INV-' + p.id)}</td>
+                                <td style="padding: 12px 16px; font-weight:600; color:#FFF;">${p.user_name || 'Customer'} <br><span style="font-size:12px; color:var(--text-muted);">${p.user_email || ''}</span></td>
+                                <td style="padding: 12px 16px; color:#2DD4BF; font-weight:600; text-transform:capitalize;">${p.plan_id || 'Subscription'}</td>
+                                <td style="padding: 12px 16px; color:#FFF; font-weight:600; text-transform:uppercase;">${p.gateway || 'N/A'}</td>
+                                <td style="padding: 12px 16px; color:#FFF; font-weight:800; font-size:15px;">$${parseFloat(p.amount).toFixed(2)}</td>
+                                <td style="padding: 12px 16px;"><span style="background:${statusBg}; color:${statusColor}; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase;">${p.status}</span></td>
+                                <td style="padding: 12px 16px; color:var(--text-muted); font-size:12px;">${p.created_at || 'Recently'}</td>
+                                <td style="padding: 12px 16px;">
+                                    ${(isPaid && p.gateway === 'stripe') ? `<button class="btn btn-outline" style="padding:4px 8px; font-size:11px; color:#F87171;" onclick="refundPayment(${p.id})">Refund</button>` : `<span style="font-size:11px; color:var(--text-muted);">Verified</span>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--text-muted);">No payment records found.</td></tr>';
+                }
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center; color:#F87171;">Error loading payments.</td></tr>';
+            }
+        }
+
+        async function loadWebhookEventsTable() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const tbody = document.getElementById('webhookEventsTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '<tr><td colspan="5" style="padding:14px; text-align:center; color:var(--text-muted);">Loading webhook events...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/get-webhook-events', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    tbody.innerHTML = data.data.map(ev => `
                         <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding: 12px 16px; font-weight:600; color:#FFF;">${p.user_name || 'User'} <br><span style="font-size:12px; color:var(--text-muted);">${p.user_email || ''}</span></td>
-                            <td style="padding: 12px 16px; color:#818CF8; font-family:monospace;">${p.transaction_id}</td>
-                            <td style="padding: 12px 16px; color:#FFF; font-weight:700;">$${p.amount}</td>
-                            <td style="padding: 12px 16px; color:var(--text-muted);">${p.gateway}</td>
-                            <td style="padding: 12px 16px;"><span style="background:rgba(45,212,191,0.2); color:#2DD4BF; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:700;">${p.status}</span></td>
+                            <td style="padding: 8px 12px; font-weight:700; color:#FFF; text-transform:uppercase;">${ev.provider}</td>
+                            <td style="padding: 8px 12px; font-family:monospace; color:#818CF8; font-size:12px;">${ev.event_id}</td>
+                            <td style="padding: 8px 12px; color:#2DD4BF; font-weight:600;">${ev.event_type}</td>
+                            <td style="padding: 8px 12px;"><span style="background:rgba(16,185,129,0.15); color:#10B981; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">${ev.status}</span></td>
+                            <td style="padding: 8px 12px; color:var(--text-muted); font-size:11px;">${ev.created_at}</td>
                         </tr>
                     `).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">No payment records found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding:14px; text-align:center; color:var(--text-muted);">No webhook events logged yet.</td></tr>';
                 }
             } catch(e) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Error loading payments.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:14px; text-align:center; color:#F87171;">Error loading webhook logs.</td></tr>';
             }
+        }
+
+        async function refundPayment(paymentId) {
+            if (!confirm('Are you sure you want to refund this payment? This will revoke the subscription extension.')) return;
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/admin/refund-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ payment_id: paymentId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✓ Payment refunded successfully.');
+                    loadPaymentsTable();
+                    loadSubscriptionsTable();
+                } else {
+                    alert('Refund failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error issuing refund.');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // CUSTOMER PAYMENT & SUBSCRIPTION UPGRADE FLOW
+        // ═══════════════════════════════════════════════════════════════════════
+
+        async function initiatePackagePayment(planId, planName, amount) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                openModal('login');
+                return;
+            }
+
+            _activeCheckoutPlan = { planId, planName, amount };
+
+            document.getElementById('checkoutPlanNameDisplay').innerText = planName + ' Plan';
+            document.getElementById('checkoutAmountDisplay').innerText = '$' + amount.toFixed(2);
+            document.getElementById('checkoutGatewaySelectSection').style.display = 'block';
+            document.getElementById('checkoutCryptoInvoiceSection').style.display = 'none';
+
+            const list = document.getElementById('checkoutGatewaysList');
+            list.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:10px;">Loading payment options...</div>';
+            document.getElementById('modalCheckoutPayment').style.display = 'flex';
+
+            try {
+                const res = await fetch('/api/payments/public-gateways');
+                const data = await res.json();
+
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    list.innerHTML = data.data.map((gw, idx) => `
+                        <label style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:border 0.2s;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <input type="radio" name="checkoutGateway" value="${gw.gateway_key}" ${idx === 0 ? 'checked' : ''} style="transform:scale(1.2);">
+                                <div>
+                                    <strong style="color:#FFF; font-size:14px;">${gw.name}</strong>
+                                    <span style="display:block; font-size:11px; color:var(--text-muted);">${gw.gateway_key === 'stripe' ? 'Credit Card, Apple Pay, Google Pay' : 'USDT, Bitcoin, Ethereum'}</span>
+                                </div>
+                            </div>
+                            <span style="font-size:20px;">${gw.gateway_key === 'stripe' ? '💳' : '🪙'}</span>
+                        </label>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div style="color:#F87171; font-size:13px; padding:10px; text-align:center;">No payment gateways currently active. Please contact administrator.</div>';
+                }
+            } catch(e) {
+                list.innerHTML = '<div style="color:#F87171; font-size:13px; padding:10px; text-align:center;">Failed to load payment options.</div>';
+            }
+        }
+
+        function closeCheckoutModal() {
+            if (_cryptoPollTimer) clearInterval(_cryptoPollTimer);
+            document.getElementById('modalCheckoutPayment').style.display = 'none';
+        }
+
+        async function submitCheckoutPayment() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token || !_activeCheckoutPlan) return;
+
+            const selectedGw = document.querySelector('input[name="checkoutGateway"]:checked');
+            if (!selectedGw) {
+                alert('Please select a payment gateway.');
+                return;
+            }
+
+            const gatewayKey = selectedGw.value;
+            const btn = document.getElementById('btnProceedToPay');
+            btn.disabled = true;
+            btn.innerText = 'Creating Secure Payment Session...';
+
+            try {
+                const res = await fetch('/api/payments/create-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({
+                        plan_id: _activeCheckoutPlan.planId,
+                        gateway: gatewayKey,
+                        success_url: window.location.origin + '/?payment=success',
+                        cancel_url: window.location.origin + '/?payment=cancelled'
+                    })
+                });
+
+                const data = await res.json();
+                btn.disabled = false;
+                btn.innerText = '🔒 Proceed to Secure Payment';
+
+                if (data.success) {
+                    if (data.type === 'redirect' && data.checkout_url) {
+                        window.location.href = data.checkout_url;
+                    } else if (data.type === 'crypto') {
+                        // Display Crypto payment deposit details
+                        document.getElementById('checkoutGatewaySelectSection').style.display = 'none';
+                        document.getElementById('checkoutCryptoInvoiceSection').style.display = 'block';
+                        document.getElementById('cryptoPayAmountDisplay').innerText = data.amount + ' ' + (data.currency || 'USDT');
+                        document.getElementById('cryptoAddressInput').value = data.deposit_address || '';
+                        document.getElementById('cryptoQrCodeImg').src = data.qr_code_url || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.deposit_address)}`;
+
+                        pollCryptoInvoiceStatus(data.invoice_number);
+                    }
+                } else {
+                    alert('Checkout failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                btn.disabled = false;
+                btn.innerText = '🔒 Proceed to Secure Payment';
+                alert('Network error creating payment checkout session.');
+            }
+        }
+
+        function pollCryptoInvoiceStatus(invoiceNumber) {
+            if (_cryptoPollTimer) clearInterval(_cryptoPollTimer);
+            _cryptoPollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/payments/status?invoice=' + encodeURIComponent(invoiceNumber));
+                    const data = await res.json();
+                    if (data.success && data.status === 'paid') {
+                        clearInterval(_cryptoPollTimer);
+                        alert('🎉 Cryptocurrency payment verified! Your subscription has been activated.');
+                        closeCheckoutModal();
+                        loadUserPortalData();
+                        loadSubscriptionsTable();
+                    }
+                } catch(e) {}
+            }, 5000);
         }
 
         async function loadAuditLogsTable() {
@@ -4096,6 +4716,19 @@ header('Content-Type: text/html; charset=utf-8');
                     console.log('⚡ [WebSync] subscription.updated received');
                     loadSubscriptionsTable();
                     loadUserPortalData();
+                });
+
+                sseSource.addEventListener('payment.completed', (e) => {
+                    console.log('🎉 [WebSync] payment.completed received');
+                    loadUserPortalData();
+                    loadSubscriptionsTable();
+                    loadPaymentsTable();
+                    loadWebhookEventsTable();
+                });
+
+                sseSource.addEventListener('gateway.config.updated', (e) => {
+                    console.log('⚡ [WebSync] gateway.config.updated received');
+                    loadPaymentGatewaysTable();
                 });
 
                 sseSource.addEventListener('user.deleted', (e) => {

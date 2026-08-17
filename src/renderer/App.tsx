@@ -1410,10 +1410,18 @@ function AppContent() {
       }, 500)
     })
 
+    const unsubPayment = window.api?.onRealtimeSyncEvent?.((_e: any, { eventType, payload }: any) => {
+      if (eventType === 'payment.completed') {
+        const planName = payload?.plan_id ? payload.plan_id.replace('plan_', '').toUpperCase() : 'SUBSCRIPTION'
+        showToast('success', `🎉 Payment Confirmed! Upgraded to ${planName} Plan with ${payload?.device_limit || 2} Devices.`)
+      }
+    })
+
     return () => {
       unsubStatus?.()
       unsubAuth?.()
       unsubRevoked?.()
+      unsubPayment?.()
     }
   }, [isAuthenticated, logout, showToast])
 

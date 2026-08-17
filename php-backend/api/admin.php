@@ -833,20 +833,287 @@ switch ($action) {
         }
         break;
 
-    case 'get-payments':
+    // ── Payment Gateways & Transactions Admin APIs ──
+    case 'get-payment-gateways':
         try {
-            $stmt = $db->prepare("
-                SELECT p.*, u.name as user_name, u.email as user_email 
+            $stmt = $db->prepare("SELECT * FROM payment_gateways ORDER BY gateway_key ASC");
+            $stmt->execute();
+            $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Mask secrets safely before returning to Admin UI
+            foreach ($gateways as &$gw) {
+                $gw['config'] = json_decode($gw['config_json'] ?? '{}', true) ?: [];
+                if (!empty($gw['secret_key'])) {
+                    $prefix = substr($gw['secret_key'], 0, 7);
+                    $suffix = substr($gw['secret_key'], -4);
+                    $gw['secret_key_masked'] = $prefix . '••••••••••••' . $suffix;
+                } else {
+                    $gw['secret_key_masked'] = '';
+                }
+                if (!empty($gw['webhook_secret'])) {
+                    $prefix = substr($gw['webhook_secret'], 0, 5);
+                    $suffix = substr($gw['webhook_secret'], -4);
+                    $gw['webhook_secret_masked'] = $prefix . '••••••••••••' . $suffix;
+                } else {
+                    $gw['webhook_secret_masked'] = '';
+                }
+                // Unset raw secrets to guarantee they never leak to UI
+                unset($gw['secret_key']);
+                unset($gw['webhook_secret']);
+            }
+            respondJson(['success' => true, 'gateways' => $gateways]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'save-payment-gateway':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $key = trim($input['gateway_key'] ?? $input['key'] ?? '');
+        $isEnabled = isset($input['is_enabled']) ? (int)(bool)$input['is_enabled'] : 0;
+        $isTestMode = isset($input['is_test_mode']) ? (int)(bool)$input['is_test_mode'] : 1;
+        $publicKey = trim($input['public_key'] ?? '');
+        $currency = strtoupper(trim($input['currency'] ?? 'USD'));
+        $config = $input['config'] ?? [];
+
+        if (!$key) {
+            respondJson(['success' => false, 'error' => 'Gateway key is required.'], 400);
+        }
+
+        // Fetch existing gateway to preserve secrets if not changed
+        $existStmt = $db->prepare("SELECT * FROM payment_gateways WHERE gateway_key = ?");
+        $existStmt->execute([$key]);
+        $existing = $existStmt->fetch(PDO::FETCH_ASSOC);
+
+        $secretKey = $existing['secret_key'] ?? '';
+        if (!empty($input['secret_key']) && strpos($input['secret_key'], '••••') === false) {
+            $secretKey = trim($input['secret_key']);
+        }
+
+        $webhookSecret = $existing['webhook_secret'] ?? '';
+        if (!empty($input['webhook_secret']) && strpos($input['webhook_secret'], '••••') === false) {
+            $webhookSecret = trim($input['webhook_secret']);
+        }
+
+        $upd = $db->prepare("
+            UPDATE payment_gateways SET
+                is_enabled = ?,
+                is_test_mode = ?,
+                public_key = ?,
+                secret_key = ?,
+                webhook_secret = ?,
+                currency = ?,
+                config_json = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE gateway_key = ?
+        ");
+        $upd->execute([
+            $isEnabled,
+            $isTestMode,
+            $publicKey,
+            $secretKey,
+            $webhookSecret,
+            $currency,
+            json_encode($config),
+            $key
+        ]);
+
+        logAdminAction($admin['id'], $admin['email'], 'PAYMENT_GATEWAY_CONFIG_UPDATED', $key, "Updated gateway {$key} (Enabled: {$isEnabled}, Mode: " . ($isTestMode ? 'Test' : 'Live') . ")");
+        
+        // Broadcast gateway update to connected desktop & web clients
+        publishRealtimeEvent($db, null, 'gateway.config.updated', [
+            'gateway' => $key,
+            'isEnabled' => (bool)$isEnabled,
+            'isTestMode' => (bool)$isTestMode,
+            'currency' => $currency,
+            'timestamp' => date('c')
+        ]);
+
+        respondJson(['success' => true, 'message' => "Payment gateway '{$key}' settings saved successfully."]);
+        break;
+
+    case 'toggle-payment-gateway':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $key = trim($input['gateway_key'] ?? $input['key'] ?? '');
+        $enable = (int)(bool)($input['enable'] ?? false);
+
+        $upd = $db->prepare("UPDATE payment_gateways SET is_enabled = ? WHERE gateway_key = ?");
+        $upd->execute([$enable, $key]);
+
+        logAdminAction($admin['id'], $admin['email'], $enable ? 'PAYMENT_GATEWAY_ENABLED' : 'PAYMENT_GATEWAY_DISABLED', $key, "Toggled gateway {$key} to " . ($enable ? 'Enabled' : 'Disabled'));
+
+        publishRealtimeEvent($db, null, 'gateway.config.updated', [
+            'gateway' => $key,
+            'isEnabled' => (bool)$enable,
+            'timestamp' => date('c')
+        ]);
+
+        respondJson(['success' => true, 'message' => "Gateway '{$key}' " . ($enable ? 'enabled' : 'disabled') . " successfully."]);
+        break;
+
+    case 'test-gateway-connection':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $key = trim($input['gateway_key'] ?? $input['key'] ?? '');
+
+        $stmt = $db->prepare("SELECT * FROM payment_gateways WHERE gateway_key = ?");
+        $stmt->execute([$key]);
+        $gw = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$gw) {
+            respondJson(['success' => false, 'error' => 'Gateway not found.'], 404);
+        }
+
+        if ($key === 'stripe') {
+            $secret = trim($gw['secret_key'] ?? '');
+            if (!$secret) {
+                respondJson(['success' => false, 'error' => 'Stripe Secret Key is not configured yet.'], 400);
+            }
+
+            // Call Stripe Balance API to verify live credentials
+            $ch = curl_init('https://api.stripe.com/v1/balance');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $secret]);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $res = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err = curl_error($ch);
+            curl_close($ch);
+
+            if ($err) {
+                respondJson(['success' => false, 'error' => 'Connection failed: ' . $err], 500);
+            }
+
+            $json = json_decode($res, true);
+            if ($code === 200) {
+                respondJson([
+                    'success' => true,
+                    'message' => 'Stripe connection successful! Live API credentials verified.',
+                    'livemode' => (bool)($json['livemode'] ?? false),
+                    'currency' => $gw['currency']
+                ]);
+            } else {
+                respondJson([
+                    'success' => false,
+                    'error' => 'Stripe API authentication error: ' . ($json['error']['message'] ?? "HTTP Code $code")
+                ], 400);
+            }
+        } elseif ($key === 'crypto') {
+            $conf = json_decode($gw['config_json'] ?? '{}', true) ?: [];
+            $apiKey = trim($gw['secret_key'] ?? '');
+
+            if (!$apiKey) {
+                respondJson(['success' => false, 'error' => 'Crypto Provider API Key is not configured yet.'], 400);
+            }
+
+            $ch = curl_init('https://api.nowpayments.io/v1/status');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['x-api-key: ' . $apiKey]);
+            $res = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($code === 200) {
+                respondJson(['success' => true, 'message' => 'Cryptocurrency API connection verified and active!']);
+            } else {
+                respondJson(['success' => false, 'error' => "Crypto Provider API responded with status code $code."], 400);
+            }
+        } else {
+            respondJson(['success' => false, 'error' => "Unknown gateway {$key}"], 400);
+        }
+        break;
+
+    case 'get-payments':
+    case 'get-payment-transactions':
+        try {
+            $search = trim($_GET['search'] ?? '');
+            $gateway = trim($_GET['gateway'] ?? '');
+            $status = trim($_GET['status'] ?? '');
+
+            $sql = "
+                SELECT p.*, u.name as user_name, u.email as user_email, i.invoice_number 
                 FROM payments p 
                 LEFT JOIN users u ON p.user_id = u.id 
-                ORDER BY p.created_at DESC LIMIT 100
-            ");
-            $stmt->execute();
-            $pays = $stmt->fetchAll();
+                LEFT JOIN invoices i ON p.invoice_id = i.id
+                WHERE 1=1
+            ";
+            $params = [];
+
+            if ($search) {
+                $sql .= " AND (p.transaction_id LIKE ? OR u.email LIKE ? OR u.name LIKE ? OR i.invoice_number LIKE ?)";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+            }
+            if ($gateway) {
+                $sql .= " AND p.gateway = ?";
+                $params[] = $gateway;
+            }
+            if ($status) {
+                $sql .= " AND p.status = ?";
+                $params[] = $status;
+            }
+
+            $sql .= " ORDER BY p.created_at DESC LIMIT 100";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $pays = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             respondJson(['success' => true, 'data' => $pays]);
         } catch (Throwable $e) {
             respondJson(['success' => true, 'data' => []]);
         }
+        break;
+
+    case 'get-webhook-events':
+        try {
+            $stmt = $db->prepare("SELECT * FROM payment_events ORDER BY received_at DESC LIMIT 50");
+            $stmt->execute();
+            $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            respondJson(['success' => true, 'data' => $events]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'refund-payment':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $paymentId = trim($input['payment_id'] ?? '');
+
+        $payStmt = $db->prepare("SELECT * FROM payments WHERE id = ?");
+        $payStmt->execute([$paymentId]);
+        $pay = $payStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$pay) {
+            respondJson(['success' => false, 'error' => 'Payment record not found.'], 404);
+        }
+
+        if ($pay['status'] === 'refunded') {
+            respondJson(['success' => false, 'error' => 'This payment is already refunded.'], 400);
+        }
+
+        if ($pay['gateway'] === 'stripe') {
+            $gw = getPaymentGatewayConfig($db, 'stripe');
+            $secret = trim($gw['secret_key'] ?? '');
+
+            if ($secret && $pay['transaction_id']) {
+                $refRes = callStripeApi($secret, 'refunds', 'POST', ['payment_intent' => $pay['transaction_id']]);
+                if (!$refRes['success']) {
+                    // Try with charge ID fallback
+                    $refRes = callStripeApi($secret, 'refunds', 'POST', ['charge' => $pay['transaction_id']]);
+                }
+            }
+        }
+
+        $db->prepare("UPDATE payments SET status = 'refunded' WHERE id = ?")->execute([$paymentId]);
+        if (!empty($pay['invoice_id'])) {
+            $db->prepare("UPDATE invoices SET status = 'refunded' WHERE id = ?")->execute([$pay['invoice_id']]);
+        }
+
+        logAdminAction($admin['id'], $admin['email'], 'PAYMENT_REFUNDED', $pay['user_id'], "Refunded payment {$pay['id']} ($$pay[amount]) via {$pay['gateway']}");
+
+        respondJson(['success' => true, 'message' => "Payment #{$paymentId} marked as refunded."]);
         break;
 
     case 'login-as-user':

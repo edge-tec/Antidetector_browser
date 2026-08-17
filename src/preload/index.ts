@@ -251,6 +251,10 @@ const api = {
     ipcRenderer.on('sync:realtime-event', callback)
     return () => ipcRenderer.removeListener('sync:realtime-event', callback)
   },
+  onPaymentCompleted: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('payment:completed', callback)
+    return () => ipcRenderer.removeListener('payment:completed', callback)
+  },
 
   // ── SEO & AEO Management APIs ──
   seoGetSettings: (token?: string) => ipcRenderer.invoke('seo:get-settings', token),

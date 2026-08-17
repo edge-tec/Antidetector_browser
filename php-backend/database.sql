@@ -567,30 +567,86 @@ CREATE TABLE IF NOT EXISTS `security_events` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `invoices` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `invoice_number` VARCHAR(50) NOT NULL UNIQUE,
+  `user_id` VARCHAR(36) NOT NULL,
+  `plan_id` VARCHAR(50) NOT NULL,
+  `amount` DECIMAL(10,2) NOT NULL,
+  `amount_cents` INT NOT NULL,
+  `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
+  `status` VARCHAR(50) NOT NULL DEFAULT 'pending',
+  `gateway` VARCHAR(50) DEFAULT NULL,
+  `transaction_id` VARCHAR(100) DEFAULT NULL,
+  `metadata` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `paid_at` DATETIME DEFAULT NULL,
+  `expires_at` DATETIME DEFAULT NULL,
+  KEY `idx_inv_user` (`user_id`),
+  KEY `idx_inv_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `payments` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `user_id` VARCHAR(36) NOT NULL,
+  `invoice_id` VARCHAR(50) DEFAULT NULL,
   `subscription_id` VARCHAR(50) DEFAULT NULL,
+  `package_id` VARCHAR(50) DEFAULT NULL,
   `transaction_id` VARCHAR(100) NOT NULL,
+  `provider_payment_id` VARCHAR(150) DEFAULT NULL,
   `amount` DECIMAL(10,2) NOT NULL,
-  `currency` VARCHAR(10) DEFAULT '$',
-  `gateway` VARCHAR(50) NOT NULL DEFAULT 'manual',
-  `status` VARCHAR(50) NOT NULL DEFAULT 'successful',
-  `payment_method` VARCHAR(50) DEFAULT 'credit_card',
+  `amount_cents` INT NOT NULL DEFAULT 0,
+  `currency` VARCHAR(10) DEFAULT 'USD',
+  `gateway` VARCHAR(50) NOT NULL DEFAULT 'stripe',
+  `status` VARCHAR(50) NOT NULL DEFAULT 'pending',
+  `payment_method` VARCHAR(50) DEFAULT 'card',
   `invoice_url` VARCHAR(255) DEFAULT NULL,
+  `metadata` TEXT DEFAULT NULL,
+  `paid_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY `idx_pay_user` (`user_id`)
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_pay_user` (`user_id`),
+  KEY `idx_pay_inv` (`invoice_id`),
+  KEY `idx_pay_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `payment_gateways` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `gateway_key` VARCHAR(50) NOT NULL UNIQUE,
   `name` VARCHAR(100) NOT NULL,
-  `is_enabled` TINYINT(1) DEFAULT 1,
-  `is_test_mode` TINYINT(1) DEFAULT 0,
+  `is_enabled` TINYINT(1) DEFAULT 0,
+  `is_test_mode` TINYINT(1) DEFAULT 1,
+  `public_key` VARCHAR(255) DEFAULT NULL,
+  `secret_key` TEXT DEFAULT NULL,
+  `webhook_secret` TEXT DEFAULT NULL,
+  `currency` VARCHAR(10) DEFAULT 'USD',
   `config_json` TEXT DEFAULT NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `payment_events` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `provider` VARCHAR(50) NOT NULL,
+  `event_id` VARCHAR(150) NOT NULL,
+  `event_type` VARCHAR(100) NOT NULL,
+  `invoice_id` VARCHAR(50) DEFAULT NULL,
+  `payload` LONGTEXT DEFAULT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'processed',
+  `error_message` TEXT DEFAULT NULL,
+  `received_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `processed_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_provider_event` (`provider`, `event_id`),
+  KEY `idx_pe_invoice` (`invoice_id`),
+  KEY `idx_pe_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Seed default gateway records
+INSERT INTO `payment_gateways` (`id`, `gateway_key`, `name`, `is_enabled`, `is_test_mode`, `public_key`, `secret_key`, `webhook_secret`, `currency`, `config_json`)
+VALUES
+('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{"checkout_title":"ProfileVault Subscription","allow_promotion_codes":true,"billing_address_collection":"auto"}'),
+('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{"provider":"nowpayments","supported_coins":["BTC","ETH","USDT","USDC"],"network":"TRC20,ERC20,BTC","min_amount":10,"confirmations_required":2}')
+ON DUPLICATE KEY UPDATE `id`=`id`;
 
 CREATE TABLE IF NOT EXISTS `profiles` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,

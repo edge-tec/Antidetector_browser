@@ -348,8 +348,11 @@ class RealtimeSyncService {
       case 'subscription.expired':
       case 'device.limit.updated':
       case 'license.updated':
-        logger.info('sync', '[SyncEvent] Subscription/device limit updated, refreshing license & feature quotas...')
+      case 'payment.completed':
+        logger.info('sync', `[SyncEvent] Subscription/Payment update (${eventType}), refreshing license & feature quotas...`)
         await this.resyncAuthoritativeState()
+        this.broadcastToAllWindows('payment:completed', parsedPayload)
+        this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
         break
 
       case 'reconnect':
