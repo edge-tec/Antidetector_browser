@@ -707,6 +707,75 @@ header('Content-Type: text/html; charset=utf-8');
             background: rgba(30, 34, 48, 0.95) !important;
         }
 
+        /* Desktop App Downloads Section Styles */
+        .download-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 24px;
+            width: 100%;
+        }
+        @media(max-width: 1100px) {
+            .download-cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media(max-width: 640px) {
+            .download-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .platform-download-card {
+            background: linear-gradient(180deg, rgba(21, 23, 32, 0.95), rgba(15, 17, 24, 0.98));
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 22px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .platform-download-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(45, 212, 191, 0.4);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+        }
+        .platform-download-card.card-recommended {
+            border: 1px solid #2DD4BF;
+            box-shadow: 0 0 24px rgba(45, 212, 191, 0.15);
+            background: linear-gradient(180deg, rgba(21, 28, 38, 0.98), rgba(15, 19, 28, 0.98));
+        }
+        .platform-download-card.card-active-os {
+            border: 1px solid #6366F1;
+            box-shadow: 0 0 24px rgba(99, 102, 241, 0.2);
+        }
+
+        .security-highlights-grid {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        @media(max-width: 900px) {
+            .security-highlights-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media(max-width: 520px) {
+            .security-highlights-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Responsive Breakpoints & Device Optimizations */
         @media(max-width: 900px) {
             .navbar { padding: 12px 18px; }
@@ -1163,50 +1232,62 @@ header('Content-Type: text/html; charset=utf-8');
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+        <div class="download-cards-grid">
             <!-- 1. Windows Card -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="platform-download-card" id="landingCardWin">
                 <div>
-                    <div style="font-size: 32px; margin-bottom: 12px;">🪟</div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Download for Windows</h3>
-                    <span style="font-size: 11px; background: rgba(59,130,246,0.15); color: #60A5FA; padding: 2px 8px; border-radius: 4px; font-weight: 700;">x64 Architecture [64-bit]</span>
-                    <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px; line-height: 1.5;">Native installer for Windows 10 and 11 with automatic shortcuts and hardware acceleration.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                        <div style="font-size: 32px; line-height: 1;">🪟</div>
+                        <span style="font-size: 10px; background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">WINDOWS</span>
+                    </div>
+                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Windows Client</h3>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;">v1.0.0 (x64 Architecture)</div>
+                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native installer for Windows 10 and 11 with automatic desktop shortcuts and HW acceleration.</p>
                 </div>
-                <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; border-color: rgba(96,165,250,0.4);" id="landingBtnWinDl">Download Windows .exe (v1.0.0)</a>
+                <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; border-color: rgba(96,165,250,0.4); font-size: 13px;" id="landingBtnWinDl">⬇️ Download .exe (v1.0.0)</a>
             </div>
 
             <!-- 2. Apple Silicon Card (RECOMMENDED) -->
-            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 4px 20px rgba(45,212,191,0.08);">
-                <span style="position: absolute; top: -11px; right: 16px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 900; padding: 2px 10px; border-radius: 12px; letter-spacing: 0.5px;">RECOMMENDED</span>
+            <div class="platform-download-card card-recommended" id="landingCardMacArm">
+                <span style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 2px 9px; border-radius: 10px; letter-spacing: 0.5px;">RECOMMENDED</span>
                 <div>
-                    <div style="font-size: 32px; margin-bottom: 12px;">🍏</div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Mac — Apple Silicon</h3>
-                    <span style="font-size: 11px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px; font-weight: 700;">M1 / M2 / M3 / M4 [arm64]</span>
-                    <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px; line-height: 1.5;">Native ARM64 build engineered specifically for Apple Silicon M-series processors.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                        <div style="font-size: 32px; line-height: 1;">🍏</div>
+                        <span style="font-size: 10px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">APPLE SILICON</span>
+                    </div>
+                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Silicon</h3>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;">v1.0.0 (M1 / M2 / M3 / M4)</div>
+                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native ARM64 build engineered specifically for Apple Silicon M-series processors.</p>
                 </div>
-                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" id="landingBtnMacArmDl">Download Apple Silicon .dmg (v1.0.0)</a>
+                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;" id="landingBtnMacArmDl">⬇️ Download .dmg (ARM)</a>
             </div>
 
             <!-- 3. macOS Intel Card -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="platform-download-card" id="landingCardMacIntel">
                 <div>
-                    <div style="font-size: 32px; margin-bottom: 12px;">🍏</div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Mac — Intel</h3>
-                    <span style="font-size: 11px; background: rgba(148,163,184,0.15); color: #94A3B8; padding: 2px 8px; border-radius: 4px; font-weight: 700;">Intel Processors [x64]</span>
-                    <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px; line-height: 1.5;">Native macOS disk image built for Intel-based Mac computers before late 2020.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                        <div style="font-size: 32px; line-height: 1;">🍏</div>
+                        <span style="font-size: 10px; background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">MACOS INTEL</span>
+                    </div>
+                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Intel</h3>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;">v1.0.0 (Intel Processors)</div>
+                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native macOS disk image built for Intel-based Mac computers before late 2020.</p>
                 </div>
-                <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center;" id="landingBtnMacIntelDl">Download macOS Intel .dmg (v1.0.0)</a>
+                <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; font-size: 13px;" id="landingBtnMacIntelDl">⬇️ Download .dmg (Intel)</a>
             </div>
 
             <!-- 4. Linux Card -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="platform-download-card" id="landingCardLinux">
                 <div>
-                    <div style="font-size: 32px; margin-bottom: 12px;">🐧</div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Linux Client</h3>
-                    <span style="font-size: 11px; background: rgba(234,179,8,0.15); color: #FACC15; padding: 2px 8px; border-radius: 4px; font-weight: 700;">Universal [AppImage & .deb]</span>
-                    <p style="color: var(--text-muted); font-size: 13px; margin: 12px 0 20px; line-height: 1.5;">Standalone standalone binary package for Ubuntu, Debian, Fedora, Arch & openSUSE.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                        <div style="font-size: 32px; line-height: 1;">🐧</div>
+                        <span style="font-size: 10px; background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">LINUX</span>
+                    </div>
+                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Linux Client</h3>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;">v1.0.0 (AppImage & .deb)</div>
+                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Standalone binary package for Ubuntu, Debian, Fedora, Arch & openSUSE.</p>
                 </div>
-                <a href="/api/releases?download=1&platform=linux-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; border-color: rgba(250,204,21,0.4);" id="landingBtnLinuxDl">Download Linux .AppImage (v1.0.0)</a>
+                <a href="/api/releases?download=1&platform=linux-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; border-color: rgba(250,204,21,0.4); font-size: 13px;" id="landingBtnLinuxDl">⬇️ Download .AppImage</a>
             </div>
         </div>
     </section>
@@ -2011,104 +2092,145 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- USER TAB 3: DESKTOP APP DOWNLOADS -->
                     <div id="tab-user-downloads" class="admin-tab-content" style="display: none;">
-                        <div style="margin-bottom: 24px;">
-                            <h3 style="color: #FFF; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <span>🚀 Download Official Desktop Application</span>
-                                <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; font-size: clamp(10.5px, 1.1vw, 12px); font-weight: 700; padding: 3px 10px; border-radius: 6px;">v1.0.0 Stable</span>
-                            </h3>
-                            <p style="color: var(--text-muted); margin: 0;">Download and install the native AntiProfiles anti-detect browser application for Windows, macOS, or Linux.</p>
+                        
+                        <!-- Header & Title -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h3 style="color: #FFF; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                    <span>🚀 Download Official Desktop Application</span>
+                                    <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: clamp(10.5px, 1.1vw, 12px); font-weight: 800; padding: 3px 10px; border-radius: 20px;">v1.0.0 Stable</span>
+                                </h3>
+                                <p style="color: var(--text-muted); margin: 0;">Download and install the native AntiProfiles anti-detect browser application for Windows, macOS, or Linux.</p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 6px 12px; border-radius: 8px;">
+                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+                                <span>All builds verified & signed</span>
+                            </div>
                         </div>
 
-                        <!-- 4-Card Responsive Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 28px; width: 100%;">
+                        <!-- Intelligent OS Auto-Detection Hero Banner -->
+                        <div id="userOsDetectedHero" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(45, 212, 191, 0.08)); border: 1px solid rgba(45, 212, 191, 0.35); border-radius: 16px; padding: 18px 22px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                <div id="userDetectedOsIcon" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                    💻
+                                </div>
+                                <div>
+                                    <div style="font-size: 11px; font-weight: 800; color: #2DD4BF; text-transform: uppercase; letter-spacing: 0.5px;">RECOMMENDED FOR YOUR OPERATING SYSTEM</div>
+                                    <h4 id="userDetectedOsTitle" style="color: #FFF; margin: 2px 0 0 0; font-weight: 800; font-size: clamp(15px, 2vw, 18px);">AntiProfiles for Desktop</h4>
+                                    <p id="userDetectedOsSub" style="color: var(--text-muted); font-size: 12px; margin: 2px 0 0 0;">Automatic architecture and OS optimization detected</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <a id="userDetectedOsBtn" href="/api/releases?download=1&platform=windows-x64" download class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 22px; border-radius: 10px; font-size: 13.5px; box-shadow: 0 6px 20px rgba(45,212,191,0.35);">
+                                    ⬇️ Direct Download Now
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Section Subtitle -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <h5 style="color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">ALL SUPPORTED PLATFORMS & PACKAGES</h5>
+                            <span style="font-size: 11px; color: var(--text-muted);">64-Bit Native Binaries</span>
+                        </div>
+
+                        <!-- 4-Card Symmetrical Responsive Grid (4 cols on desktop, 2x2 on tablet, 1 on mobile) -->
+                        <div class="download-cards-grid">
                             
                             <!-- 1. Windows x64 Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
+                            <div class="platform-download-card" id="cardWinPlatform">
                                 <div>
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                                        <div style="font-size: 36px; line-height: 1;">🪟</div>
-                                        <span style="background: rgba(59,130,246,0.15); color: #60A5FA; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">WINDOWS</span>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                                        <div style="font-size: 32px; line-height: 1;">🪟</div>
+                                        <span style="background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">WINDOWS</span>
                                     </div>
-                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">Windows Client</h4>
-                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userWinVerText">Version: 1.0.0 (x64 Architecture)</p>
-                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Native standalone installer for Windows 10 & 11 (64-bit systems).</p>
+                                    <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">Windows Client</h4>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userWinVerText">v1.0.0 (x64 Architecture)</div>
+                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native standalone installer for Windows 10 & 11 (64-bit systems).</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-color: rgba(96,165,250,0.4);" id="userBtnWinDl">⬇️ Download for Windows (.exe)</a>
+                                <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; border-color: rgba(96,165,250,0.4); font-size: 13px;" id="userBtnWinDl">
+                                    ⬇️ Download .exe
+                                </a>
                             </div>
 
                             <!-- 2. macOS Apple Silicon Card (RECOMMENDED) -->
-                            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 4px 20px rgba(45,212,191,0.08); width: 100%; box-sizing: border-box;">
-                                <span style="position: absolute; top: -11px; right: 16px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 900; padding: 2px 10px; border-radius: 12px; letter-spacing: 0.5px;">RECOMMENDED</span>
+                            <div class="platform-download-card card-recommended" id="cardMacArmPlatform">
+                                <span style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 2px 9px; border-radius: 10px; letter-spacing: 0.5px;">RECOMMENDED</span>
                                 <div>
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                                        <div style="font-size: 36px; line-height: 1;">🍏</div>
-                                        <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">APPLE SILICON</span>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                                        <div style="font-size: 32px; line-height: 1;">🍏</div>
+                                        <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">APPLE SILICON</span>
                                     </div>
-                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Apple Silicon</h4>
-                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userMacArmVerText">Version: 1.0.0 (M1 / M2 / M3 / M4)</p>
-                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Native ARM64 disk image for Apple M-series chips (M1 to M4).</p>
+                                    <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">macOS Silicon</h4>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacArmVerText">v1.0.0 (M1 / M2 / M3 / M4)</div>
+                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native ARM64 disk image for Apple M-series chips (M1 to M4).</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" id="userBtnMacArmDl">⬇️ Download Apple Silicon (.dmg)</a>
+                                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; padding: 10px 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;" id="userBtnMacArmDl">
+                                    ⬇️ Download .dmg (ARM)
+                                </a>
                             </div>
 
                             <!-- 3. macOS Intel Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
+                            <div class="platform-download-card" id="cardMacIntelPlatform">
                                 <div>
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                                        <div style="font-size: 36px; line-height: 1;">🍏</div>
-                                        <span style="background: rgba(148,163,184,0.15); color: #94A3B8; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">MACOS INTEL</span>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                                        <div style="font-size: 32px; line-height: 1;">🍏</div>
+                                        <span style="background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">MACOS INTEL</span>
                                     </div>
-                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Intel Client</h4>
-                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userMacIntelVerText">Version: 1.0.0 (Intel Processors)</p>
-                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Disk image optimized for Intel Macs manufactured prior to late 2020.</p>
+                                    <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">macOS Intel</h4>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacIntelVerText">v1.0.0 (Intel Processors)</div>
+                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Disk image optimized for Intel Macs manufactured prior to late 2020.</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;" id="userBtnMacIntelDl">⬇️ Download for macOS Intel (.dmg)</a>
+                                <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; font-size: 13px;" id="userBtnMacIntelDl">
+                                    ⬇️ Download .dmg (Intel)
+                                </a>
                             </div>
 
                             <!-- 4. Linux x64 Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
+                            <div class="platform-download-card" id="cardLinuxPlatform">
                                 <div>
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                                        <div style="font-size: 36px; line-height: 1;">🐧</div>
-                                        <span style="background: rgba(234,179,8,0.15); color: #FACC15; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">LINUX</span>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                                        <div style="font-size: 32px; line-height: 1;">🐧</div>
+                                        <span style="background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">LINUX</span>
                                     </div>
-                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">Linux Client</h4>
-                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userLinuxVerText">Version: 1.0.0 (x64 AppImage & .deb)</p>
-                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Universal standalone AppImage package for Ubuntu, Debian, Fedora & Arch.</p>
+                                    <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">Linux Client</h4>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userLinuxVerText">v1.0.0 (AppImage & .deb)</div>
+                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Universal standalone package for Ubuntu, Debian, Fedora & Arch.</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=linux-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-color: rgba(250,204,21,0.4);" id="userBtnLinuxDl">⬇️ Download for Linux (.AppImage)</a>
+                                <a href="/api/releases?download=1&platform=linux-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; border-color: rgba(250,204,21,0.4); font-size: 13px;" id="userBtnLinuxDl">
+                                    ⬇️ Download .AppImage
+                                </a>
                             </div>
 
                         </div>
 
-                        <!-- System Security & Feature Highlights Card -->
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; width: 100%; box-sizing: border-box;">
+                        <!-- System Security & Feature Highlights Bar -->
+                        <div class="security-highlights-grid">
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">🛡️</span>
                                 <div>
-                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Isolated Sandbox Engine</h5>
-                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">100% separate cookies & storage per profile</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Isolated Sandbox Engine</h5>
+                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">100% separate cookies & storage per profile</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">⚡</span>
                                 <div>
-                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Native HW Acceleration</h5>
-                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">Multi-core GPU spoofing with zero lag</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Native HW Acceleration</h5>
+                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">Multi-core GPU spoofing with zero lag</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">🔄</span>
                                 <div>
-                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Auto-Update Ready</h5>
-                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">Direct seamless OTA patch delivery</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Auto-Update Ready</h5>
+                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">Direct seamless OTA patch delivery</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">🔒</span>
                                 <div>
-                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Encrypted Credentials</h5>
-                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">AES-256 GCM client storage</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Encrypted Credentials</h5>
+                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">AES-256 GCM client storage</p>
                                 </div>
                             </div>
                         </div>
@@ -4178,6 +4300,7 @@ header('Content-Type: text/html; charset=utf-8');
             const target = document.getElementById('tab-' + tabName);
             if (target) target.style.display = 'block';
 
+            if (tabName === 'user-downloads') initDownloadOsDetection();
             if (tabName === 'users') loadUsersTable();
             if (tabName === 'subscriptions') loadSubscriptionsTable();
             if (tabName === 'gateways') loadPaymentGatewaysTable();
@@ -4196,6 +4319,79 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'smtp') {
                 loadSmtpConfig();
                 loadEmailLogs(1);
+            }
+        }
+
+        function initDownloadOsDetection() {
+            const userAgent = (navigator.userAgent || '').toLowerCase();
+            const platform = (navigator.platform || '').toLowerCase();
+            
+            let osName = 'AntiProfiles for Windows (64-Bit)';
+            let osIcon = '🪟';
+            let osSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture)';
+            let dlUrl = '/api/releases?download=1&platform=windows-x64';
+            let btnText = '⬇️ Direct Download for Windows (.exe)';
+            let cardId = 'cardWinPlatform';
+
+            if (userAgent.includes('mac') || platform.includes('mac')) {
+                let isArm = false;
+                try {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (gl) {
+                        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (debugInfo) {
+                            const renderer = (gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
+                            if (renderer.includes('apple m') || renderer.includes('apple silicon')) {
+                                isArm = true;
+                            }
+                        }
+                    }
+                } catch(e) {}
+
+                if (isArm || userAgent.includes('arm64') || userAgent.includes('aarch64')) {
+                    osName = 'AntiProfiles for macOS (Apple Silicon)';
+                    osIcon = '🍏';
+                    osSub = 'Native ARM64 build for Apple M-series chips (M1 / M2 / M3 / M4)';
+                    dlUrl = '/api/releases?download=1&platform=macos-arm64';
+                    btnText = '⬇️ Direct Download for Apple Silicon (.dmg)';
+                    cardId = 'cardMacArmPlatform';
+                } else {
+                    osName = 'AntiProfiles for macOS (Apple Silicon & Intel)';
+                    osIcon = '🍏';
+                    osSub = 'Native disk image installer for macOS';
+                    dlUrl = '/api/releases?download=1&platform=macos-arm64';
+                    btnText = '⬇️ Direct Download for macOS (.dmg)';
+                    cardId = 'cardMacArmPlatform';
+                }
+            } else if (userAgent.includes('linux') || platform.includes('linux')) {
+                osName = 'AntiProfiles for Linux';
+                osIcon = '🐧';
+                osSub = 'Universal standalone AppImage & .deb for Ubuntu, Debian, Fedora & Arch';
+                dlUrl = '/api/releases?download=1&platform=linux-x64';
+                btnText = '⬇️ Direct Download for Linux (.AppImage)';
+                cardId = 'cardLinuxPlatform';
+            }
+
+            // Update Hero Banner
+            const heroIcon = document.getElementById('userDetectedOsIcon');
+            const heroTitle = document.getElementById('userDetectedOsTitle');
+            const heroSub = document.getElementById('userDetectedOsSub');
+            const heroBtn = document.getElementById('userDetectedOsBtn');
+
+            if (heroIcon) heroIcon.textContent = osIcon;
+            if (heroTitle) heroTitle.textContent = osName;
+            if (heroSub) heroSub.textContent = osSub;
+            if (heroBtn) {
+                heroBtn.href = dlUrl;
+                heroBtn.textContent = btnText;
+            }
+
+            // Highlight matched card
+            document.querySelectorAll('.platform-download-card').forEach(c => c.classList.remove('card-active-os'));
+            const matchedCard = document.getElementById(cardId);
+            if (matchedCard) {
+                matchedCard.classList.add('card-active-os');
             }
         }
 
