@@ -882,68 +882,86 @@ switch ($action) {
         break;
 
     case 'save-payment-gateway':
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $key = trim($input['gateway_key'] ?? $input['key'] ?? '');
-        $isEnabled = isset($input['is_enabled']) ? (int)(bool)$input['is_enabled'] : 0;
-        $isTestMode = isset($input['is_test_mode']) ? (int)(bool)$input['is_test_mode'] : 1;
-        $publicKey = trim($input['public_key'] ?? '');
-        $currency = strtoupper(trim($input['currency'] ?? 'USD'));
-        $config = $input['config'] ?? [];
+        try {
+            ensureDatabaseTablesExist();
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $key = trim($input['gateway_key'] ?? $input['key'] ?? '');
+            $isEnabled = isset($input['is_enabled']) ? (int)(bool)$input['is_enabled'] : 0;
+            $isTestMode = isset($input['is_test_mode']) ? (int)(bool)$input['is_test_mode'] : (isset($input['test_mode']) ? (int)(bool)$input['test_mode'] : 1);
+            $publicKey = trim($input['public_key'] ?? '');
+            $currency = strtoupper(trim($input['currency'] ?? 'USD'));
+            $config = $input['config'] ?? [];
 
-        if (!$key) {
-            respondJson(['success' => false, 'error' => 'Gateway key is required.'], 400);
+            if (!$key) {
+                respondJson(['success' => false, 'error' => 'Gateway key is required.'], 400);
+            }
+
+            // Fetch existing gateway to preserve secrets if not changed
+            $existStmt = $db->prepare("SELECT * FROM payment_gateways WHERE gateway_key = ?");
+            $existStmt->execute([$key]);
+            $existing = $existStmt->fetch(PDO::FETCH_ASSOC);
+
+            $secretKey = $existing['secret_key'] ?? '';
+            if (!empty($input['secret_key']) && strpos($input['secret_key'], '••••') === false) {
+                $secretKey = trim($input['secret_key']);
+            }
+
+            $webhookSecret = $existing['webhook_secret'] ?? '';
+            if (!empty($input['webhook_secret']) && strpos($input['webhook_secret'], '••••') === false) {
+                $webhookSecret = trim($input['webhook_secret']);
+            }
+
+            if ($key === 'crypto' && !empty($input['supported_coins']) && is_array($input['supported_coins'])) {
+                $config['supported_coins'] = $input['supported_coins'];
+            }
+
+            if (!$existing) {
+                $gwId = 'gw_' . $key;
+                $ins = $db->prepare("
+                    INSERT INTO payment_gateways (id, gateway_key, name, is_enabled, is_test_mode, public_key, secret_key, webhook_secret, currency, config_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ");
+                $ins->execute([$gwId, $key, ucfirst($key), $isEnabled, $isTestMode, $publicKey, $secretKey, $webhookSecret, $currency, json_encode($config)]);
+            } else {
+                $upd = $db->prepare("
+                    UPDATE payment_gateways SET
+                        is_enabled = ?,
+                        is_test_mode = ?,
+                        public_key = ?,
+                        secret_key = ?,
+                        webhook_secret = ?,
+                        currency = ?,
+                        config_json = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE gateway_key = ?
+                ");
+                $upd->execute([
+                    $isEnabled,
+                    $isTestMode,
+                    $publicKey,
+                    $secretKey,
+                    $webhookSecret,
+                    $currency,
+                    json_encode($config),
+                    $key
+                ]);
+            }
+
+            logAdminAction($admin['id'], $admin['email'], 'PAYMENT_GATEWAY_CONFIG_UPDATED', $key, "Updated gateway {$key} (Enabled: {$isEnabled}, Mode: " . ($isTestMode ? 'Test' : 'Live') . ")");
+            
+            // Broadcast gateway update to connected desktop & web clients
+            publishRealtimeEvent($db, null, 'gateway.config.updated', [
+                'gateway' => $key,
+                'isEnabled' => (bool)$isEnabled,
+                'isTestMode' => (bool)$isTestMode,
+                'currency' => $currency,
+                'timestamp' => date('c')
+            ]);
+
+            respondJson(['success' => true, 'message' => "Payment gateway '{$key}' settings saved successfully."]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => 'Failed to save gateway: ' . $e->getMessage()], 500);
         }
-
-        // Fetch existing gateway to preserve secrets if not changed
-        $existStmt = $db->prepare("SELECT * FROM payment_gateways WHERE gateway_key = ?");
-        $existStmt->execute([$key]);
-        $existing = $existStmt->fetch(PDO::FETCH_ASSOC);
-
-        $secretKey = $existing['secret_key'] ?? '';
-        if (!empty($input['secret_key']) && strpos($input['secret_key'], '••••') === false) {
-            $secretKey = trim($input['secret_key']);
-        }
-
-        $webhookSecret = $existing['webhook_secret'] ?? '';
-        if (!empty($input['webhook_secret']) && strpos($input['webhook_secret'], '••••') === false) {
-            $webhookSecret = trim($input['webhook_secret']);
-        }
-
-        $upd = $db->prepare("
-            UPDATE payment_gateways SET
-                is_enabled = ?,
-                is_test_mode = ?,
-                public_key = ?,
-                secret_key = ?,
-                webhook_secret = ?,
-                currency = ?,
-                config_json = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE gateway_key = ?
-        ");
-        $upd->execute([
-            $isEnabled,
-            $isTestMode,
-            $publicKey,
-            $secretKey,
-            $webhookSecret,
-            $currency,
-            json_encode($config),
-            $key
-        ]);
-
-        logAdminAction($admin['id'], $admin['email'], 'PAYMENT_GATEWAY_CONFIG_UPDATED', $key, "Updated gateway {$key} (Enabled: {$isEnabled}, Mode: " . ($isTestMode ? 'Test' : 'Live') . ")");
-        
-        // Broadcast gateway update to connected desktop & web clients
-        publishRealtimeEvent($db, null, 'gateway.config.updated', [
-            'gateway' => $key,
-            'isEnabled' => (bool)$isEnabled,
-            'isTestMode' => (bool)$isTestMode,
-            'currency' => $currency,
-            'timestamp' => date('c')
-        ]);
-
-        respondJson(['success' => true, 'message' => "Payment gateway '{$key}' settings saved successfully."]);
         break;
 
     case 'toggle-payment-gateway':

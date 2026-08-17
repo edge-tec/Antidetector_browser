@@ -4851,17 +4851,23 @@ header('Content-Type: text/html; charset=utf-8');
                     },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
+                const text = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch(pe) {
+                    throw new Error(text || 'Invalid JSON response from server');
+                }
 
                 if (data.success) {
-                    alert('✓ Payment gateway credentials successfully updated!');
+                    alert('✓ ' + (data.message || 'Payment gateway credentials successfully updated!'));
                     closeGatewayConfigModal();
                     loadPaymentGatewaysTable();
                 } else {
-                    alert('Error saving gateway: ' + (data.error || 'Unknown error'));
+                    alert('⚠️ Error saving gateway: ' + (data.error || 'Unknown error'));
                 }
             } catch(err) {
-                alert('Network error communicating with server.');
+                alert('⚠️ Server Communication Error: ' + (err.message || 'Network error'));
             }
             return false;
         }
