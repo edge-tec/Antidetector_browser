@@ -698,7 +698,7 @@ header('Content-Type: text/html; charset=utf-8');
             .container { padding-left: 16px; padding-right: 16px; }
             .section { padding: 50px 0; }
             .hero { padding-top: 100px !important; padding-bottom: 40px !important; gap: 32px !important; }
-            .hero h1 { font-size: 34px !important; }
+            .hero h1 { font-size: 32px !important; line-height: 1.25 !important; }
             .status-box { flex-direction: column; gap: 16px; text-align: center; }
             
             /* Admin Dashboard Layout on Mobile & Tablet */
@@ -723,6 +723,9 @@ header('Content-Type: text/html; charset=utf-8');
             .admin-sidebar::-webkit-scrollbar {
                 height: 4px;
             }
+            .admin-sidebar-header {
+                display: none !important;
+            }
             .admin-sidebar-btn {
                 width: auto !important;
                 flex-shrink: 0;
@@ -736,11 +739,8 @@ header('Content-Type: text/html; charset=utf-8');
                 background: linear-gradient(135deg, var(--primary), #4F46E5);
                 border-color: transparent;
             }
-            .admin-only-section {
-                display: none !important;
-            }
             .admin-viewport-wrapper {
-                padding: 14px 10px 60px 10px;
+                padding: 14px 12px 60px 12px;
             }
             .admin-grid-2col {
                 grid-template-columns: 1fr;
@@ -767,13 +767,27 @@ header('Content-Type: text/html; charset=utf-8');
             footer ul {
                 align-items: center !important;
             }
+
+            /* Floating Live Chat on Mobile */
+            #liveChatWidgetWindow {
+                bottom: 75px !important;
+                right: 12px !important;
+                left: 12px !important;
+                width: calc(100vw - 24px) !important;
+                max-width: 100% !important;
+                height: 72vh !important;
+                max-height: 520px !important;
+                border-radius: 16px !important;
+            }
         }
 
         @media(max-width: 640px) {
             .hero-actions { flex-direction: column; width: 100%; }
-            .hero-actions .btn { width: 100%; }
-            .modal-box { padding: 24px 16px; border-radius: 16px; width: 95vw; max-width: 95vw; }
+            .hero-actions .btn { width: 100%; justify-content: center; }
+            .modal-box { padding: 22px 14px; border-radius: 14px; width: 94vw; max-width: 94vw; box-sizing: border-box; }
             .admin-card-box { padding: 16px 12px; border-radius: 12px; }
+            .admin-sidebar-btn { padding: 6px 10px; font-size: 11.5px; }
+            #liveChatWidgetTrigger { bottom: 16px; right: 16px; padding: 10px 16px; font-size: 13px; }
         }
     </style>
 </head>
@@ -1826,14 +1840,14 @@ header('Content-Type: text/html; charset=utf-8');
                 <!-- Left Navigation Sidebar -->
                 <div class="admin-sidebar" id="adminSidebar">
                     <!-- User Profile & Controls Section (Visible to ALL users) -->
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">MY ACCOUNT PORTAL</div>
+                    <div class="admin-sidebar-header" style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">MY ACCOUNT PORTAL</div>
                     <button class="admin-sidebar-btn active" id="btnTabMyProfile" onclick="switchAdminTab('my-profile', this)">👤 My Profile & Password</button>
                     <button class="admin-sidebar-btn" id="btnTabMySubscription" onclick="switchAdminTab('my-subscription', this)">💳 My Subscription & Quota</button>
                     <button class="admin-sidebar-btn" id="btnTabUserDownloads" onclick="switchAdminTab('user-downloads', this)">🚀 Desktop App Downloads</button>
                     <button class="admin-sidebar-btn" id="btnTabUserSupport" onclick="switchAdminTab('user-support', this)">💬 Help & Live Support</button>
 
                     <!-- Admin Control Sections (Hidden for regular users, visible ONLY for admins) -->
-                    <div class="admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN CONTROL PANEL</div>
+                    <div class="admin-sidebar-header admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN CONTROL PANEL</div>
                     <button class="admin-sidebar-btn admin-only-section" id="btnTabUsers" onclick="switchAdminTab('users', this)">👥 All Users & Accounts</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('subscriptions', this)">💳 Subscription Manager</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('gateways', this)">⚡ Payment Gateways</button>
