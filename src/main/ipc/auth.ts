@@ -310,10 +310,13 @@ export function setupAuthIPC(): void {
       // 2. Interactive Google OAuth Window in Electron
       return await new Promise((resolve) => {
         let isResolved = false
+        const customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+
         const authWin = new BrowserWindow({
-          width: 500,
-          height: 680,
+          width: 480,
+          height: 640,
           title: 'Sign in with Google - AntiProfiles',
+          backgroundColor: '#0B0C10',
           resizable: false,
           minimizable: false,
           maximizable: false,
@@ -321,12 +324,17 @@ export function setupAuthIPC(): void {
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            sandbox: true
+            sandbox: false
           }
         })
 
+        // Ensure Chrome standard user-agent so Google doesn't block Electron WebView
+        authWin.webContents.setUserAgent(customUserAgent)
+
         const baseUrl = centralApi.getBaseUrl()
-        authWin.loadURL(`${baseUrl}/login?oauth=google&desktop=1`)
+        authWin.loadURL(`${baseUrl}/oauth/google?desktop=1`, {
+          userAgent: customUserAgent
+        })
 
         let checkInterval: NodeJS.Timeout | null = null
 
@@ -351,11 +359,15 @@ export function setupAuthIPC(): void {
           }
 
           try {
-            const token = await authWin.webContents.executeJavaScript(`localStorage.getItem('sessionToken') || ''`)
-            const userStr = await authWin.webContents.executeJavaScript(`localStorage.getItem('user') || ''`)
+            const token = await authWin.webContents.executeJavaScript(`window.__antiprofiles_session_token || localStorage.getItem('sessionToken') || ''`)
+            const userStr = await authWin.webContents.executeJavaScript(`JSON.stringify(window.__antiprofiles_user || '') || localStorage.getItem('user') || ''`)
 
-            if (token && userStr && token !== 'undefined' && userStr !== 'undefined') {
-              const u = JSON.parse(userStr)
+            if (token && userStr && token !== 'undefined' && userStr !== 'undefined' && userStr !== '""') {
+              let u: any = null
+              try {
+                u = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
+              } catch(e) {}
+
               if (u && u.email) {
                 isResolved = true
                 cleanup()

@@ -45,6 +45,10 @@ if (strpos($requestUri, '/reset-password') === 0 || strpos($requestUri, '/forgot
     require_once __DIR__ . '/reset-password.php';
     exit();
 }
+if ($requestUri === '/oauth/google' || $requestUri === '/oauth-bridge' || $requestUri === '/oauth/bridge') {
+    require_once __DIR__ . '/oauth-bridge.php';
+    exit();
+}
 
 // ── 0.1 Direct Application Download Endpoints ──
 if (strpos($requestUri, '/download/') === 0 || $requestUri === '/download') {
