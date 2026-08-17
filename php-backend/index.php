@@ -3832,10 +3832,10 @@ header('Content-Type: text/html; charset=utf-8');
                     const stream = document.getElementById('adminMsgStream');
                     if (stream) stream.scrollTop = stream.scrollHeight;
                 } else {
-                    panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center;">${data.error || 'Failed to load conversation.'}</div>`;
+                    panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center; font-size:14px;">⚠️ ${data.error || 'Failed to load conversation.'}</div>`;
                 }
             } catch(e) {
-                panel.innerHTML = '<div style="padding:40px; color:#F87171; text-align:center;">Error loading conversation thread.</div>';
+                panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center; font-size:14px;">⚠️ Error loading conversation thread: ${e.message || 'Network issue'}</div>`;
             }
         }
 

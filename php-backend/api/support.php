@@ -8,6 +8,7 @@ require_once __DIR__ . '/../helpers.php';
 
 sendJsonHeader();
 $db = Database::getConnection();
+ensureDatabaseTablesExist();
 $user = getAuthenticatedUser(); // Optional for public/guest chat widget, required for admin
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $rawBody = file_get_contents('php://input');
@@ -356,7 +357,7 @@ try {
                     COALESCE(u.account_status, 'active') as user_status,
                     u.role as user_role,
                     COALESCE((SELECT p.name FROM subscriptions s JOIN pricing_plans p ON s.plan_id = p.id WHERE s.user_id = c.user_id ORDER BY s.created_at DESC LIMIT 1), 'Free Plan') as plan_name,
-                    (SELECT COUNT(*) FROM browser_profiles WHERE user_id = c.user_id) as profile_count
+                    COALESCE((SELECT COUNT(*) FROM profiles WHERE user_id = c.user_id), 0) as profile_count
                 FROM support_conversations c
                 LEFT JOIN users u ON c.user_id = u.id
                 WHERE c.id = ?
@@ -374,10 +375,13 @@ try {
             $msgStmt->execute([$convId]);
             $messages = $msgStmt->fetchAll();
 
-            // Get internal staff notes
-            $noteStmt = $db->prepare("SELECT * FROM support_internal_notes WHERE conversation_id = ? ORDER BY created_at ASC");
-            $noteStmt->execute([$convId]);
-            $notes = $noteStmt->fetchAll();
+            // Get internal staff notes safely
+            $notes = [];
+            try {
+                $noteStmt = $db->prepare("SELECT * FROM support_internal_notes WHERE conversation_id = ? ORDER BY created_at ASC");
+                $noteStmt->execute([$convId]);
+                $notes = $noteStmt->fetchAll();
+            } catch (Throwable $e) {}
 
             respondJson([
                 'success' => true,
