@@ -326,24 +326,40 @@ switch ($action) {
 
     // ── 1. Get Enabled Public Gateways (No Secrets Exposing) ──
     case 'public-gateways':
+        ensureDatabaseTablesExist($db);
         $stmt = $db->prepare("SELECT gateway_key, name, is_enabled, is_test_mode, public_key, currency, config_json FROM payment_gateways WHERE is_enabled = 1");
         $stmt->execute();
         $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback: If no gateway is explicitly marked is_enabled=1 yet, fetch all available seeded gateways
+        if (empty($gateways)) {
+            $stmt = $db->prepare("SELECT gateway_key, name, is_enabled, is_test_mode, public_key, currency, config_json FROM payment_gateways ORDER BY id ASC");
+            $stmt->execute();
+            $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $result = [];
         foreach ($gateways as $gw) {
             $conf = json_decode($gw['config_json'] ?? '{}', true) ?: [];
             $result[] = [
+                'gateway_key' => $gw['gateway_key'],
                 'key' => $gw['gateway_key'],
                 'name' => $gw['name'],
+                'is_enabled' => (bool)$gw['is_enabled'],
+                'is_test_mode' => (bool)$gw['is_test_mode'],
                 'isTestMode' => (bool)$gw['is_test_mode'],
+                'public_key' => $gw['public_key'] ?: '',
                 'publicKey' => $gw['public_key'] ?: '',
                 'currency' => $gw['currency'] ?: 'USD',
                 'supportedCoins' => $conf['supported_coins'] ?? ['BTC', 'USDT', 'ETH', 'USDC'],
                 'minAmount' => (float)($conf['min_amount'] ?? 5.0)
             ];
         }
-        respondJson(['success' => true, 'gateways' => $result]);
+        respondJson([
+            'success' => true,
+            'data' => $result,
+            'gateways' => $result
+        ]);
         break;
 
     // ── 2. Create Checkout Session / Order ──

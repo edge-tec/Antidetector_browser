@@ -5867,20 +5867,29 @@ header('Content-Type: text/html; charset=utf-8');
             try {
                 const res = await fetch('/api/payments/public-gateways');
                 const data = await res.json();
+                const listData = Array.isArray(data.data) ? data.data : (Array.isArray(data.gateways) ? data.gateways : []);
 
-                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-                    list.innerHTML = data.data.map((gw, idx) => `
-                        <label style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:border 0.2s;">
+                if (data.success && listData.length > 0) {
+                    list.innerHTML = listData.map((gw, idx) => {
+                        const gwKey = gw.gateway_key || gw.key || 'stripe';
+                        const gwName = gw.name || (gwKey === 'stripe' ? 'Stripe' : 'Cryptocurrency');
+                        const isStripe = gwKey === 'stripe';
+                        const desc = isStripe ? 'Credit / Debit Card, Apple Pay, Google Pay' : 'USDT, Bitcoin, Ethereum (Instant)';
+                        const icon = isStripe ? '💳' : '🪙';
+
+                        return `
+                        <label style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-input); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:all 0.2s;">
                             <div style="display:flex; align-items:center; gap:12px;">
-                                <input type="radio" name="checkoutGateway" value="${gw.gateway_key}" ${idx === 0 ? 'checked' : ''} style="transform:scale(1.2);">
+                                <input type="radio" name="checkoutGateway" value="${gwKey}" ${idx === 0 ? 'checked' : ''} style="transform:scale(1.2);">
                                 <div>
-                                    <strong style="color:#FFF; font-size:14px;">${gw.name}</strong>
-                                    <span style="display:block; font-size:11px; color:var(--text-muted);">${gw.gateway_key === 'stripe' ? 'Credit Card, Apple Pay, Google Pay' : 'USDT, Bitcoin, Ethereum'}</span>
+                                    <strong style="color:#FFF; font-size:14px;">${gwName}</strong>
+                                    <span style="display:block; font-size:11.5px; color:var(--text-muted); margin-top:2px;">${desc}</span>
                                 </div>
                             </div>
-                            <span style="font-size:20px;">${gw.gateway_key === 'stripe' ? '💳' : '🪙'}</span>
+                            <span style="font-size:22px;">${icon}</span>
                         </label>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
                     list.innerHTML = '<div style="color:#F87171; font-size:13px; padding:10px; text-align:center;">No payment gateways currently active. Please contact administrator.</div>';
                 }
