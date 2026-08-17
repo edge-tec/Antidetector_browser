@@ -12,6 +12,9 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "build:win": "electron-vite build && electron-builder --win nsis --x64",
+    "build:mac": "electron-vite build && electron-builder --mac dmg",
+    "build:linux": "electron-vite build && electron-builder --linux AppImage --x64",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
     "package:win": "electron-vite build && electron-builder --win nsis --x64",
