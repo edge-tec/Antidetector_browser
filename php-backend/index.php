@@ -302,6 +302,17 @@ header('Content-Type: text/html; charset=utf-8');
     <!-- Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
+        window.escapeHtml = function(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+        var escapeHtml = window.escapeHtml;
+
         window.openModal = function(mode) {
             window.closeAdminDashboard();
             const modal = document.getElementById('loginModal');
@@ -3630,6 +3641,7 @@ header('Content-Type: text/html; charset=utf-8');
                 const data = await res.json();
                 if (data.success) {
                     if (data.requiresVerification) {
+                        const safeEmail = (typeof window.escapeHtml === 'function') ? window.escapeHtml(email) : String(email).replace(/[<>&'"]/g, '');
                         msg.style.display = 'block';
                         msg.style.background = 'rgba(45,212,191,0.12)';
                         msg.style.color = '#2DD4BF';
@@ -3640,11 +3652,11 @@ header('Content-Type: text/html; charset=utf-8');
                             <div style="font-size: 15px; font-weight: 800; margin-bottom: 6px; display:flex; align-items:center; gap:8px;">
                                 <span>✉️</span> <span>Verification Email Sent!</span>
                             </div>
-                            <div style="font-size: 13px; color: var(--text-main); line-height: 1.5; margin-bottom: 14px;">
-                                We've sent a verification link to <strong>${escapeHtml(email)}</strong>. Please click the link in your email to activate your account.
+                            <div style="font-size: 13px; color: #CBD5E1; line-height: 1.5; margin-bottom: 14px;">
+                                We've sent a verification link to <strong style="color:#FFF;">${safeEmail}</strong>. Please check your inbox and click the link to activate your account.
                             </div>
                             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${escapeHtml(email)}', this)">🔄 Resend Verification Email</button>
+                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${safeEmail}', this)">🔄 Resend Verification Email</button>
                                 <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px;" onclick="openModal('login')">Go to Sign In</button>
                             </div>
                         `;
@@ -6692,6 +6704,7 @@ header('Content-Type: text/html; charset=utf-8');
                 } else {
                     msg.style.display = 'block';
                     if (data.requiresVerification || data.emailVerified === false) {
+                        const safeEmail = (typeof window.escapeHtml === 'function') ? window.escapeHtml(email) : String(email).replace(/[<>&'"]/g, '');
                         msg.style.background = 'rgba(239,68,68,0.15)';
                         msg.style.color = '#F87171';
                         msg.style.border = '1px solid rgba(239,68,68,0.3)';
@@ -6700,7 +6713,7 @@ header('Content-Type: text/html; charset=utf-8');
                         msg.innerHTML = `
                             <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 4px;">⚠️ Email Verification Required</div>
                             <div style="font-size: 12.5px; color: #CBD5E1; margin-bottom: 10px;">Please verify your email address before continuing.</div>
-                            <button type="button" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${escapeHtml(email)}', this)">🔄 Resend Verification Email</button>
+                            <button type="button" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${safeEmail}', this)">🔄 Resend Verification Email</button>
                         `;
                     } else {
                         msg.style.background = 'rgba(239,68,68,0.2)';

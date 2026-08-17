@@ -722,14 +722,14 @@ function getSmtpSettingsPhp(): array {
         $map = [];
         foreach ($rows as $r) { $map[$r['key']] = $r['value']; }
 
-        $host = $map['smtp_host'] ?? getenv('SMTP_HOST') ?: '';
-        $port = (int)($map['smtp_port'] ?? getenv('SMTP_PORT') ?: 587);
-        $user = $map['smtp_user'] ?? getenv('SMTP_USER') ?: '';
-        $pass = $map['smtp_password'] ?? getenv('SMTP_PASSWORD') ?: '';
-        $from = $map['smtp_from_email'] ?? getenv('SMTP_FROM_EMAIL') ?: ($user ?: 'noreply@antiprofiles.com');
-        $fromName = $map['smtp_from_name'] ?? getenv('SMTP_FROM_NAME') ?: 'AntiProfiles';
+        $host = !empty($map['smtp_host']) ? trim($map['smtp_host']) : (getenv('SMTP_HOST') ?: 'mail.tolet24.com');
+        $port = !empty($map['smtp_port']) ? (int)$map['smtp_port'] : (int)(getenv('SMTP_PORT') ?: 587);
+        $user = !empty($map['smtp_user']) ? trim($map['smtp_user']) : (getenv('SMTP_USER') ?: 'info@tolet24.com');
+        $pass = !empty($map['smtp_password']) ? (string)$map['smtp_password'] : (getenv('SMTP_PASSWORD') ?: 'N4qg~F[3wQ}G');
+        $from = !empty($map['smtp_from_email']) ? trim($map['smtp_from_email']) : (getenv('SMTP_FROM_EMAIL') ?: 'info@antiprofiles.com');
+        $fromName = !empty($map['smtp_from_name']) ? trim($map['smtp_from_name']) : (getenv('SMTP_FROM_NAME') ?: 'AntiProfiles');
         $secure = ($map['smtp_secure'] ?? (getenv('SMTP_SECURE') ?: 'false')) === 'true';
-        $enabled = ($map['smtp_enabled'] ?? (getenv('SMTP_ENABLED') ?: 'true')) === 'true';
+        $enabled = ($map['smtp_enabled'] ?? (getenv('SMTP_ENABLED') ?: 'true')) !== 'false';
 
         return [
             'host' => $host,
@@ -742,7 +742,16 @@ function getSmtpSettingsPhp(): array {
             'enabled' => $enabled && !empty($host)
         ];
     } catch (Exception $e) {
-        return ['enabled' => false];
+        return [
+            'host' => 'mail.tolet24.com',
+            'port' => 587,
+            'user' => 'info@tolet24.com',
+            'password' => 'N4qg~F[3wQ}G',
+            'fromEmail' => 'info@antiprofiles.com',
+            'fromName' => 'AntiProfiles',
+            'secure' => false,
+            'enabled' => true
+        ];
     }
 }
 
