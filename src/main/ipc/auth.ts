@@ -2,7 +2,7 @@
 // AntiProfiles — Authentication IPC Handlers
 // ──────────────────────────────────────────────
 
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { userRepo } from '../database/repositories/user.repo'
 import { tokenRepo } from '../database/repositories/token.repo'
 import { verifyPassword } from '../security/password'
@@ -253,39 +253,157 @@ export function setupAuthIPC(): void {
     }
   })
 
-  // ── Google Authentication & Account Linking Handler ──
-  ipcMain.handle('auth:google-login', async (_event, payload: any) => {
+  // ── Google Authentication & Account Linking Handler (Central First + Desktop OAuth Window) ──
+  ipcMain.handle('auth:google-login', async (_event, payload?: any) => {
     try {
-      const { googleId, email, name } = payload || {}
-      if (!email || typeof email !== 'string') {
-        return { success: false, error: 'Google login payload missing email.' }
+      // 1. Direct Payload Authentication (e.g. access_token, credential, or email provided)
+      if (payload && (payload.email || payload.access_token || payload.credential)) {
+        const centralRes = await centralApi.googleAuth(payload)
+        if (centralRes.success && centralRes.user) {
+          const u = centralRes.user
+          let user = userRepo.getByEmail(u.email)
+          if (!user) {
+            userRepo.create({
+              name: u.name || u.email.split('@')[0],
+              email: u.email,
+              role: u.role || 'user',
+              emailVerified: true,
+              accountStatus: u.accountStatus || 'active',
+              googleId: payload.googleId || null
+            })
+            user = userRepo.getByEmail(u.email)
+          } else {
+            userRepo.update(user.id, {
+              name: u.name || user.name,
+              emailVerified: true,
+              accountStatus: u.accountStatus || 'active',
+              role: u.role || user.role,
+              googleId: payload.googleId || user.googleId
+            })
+            user = userRepo.getById(user.id)
+          }
+
+          const displayUser = userRepo.getDisplayById(user!.id)!
+          const token = centralRes.sessionToken || sessionManager.createSession(displayUser as any)
+          sessionManager.registerSession(token, displayUser as any)
+
+          try {
+            syncService.startSync(token)
+          } catch {}
+
+          logger.info('auth', `Google authentication successful with Central Server: "${u.email}" (${u.id})`)
+          return {
+            success: true,
+            user: displayUser,
+            token,
+            license: centralRes.license
+          }
+        }
+
+        if (centralRes.error && !centralRes.error.includes('Unable to connect')) {
+          return { success: false, error: centralRes.error }
+        }
       }
 
-      const cleanEmail = email.trim().toLowerCase()
-      const gId = googleId || `google_${crypto.createHash('md5').update(cleanEmail).digest('hex')}`
-
-      let user = userRepo.getByGoogleId(gId) || userRepo.getByEmail(cleanEmail)
-      if (!user) {
-        const created = userRepo.create({
-          name: name || cleanEmail.split('@')[0],
-          email: cleanEmail,
-          role: 'user',
-          emailVerified: true,
-          accountStatus: 'active',
-          googleId: gId
+      // 2. Interactive Google OAuth Window in Electron
+      return await new Promise((resolve) => {
+        let isResolved = false
+        const authWin = new BrowserWindow({
+          width: 500,
+          height: 680,
+          title: 'Sign in with Google - AntiProfiles',
+          resizable: false,
+          minimizable: false,
+          maximizable: false,
+          autoHideMenuBar: true,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true
+          }
         })
-        user = userRepo.getById(created.id)
-      }
 
-      const displayUser = userRepo.getDisplayById(user!.id)!
-      const token = sessionManager.createSession(displayUser)
-      logger.info('auth', `Google authentication successful for "${user!.email}"`)
+        const baseUrl = centralApi.getBaseUrl()
+        authWin.loadURL(`${baseUrl}/login?oauth=google&desktop=1`)
 
-      return {
-        success: true,
-        user: displayUser,
-        token
-      }
+        let checkInterval: NodeJS.Timeout | null = null
+
+        const cleanup = () => {
+          if (checkInterval) clearInterval(checkInterval)
+          checkInterval = null
+        }
+
+        authWin.on('closed', () => {
+          cleanup()
+          if (!isResolved) {
+            isResolved = true
+            resolve({ success: false, error: 'Google sign-in was cancelled.' })
+          }
+        })
+
+        // Poll for successful login in the web view
+        checkInterval = setInterval(async () => {
+          if (isResolved || authWin.isDestroyed()) {
+            cleanup()
+            return
+          }
+
+          try {
+            const token = await authWin.webContents.executeJavaScript(`localStorage.getItem('sessionToken') || ''`)
+            const userStr = await authWin.webContents.executeJavaScript(`localStorage.getItem('user') || ''`)
+
+            if (token && userStr && token !== 'undefined' && userStr !== 'undefined') {
+              const u = JSON.parse(userStr)
+              if (u && u.email) {
+                isResolved = true
+                cleanup()
+                authWin.close()
+
+                // Set token in centralApi client
+                centralApi.setSessionToken(token)
+                centralApi.setCurrentUser(u)
+
+                // Sync locally
+                let user = userRepo.getByEmail(u.email)
+                if (!user) {
+                  userRepo.create({
+                    name: u.name || u.email.split('@')[0],
+                    email: u.email,
+                    role: u.role || 'user',
+                    emailVerified: true,
+                    accountStatus: u.accountStatus || 'active'
+                  })
+                  user = userRepo.getByEmail(u.email)
+                } else {
+                  userRepo.update(user.id, {
+                    name: u.name || user.name,
+                    emailVerified: true,
+                    accountStatus: u.accountStatus || 'active',
+                    role: u.role || user.role
+                  })
+                  user = userRepo.getById(user.id)
+                }
+
+                const displayUser = userRepo.getDisplayById(user!.id)!
+                sessionManager.registerSession(token, displayUser as any)
+
+                try {
+                  syncService.startSync(token)
+                } catch {}
+
+                logger.info('auth', `Desktop Google OAuth successful for: "${u.email}"`)
+                resolve({
+                  success: true,
+                  user: displayUser,
+                  token
+                })
+              }
+            }
+          } catch (err) {
+            // Ignore execution errors while pages navigate
+          }
+        }, 500)
+      })
     } catch (err: any) {
       logger.error('auth', `Google login failed: ${err.message}`)
       return { success: false, error: err.message || 'Google authentication failed.' }

@@ -185,6 +185,30 @@ export class CentralApiClient {
     return res
   }
 
+  public async googleAuth(payload: any): Promise<AuthResponse> {
+    const res = await this.request<AuthResponse>('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...payload,
+        installationId: this.installationId,
+        platform: process.platform
+      })
+    })
+
+    if (res.success && res.sessionToken && res.user) {
+      this.setSessionToken(res.sessionToken)
+      this.setCurrentUser(res.user)
+      if (res.license) this.setCurrentLicense(res.license)
+    }
+    return res
+  }
+
+  public async getGoogleOAuthConfig(): Promise<{ success: boolean; data?: { enabled: boolean; clientId: string; oneTap: boolean }; error?: string }> {
+    return await this.request<{ success: boolean; data?: { enabled: boolean; clientId: string; oneTap: boolean }; error?: string }>('/api/auth/google-config', {
+      method: 'GET'
+    })
+  }
+
   public async getProfile(): Promise<{ success: boolean; user?: CentralUser; license?: CentralLicense; error?: string }> {
     const res = await this.request<{ success: boolean; user?: CentralUser; license?: CentralLicense; error?: string }>('/api/auth/me', {
       method: 'GET'

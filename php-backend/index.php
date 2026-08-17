@@ -7710,6 +7710,16 @@ header('Content-Type: text/html; charset=utf-8');
             }
             initRealtimeWebSync();
             loadUserPortalData();
+
+            // Auto trigger Google OAuth if query param is set (e.g. from desktop app or external link)
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('oauth') === 'google' && !isAuthenticated) {
+                    setTimeout(() => {
+                        handleGoogleSignIn();
+                    }, 500);
+                }
+            } catch(e) {}
         });
     </script>
 </body>

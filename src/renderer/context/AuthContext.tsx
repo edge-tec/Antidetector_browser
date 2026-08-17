@@ -189,12 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const googleLogin = async (payload?: any) => {
-    const mockPayload = payload || {
-      email: 'user.google@example.com',
-      name: 'Google User',
-      googleId: 'google_109283749182374'
-    }
-    const res = await callIpc('auth:google-login', mockPayload)
+    const res = await callIpc('auth:google-login', payload)
     if (res?.success && res.token && res.user) {
       localStorage.setItem('pv_session_token', res.token)
       localStorage.removeItem('pv_impersonated_by')
