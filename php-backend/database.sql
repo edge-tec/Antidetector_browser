@@ -39,6 +39,9 @@ ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_token_expires_at` DAT
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_created_at` DATETIME DEFAULT NULL;
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_attempts` INT DEFAULT 0;
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `account_status` VARCHAR(50) NOT NULL DEFAULT 'pending';
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_hash` VARCHAR(64) DEFAULT NULL;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_expires_at` DATETIME DEFAULT NULL;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_created_at` DATETIME DEFAULT NULL;
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME DEFAULT NULL;
 
 -- Initial Admin Account Seed (admin@antiprofiles.com / Password: admin)
@@ -58,6 +61,23 @@ CREATE TABLE IF NOT EXISTS `verification_tokens` (
   KEY `idx_vtok_user` (`user_id`, `used`),
   KEY `idx_vtok_hash` (`token_hash`),
   CONSTRAINT `fk_vtok_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.0.1 Password Resets Table
+CREATE TABLE IF NOT EXISTS `password_resets` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `email` VARCHAR(191) NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `used` TINYINT(1) NOT NULL DEFAULT 0,
+  `used_at` DATETIME DEFAULT NULL,
+  `attempts` INT DEFAULT 0,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `user_agent` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_pwd_reset_token` (`token_hash`),
+  KEY `idx_pwd_reset_user` (`user_id`, `expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 1.1 Real-Time Outbox Events Table
