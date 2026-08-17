@@ -23,6 +23,8 @@ interface AuthContextType {
   googleLogin: (payload?: any) => Promise<{ success: boolean; error?: string }>
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>
   resendVerification: (email: string) => Promise<{ success: boolean; error?: string; verificationUrl?: string }>
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string; message?: string }>
+  resetPassword: (token: string, newPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>
   impersonateUser: (targetUser: UserDisplay) => Promise<{ success: boolean; error?: string }>
   exitImpersonation: () => void
   logout: () => Promise<void>
@@ -38,6 +40,8 @@ const callIpc = async (channel: string, ...args: any[]) => {
       'auth:google-login': 'googleLogin',
       'auth:verify-email': 'verifyEmail',
       'auth:resend-verification': 'resendVerification',
+      'auth:forgot-password': 'forgotPassword',
+      'auth:reset-password': 'resetPassword',
       'auth:get-current-user': 'getCurrentUser',
       'auth:logout': 'logoutUser',
       'admin:impersonate-user': 'adminImpersonateUser'
@@ -217,6 +221,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return await callIpc('auth:resend-verification', email)
   }
 
+  const forgotPassword = async (email: string) => {
+    return await callIpc('auth:forgot-password', email)
+  }
+
+  const resetPassword = async (token: string, newPassword: string) => {
+    return await callIpc('auth:reset-password', { token, newPassword })
+  }
+
   const impersonateUser = async (targetUser: UserDisplay) => {
     if (!sessionToken || !currentUser || currentUser.role !== 'admin') {
       return { success: false, error: 'Admin access required to impersonate user.' }
@@ -283,6 +295,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         googleLogin,
         verifyEmail,
         resendVerification,
+        forgotPassword,
+        resetPassword,
         impersonateUser,
         exitImpersonation,
         logout

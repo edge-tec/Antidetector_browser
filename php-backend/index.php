@@ -41,6 +41,10 @@ if ($requestUri === '/terms' || $requestUri === '/terms-and-conditions' || $requ
     require_once __DIR__ . '/terms.php';
     exit();
 }
+if (strpos($requestUri, '/reset-password') === 0 || strpos($requestUri, '/forgot-password') === 0) {
+    require_once __DIR__ . '/reset-password.php';
+    exit();
+}
 
 // ── 0.1 Direct Application Download Endpoints ──
 if (strpos($requestUri, '/download/') === 0 || $requestUri === '/download') {
@@ -346,6 +350,8 @@ header('Content-Type: text/html; charset=utf-8');
         window.switchAuthTab = function(mode) {
             const loginForm = document.getElementById('loginForm');
             const regForm = document.getElementById('registerForm');
+            const forgotForm = document.getElementById('forgotForm');
+            const authTabs = document.getElementById('authModeTabs');
             const btnLogin = document.getElementById('modalBtnLogin');
             const btnReg = document.getElementById('modalBtnRegister');
             const msg = document.getElementById('loginMsg');
@@ -353,7 +359,9 @@ header('Content-Type: text/html; charset=utf-8');
 
             if (mode === 'register') {
                 if (loginForm) loginForm.style.display = 'none';
+                if (forgotForm) forgotForm.style.display = 'none';
                 if (regForm) regForm.style.display = 'block';
+                if (authTabs) authTabs.style.display = 'flex';
                 if (btnReg) {
                     btnReg.style.background = 'var(--primary)';
                     btnReg.style.color = '#FFF';
@@ -362,9 +370,16 @@ header('Content-Type: text/html; charset=utf-8');
                     btnLogin.style.background = 'transparent';
                     btnLogin.style.color = 'var(--text-muted)';
                 }
+            } else if (mode === 'forgot') {
+                if (loginForm) loginForm.style.display = 'none';
+                if (regForm) regForm.style.display = 'none';
+                if (forgotForm) forgotForm.style.display = 'block';
+                if (authTabs) authTabs.style.display = 'none';
             } else {
                 if (regForm) regForm.style.display = 'none';
+                if (forgotForm) forgotForm.style.display = 'none';
                 if (loginForm) loginForm.style.display = 'block';
+                if (authTabs) authTabs.style.display = 'flex';
                 if (btnLogin) {
                     btnLogin.style.background = 'var(--primary)';
                     btnLogin.style.color = '#FFF';
@@ -1484,7 +1499,7 @@ header('Content-Type: text/html; charset=utf-8');
             </div>
 
             <!-- Mode Switcher Tabs -->
-            <div style="display: flex; background: var(--bg-input); padding: 4px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border);">
+            <div id="authModeTabs" style="display: flex; background: var(--bg-input); padding: 4px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border);">
                 <button id="modalBtnLogin" class="btn" style="flex: 1; border-radius: 8px; font-weight: 700; padding: 8px; background: var(--primary); color: #FFF;" onclick="switchAuthTab('login')">Sign In</button>
                 <button id="modalBtnRegister" class="btn" style="flex: 1; border-radius: 8px; font-weight: 700; padding: 8px; background: transparent; color: var(--text-muted);" onclick="switchAuthTab('register')">Create Account</button>
             </div>
@@ -1499,7 +1514,10 @@ header('Content-Type: text/html; charset=utf-8');
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Password</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 0;">Password</label>
+                        <a href="#" onclick="switchAuthTab('forgot'); return false;" style="font-size: 12px; color: #2DD4BF; text-decoration: none; font-weight: 600;">Forgot Password?</a>
+                    </div>
                     <input type="password" id="loginPassword" placeholder="••••••••" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
                 </div>
                 
@@ -1519,6 +1537,23 @@ header('Content-Type: text/html; charset=utf-8');
 
                 <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 20px;">
                     Don't have an account? <a href="#" onclick="switchAuthTab('register'); return false;" style="color: #2DD4BF; font-weight: 700; text-decoration: none;">Create one</a>
+                </p>
+            </form>
+
+            <!-- Forgot Password Form -->
+            <form id="forgotForm" style="display: none;" onsubmit="handleForgotPassword(event); return false;">
+                <h3 style="font-size: 17px; color: #FFF; margin-bottom: 6px; text-align: center;">Reset Your Password</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px; text-align: center;">Enter your registered account email address to receive a secure password reset link.</p>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-size: 13px; color: #E2E8F0; font-weight: 600; margin-bottom: 6px; display: block;">Email Address</label>
+                    <input type="email" id="forgotEmail" placeholder="user@example.com" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
+                </div>
+                
+                <button type="submit" id="forgotSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 13px; background: #2DD4BF; color: #000; font-weight: 800; border-radius: 8px; font-size: 15px;">Send Reset Link</button>
+
+                <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 20px;">
+                    Remember your password? <a href="#" onclick="switchAuthTab('login'); return false;" style="color: #2DD4BF; font-weight: 700; text-decoration: none;">Sign in</a>
                 </p>
             </form>
 
@@ -5850,6 +5885,66 @@ header('Content-Type: text/html; charset=utf-8');
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerText = 'Sign In';
+                    submitBtn.style.opacity = '1';
+                    submitBtn.style.cursor = 'pointer';
+                }
+            }
+            return false;
+        }
+
+        async function handleForgotPassword(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (e && e.stopPropagation) e.stopPropagation();
+            const email = document.getElementById('forgotEmail').value.trim();
+            const msg = document.getElementById('loginMsg');
+            const submitBtn = document.getElementById('forgotSubmitBtn');
+
+            if (!email || !email.includes('@')) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.innerText = 'Please enter a valid email address.';
+                return false;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Sending Link...';
+                submitBtn.style.opacity = '0.7';
+                submitBtn.style.cursor = 'not-allowed';
+            }
+
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(99,102,241,0.2)';
+            msg.style.color = '#818CF8';
+            msg.innerText = 'Dispatching secure password reset token...';
+
+            try {
+                const res = await fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    msg.style.background = 'rgba(45,212,191,0.2)';
+                    msg.style.color = '#2DD4BF';
+                    msg.innerText = data.message || 'Password reset link sent! Please check your email inbox.';
+                    document.getElementById('forgotEmail').value = '';
+                } else {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = data.error || 'Failed to send password reset link.';
+                }
+            } catch (err) {
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.innerText = 'Network error communicating with authentication server.';
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Send Reset Link';
                     submitBtn.style.opacity = '1';
                     submitBtn.style.cursor = 'pointer';
                 }

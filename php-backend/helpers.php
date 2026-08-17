@@ -441,15 +441,28 @@ function ensureDatabaseTablesExist() {
         ");
 
         $db->exec("
-            CREATE TABLE IF NOT EXISTS `seo_404_logs` (
+            CREATE TABLE IF NOT EXISTS `password_resets` (
               `id` VARCHAR(50) NOT NULL PRIMARY KEY,
-              `request_path` VARCHAR(255) NOT NULL,
-              `referrer` TEXT DEFAULT NULL,
+              `user_id` VARCHAR(36) NOT NULL,
+              `email` VARCHAR(191) NOT NULL,
+              `token_hash` VARCHAR(64) NOT NULL,
+              `expires_at` DATETIME NOT NULL,
+              `used` TINYINT(1) NOT NULL DEFAULT 0,
+              `used_at` DATETIME DEFAULT NULL,
+              `attempts` INT DEFAULT 0,
+              `ip_address` VARCHAR(45) DEFAULT NULL,
               `user_agent` TEXT DEFAULT NULL,
-              `hit_count` INT DEFAULT 1,
-              `last_seen_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              KEY `idx_pwd_reset_token` (`token_hash`),
+              KEY `idx_pwd_reset_user` (`user_id`, `expires_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
+
+        try {
+            $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_hash` VARCHAR(64) DEFAULT NULL;");
+            $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_expires_at` DATETIME DEFAULT NULL;");
+            $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_created_at` DATETIME DEFAULT NULL;");
+        } catch (Throwable $e) {}
     } catch (Throwable $e) {}
 }
 
@@ -1071,6 +1084,141 @@ function sendAccountVerifiedConfirmationPhp(string $userName, string $email): bo
     </html>";
 
     return sendSmtpMailPhp($email, '🎉 AntiProfiles Account Confirmed & Ready!', $html);
+}
+
+function sendPasswordResetEmailPhp(string $userId, string $userName, string $email): array {
+    $db = Database::getConnection();
+
+    // 1. Invalidate previous unused reset tokens for this user
+    $invStmt = $db->prepare("UPDATE password_resets SET used = 1, used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used = 0");
+    $invStmt->execute([$userId]);
+
+    // 2. Generate a cryptographically secure random 64-char hex token
+    $plainToken = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $plainToken);
+    $resetId = 'rst_' . bin2hex(random_bytes(8));
+
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+
+    // 3. Store hashed token in password_resets with 1 hour expiry
+    $stmt = $db->prepare("
+        INSERT INTO password_resets (id, user_id, email, token_hash, expires_at, used, attempts, ip_address, user_agent, created_at)
+        VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), 0, 0, ?, ?, CURRENT_TIMESTAMP)
+    ");
+    $stmt->execute([$resetId, $userId, $email, $tokenHash, $ip, $ua]);
+
+    // 4. Update user state
+    $updUser = $db->prepare("
+        UPDATE users SET
+            reset_token_hash = ?,
+            reset_token_expires_at = DATE_ADD(NOW(), INTERVAL 1 HOUR),
+            reset_token_created_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ");
+    $updUser->execute([$tokenHash, $userId]);
+
+    // 5. Build authoritative reset URL
+    $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'https://';
+    $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ($protocol . $host);
+    $resetUrl = rtrim($baseUrl, '/') . '/reset-password?token=' . $plainToken;
+    $deepLinkUrl = 'antiprofiles://reset-password?token=' . $plainToken;
+
+    // 6. Responsive HTML Email Content
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset='utf-8'>
+      <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+      <title>Reset Your AntiProfiles Password</title>
+    </head>
+    <body style='margin:0; padding:0; background-color:#07090E; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#07090E; padding:40px 10px;'>
+        <tr>
+          <td align='center'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+              <tr>
+                <td style='padding:36px 36px 20px 36px; text-align:center;'>
+                  <div style='display:inline-block; padding:12px; border-radius:12px; background:linear-gradient(135deg, rgba(239,68,68,0.15), rgba(99,102,241,0.15)); border:1px solid rgba(239,68,68,0.3); margin-bottom:16px;'>
+                    <span style='font-size:28px;'>🔑</span>
+                  </div>
+                  <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Reset Your Password</h1>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Central Security Service</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='padding:0 36px 30px 36px;'>
+                  <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>We received a request to reset the password for your AntiProfiles account associated with <strong>" . htmlspecialchars($email) . "</strong>. Click the button below to set a new password:</p>
+                  
+                  <div style='text-align:center; margin:32px 0;'>
+                    <a href='" . $resetUrl . "' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#07090E; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block; box-shadow:0 4px 16px rgba(45,212,191,0.35);'>Set New Password</a>
+                  </div>
+
+                  <div style='background:#090B12; border:1px solid #232738; border-radius:10px; padding:16px; margin-bottom:24px;'>
+                    <p style='margin:0 0 6px 0; font-size:12px; color:#94A3B8;'>Manual Reset Security Token:</p>
+                    <code style='color:#2DD4BF; font-family:monospace; font-size:13px; word-break:break-all;'>" . htmlspecialchars($plainToken) . "</code>
+                  </div>
+
+                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0 0 10px 0;'>Or paste this link into your browser:<br>
+                    <a href='" . $resetUrl . "' style='color:#38BDF8; text-decoration:underline; word-break:break-all;'>" . $resetUrl . "</a>
+                  </p>
+                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0;'>⏳ This reset link is valid for <strong>1 hour</strong>. If you did not request a password reset, you can safely ignore this email; your account remains secure.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Anti-Detect Browser. Unified Security Infrastructure.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>";
+
+    $sent = sendSmtpMailPhp($email, '🔑 Reset Your AntiProfiles Password', $html);
+
+    if ($sent) {
+        recordSecurityEvent('PASSWORD_RESET_EMAIL_SENT', 'info', $userId, "Password reset token dispatched to {$email}");
+    } else {
+        recordSecurityEvent('PASSWORD_RESET_EMAIL_FAILED', 'warning', $userId, "SMTP failed to deliver password reset token to {$email}");
+    }
+
+    return [
+        'success' => true,
+        'token' => $plainToken,
+        'resetUrl' => $resetUrl,
+        'deepLinkUrl' => $deepLinkUrl,
+        'sentViaSmtp' => $sent
+    ];
+}
+
+function sendPasswordChangedNotificationPhp(string $userName, string $email): bool {
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>AntiProfiles Password Changed</title></head>
+    <body style='background-color:#07090E; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:560px; margin:0 auto; background:#12141E; padding:32px; border-radius:14px; border:1px solid #232738;'>
+        <div style='text-align:center;'>
+          <span style='background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); color:#2DD4BF; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>✓ Security Notice</span>
+          <h2 style='color:#FFFFFF; font-size:22px; margin:16px 0 8px 0;'>Password Successfully Changed</h2>
+        </div>
+        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>The password for your AntiProfiles account (<strong>" . htmlspecialchars($email) . "</strong>) was recently changed. If you performed this change, no further action is required.</p>
+        <p style='color:#EF4444; font-size:13px; line-height:1.6;'>If you did NOT change your password, please contact support immediately at <a href='mailto:support@antiprofiles.com' style='color:#2DD4BF;'>support@antiprofiles.com</a>.</p>
+        <div style='text-align:center; margin:28px 0;'>
+          <a href='https://antiprofiles.com/#login' style='background:#2DD4BF; color:#07090E; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Sign In to AntiProfiles</a>
+        </div>
+      </div>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, '🔒 AntiProfiles Password Successfully Changed', $html);
 }
 
 // Audit Logging Helper

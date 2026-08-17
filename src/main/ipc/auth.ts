@@ -417,6 +417,33 @@ export function setupAuthIPC(): void {
     }
   })
 
+  // ── Forgot Password Handler ──
+  ipcMain.handle('auth:forgot-password', async (_event, email: string) => {
+    try {
+      if (!email || typeof email !== 'string') {
+        return { success: false, error: 'Email address is required.' }
+      }
+      const cleanEmail = email.trim().toLowerCase()
+      const res = await centralApi.forgotPassword(cleanEmail)
+      return res
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to request password reset.' }
+    }
+  })
+
+  // ── Reset Password Handler ──
+  ipcMain.handle('auth:reset-password', async (_event, { token, newPassword }: { token: string; newPassword: string }) => {
+    try {
+      if (!token || !newPassword) {
+        return { success: false, error: 'Token and new password are required.' }
+      }
+      const res = await centralApi.resetPassword(token, newPassword)
+      return res
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to reset password.' }
+    }
+  })
+
   // ── Get Current User Handler ──
   ipcMain.handle('auth:get-current-user', async (_event, token: string) => {
     if (token) {

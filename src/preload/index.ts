@@ -22,6 +22,8 @@ const api = {
   googleLogin: (payload: any) => ipcRenderer.invoke('auth:google-login', payload),
   verifyEmail: (token: string) => ipcRenderer.invoke('auth:verify-email', token),
   resendVerification: (email: string) => ipcRenderer.invoke('auth:resend-verification', email),
+  forgotPassword: (email: string) => ipcRenderer.invoke('auth:forgot-password', email),
+  resetPassword: (token: string, newPassword: string) => ipcRenderer.invoke('auth:reset-password', { token, newPassword }),
   getCurrentUser: (token: string) => ipcRenderer.invoke('auth:get-current-user', token),
   logoutUser: (token: string) => ipcRenderer.invoke('auth:logout', token),
 

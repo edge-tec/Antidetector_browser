@@ -624,6 +624,138 @@ switch ($action) {
         ]);
         break;
 
+    // ── 7. Forgot Password / Request Password Reset Link ──
+    case 'forgot-password':
+    case 'request-password-reset':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $email = trim($input['email'] ?? '');
+
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            respondJson(['success' => false, 'error' => 'Please provide a valid email address.'], 400);
+        }
+
+        $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            respondJson([
+                'success' => true,
+                'message' => 'If an account exists with this email, a password reset link has been dispatched.'
+            ]);
+        }
+
+        if ($user['account_status'] === 'suspended') {
+            respondJson(['success' => false, 'error' => 'This account is suspended. Please contact customer support.'], 403);
+        }
+
+        // Send Password Reset Email
+        $resetResult = sendPasswordResetEmailPhp($user['id'], $user['name'] ?? 'User', $user['email']);
+
+        recordSecurityEvent('PASSWORD_RESET_REQUESTED', 'info', $user['id'], "Password reset requested for {$email}");
+
+        respondJson([
+            'success' => true,
+            'message' => 'A password reset link has been sent to your email address.',
+            'email' => $user['email'],
+            'sentViaSmtp' => $resetResult['sentViaSmtp'] ?? false
+        ]);
+        break;
+
+    // ── 8. Validate Password Reset Token ──
+    case 'validate-reset-token':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_GET;
+        $token = trim($input['token'] ?? '');
+
+        if (!$token) {
+            respondJson(['success' => false, 'error' => 'Token is required.'], 400);
+        }
+
+        $tokenHash = hash('sha256', $token);
+        $stmt = $db->prepare("
+            SELECT pr.*, u.name, u.email, u.account_status
+            FROM password_resets pr
+            JOIN users u ON pr.user_id = u.id
+            WHERE pr.token_hash = ? AND pr.used = 0 AND pr.expires_at > NOW()
+            ORDER BY pr.created_at DESC LIMIT 1
+        ");
+        $stmt->execute([$tokenHash]);
+        $resetRecord = $stmt->fetch();
+
+        if (!$resetRecord) {
+            respondJson(['success' => false, 'valid' => false, 'error' => 'This password reset link is invalid or has expired.'], 400);
+        }
+
+        respondJson([
+            'success' => true,
+            'valid' => true,
+            'email' => $resetRecord['email'],
+            'userName' => $resetRecord['name']
+        ]);
+        break;
+
+    // ── 9. Reset Password / Confirm Password Reset ──
+    case 'reset-password':
+    case 'confirm-password-reset':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $token = trim($input['token'] ?? '');
+        $newPassword = $input['new_password'] ?? $input['newPassword'] ?? $input['password'] ?? '';
+
+        if (!$token) {
+            respondJson(['success' => false, 'error' => 'Reset token is required.'], 400);
+        }
+
+        if (!$newPassword || strlen($newPassword) < 6) {
+            respondJson(['success' => false, 'error' => 'New password must be at least 6 characters long.'], 400);
+        }
+
+        $tokenHash = hash('sha256', $token);
+        $stmt = $db->prepare("
+            SELECT pr.*, u.name, u.email, u.account_status
+            FROM password_resets pr
+            JOIN users u ON pr.user_id = u.id
+            WHERE pr.token_hash = ? AND pr.used = 0 AND pr.expires_at > NOW()
+            ORDER BY pr.created_at DESC LIMIT 1
+        ");
+        $stmt->execute([$tokenHash]);
+        $resetRecord = $stmt->fetch();
+
+        if (!$resetRecord) {
+            respondJson(['success' => false, 'error' => 'This password reset link is invalid or has expired. Please request a new one.'], 400);
+        }
+
+        $userId = $resetRecord['user_id'];
+        $newHash = hashUserPassword($newPassword);
+
+        // Update password, increment auth_version to invalidate old sessions, clear reset token
+        $updUser = $db->prepare("
+            UPDATE users SET
+                password_hash = ?,
+                auth_version = COALESCE(auth_version, 1) + 1,
+                reset_token_hash = NULL,
+                reset_token_expires_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+        $updUser->execute([$newHash, $userId]);
+
+        // Mark token as used
+        $markUsed = $db->prepare("UPDATE password_resets SET used = 1, used_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $markUsed->execute([$resetRecord['id']]);
+
+        // Send confirmation email
+        try {
+            sendPasswordChangedNotificationPhp($resetRecord['name'] ?? 'User', $resetRecord['email']);
+        } catch (Throwable $e) {}
+
+        recordSecurityEvent('PASSWORD_RESET_SUCCESSFUL', 'info', $userId, "Password reset successfully completed for {$resetRecord['email']}");
+
+        respondJson([
+            'success' => true,
+            'message' => 'Password reset successfully! You can now log in with your new password.'
+        ]);
+        break;
+
     default:
         respondJson(['success' => false, 'error' => 'Invalid auth endpoint action.'], 404);
 }

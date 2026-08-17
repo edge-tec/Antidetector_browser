@@ -207,6 +207,20 @@ export class CentralApiClient {
     return { success: true }
   }
 
+  public async forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    })
+  }
+
+  public async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword })
+    })
+  }
+
   // ── Licensing & Expiry APIs ──
   public async validateLicense(): Promise<{ success: boolean; data?: CentralLicense; error?: string }> {
     const res = await this.request<{ success: boolean; data?: CentralLicense; error?: string }>('/api/license/validate', {
