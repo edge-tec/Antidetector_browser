@@ -588,6 +588,45 @@ CREATE TABLE IF NOT EXISTS `payment_gateways` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `profiles` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `group_id` VARCHAR(50) DEFAULT NULL,
+  `notes` TEXT DEFAULT NULL,
+  `color` VARCHAR(50) DEFAULT '#6366F1',
+  `icon` VARCHAR(50) DEFAULT 'globe',
+  `browser_version` VARCHAR(50) DEFAULT 'latest',
+  `user_agent` TEXT DEFAULT NULL,
+  `language` VARCHAR(50) DEFAULT 'en-US',
+  `timezone` VARCHAR(100) DEFAULT 'America/New_York',
+  `screen_width` INT DEFAULT 1920,
+  `screen_height` INT DEFAULT 1080,
+  `webrtc_mode` VARCHAR(50) DEFAULT 'fake',
+  `canvas_mode` VARCHAR(50) DEFAULT 'noise',
+  `webgl_mode` VARCHAR(50) DEFAULT 'noise',
+  `hw_concurrency` INT DEFAULT 8,
+  `device_memory` INT DEFAULT 8,
+  `hw_acceleration` TINYINT(1) DEFAULT 1,
+  `proxy_id` VARCHAR(50) DEFAULT NULL,
+  `tags` TEXT DEFAULT NULL,
+  `status` VARCHAR(50) DEFAULT 'stopped',
+  `os_type` VARCHAR(50) DEFAULT 'windows-10',
+  `fingerprint` LONGTEXT DEFAULT NULL,
+  `folder` VARCHAR(255) DEFAULT NULL,
+  `start_url` TEXT DEFAULT NULL,
+  `launch_args` TEXT DEFAULT NULL,
+  `save_history` TINYINT(1) DEFAULT 1,
+  `save_passwords` TINYINT(1) DEFAULT 1,
+  `google_services` TINYINT(1) DEFAULT 0,
+  `system_extensions` TINYINT(1) DEFAULT 0,
+  `custom_dns` VARCHAR(100) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_profiles_user` (`user_id`),
+  KEY `idx_profiles_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `profile_configurations` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `user_id` VARCHAR(36) NOT NULL,

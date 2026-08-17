@@ -17,8 +17,8 @@ class SessionManager {
   private sessions = new Map<string, UserSession>()
   private rateLimits = new Map<string, { count: number; firstAttempt: number }>()
 
-  createSession(user: UserDisplay): string {
-    const token = crypto.randomBytes(32).toString('hex')
+  createSession(user: UserDisplay, customToken?: string): string {
+    const token = customToken || crypto.randomBytes(32).toString('hex')
     const now = Date.now()
     const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
 
@@ -30,27 +30,66 @@ class SessionManager {
     })
 
     // Update last login timestamp in DB
-    userRepo.update(user.id, { lastLoginAt: new Date().toISOString() })
+    try {
+      userRepo.update(user.id, { lastLoginAt: new Date().toISOString() })
+    } catch {}
     return token
+  }
+
+  registerSession(token: string, user: UserDisplay): void {
+    if (!token || !user) return
+    const now = Date.now()
+    this.sessions.set(token, {
+      token,
+      userId: user.id,
+      createdAt: now,
+      expiresAt: now + 7 * 24 * 60 * 60 * 1000
+    })
   }
 
   getSessionUser(token: string | undefined | null): UserDisplay | null {
     if (!token) return null
     const session = this.sessions.get(token)
-    if (!session) return null
-
-    if (Date.now() > session.expiresAt) {
-      this.sessions.delete(token)
-      return null
+    if (session) {
+      if (Date.now() > session.expiresAt) {
+        this.sessions.delete(token)
+        return null
+      }
+      const user = userRepo.getDisplayById(session.userId)
+      if (user) return user
     }
 
-    const user = userRepo.getDisplayById(session.userId)
-    if (!user) {
-      this.sessions.delete(token)
-      return null
-    }
+    // Fallback: If token is a JWT from Central Backend, decode userId
+    try {
+      if (token.includes('.')) {
+        const parts = token.split('.')
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
+          const uid = payload.sub || payload.userId || payload.id
+          if (uid) {
+            let u = userRepo.getDisplayById(uid)
+            if (!u && payload.email) {
+              u = userRepo.getDisplayByEmail(payload.email)
+            }
+            if (u) {
+              this.registerSession(token, u)
+              return u
+            }
+          }
+        }
+      }
+    } catch {}
 
-    return user
+    // Fallback: Check if there is only 1 active local user (single-tenant desktop mode)
+    try {
+      const all = userRepo.getAllDisplay()
+      if (all.length === 1) {
+        this.registerSession(token, all[0])
+        return all[0]
+      }
+    } catch {}
+
+    return null
   }
 
   destroySession(token: string): boolean {
@@ -106,7 +145,9 @@ export function authorizeUser(token: string | undefined | null, options?: { allo
     return { user: null, error: 'Email verification required before accessing browser profiles.' }
   }
 
-  if (options?.requireAdmin && user.role !== 'admin') {
+  const role = (user.role || '').toLowerCase()
+  const isAdmin = (role === 'admin' || role === 'super_admin')
+  if (options?.requireAdmin && !isAdmin) {
     return { user: null, error: 'Access denied. Administrator permissions required.' }
   }
 

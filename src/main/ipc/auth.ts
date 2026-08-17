@@ -76,6 +76,7 @@ export function setupAuthIPC(): void {
         }
 
         const localToken = centralRes.sessionToken || sessionManager.createSession(displayUser as any)
+        sessionManager.registerSession(localToken, displayUser as any)
         
         // Start real-time synchronization with Central Server
         try {
@@ -179,6 +180,7 @@ export function setupAuthIPC(): void {
         }
 
         const token = centralRes.sessionToken || sessionManager.createSession(displayUser as any)
+        sessionManager.registerSession(token, displayUser as any)
         logger.info('auth', `User authenticated with Central Server: "${u.email}" (${u.id})`)
 
         // Start real-time synchronization with Central Server

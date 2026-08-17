@@ -358,10 +358,11 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
   }
 
   const handleBulkCreate = async (count: number, osType: string, namePrefix: string, groupId?: string, proxyId?: string) => {
+    if (!sessionToken) return
     let successCount = 0
     for (let i = 1; i <= count; i++) {
       const name = `${namePrefix} ${i}`
-      const res = await window.api.createProfile({
+      const res = await window.api.createProfile(sessionToken, {
         name,
         osType,
         groupId,
@@ -374,6 +375,7 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
   }
 
   const handleSelectTemplate = async (templateOs: string, templateName: string, mode: 'create' | 'edit') => {
+    if (!sessionToken) return
     if (mode === 'edit') {
       setEditId(null)
       setEditProfile({
@@ -383,7 +385,7 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
       } as any)
       setShowCreate(true)
     } else {
-      const res = await window.api.createProfile({
+      const res = await window.api.createProfile(sessionToken, {
         name: templateName,
         osType: templateOs
       })

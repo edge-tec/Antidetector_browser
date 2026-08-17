@@ -20,7 +20,9 @@ export function registerBrowserHandlers(): void {
       }
 
       validateId(id)
-      if (!profileRepo.verifyOwnership(id, auth.user.id, auth.user.role === 'admin')) {
+      const role = (auth.user.role || '').toLowerCase()
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
@@ -35,6 +37,11 @@ export function registerBrowserHandlers(): void {
           pid: result.pid
         })
       }
+
+      // Sync status to Central Backend
+      try {
+        centralApi.setProfileStatus(id, 'running').catch(() => {})
+      } catch {}
 
       return { success: true, data: result }
     } catch (err: any) {
@@ -61,7 +68,9 @@ export function registerBrowserHandlers(): void {
       }
 
       validateId(id)
-      if (!profileRepo.verifyOwnership(id, auth.user.id, auth.user.role === 'admin')) {
+      const role = (auth.user.role || '').toLowerCase()
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
@@ -74,6 +83,11 @@ export function registerBrowserHandlers(): void {
           status: 'stopped'
         })
       }
+
+      // Sync status to Central Backend
+      try {
+        centralApi.setProfileStatus(id, 'stopped').catch(() => {})
+      } catch {}
 
       return { success: true }
     } catch (err: any) {

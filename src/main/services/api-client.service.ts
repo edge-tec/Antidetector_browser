@@ -244,10 +244,40 @@ export class CentralApiClient {
     })
   }
 
-  public async sendMessage(conversationId: string, message: string): Promise<{ success: boolean; message_id?: string; error?: string }> {
-    return await this.request('/api/support/send-message', {
+  // ── Central Profiles Management APIs ──
+  public async getProfiles(search?: string, groupId?: string, status?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    let url = '/api/profiles?action=list'
+    if (search) url += `&search=${encodeURIComponent(search)}`
+    if (groupId) url += `&groupId=${encodeURIComponent(groupId)}`
+    if (status) url += `&status=${encodeURIComponent(status)}`
+    return await this.request(url, { method: 'GET' })
+  }
+
+  public async createProfile(profileData: any): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    return await this.request('/api/profiles?action=create', {
       method: 'POST',
-      body: JSON.stringify({ conversation_id: conversationId, message })
+      body: JSON.stringify(profileData)
+    })
+  }
+
+  public async updateProfile(id: string, profileData: any): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request(`/api/profiles?action=update&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: JSON.stringify(profileData)
+    })
+  }
+
+  public async deleteProfile(id: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request(`/api/profiles?action=delete&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: JSON.stringify({ id })
+    })
+  }
+
+  public async setProfileStatus(id: string, status: 'running' | 'stopped'): Promise<{ success: boolean; status?: string; error?: string }> {
+    return await this.request('/api/profiles?action=status', {
+      method: 'POST',
+      body: JSON.stringify({ id, status })
     })
   }
 }

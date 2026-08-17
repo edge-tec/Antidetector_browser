@@ -208,6 +208,9 @@ class RealtimeSyncService {
 
     try {
       const streamUrl = new URL(`${this.serverUrl}/api/events/stream`)
+      streamUrl.searchParams.set('token', this.sessionToken)
+      streamUrl.searchParams.set('client', 'desktop')
+      streamUrl.searchParams.set('platform', process.platform)
       if (this.lastEventId) {
         streamUrl.searchParams.set('last_event_id', this.lastEventId)
       }
@@ -353,9 +356,21 @@ class RealtimeSyncService {
         break
 
       case 'connected':
+        this.setStatus('connected')
         if (parsedPayload.authVersion && parsedPayload.authVersion > this.lastAuthVersion) {
           await this.resyncAuthoritativeState()
         }
+        break;
+
+      case 'profile.created':
+      case 'profile.updated':
+      case 'profile.deleted':
+      case 'profile.started':
+      case 'profile.stopped':
+      case 'profile.status.changed':
+        logger.info('sync', `[SyncEvent] Profile event received (${eventType}), notifying renderers...`)
+        this.broadcastToAllWindows('profiles:status-changed', parsedPayload)
+        this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
         break
 
       default:

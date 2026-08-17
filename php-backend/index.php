@@ -136,6 +136,16 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
         exit();
     }
 
+    // Profile Management APIs (/api/profiles, /api/profiles/*)
+    if (strpos($requestUri, '/api/profiles') === 0) {
+        $action = str_replace('/api/profiles/', '', $requestUri);
+        $action = str_replace('/api/profiles', '', $action);
+        if ($action) $_GET['action'] = trim($action, '/');
+        if (empty($_GET['action'])) $_GET['action'] = ($_SERVER['REQUEST_METHOD'] === 'POST' ? 'create' : 'list');
+        require_once __DIR__ . '/api/profiles.php';
+        exit();
+    }
+
     respondJson(['success' => false, 'error' => 'API endpoint not found.'], 404);
 }
 

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — IPC Profile Handlers (With Authorization & Ownership Isolation)
+// ProfileVault — IPC Profile Handlers (With Authorization & Central Sync)
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'
@@ -7,6 +7,7 @@ import { profileRepo } from '../database/repositories/profile.repo'
 import { profileManager } from '../browser/profile-manager'
 import { validateProfileName, validateId } from '../security/validators'
 import { authorizeUser } from '../security/session'
+import { centralApi } from '../services/api-client.service'
 import { logger } from '../logging/logger'
 
 export function registerProfileHandlers(): void {
@@ -16,8 +17,52 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) {
         return { success: false, error: auth.error || 'Authentication required' }
       }
-      const filterUserId = auth.user.role === 'admin' ? undefined : auth.user.id
-      return { success: true, data: profileRepo.getAll(filterUserId, search, groupId, status) }
+      const role = (auth.user.role || '').toLowerCase()
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      const filterUserId = isAdmin ? undefined : auth.user.id
+
+      // 1. Get local profiles
+      const localProfiles = profileRepo.getAll(filterUserId, search, groupId, status)
+
+      // 2. Fetch from Central API in background to keep state synchronized
+      centralApi.getProfiles(search, groupId, status).then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          for (const cp of res.data) {
+            const existing = profileRepo.getById(cp.id)
+            if (!existing) {
+              try {
+                profileRepo.create({
+                  id: cp.id,
+                  name: cp.name,
+                  groupId: cp.groupId,
+                  notes: cp.notes,
+                  color: cp.color,
+                  icon: cp.icon,
+                  browserVersion: cp.browserVersion,
+                  userAgent: cp.userAgent,
+                  language: cp.language,
+                  timezone: cp.timezone,
+                  screenWidth: cp.screenWidth,
+                  screenHeight: cp.screenHeight,
+                  webrtcMode: cp.webrtcMode,
+                  canvasMode: cp.canvasMode,
+                  webglMode: cp.webglMode,
+                  hwConcurrency: cp.hwConcurrency,
+                  deviceMemory: cp.deviceMemory,
+                  hwAcceleration: cp.hwAcceleration,
+                  proxyId: cp.proxyId,
+                  tags: cp.tags,
+                  osType: cp.osType,
+                  fingerprint: cp.fingerprint,
+                  startUrl: cp.startUrl
+                } as any, cp.userId)
+              } catch {}
+            }
+          }
+        }
+      }).catch(() => {})
+
+      return { success: true, data: localProfiles }
     } catch (err: any) {
       logger.error('profile', `Failed to get profiles: ${err.message}`)
       return { success: false, error: err.message }
@@ -33,7 +78,9 @@ export function registerProfileHandlers(): void {
       const profile = profileRepo.getById(id)
       if (!profile) return { success: false, error: 'Profile not found' }
 
-      if (!profileRepo.verifyOwnership(id, auth.user.id, auth.user.role === 'admin')) {
+      const role = (auth.user.role || '').toLowerCase()
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
@@ -48,11 +95,53 @@ export function registerProfileHandlers(): void {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
+      if (!input || typeof input !== 'object') {
+        return { success: false, error: 'Invalid profile parameters provided.' }
+      }
+
       validateProfileName(input.name)
+
+      // 1. Create local profile and filesystem sandbox
       const profile = profileManager.createProfile(input, auth.user.id)
+
+      // 2. Synchronize to Central MySQL Database
+      try {
+        centralApi.createProfile({
+          id: profile.id,
+          name: profile.name,
+          groupId: profile.groupId,
+          notes: profile.notes,
+          color: profile.color,
+          icon: profile.icon,
+          browserVersion: profile.browserVersion,
+          userAgent: profile.userAgent,
+          language: profile.language,
+          timezone: profile.timezone,
+          screenWidth: profile.screenWidth,
+          screenHeight: profile.screenHeight,
+          webrtcMode: profile.webrtcMode,
+          canvasMode: profile.canvasMode,
+          webglMode: profile.webglMode,
+          hwConcurrency: profile.hwConcurrency,
+          deviceMemory: profile.deviceMemory,
+          hwAcceleration: profile.hwAcceleration,
+          proxyId: profile.proxyId,
+          tags: profile.tags,
+          osType: profile.osType,
+          fingerprint: profile.fingerprint,
+          startUrl: profile.startUrl
+        }).then((centralRes) => {
+          if (centralRes.success) {
+            logger.info('profile', `[PROFILE_CENTRAL_SYNC] Profile "${profile.name}" replicated to Central Server.`)
+          }
+        }).catch((e) => {
+          logger.warn('profile', `[PROFILE_CENTRAL_SYNC_WARNING] Background central sync error: ${e.message}`)
+        })
+      } catch {}
+
       return { success: true, data: profile }
     } catch (err: any) {
-      logger.error('profile', `Failed to create profile: ${err.message}`)
+      logger.error('profile', `[PROFILE_CREATE_FAILED] Failed to create profile: ${err.message}`)
       return { success: false, error: err.message }
     }
   })
@@ -63,13 +152,21 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
       validateId(id)
-      if (!profileRepo.verifyOwnership(id, auth.user.id, auth.user.role === 'admin')) {
+      const role = (auth.user.role || '').toLowerCase()
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
       if (input.name) validateProfileName(input.name)
       const profile = profileRepo.update(id, input)
       if (!profile) return { success: false, error: 'Profile not found' }
+
+      // Sync to Central Backend
+      try {
+        centralApi.updateProfile(id, input).catch(() => {})
+      } catch {}
+
       return { success: true, data: profile }
     } catch (err: any) {
       logger.error('profile', `Failed to update profile: ${err.message}`)
@@ -83,11 +180,19 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
       validateId(id)
-      if (!profileRepo.verifyOwnership(id, auth.user.id, auth.user.role === 'admin')) {
+      const role = (auth.user.role || '').toLowerCase()
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
       await profileManager.deleteProfile(id)
+
+      // Sync delete to Central Backend
+      try {
+        centralApi.deleteProfile(id).catch(() => {})
+      } catch {}
+
       return { success: true }
     } catch (err: any) {
       logger.error('profile', `Failed to delete profile: ${err.message}`)

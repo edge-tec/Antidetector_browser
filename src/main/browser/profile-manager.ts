@@ -9,7 +9,7 @@ import { profileRepo } from '../database/repositories/profile.repo'
 import { Profile, ProfileCreateInput } from '../database/models'
 import { launchBrowser } from './launcher'
 import { processTracker } from './process-tracker'
-import { findChromiumPath, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
+import { findChromiumPath, ensureProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
 import { logger } from '../logging/logger'
 import { getDatabase } from '../database/connection'
 
@@ -105,8 +105,32 @@ class ProfileManager {
    * Create a new profile.
    */
   createProfile(input: ProfileCreateInput, userId?: string): Profile {
+    logger.info('profile', `[PROFILE_CREATE_STARTED] Initializing profile "${input.name}" for user ${userId || 'default'}`)
     const profile = profileRepo.create(input, userId)
-    logger.info('profile', `Created profile "${profile.name}" (${profile.id}) for user ${userId || 'default'}`)
+    
+    // 1. Ensure isolated storage directory
+    try {
+      const dataDir = ensureProfileDataDir(profile.id)
+      const profileRootDir = path.dirname(dataDir)
+      
+      // 2. Write metadata.json and settings.json
+      const meta = {
+        id: profile.id,
+        name: profile.name,
+        userId: profile.userId,
+        createdAt: profile.createdAt,
+        osType: profile.osType,
+        browserVersion: profile.browserVersion
+      }
+      fs.writeFileSync(path.join(profileRootDir, 'metadata.json'), JSON.stringify(meta, null, 2), 'utf-8')
+      fs.writeFileSync(path.join(profileRootDir, 'settings.json'), JSON.stringify(profile, null, 2), 'utf-8')
+      
+      logger.info('profile', `[PROFILE_INITIALIZATION_SUCCESS] Created profile storage at: ${dataDir}`)
+    } catch (fsErr: any) {
+      logger.warn('profile', `[PROFILE_STORAGE_WARNING] Could not write metadata files: ${fsErr.message}`)
+    }
+
+    logger.info('profile', `[PROFILE_READY] Profile "${profile.name}" (${profile.id}) is ready.`)
     return profile
   }
 
