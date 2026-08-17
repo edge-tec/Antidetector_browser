@@ -1606,20 +1606,21 @@ header('Content-Type: text/html; charset=utf-8');
             <!-- Contact Message Form -->
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
                 <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Send a Message</h3>
-                <form onsubmit="event.preventDefault(); alert('Thank you for your message! Our support team will get back to you shortly.'); this.reset();">
+                <div id="contactFormStatus" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; font-weight: 600;"></div>
+                <form id="publicContactForm" onsubmit="handlePublicContactSubmit(event)">
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <input type="text" placeholder="Your Name" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <input type="text" id="contactSenderName" placeholder="Your Name" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13.5px;">
                     </div>
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <input type="email" placeholder="Your Email" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <input type="email" id="contactSenderEmail" placeholder="Your Email" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13.5px;">
                     </div>
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <input type="text" placeholder="Subject" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <input type="text" id="contactSenderSubject" placeholder="Subject" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13.5px;">
                     </div>
                     <div class="form-group" style="margin-bottom: 16px;">
-                        <textarea rows="4" placeholder="Your Message..." required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;"></textarea>
+                        <textarea id="contactSenderMessage" rows="4" placeholder="Your Message..." required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13.5px;"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;">Send Message</button>
+                    <button type="submit" id="btnSendContactMsg" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; padding: 12px;">Send Message</button>
                 </form>
             </div>
         </div>
@@ -3303,6 +3304,82 @@ header('Content-Type: text/html; charset=utf-8');
                 answer.style.display = 'block';
                 icon.innerText = '−';
             }
+        }
+
+        async function handlePublicContactSubmit(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const btn = document.getElementById('btnSendContactMsg');
+            const statusBox = document.getElementById('contactFormStatus');
+            const name = document.getElementById('contactSenderName').value.trim();
+            const email = document.getElementById('contactSenderEmail').value.trim();
+            const subject = document.getElementById('contactSenderSubject').value.trim();
+            const message = document.getElementById('contactSenderMessage').value.trim();
+
+            if (!name || !email || !message) {
+                if (statusBox) {
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(239,68,68,0.15)';
+                    statusBox.style.color = '#F87171';
+                    statusBox.innerText = '❌ Please fill in your name, email, and message.';
+                }
+                return false;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Sending Message...';
+            }
+
+            if (statusBox) {
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(99,102,241,0.15)';
+                statusBox.style.color = '#818CF8';
+                statusBox.innerText = '⏳ Delivering your message to info@antiprofiles.com...';
+            }
+
+            try {
+                const res = await fetch('/api/support?action=contact-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        subject: subject,
+                        message: message
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    if (statusBox) {
+                        statusBox.style.display = 'block';
+                        statusBox.style.background = 'rgba(45,212,191,0.15)';
+                        statusBox.style.color = '#2DD4BF';
+                        statusBox.innerText = '✅ ' + (data.message || 'Thank you for your message! Our team has received it at info@antiprofiles.com and will reply shortly.');
+                    }
+                    document.getElementById('publicContactForm').reset();
+                } else {
+                    if (statusBox) {
+                        statusBox.style.display = 'block';
+                        statusBox.style.background = 'rgba(239,68,68,0.15)';
+                        statusBox.style.color = '#F87171';
+                        statusBox.innerText = '❌ ' + (data.error || 'Failed to send message. Please try again.');
+                    }
+                }
+            } catch (err) {
+                if (statusBox) {
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(239,68,68,0.15)';
+                    statusBox.style.color = '#F87171';
+                    statusBox.innerText = '❌ Network connection error. Please try again.';
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Send Message';
+                }
+            }
+            return false;
         }
 
         function handleLogout() {

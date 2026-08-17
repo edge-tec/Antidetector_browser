@@ -1511,6 +1511,61 @@ function sendAdminTestEmailPhp(string $toEmail, ?array $overrideConfig = null): 
     ];
 }
 
+/**
+ * 8. Send Website Contact Form Message to Support Inbox (info@antiprofiles.com)
+ */
+function sendContactFormNotificationPhp(string $name, string $email, string $subject, string $message, string $targetInbox = 'info@antiprofiles.com'): array {
+    $timestamp = date('Y-m-d H:i:s T');
+    $safeSubject = trim($subject) ?: 'New Website Inquiry';
+    $emailSubject = "📬 [Website Contact] " . $safeSubject . " — from " . $name;
+
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>New Contact Message</title></head>
+    <body style='background-color:#08090C; font-family:sans-serif; color:#CBD5E1; padding:30px; margin:0;'>
+      <div style='max-width:600px; margin:0 auto; background:#12141E; padding:32px; border-radius:14px; border:1px solid #232738;'>
+        <div style='text-align:left; border-bottom:1px solid #232738; padding-bottom:16px; margin-bottom:20px;'>
+          <span style='background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); color:#2DD4BF; padding:4px 12px; border-radius:16px; font-size:11px; font-weight:700; text-transform:uppercase;'>✉️ Website Contact Form Message</span>
+          <h2 style='color:#FFFFFF; font-size:20px; margin:12px 0 4px 0;'>" . htmlspecialchars($safeSubject) . "</h2>
+          <p style='color:#94A3B8; font-size:12px; margin:0;'>Received at: " . htmlspecialchars($timestamp) . "</p>
+        </div>
+
+        <div style='background:#090B12; border:1px solid #232738; border-radius:10px; padding:16px; margin-bottom:20px;'>
+          <p style='margin:0 0 8px 0; font-size:13px;'><strong style='color:#94A3B8;'>Sender Name:</strong> <span style='color:#FFFFFF;'>" . htmlspecialchars($name) . "</span></p>
+          <p style='margin:0 0 8px 0; font-size:13px;'><strong style='color:#94A3B8;'>Sender Email:</strong> <a href='mailto:" . htmlspecialchars($email) . "' style='color:#2DD4BF; text-decoration:none;'>" . htmlspecialchars($email) . "</a></p>
+          <p style='margin:0; font-size:13px;'><strong style='color:#94A3B8;'>Subject:</strong> <span style='color:#FFFFFF;'>" . htmlspecialchars($safeSubject) . "</span></p>
+        </div>
+
+        <div style='margin-bottom:24px;'>
+          <div style='font-size:12px; color:#94A3B8; font-weight:700; text-transform:uppercase; margin-bottom:8px;'>Message Body:</div>
+          <div style='background:#171926; border-left:3px solid #2DD4BF; border-radius:4px; padding:16px; color:#E2E8F0; font-size:14px; line-height:1.6; white-space:pre-wrap;'>" . htmlspecialchars($message) . "</div>
+        </div>
+
+        <div style='border-top:1px solid #232738; padding-top:16px; text-align:center;'>
+          <a href='mailto:" . htmlspecialchars($email) . "?subject=" . urlencode("Re: " . $safeSubject) . "' style='background:#2DD4BF; color:#08090C; font-weight:800; padding:10px 24px; border-radius:8px; text-decoration:none; display:inline-block; font-size:13px;'>Reply directly to " . htmlspecialchars($name) . " (" . htmlspecialchars($email) . ")</a>
+        </div>
+      </div>
+    </body>
+    </html>";
+
+    $metadata = [
+        'sender_name' => $name,
+        'sender_email' => $email,
+        'subject' => $safeSubject,
+        'target_inbox' => $targetInbox,
+        'timestamp' => $timestamp
+    ];
+
+    $sent = sendSmtpMailPhp($targetInbox, $emailSubject, $html, null, 'contact_message', null, $metadata);
+
+    return [
+        'success' => $sent,
+        'recipient' => $targetInbox,
+        'message' => $sent ? 'Your message has been delivered to our team!' : 'Could not deliver message via mail server.'
+    ];
+}
+
 // Audit Logging Helper
 function logAdminAction(string $adminId, string $adminEmail, string $action, ?string $targetUserId = null, ?string $details = null, ?string $prevVal = null, ?string $newVal = null) {
     try {

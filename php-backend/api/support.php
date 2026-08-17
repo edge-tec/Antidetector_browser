@@ -506,6 +506,64 @@ try {
             respondJson(['success' => true, 'message' => 'Support settings updated successfully.']);
             break;
 
+        // ── 11. Website Contact Form Message Dispatcher ──
+        case 'contact-message':
+        case 'send-contact-message':
+            $name = trim($input['name'] ?? '');
+            $email = trim($input['email'] ?? '');
+            $subject = trim($input['subject'] ?? 'Website Inquiry');
+            $message = trim($input['message'] ?? $input['messageBody'] ?? '');
+
+            if (!$name || !$email || !$message) {
+                respondJson(['success' => false, 'error' => 'Please provide your name, a valid email address, and your message.'], 400);
+            }
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                respondJson(['success' => false, 'error' => 'Please enter a valid email address.'], 400);
+            }
+
+            // 1. Dispatch Email to info@antiprofiles.com
+            $targetInbox = 'info@antiprofiles.com';
+            $emailResult = sendContactFormNotificationPhp($name, $email, $subject, $message, $targetInbox);
+
+            // 2. Also register in Support Conversation & Messages for Admin Inbox tracking
+            try {
+                $convId = 'conv_cf_' . bin2hex(random_bytes(6));
+                $msgId = 'msg_cf_' . bin2hex(random_bytes(8));
+                $visitorToken = 'cf_' . md5(strtolower($email));
+
+                $insConv = $db->prepare("
+                    INSERT INTO support_conversations (id, visitor_token, visitor_name, visitor_email, channel, status, unread_count, last_message_text, last_message_at, created_at)
+                    VALUES (?, ?, ?, ?, 'contact_form', 'open', 1, ?, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE 
+                        last_message_text = VALUES(last_message_text),
+                        last_message_at = NOW(),
+                        unread_count = unread_count + 1,
+                        status = 'open'
+                ");
+                $insConv->execute([$convId, $visitorToken, $name, $email, substr($message, 0, 200)]);
+
+                // Fetch conversation ID if duplicate key updated
+                $cStmt = $db->prepare("SELECT id FROM support_conversations WHERE visitor_token = ? LIMIT 1");
+                $cStmt->execute([$visitorToken]);
+                $existingConvId = $cStmt->fetchColumn() ?: $convId;
+
+                $insMsg = $db->prepare("
+                    INSERT INTO support_messages (id, conversation_id, sender_type, sender_name, message, channel, created_at)
+                    VALUES (?, ?, 'user', ?, ?, 'contact_form', NOW())
+                ");
+                $insMsg->execute([$msgId, $existingConvId, $name, $message]);
+            } catch (Throwable $dbEx) {
+                error_log("[AntiProfiles Contact Message Log Error] " . $dbEx->getMessage());
+            }
+
+            respondJson([
+                'success' => true,
+                'emailSent' => $emailResult['success'],
+                'message' => 'Thank you for contacting us! Your message has been sent to info@antiprofiles.com and our team will get back to you shortly.'
+            ]);
+            break;
+
         default:
             respondJson(['success' => false, 'error' => 'Invalid support action: ' . htmlspecialchars($action)], 404);
     }
