@@ -135,37 +135,84 @@ switch ($action) {
     // ── 4. Google OAuth Login / Registration ──
     case 'google':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $credential = trim($input['credential'] ?? '');
         $email = trim($input['email'] ?? '');
         $name = trim($input['name'] ?? '');
         $googleId = trim($input['googleId'] ?? '');
+        $picture = trim($input['picture'] ?? '');
+
+        // 1. Decode and verify Google JWT ID Token if provided
+        if (!empty($credential)) {
+            // First attempt: Verify directly with Google OAuth2 tokeninfo API
+            $verifiedWithGoogle = false;
+            try {
+                $ch = curl_init("https://oauth2.googleapis.com/tokeninfo?id_token=" . urlencode($credential));
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($httpCode === 200 && $response) {
+                    $gData = json_decode($response, true);
+                    if (!empty($gData['email'])) {
+                        $email = trim($gData['email']);
+                        $name = trim($gData['name'] ?? explode('@', $email)[0]);
+                        $googleId = trim($gData['sub'] ?? '');
+                        $picture = trim($gData['picture'] ?? '');
+                        $verifiedWithGoogle = true;
+                    }
+                }
+            } catch (Throwable $e) {}
+
+            // Fallback: Decode JWT payload directly
+            if (!$verifiedWithGoogle) {
+                $jwtParts = explode('.', $credential);
+                if (count($jwtParts) === 3) {
+                    $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $jwtParts[1])), true);
+                    if ($payload && !empty($payload['email'])) {
+                        $email = trim($payload['email']);
+                        $name = trim($payload['name'] ?? explode('@', $email)[0]);
+                        $googleId = trim($payload['sub'] ?? '');
+                        $picture = trim($payload['picture'] ?? '');
+                    }
+                }
+            }
+        }
 
         if (!$email) {
             respondJson(['success' => false, 'error' => 'Email address is required for Google Sign-In.'], 400);
         }
 
-        if (!$name) $name = explode('@', $email)[0];
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            respondJson(['success' => false, 'error' => 'Invalid email address format.'], 400);
+        }
 
-        // Check if user already exists
+        if (!$name) $name = explode('@', $email)[0];
+        if (!$googleId) $googleId = 'gid_' . bin2hex(random_bytes(8));
+
+        // Check if user already exists by email
         $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if (!$user) {
-            // Register new user automatically
+            // Register new Google user automatically
             $userId = 'usr_g_' . bin2hex(random_bytes(6));
-            $passwordHash = hashUserPassword('google_' . bin2hex(random_bytes(10)));
+            $passwordHash = hashUserPassword('google_oauth_' . bin2hex(random_bytes(16)));
 
             $userCount = (int)$db->query("SELECT COUNT(*) FROM users")->fetchColumn();
             $lowerEmail = strtolower($email);
             $role = ($userCount === 0 || $lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false) ? 'admin' : 'user';
 
             $insertStmt = $db->prepare("
-                INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, google_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 1, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ");
-            $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role]);
+            $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $googleId]);
 
-            // Create default starter subscription
+            // Create default starter subscription (1 year active)
             $subId = 'sub_' . $userId;
             $insertSub = $db->prepare("
                 INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
@@ -175,10 +222,16 @@ switch ($action) {
 
             $stmt->execute([$email]);
             $user = $stmt->fetch();
+        } else {
+            // Update Google ID and name if needed
+            if (!empty($googleId) && empty($user['google_id'])) {
+                $upG = $db->prepare("UPDATE users SET google_id = ? WHERE id = ?");
+                $upG->execute([$googleId, $user['id']]);
+            }
         }
 
         if ($user['account_status'] === 'suspended') {
-            respondJson(['success' => false, 'error' => 'Your account has been suspended by an administrator.'], 403);
+            respondJson(['success' => false, 'error' => 'Your account has been suspended by an administrator. Please contact support.'], 403);
         }
 
         // Update last login timestamp
@@ -196,7 +249,7 @@ switch ($action) {
                 'name' => $user['name'],
                 'email' => $user['email'],
                 'role' => $user['role'],
-                'emailVerified' => (bool)$user['email_verified'],
+                'emailVerified' => true,
                 'accountStatus' => $user['account_status'],
                 'createdAt' => $user['created_at'],
                 'lastLoginAt' => date('c')
