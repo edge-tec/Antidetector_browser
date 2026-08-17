@@ -408,8 +408,26 @@ header('Content-Type: text/html; charset=utf-8');
             --text-muted: #94A3B8;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { background: var(--bg-dark); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.6; overflow-x: hidden; width: 100%; }
+        html, body { 
+            background: var(--bg-dark); 
+            color: var(--text-main); 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            font-size: clamp(13px, 1.2vw, 15px);
+            line-height: 1.6; 
+            overflow-x: hidden; 
+            width: 100%; 
+            -webkit-text-size-adjust: 100%;
+        }
         h1, h2, h3, .logo { font-family: 'Outfit', sans-serif; }
+
+        /* Fluid Typography Scaling Across All Screens */
+        h1 { font-size: clamp(24px, 4.5vw, 48px); line-height: 1.2; word-break: break-word; }
+        h2 { font-size: clamp(20px, 3.2vw, 34px); line-height: 1.25; word-break: break-word; }
+        h3 { font-size: clamp(16px, 2.4vw, 22px); line-height: 1.3; word-break: break-word; }
+        h4 { font-size: clamp(14px, 1.8vw, 18px); line-height: 1.35; word-break: break-word; }
+        h5 { font-size: clamp(12.5px, 1.4vw, 15px); line-height: 1.4; word-break: break-word; }
+        h6 { font-size: clamp(11px, 1.2vw, 13px); line-height: 1.4; }
+        p { font-size: clamp(12.5px, 1.35vw, 14.5px); line-height: 1.6; }
         
         /* Container - Centered Width Across All Viewports */
         .container { 
@@ -1994,69 +2012,69 @@ header('Content-Type: text/html; charset=utf-8');
                     <!-- USER TAB 3: DESKTOP APP DOWNLOADS -->
                     <div id="tab-user-downloads" class="admin-tab-content" style="display: none;">
                         <div style="margin-bottom: 24px;">
-                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 6px; display: flex; align-items: center; gap: 10px;">
+                            <h3 style="color: #FFF; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                 <span>🚀 Download Official Desktop Application</span>
-                                <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">v1.0.0 Stable</span>
+                                <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; font-size: clamp(10.5px, 1.1vw, 12px); font-weight: 700; padding: 3px 10px; border-radius: 6px;">v1.0.0 Stable</span>
                             </h3>
-                            <p style="color: var(--text-muted); font-size: 13px; margin: 0;">Download and install the native AntiProfiles anti-detect browser application for Windows, macOS, or Linux.</p>
+                            <p style="color: var(--text-muted); margin: 0;">Download and install the native AntiProfiles anti-detect browser application for Windows, macOS, or Linux.</p>
                         </div>
 
                         <!-- 4-Card Responsive Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 20px; margin-bottom: 28px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 28px; width: 100%;">
                             
                             <!-- 1. Windows x64 Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                                         <div style="font-size: 36px; line-height: 1;">🪟</div>
                                         <span style="background: rgba(59,130,246,0.15); color: #60A5FA; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">WINDOWS</span>
                                     </div>
-                                    <h4 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Windows Client</h4>
-                                    <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 10px;" id="userWinVerText">Version: 1.0.0 (x64 Architecture)</p>
-                                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Native standalone installer for Windows 10 & 11 (64-bit systems).</p>
+                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">Windows Client</h4>
+                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userWinVerText">Version: 1.0.0 (x64 Architecture)</p>
+                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Native standalone installer for Windows 10 & 11 (64-bit systems).</p>
                                 </div>
                                 <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-color: rgba(96,165,250,0.4);" id="userBtnWinDl">⬇️ Download for Windows (.exe)</a>
                             </div>
 
                             <!-- 2. macOS Apple Silicon Card (RECOMMENDED) -->
-                            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 4px 20px rgba(45,212,191,0.08);">
+                            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 4px 20px rgba(45,212,191,0.08); width: 100%; box-sizing: border-box;">
                                 <span style="position: absolute; top: -11px; right: 16px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 900; padding: 2px 10px; border-radius: 12px; letter-spacing: 0.5px;">RECOMMENDED</span>
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                                         <div style="font-size: 36px; line-height: 1;">🍏</div>
                                         <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">APPLE SILICON</span>
                                     </div>
-                                    <h4 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">macOS Apple Silicon</h4>
-                                    <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 10px;" id="userMacArmVerText">Version: 1.0.0 (M1 / M2 / M3 / M4)</p>
-                                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Native ARM64 disk image for Apple M-series chips (M1 to M4).</p>
+                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Apple Silicon</h4>
+                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userMacArmVerText">Version: 1.0.0 (M1 / M2 / M3 / M4)</p>
+                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Native ARM64 disk image for Apple M-series chips (M1 to M4).</p>
                                 </div>
                                 <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" id="userBtnMacArmDl">⬇️ Download Apple Silicon (.dmg)</a>
                             </div>
 
                             <!-- 3. macOS Intel Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                                         <div style="font-size: 36px; line-height: 1;">🍏</div>
                                         <span style="background: rgba(148,163,184,0.15); color: #94A3B8; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">MACOS INTEL</span>
                                     </div>
-                                    <h4 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">macOS Intel Client</h4>
-                                    <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 10px;" id="userMacIntelVerText">Version: 1.0.0 (Intel Processors)</p>
-                                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Disk image optimized for Intel Macs manufactured prior to late 2020.</p>
+                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Intel Client</h4>
+                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userMacIntelVerText">Version: 1.0.0 (Intel Processors)</p>
+                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Disk image optimized for Intel Macs manufactured prior to late 2020.</p>
                                 </div>
                                 <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;" id="userBtnMacIntelDl">⬇️ Download for macOS Intel (.dmg)</a>
                             </div>
 
                             <!-- 4. Linux x64 Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; width: 100%; box-sizing: border-box;">
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                                         <div style="font-size: 36px; line-height: 1;">🐧</div>
                                         <span style="background: rgba(234,179,8,0.15); color: #FACC15; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 10px;">LINUX</span>
                                     </div>
-                                    <h4 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Linux Client</h4>
-                                    <p style="font-size: 12px; color: #2DD4BF; margin-bottom: 10px;" id="userLinuxVerText">Version: 1.0.0 (x64 AppImage & .deb)</p>
-                                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Universal standalone AppImage package for Ubuntu, Debian, Fedora & Arch.</p>
+                                    <h4 style="color: #FFF; margin-bottom: 4px; font-weight: 700;">Linux Client</h4>
+                                    <p style="color: #2DD4BF; font-size: clamp(11.5px, 1.15vw, 13px); font-weight: 600; margin-bottom: 10px;" id="userLinuxVerText">Version: 1.0.0 (x64 AppImage & .deb)</p>
+                                    <p style="color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Universal standalone AppImage package for Ubuntu, Debian, Fedora & Arch.</p>
                                 </div>
                                 <a href="/api/releases?download=1&platform=linux-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-color: rgba(250,204,21,0.4);" id="userBtnLinuxDl">⬇️ Download for Linux (.AppImage)</a>
                             </div>
@@ -2064,33 +2082,33 @@ header('Content-Type: text/html; charset=utf-8');
                         </div>
 
                         <!-- System Security & Feature Highlights Card -->
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; width: 100%; box-sizing: border-box;">
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">🛡️</span>
                                 <div>
-                                    <h5 style="font-size: 13px; color: #FFF; margin: 0 0 2px 0;">Isolated Sandbox Engine</h5>
-                                    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">100% separate cookies & storage per profile</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Isolated Sandbox Engine</h5>
+                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">100% separate cookies & storage per profile</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">⚡</span>
                                 <div>
-                                    <h5 style="font-size: 13px; color: #FFF; margin: 0 0 2px 0;">Native HW Acceleration</h5>
-                                    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Multi-core GPU spoofing with zero lag</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Native HW Acceleration</h5>
+                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">Multi-core GPU spoofing with zero lag</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">🔄</span>
                                 <div>
-                                    <h5 style="font-size: 13px; color: #FFF; margin: 0 0 2px 0;">Auto-Update Ready</h5>
-                                    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Direct seamless OTA patch delivery</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Auto-Update Ready</h5>
+                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">Direct seamless OTA patch delivery</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <span style="font-size: 22px;">🔒</span>
                                 <div>
-                                    <h5 style="font-size: 13px; color: #FFF; margin: 0 0 2px 0;">Encrypted Credentials</h5>
-                                    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">AES-256 GCM client storage</p>
+                                    <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700;">Encrypted Credentials</h5>
+                                    <p style="color: var(--text-muted); font-size: clamp(11px, 1.1vw, 12px); margin: 0;">AES-256 GCM client storage</p>
                                 </div>
                             </div>
                         </div>
