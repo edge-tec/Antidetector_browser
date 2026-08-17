@@ -261,8 +261,7 @@ $isDesktop = isset($_GET['desktop']);
                     });
                 }
 
-                // Automatically trigger on page load
-                setTimeout(triggerGooglePopup, 400);
+                // User clicks button to launch Google popup or uses email
             } catch (e) {
                 console.warn('[Bridge] Google setup error:', e);
                 document.getElementById('fallbackForm').style.display = 'block';

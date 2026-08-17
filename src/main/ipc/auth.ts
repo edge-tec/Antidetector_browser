@@ -331,6 +331,29 @@ export function setupAuthIPC(): void {
         // Ensure Chrome standard user-agent so Google doesn't block Electron WebView
         authWin.webContents.setUserAgent(customUserAgent)
 
+        // Handle Google OAuth child popups properly
+        authWin.webContents.setWindowOpenHandler(({ url }) => {
+          return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+              width: 500,
+              height: 650,
+              title: 'Google Accounts',
+              backgroundColor: '#0B0C10',
+              autoHideMenuBar: true,
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                sandbox: false
+              }
+            }
+          }
+        })
+
+        authWin.webContents.on('did-create-window', (childWin) => {
+          childWin.webContents.setUserAgent(customUserAgent)
+        })
+
         const baseUrl = centralApi.getBaseUrl()
         authWin.loadURL(`${baseUrl}/oauth/google?desktop=1`, {
           userAgent: customUserAgent
