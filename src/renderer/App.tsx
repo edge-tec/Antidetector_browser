@@ -47,6 +47,7 @@ const Icons = {
   upload: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
   check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
   key: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>,
+  chat: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
 }
 
 // ═══════════════════════════════════════════
@@ -1286,6 +1287,194 @@ function LogsPage({ showToast, confirm }: { showToast: (type: ToastItem['type'],
 }
 
 // ═══════════════════════════════════════════
+// Live Support Page (Desktop Chat Interface)
+// ═══════════════════════════════════════════
+
+function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: string) => void }) {
+  const { sessionToken, currentUser } = useAuth()
+  const [messages, setMessages] = useState<any[]>([])
+  const [inputMessage, setInputMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const loadMessages = useCallback(async () => {
+    if (!sessionToken) return
+    try {
+      const res = await fetch('https://antiprofiles.com/api/support/active-thread', {
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
+      })
+      const data = await res.json()
+      if (data.success && Array.isArray(data.messages)) {
+        setMessages(data.messages)
+      }
+    } catch (e) {
+      // Offline fallback
+    }
+  }, [sessionToken])
+
+  useEffect(() => {
+    setIsLoading(true)
+    loadMessages().finally(() => setIsLoading(false))
+    const interval = setInterval(loadMessages, 3500)
+    return () => clearInterval(interval)
+  }, [loadMessages])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const text = inputMessage.trim()
+    if (!text || !sessionToken || isSending) return
+
+    setIsSending(true)
+    setInputMessage('')
+
+    // Optimistic message
+    const tempMsg = {
+      id: 'temp_' + Date.now(),
+      sender_type: 'user',
+      sender_name: currentUser?.name || 'You',
+      message: text,
+      created_at: new Date().toISOString()
+    }
+    setMessages(prev => [...prev, tempMsg])
+
+    try {
+      const res = await fetch('https://antiprofiles.com/api/support/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({
+          message: text,
+          channel: 'desktop'
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        loadMessages()
+      } else {
+        showToast('error', data.error || 'Failed to send message')
+      }
+    } catch (err: any) {
+      showToast('error', 'Network error sending message to support.')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  return (
+    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '16px' }}>
+      <div className="page-header" style={{ marginBottom: 0 }}>
+        <div>
+          <h1 className="page-title">24/7 Live Support & Help Desk</h1>
+          <p className="page-description">Chat directly with ProfileVault technical engineers in real time.</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
+          Support Engineers Online
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', flex: 1, minHeight: 0 }}>
+        {/* Main Chat Box */}
+        <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+          {/* Messages Stream */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {isLoading && messages.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '40px' }}>Loading conversation history...</div>
+            ) : messages.length === 0 ? (
+              <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', maxWidth: '80%', alignSelf: 'flex-start' }}>
+                <span style={{ fontSize: '11px', color: '#2DD4BF', fontWeight: 700 }}>ProfileVault Support Team</span>
+                <p style={{ fontSize: '13px', color: '#FFF', marginTop: '4px' }}>Hello! 👋 Welcome to ProfileVault Live Support. How can we assist you with your antidetect browser profiles, proxies, or subscriptions today?</p>
+                <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', display: 'block', marginTop: '6px' }}>Just now</span>
+              </div>
+            ) : (
+              messages.map(m => {
+                const isAgent = m.sender_type === 'agent'
+                return (
+                  <div
+                    key={m.id || Math.random()}
+                    style={{
+                      background: isAgent ? 'var(--color-bg-tertiary)' : 'linear-gradient(135deg, #2DD4BF, #06B6D4)',
+                      color: isAgent ? '#FFF' : '#000',
+                      border: isAgent ? '1px solid var(--color-border)' : 'none',
+                      borderRadius: isAgent ? '12px 12px 12px 2px' : '12px 12px 2px 12px',
+                      padding: '12px 16px',
+                      maxWidth: '75%',
+                      alignSelf: isAgent ? 'flex-start' : 'flex-end',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '2px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: isAgent ? '#2DD4BF' : '#000' }}>
+                        {isAgent ? (m.sender_name || 'ProfileVault Support') : 'You'}
+                      </span>
+                      <span style={{ fontSize: '10px', opacity: 0.7 }}>
+                        {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '13px', margin: 0, lineHeight: 1.4, wordBreak: 'break-word' }}>{m.message}</p>
+                  </div>
+                )
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Chat Composer Form */}
+          <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '10px', padding: '14px 18px', background: 'var(--color-bg-tertiary)', borderTop: '1px solid var(--color-border)' }}>
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder="Type your message to support..."
+              disabled={isSending}
+              className="form-input"
+              style={{ flex: 1 }}
+            />
+            <button type="submit" className="btn btn-primary" disabled={isSending || !inputMessage.trim()} style={{ padding: '0 20px', fontWeight: 700 }}>
+              {isSending ? 'Sending...' : 'Send Message'}
+            </button>
+          </form>
+        </div>
+
+        {/* Sidebar Info & FAQs */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px' }}>
+            <h4 style={{ fontSize: '14px', color: '#FFF', marginBottom: '8px' }}>⚡ Instant Help Tips</h4>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <strong style={{ color: '#2DD4BF', display: 'block' }}>Proxy Setup:</strong>
+                Verify host, port, username, and password before launching profiles.
+              </div>
+              <div>
+                <strong style={{ color: '#2DD4BF', display: 'block' }}>Fingerprint Checks:</strong>
+                Test Canvas, WebGL, and Audio spoofing on pixelscan.net or browserleaks.com.
+              </div>
+              <div>
+                <strong style={{ color: '#2DD4BF', display: 'block' }}>Device Limits:</strong>
+                Manage active devices from your ProfileVault account settings.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+            <span style={{ fontSize: '24px', display: 'block', marginBottom: '6px' }}>📧</span>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFF' }}>Direct Email Support</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>support@antiprofiles.com</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════
 // Main App
 // ═══════════════════════════════════════════
 
@@ -1557,6 +1746,7 @@ function AppContent() {
     { page: 'automation', icon: Icons.automation, label: 'Automation', section: 'TOOLS' },
     { page: 'settings', icon: Icons.settings, label: 'Settings' },
     { page: 'logs', icon: Icons.logs, label: 'Logs' },
+    { page: 'support', icon: Icons.chat, label: 'Live Support', section: 'HELP & SUPPORT' },
   ]
 
   let renderedSections: string[] = []
@@ -1813,6 +2003,7 @@ function AppContent() {
               {currentPage === 'automation' && <AutomationPage showToast={showToast} />}
               {currentPage === 'settings' && <SettingsPage theme={theme} setTheme={setTheme} showToast={showToast} />}
               {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
+              {currentPage === 'support' && <SupportPage showToast={showToast} />}
             </>
           )}
         </div>

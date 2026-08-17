@@ -242,6 +242,93 @@ function ensureDatabaseTablesExist() {
               UNIQUE KEY `uk_provider_event` (`provider`, `event_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
+
+        // 10. Live Chat & Support System Tables
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `support_conversations` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) DEFAULT NULL,
+              `visitor_token` VARCHAR(100) DEFAULT NULL,
+              `guest_name` VARCHAR(100) DEFAULT NULL,
+              `guest_email` VARCHAR(191) DEFAULT NULL,
+              `channel` VARCHAR(30) NOT NULL DEFAULT 'web',
+              `assigned_agent_id` VARCHAR(36) DEFAULT NULL,
+              `status` VARCHAR(50) NOT NULL DEFAULT 'open',
+              `priority` VARCHAR(50) NOT NULL DEFAULT 'normal',
+              `subject` VARCHAR(255) NOT NULL DEFAULT 'Live Chat Support',
+              `last_message_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `closed_at` DATETIME DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              KEY `idx_sup_conv_user_status` (`user_id`, `status`),
+              KEY `idx_sup_conv_visitor` (`visitor_token`),
+              KEY `idx_sup_conv_last_msg` (`last_message_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        try {
+            $db->exec("ALTER TABLE `support_conversations` ADD COLUMN IF NOT EXISTS `visitor_token` VARCHAR(100) DEFAULT NULL;");
+            $db->exec("ALTER TABLE `support_conversations` ADD COLUMN IF NOT EXISTS `guest_name` VARCHAR(100) DEFAULT NULL;");
+            $db->exec("ALTER TABLE `support_conversations` ADD COLUMN IF NOT EXISTS `guest_email` VARCHAR(191) DEFAULT NULL;");
+            $db->exec("ALTER TABLE `support_conversations` ADD COLUMN IF NOT EXISTS `channel` VARCHAR(30) NOT NULL DEFAULT 'web';");
+            $db->exec("ALTER TABLE `support_conversations` MODIFY `user_id` VARCHAR(36) DEFAULT NULL;");
+        } catch (Throwable $e) {}
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `support_messages` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `conversation_id` VARCHAR(50) NOT NULL,
+              `sender_id` VARCHAR(36) DEFAULT NULL,
+              `sender_name` VARCHAR(100) DEFAULT NULL,
+              `sender_type` VARCHAR(20) NOT NULL,
+              `message` TEXT NOT NULL,
+              `message_type` VARCHAR(50) DEFAULT 'text',
+              `attachment_path` VARCHAR(255) DEFAULT NULL,
+              `attachment_name` VARCHAR(255) DEFAULT NULL,
+              `attachment_size` INT DEFAULT NULL,
+              `attachment_mime` VARCHAR(100) DEFAULT NULL,
+              `is_read` TINYINT(1) DEFAULT 0,
+              `read_at` DATETIME DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              KEY `idx_sup_msg_conv_created` (`conversation_id`, `created_at`),
+              KEY `idx_sup_msg_unread` (`conversation_id`, `sender_type`, `is_read`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        try {
+            $db->exec("ALTER TABLE `support_messages` ADD COLUMN IF NOT EXISTS `sender_name` VARCHAR(100) DEFAULT NULL;");
+            $db->exec("ALTER TABLE `support_messages` MODIFY `sender_id` VARCHAR(36) DEFAULT NULL;");
+        } catch (Throwable $e) {}
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `support_internal_notes` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `conversation_id` VARCHAR(50) NOT NULL,
+              `agent_id` VARCHAR(36) NOT NULL,
+              `agent_name` VARCHAR(255) NOT NULL,
+              `note` TEXT NOT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `support_settings` (
+              `key` VARCHAR(100) NOT NULL PRIMARY KEY,
+              `value` TEXT NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $db->exec("
+            INSERT INTO `support_settings` (`key`, `value`) VALUES
+            ('support_enabled', 'true'),
+            ('support_hours', '24/7 Live Agent Support'),
+            ('auto_reply_enabled', 'true'),
+            ('auto_reply_message', 'Thank you for reaching out! A technical support engineer has been notified and will assist you shortly.'),
+            ('livechat_widget_title', 'ProfileVault Live Support'),
+            ('livechat_welcome_message', 'Hello! 👋 How can we help you today with your browser profiles, proxies, or subscriptions?'),
+            ('rate_limit_messages_per_min', '25')
+            ON DUPLICATE KEY UPDATE `key`=`key`;
+        ");
     } catch (Throwable $e) {}
 }
 

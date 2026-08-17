@@ -1663,23 +1663,47 @@ header('Content-Type: text/html; charset=utf-8');
                         </div>
                     </div>
 
-                    <!-- TAB 7: LIVE SUPPORT -->
+                    <!-- TAB 7: LIVE SUPPORT INBOX -->
                     <div id="tab-support" class="admin-tab-content" style="display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <h3 style="font-size: 18px; color: #FFF;">User Support Conversations</h3>
-                            <button class="btn btn-outline" onclick="loadSupportConversations()">🔄 Refresh Inbox</button>
-                        </div>
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-                            <h4 style="color: var(--accent); margin-bottom: 8px;">Quick Reply to Support Tickets</h4>
-                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                                <input type="email" id="suppTargetEmail" placeholder="User Email Address" style="flex:1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
-                                <input type="text" id="suppSubject" placeholder="Subject / Topic" style="flex:1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Real-Time Support Inbox & Live Tickets</h3>
+                                <p style="color: var(--text-muted); font-size: 13px;">Live two-way communications with website visitors and registered users.</p>
                             </div>
-                            <textarea id="suppReplyMsg" rows="3" placeholder="Type support response message..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-bottom: 10px;"></textarea>
-                            <button class="btn btn-primary" onclick="sendSupportReply()">Send Support Response</button>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-outline" onclick="loadSupportConversations()">🔄 Refresh Inbox</button>
+                            </div>
                         </div>
-                        <div id="supportConvList" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; color: var(--text-muted);">
-                            No active support tickets found. Support inbox is live.
+
+                        <!-- 2-Column Split Support Inbox -->
+                        <div style="display: grid; grid-template-columns: 360px 1fr; gap: 20px; height: 680px; max-height: calc(100vh - 200px);">
+                            
+                            <!-- Left Column: Conversations List -->
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden;">
+                                <!-- Search & Status Tabs -->
+                                <div style="padding: 14px; border-bottom: 1px solid var(--border); background: #12141F;">
+                                    <input type="text" id="suppSearchInput" placeholder="Search conversations..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: #FFF; font-size: 13px; margin-bottom: 10px;" oninput="filterSupportConversations()">
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="btn btn-primary" id="filterTabAll" style="flex: 1; padding: 4px 8px; font-size: 11px;" onclick="setSupportFilter('all')">All</button>
+                                        <button class="btn btn-outline" id="filterTabOpen" style="flex: 1; padding: 4px 8px; font-size: 11px;" onclick="setSupportFilter('open')">Open</button>
+                                        <button class="btn btn-outline" id="filterTabClosed" style="flex: 1; padding: 4px 8px; font-size: 11px;" onclick="setSupportFilter('closed')">Closed</button>
+                                    </div>
+                                </div>
+
+                                <!-- Conversations List Feed -->
+                                <div id="adminSupportList" style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                                    <div style="text-align: center; color: var(--text-muted); padding: 30px;">Loading live conversations...</div>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Active Conversation Chat Panel -->
+                            <div id="adminSupportActiveThreadPanel" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden;">
+                                <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-direction: column; gap: 12px; padding: 40px; text-align: center;">
+                                    <div style="font-size: 48px;">💬</div>
+                                    <h4 style="color: #FFF; font-size: 18px;">Select a conversation to start chatting</h4>
+                                    <p style="font-size: 13px; max-width: 320px;">Choose a visitor or user conversation thread from the left list to view chat history and reply in real time.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -2272,6 +2296,97 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- FLOATING LIVE CHAT WIDGET (WEBSITE & LANDING PAGE) -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <style>
+        @keyframes pulseGlowLive {
+            0% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.6); }
+            70% { box-shadow: 0 0 0 14px rgba(45, 212, 191, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); }
+        }
+        @keyframes slideUpChat {
+            from { opacity: 0; transform: translateY(20px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .chat-bubble-user {
+            background: linear-gradient(135deg, #2DD4BF, #06B6D4);
+            color: #000;
+            font-weight: 600;
+            border-radius: 16px 16px 4px 16px;
+            padding: 12px 16px;
+            max-width: 82%;
+            align-self: flex-end;
+            box-shadow: 0 4px 12px rgba(45, 212, 191, 0.2);
+            word-break: break-word;
+        }
+        .chat-bubble-agent {
+            background: #181B26;
+            color: #FFF;
+            border: 1px solid #272A3B;
+            border-radius: 16px 16px 16px 4px;
+            padding: 12px 16px;
+            max-width: 82%;
+            align-self: flex-start;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            word-break: break-word;
+        }
+        .livechat-trigger-btn:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 14px 30px rgba(45, 212, 191, 0.5) !important;
+        }
+    </style>
+
+    <!-- FLOATING LIVE CHAT WIDGET TRIGGER -->
+    <div id="liveChatWidgetTrigger" class="livechat-trigger-btn" onclick="toggleLiveChatWidget()" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; padding: 12px 20px; border-radius: 50px; cursor: pointer; font-weight: 800; font-size: 14px; box-shadow: 0 10px 25px rgba(45, 212, 191, 0.4); animation: pulseGlowLive 3s infinite; transition: all 0.2s ease;">
+        <span style="font-size: 18px; display: flex;">💬</span>
+        <span id="liveChatBtnText">Live Chat</span>
+        <span id="liveChatUnreadBadge" style="display: none; background: #EF4444; color: #FFF; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; margin-left: 2px;">1</span>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #000; display: inline-block;"></span>
+    </div>
+
+    <!-- FLOATING LIVE CHAT POPUP WINDOW -->
+    <div id="liveChatWidgetWindow" style="display: none; position: fixed; bottom: 85px; right: 24px; width: 380px; max-width: calc(100vw - 32px); height: 530px; max-height: calc(100vh - 120px); background: rgba(15, 17, 26, 0.96); backdrop-filter: blur(20px); border: 1px solid rgba(45, 212, 191, 0.35); border-radius: 20px; z-index: 99999; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7); animation: slideUpChat 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+        <!-- Chat Header -->
+        <div style="background: linear-gradient(135deg, #181B26, #0F111A); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="position: relative; width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #2DD4BF, #06B6D4); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                    🛡️
+                    <span style="position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background: #10B981; border: 2px solid #181B26;"></span>
+                </div>
+                <div>
+                    <h4 style="font-size: 15px; color: #FFF; margin: 0; font-weight: 700;">ProfileVault Support</h4>
+                    <span style="font-size: 11px; color: #2DD4BF; display: flex; align-items: center; gap: 4px;">⚡ Active • Instant 24/7 Replies</span>
+                </div>
+            </div>
+            <button onclick="toggleLiveChatWidget()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 4px; line-height: 1;">✕</button>
+        </div>
+
+        <!-- Chat Message Stream -->
+        <div id="liveChatMessagesStream" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: rgba(10, 11, 16, 0.6);">
+            <!-- Welcome default bot message -->
+            <div class="chat-bubble-agent">
+                <span style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block;">ProfileVault Support Team</span>
+                <p style="font-size: 13px; margin-top: 4px; line-height: 1.4;">Hello! 👋 Welcome to ProfileVault. How can we help you with browser profiles, proxies, or subscriptions today?</p>
+                <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">Just now</span>
+            </div>
+        </div>
+
+        <!-- Guest Identity Form Bar (Shown for non-logged in visitors) -->
+        <div id="liveChatGuestBar" style="display: none; padding: 10px 14px; background: #181B26; border-top: 1px solid var(--border); font-size: 12px;">
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="liveChatGuestName" placeholder="Your Name" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
+                <input type="email" id="liveChatGuestEmail" placeholder="Your Email" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
+            </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <form onsubmit="handleSendLiveChatMessage(event)" style="display: flex; gap: 8px; padding: 12px 14px; background: #12141F; border-top: 1px solid rgba(255,255,255,0.06); align-items: center;">
+            <input type="text" id="liveChatInput" placeholder="Type your message here..." required autocomplete="off" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: #FFF; font-size: 13px;">
+            <button type="submit" id="btnLiveChatSend" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); border: none; border-radius: 10px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #000; font-size: 15px; font-weight: 800;">➤</button>
+        </form>
+    </div>
+
     <script>
         function toggleFaq(item) {
             const answer = item.querySelector('.faq-answer');
@@ -2770,12 +2885,193 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        function handleSendUserSupportMessage(e) {
+        // ═══════════════════════════════════════════════════════════════════════
+        // FLOATING LIVE CHAT WIDGET & USER PORTAL SUPPORT (REAL-TIME TWO-WAY)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let _liveChatOpen = false;
+        let _liveChatPollTimer = null;
+        let _liveChatActiveConvId = null;
+
+        function getOrCreateVisitorToken() {
+            let token = localStorage.getItem('pv_visitor_token');
+            if (!token) {
+                token = 'vis_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem('pv_visitor_token', token);
+            }
+            return token;
+        }
+
+        function toggleLiveChatWidget() {
+            const win = document.getElementById('liveChatWidgetWindow');
+            const unreadBadge = document.getElementById('liveChatUnreadBadge');
+            if (!win) return;
+
+            _liveChatOpen = !_liveChatOpen;
+            win.style.display = _liveChatOpen ? 'flex' : 'none';
+
+            if (_liveChatOpen) {
+                if (unreadBadge) unreadBadge.style.display = 'none';
+                initLiveChatWidget();
+                if (!_liveChatPollTimer) {
+                    _liveChatPollTimer = setInterval(loadLiveChatMessages, 3500);
+                }
+            } else {
+                if (_liveChatPollTimer) {
+                    clearInterval(_liveChatPollTimer);
+                    _liveChatPollTimer = null;
+                }
+            }
+        }
+
+        async function initLiveChatWidget() {
+            const userStr = localStorage.getItem('user');
+            const guestBar = document.getElementById('liveChatGuestBar');
+            
+            if (userStr && userStr !== 'undefined') {
+                try {
+                    const u = JSON.parse(userStr);
+                    if (guestBar) guestBar.style.display = 'none';
+                } catch(e) {}
+            } else {
+                // If visitor has already provided name/email in localStorage, populate them
+                const savedName = localStorage.getItem('pv_visitor_name') || '';
+                const savedEmail = localStorage.getItem('pv_visitor_email') || '';
+                const nameInput = document.getElementById('liveChatGuestName');
+                const emailInput = document.getElementById('liveChatGuestEmail');
+                if (nameInput) nameInput.value = savedName;
+                if (emailInput) emailInput.value = savedEmail;
+                if (guestBar) guestBar.style.display = 'block';
+            }
+
+            await loadLiveChatMessages();
+        }
+
+        async function loadLiveChatMessages() {
+            const stream = document.getElementById('liveChatMessagesStream');
+            if (!stream) return;
+
+            const token = localStorage.getItem('sessionToken');
+            const visitorToken = getOrCreateVisitorToken();
+
+            let url = '/api/support/active-thread?visitor_token=' + encodeURIComponent(visitorToken);
+            let headers = {};
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+
+            try {
+                const res = await fetch(url, { headers });
+                const data = await res.json();
+
+                if (data.success && data.messages && data.messages.length > 0) {
+                    _liveChatActiveConvId = data.data ? data.data.id : null;
+                    stream.innerHTML = data.messages.map(m => {
+                        const isAgent = m.sender_type === 'agent';
+                        return `
+                            <div class="${isAgent ? 'chat-bubble-agent' : 'chat-bubble-user'}">
+                                <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#000'}; display: block; margin-bottom: 2px;">${isAgent ? (m.sender_name || 'ProfileVault Support') : 'You'}</span>
+                                <p style="font-size: 13px; margin: 0; line-height: 1.4; word-break: break-word;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                                <span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 4px;">${m.created_at ? m.created_at.substring(11, 16) : 'Just now'}</span>
+                            </div>
+                        `;
+                    }).join('');
+                    stream.scrollTop = stream.scrollHeight;
+                }
+            } catch(e) {}
+        }
+
+        async function handleSendLiveChatMessage(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const input = document.getElementById('liveChatInput');
+            const stream = document.getElementById('liveChatMessagesStream');
+            const sendBtn = document.getElementById('btnLiveChatSend');
+            const text = input ? input.value.trim() : '';
+            if (!text) return;
+
+            const token = localStorage.getItem('sessionToken');
+            const visitorToken = getOrCreateVisitorToken();
+
+            const nameInput = document.getElementById('liveChatGuestName');
+            const emailInput = document.getElementById('liveChatGuestEmail');
+            const guestName = nameInput ? nameInput.value.trim() : '';
+            const guestEmail = emailInput ? emailInput.value.trim() : '';
+
+            if (guestName) localStorage.setItem('pv_visitor_name', guestName);
+            if (guestEmail) localStorage.setItem('pv_visitor_email', guestEmail);
+
+            // Optimistic UI Append
+            const tempBubble = document.createElement('div');
+            tempBubble.className = 'chat-bubble-user';
+            tempBubble.innerHTML = `
+                <span style="font-size: 11px; font-weight: 700; color: #000; display: block; margin-bottom: 2px;">You</span>
+                <p style="font-size: 13px; margin: 0; line-height: 1.4; word-break: break-word;">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                <span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 4px;">Sending...</span>
+            `;
+            stream.appendChild(tempBubble);
+            stream.scrollTop = stream.scrollHeight;
+            input.value = '';
+
+            let headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+
+            try {
+                const res = await fetch('/api/support/send', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        visitor_token: visitorToken,
+                        name: guestName,
+                        email: guestEmail,
+                        message: text,
+                        channel: 'widget'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadLiveChatMessages();
+                }
+            } catch(e) {}
+        }
+
+        // User Portal Support Chat (Inside Dashboard)
+        async function loadUserPortalSupportThread() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const thread = document.getElementById('userChatThread');
+            if (!thread) return;
+
+            try {
+                const res = await fetch('/api/support/active-thread', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+
+                if (data.success && data.messages && data.messages.length > 0) {
+                    thread.innerHTML = data.messages.map(m => {
+                        const isAgent = m.sender_type === 'agent';
+                        return `
+                            <div class="${isAgent ? 'chat-bubble-agent' : 'chat-bubble-user'}" style="${isAgent ? 'align-self:flex-start; background:#181B26; color:#FFF; border:1px solid #272A3B;' : 'align-self:flex-end; background:#2DD4BF; color:#000;'}">
+                                <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#000'}; display: block; margin-bottom: 2px;">${isAgent ? (m.sender_name || 'ProfileVault Support') : 'You'}</span>
+                                <p style="font-size: 13px; margin: 0; line-height: 1.4;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                                <span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 4px;">${m.created_at || 'Just now'}</span>
+                            </div>
+                        `;
+                    }).join('');
+                    thread.scrollTop = thread.scrollHeight;
+                }
+            } catch(e) {}
+        }
+
+        async function handleSendUserSupportMessage(e) {
             e.preventDefault();
             const input = document.getElementById('userSupportInput');
             const thread = document.getElementById('userChatThread');
-            const text = input.value.trim();
+            const text = input ? input.value.trim() : '';
             if (!text) return;
+
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
 
             const userMsg = document.createElement('div');
             userMsg.style.cssText = 'background: #2DD4BF; color: #000; font-weight: 600; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-end;';
@@ -2787,19 +3083,18 @@ header('Content-Type: text/html; charset=utf-8');
             thread.scrollTop = thread.scrollHeight;
             input.value = '';
 
-            setTimeout(() => {
-                const botMsg = document.createElement('div');
-                botMsg.style.cssText = 'background: #181B26; border: 1px solid #272A3B; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-start;';
-                botMsg.innerHTML = '<span style="font-size: 11px; color: #2DD4BF; font-weight: 700;">ProfileVault Support Agent</span>' +
-                                   '<p style="font-size: 13px; color: #FFF; margin-top: 4px;">Thank you for your message! Our technical team has received your ticket and will respond shortly.</p>' +
-                                   '<span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 6px;">Just now</span>';
-                thread.appendChild(botMsg);
-                thread.scrollTop = thread.scrollHeight;
-            }, 1000);
+            try {
+                const res = await fetch('/api/support/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ message: text, channel: 'dashboard' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadUserPortalSupportThread();
+                }
+            } catch(e) {}
         }
-
-        // handleLogout is already defined above — this block intentionally left as a redirect
-        // to ensure the earlier definition prevails with proper modal behavior.
 
         function switchAdminTab(tabName, btn) {
             document.querySelectorAll('.admin-sidebar-btn').forEach(b => {
@@ -2815,6 +3110,8 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'subscriptions') loadSubscriptionsTable();
             if (tabName === 'gateways') loadPaymentGatewaysTable();
             if (tabName === 'payments') loadPaymentsTable();
+            if (tabName === 'support') loadSupportConversations();
+            if (tabName === 'user-support') loadUserPortalSupportThread();
             if (tabName === 'audit') loadAuditLogsTable();
             if (tabName === 'security') loadSecurityTable();
             if (tabName === 'profile-audit') loadProfileAuditTable();
@@ -2824,7 +3121,6 @@ header('Content-Type: text/html; charset=utf-8');
             }
             if (tabName === 'releases') loadAppReleasesTable();
             if (tabName === 'google-oauth') loadGoogleOAuthConfig();
-            if (tabName === 'support') loadSupportConversations();
             if (tabName === 'smtp') loadSmtpConfig();
         }
 
@@ -3021,79 +3317,235 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // ADMIN SUPPORT INBOX & REAL-TIME TICKET CHAT ENGINE
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let _allAdminConversations = [];
+        let _activeSupportConvId = null;
+        let _currentSupportFilter = 'all';
+
         async function loadSupportConversations() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
-            const container = document.getElementById('supportConvList');
+            const container = document.getElementById('adminSupportList');
             if (!container) return;
-
-            container.innerHTML = '<p style="color:var(--text-muted);">Fetching unified support tickets from central server...</p>';
 
             try {
                 const res = await fetch('/api/support/admin-conversations', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 const data = await res.json();
-                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-                    container.innerHTML = data.data.map(conv => `
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; text-align: left;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <div>
-                                    <strong style="color: #FFF; font-size: 15px;">${conv.subject || 'Support Request'}</strong>
-                                    <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">(${conv.user_name || 'User'} - ${conv.user_email || ''})</span>
-                                </div>
-                                <span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: ${conv.status === 'open' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color: ${conv.status === 'open' ? '#10B981' : '#F87171'};">
-                                    ${(conv.status || 'open').toUpperCase()}
-                                </span>
-                            </div>
-                            <p style="font-size: 13px; color: #CBD5E1; margin-bottom: 12px;">${conv.last_message_preview || 'No message content'}</p>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="text" id="replyInput_${conv.id}" placeholder="Type reply..." style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
-                                <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="replySupportTicket('${conv.id}')">✉️ Send Reply</button>
-                            </div>
-                        </div>
-                    `).join('');
+                if (data.success && Array.isArray(data.data)) {
+                    _allAdminConversations = data.data;
+                    renderAdminSupportList();
+                    // If an active conversation is open, refresh its thread
+                    if (_activeSupportConvId) {
+                        openAdminSupportThread(_activeSupportConvId, true);
+                    }
                 } else {
-                    container.innerHTML = '<p style="color:var(--text-muted); padding: 20px;">No support tickets in inbox. Support system is live and unified across Website and Desktop App.</p>';
+                    container.innerHTML = `<div style="text-align:center; color:#F87171; padding:20px;">${data.error || 'Failed to load conversations.'}</div>`;
                 }
             } catch(e) {
-                container.innerHTML = '<p style="color:#F87171;">Failed to load support conversations.</p>';
+                container.innerHTML = '<div style="text-align:center; color:#F87171; padding:20px;">Network error connecting to support service.</div>';
             }
         }
 
-        async function replySupportTicket(convId) {
-            const token = localStorage.getItem('sessionToken');
-            if (!token) return;
-            const input = document.getElementById('replyInput_' + convId);
-            const msg = input ? input.value.trim() : '';
-            if (!msg) {
-                alert('Please enter reply text.');
+        function setSupportFilter(status) {
+            _currentSupportFilter = status;
+            ['all', 'open', 'closed'].forEach(s => {
+                const btn = document.getElementById('filterTab' + s.charAt(0).toUpperCase() + s.slice(1));
+                if (btn) {
+                    if (s === status) {
+                        btn.className = 'btn btn-primary';
+                    } else {
+                        btn.className = 'btn btn-outline';
+                    }
+                }
+            });
+            renderAdminSupportList();
+        }
+
+        function filterSupportConversations() {
+            renderAdminSupportList();
+        }
+
+        function renderAdminSupportList() {
+            const container = document.getElementById('adminSupportList');
+            if (!container) return;
+
+            const search = (document.getElementById('suppSearchInput') ? document.getElementById('suppSearchInput').value : '').toLowerCase();
+
+            let filtered = _allAdminConversations.filter(c => {
+                if (_currentSupportFilter !== 'all' && c.status !== _currentSupportFilter) return false;
+                if (search) {
+                    const hay = `${c.display_name || ''} ${c.display_email || ''} ${c.subject || ''} ${c.id || ''}`.toLowerCase();
+                    if (!hay.includes(search)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;">No conversations found matching filter.</div>';
                 return;
             }
 
+            container.innerHTML = filtered.map(c => {
+                const isSelected = c.id === _activeSupportConvId;
+                const unread = parseInt(c.unread_count || 0, 10);
+                const isOpen = c.status === 'open' || c.status === 'waiting_support';
+                const statusColor = isOpen ? '#10B981' : (c.status === 'waiting_user' ? '#F59E0B' : '#94A3B8');
+                const statusBg = isOpen ? 'rgba(16,185,129,0.15)' : (c.status === 'waiting_user' ? 'rgba(245,158,11,0.15)' : 'rgba(100,116,139,0.15)');
+
+                return `
+                    <div onclick="openAdminSupportThread('${c.id}')" style="background: ${isSelected ? 'rgba(45,212,191,0.12)' : 'var(--bg-input)'}; border: 1px solid ${isSelected ? '#2DD4BF' : 'var(--border)'}; border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: all 0.15s ease;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="color: #FFF; font-size: 14px;">${c.display_name || 'Visitor'}</strong>
+                                <span style="background: rgba(129,140,248,0.15); color: #818CF8; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; text-transform: capitalize;">${c.plan_name || 'Guest'}</span>
+                            </div>
+                            <span style="font-size: 10px; color: ${statusColor}; background: ${statusBg}; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">
+                                ${c.status || 'open'}
+                            </span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${c.display_email || 'No email provided'}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <p style="font-size: 12px; color: #CBD5E1; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;">
+                                ${c.last_message_preview || 'No messages yet'}
+                            </p>
+                            ${unread > 0 ? `<span style="background:#EF4444; color:#FFF; font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px;">${unread}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function openAdminSupportThread(convId, keepScroll = false) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            _activeSupportConvId = convId;
+            renderAdminSupportList();
+
+            const panel = document.getElementById('adminSupportActiveThreadPanel');
+            if (!panel) return;
+
+            if (!keepScroll) {
+                panel.innerHTML = '<div style="flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">Loading conversation thread...</div>';
+            }
+
             try {
-                const res = await fetch('/api/support/send-message', {
+                const res = await fetch('/api/support/admin-thread?conversation_id=' + encodeURIComponent(convId), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+
+                if (data.success && data.conversation) {
+                    const c = data.conversation;
+                    const msgs = data.messages || [];
+                    const notes = data.internal_notes || [];
+
+                    panel.innerHTML = `
+                        <!-- Thread Header -->
+                        <div style="padding: 16px 20px; border-bottom: 1px solid var(--border); background: #12141F; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <h4 style="color: #FFF; font-size: 16px; margin: 0;">${c.display_name || 'Visitor'}</h4>
+                                    <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">${c.plan_name || 'Guest'}</span>
+                                    <span style="font-size: 11px; color: var(--text-muted); font-family: monospace;">ID: ${c.id}</span>
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                                    <span>${c.display_email || 'No email'}</span> • Channel: <strong>${c.channel || 'web'}</strong> • Status: <strong style="color:#2DD4BF;">${(c.status || 'open').toUpperCase()}</strong>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #F87171;" onclick="closeAdminSupportConv('${c.id}')">🔒 Close Ticket</button>
+                            </div>
+                        </div>
+
+                        <!-- Messages Stream -->
+                        <div id="adminMsgStream" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: rgba(10, 11, 16, 0.4);">
+                            ${msgs.length === 0 ? '<div style="text-align:center; color:var(--text-muted); padding:30px;">No messages in this conversation yet.</div>' : msgs.map(m => {
+                                const isAgent = m.sender_type === 'agent';
+                                return `
+                                    <div class="${isAgent ? 'chat-bubble-agent' : 'chat-bubble-user'}" style="${isAgent ? 'align-self:flex-end; background:#181B26; color:#FFF; border:1px solid #2DD4BF;' : 'align-self:flex-start; background:var(--bg-input); color:#FFF; border:1px solid var(--border);'}">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:12px;">
+                                            <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#818CF8'};">${isAgent ? (m.sender_name || 'Staff Agent') : (m.sender_name || 'Customer')}</span>
+                                            <span style="font-size: 10px; color: var(--text-muted);">${m.created_at || 'Just now'}</span>
+                                        </div>
+                                        <p style="font-size: 13px; margin: 0; line-height: 1.45; word-break: break-word;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <!-- Reply Composer -->
+                        <div style="padding: 16px 20px; border-top: 1px solid var(--border); background: #12141F;">
+                            <form onsubmit="sendAdminSupportReply(event, '${c.id}')" style="display: flex; gap: 10px; align-items: center;">
+                                <input type="text" id="adminReplyInput_${c.id}" placeholder="Type your support reply (Press Enter to send)..." required autocomplete="off" style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; color: #FFF; font-size: 13px;">
+                                <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;">✉️ Send Reply</button>
+                            </form>
+                        </div>
+                    `;
+
+                    const stream = document.getElementById('adminMsgStream');
+                    if (stream) stream.scrollTop = stream.scrollHeight;
+                } else {
+                    panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center;">${data.error || 'Failed to load conversation.'}</div>`;
+                }
+            } catch(e) {
+                panel.innerHTML = '<div style="padding:40px; color:#F87171; text-align:center;">Error loading conversation thread.</div>';
+            }
+        }
+
+        async function sendAdminSupportReply(e, convId) {
+            if (e && e.preventDefault) e.preventDefault();
+            const token = localStorage.getItem('sessionToken');
+            if (!token || !convId) return;
+
+            const input = document.getElementById('adminReplyInput_' + convId);
+            const text = input ? input.value.trim() : '';
+            if (!text) return;
+
+            input.value = '';
+
+            try {
+                const res = await fetch('/api/support/admin-reply', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({
-                        conversation_id: convId,
-                        message: msg
-                    })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ conversation_id: convId, message: text })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('Support reply sent successfully!');
-                    if (input) input.value = '';
+                    openAdminSupportThread(convId, true);
                     loadSupportConversations();
                 } else {
                     alert('Failed to send reply: ' + (data.error || 'Unknown error'));
                 }
             } catch(e) {
-                alert('Error sending reply: ' + e.message);
+                alert('Network error sending support response.');
             }
+        }
+
+        async function closeAdminSupportConv(convId) {
+            if (!confirm('Mark this support conversation as closed/resolved?')) return;
+            const token = localStorage.getItem('sessionToken');
+            if (!token || !convId) return;
+
+            try {
+                const res = await fetch('/api/support/admin-close', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ conversation_id: convId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadSupportConversations();
+                    openAdminSupportThread(convId, true);
+                }
+            } catch(e) {}
         }
 
         async function loadGoogleOAuthConfig() {
@@ -4743,6 +5195,28 @@ header('Content-Type: text/html; charset=utf-8');
                     localStorage.removeItem('sessionToken');
                     localStorage.removeItem('user');
                     window.location.reload();
+                });
+
+                sseSource.addEventListener('support.message.created', (e) => {
+                    console.log('💬 [WebSync] support.message.created received', e.data);
+                    loadSupportConversations();
+                });
+
+                sseSource.addEventListener('support.reply.created', (e) => {
+                    console.log('💬 [WebSync] support.reply.created received', e.data);
+                    if (_liveChatOpen) {
+                        loadLiveChatMessages();
+                    } else {
+                        const unread = document.getElementById('liveChatUnreadBadge');
+                        if (unread) unread.style.display = 'inline-block';
+                    }
+                    loadUserPortalSupportThread();
+                });
+
+                sseSource.addEventListener('support.conversation.closed', (e) => {
+                    loadSupportConversations();
+                    loadLiveChatMessages();
+                    loadUserPortalSupportThread();
                 });
 
                 sseSource.onerror = () => {

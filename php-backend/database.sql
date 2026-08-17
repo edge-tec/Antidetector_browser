@@ -357,24 +357,29 @@ ON DUPLICATE KEY UPDATE `key`=`key`;
 -- 8. Support System Tables
 CREATE TABLE IF NOT EXISTS `support_conversations` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
-  `user_id` VARCHAR(36) NOT NULL,
+  `user_id` VARCHAR(36) DEFAULT NULL,
+  `visitor_token` VARCHAR(100) DEFAULT NULL,
+  `guest_name` VARCHAR(100) DEFAULT NULL,
+  `guest_email` VARCHAR(191) DEFAULT NULL,
+  `channel` VARCHAR(30) NOT NULL DEFAULT 'web',
   `assigned_agent_id` VARCHAR(36) DEFAULT NULL,
   `status` VARCHAR(50) NOT NULL DEFAULT 'open',
   `priority` VARCHAR(50) NOT NULL DEFAULT 'normal',
-  `subject` VARCHAR(255) NOT NULL DEFAULT 'Support Request',
+  `subject` VARCHAR(255) NOT NULL DEFAULT 'Live Chat Support',
   `last_message_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `closed_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `idx_sup_conv_user_status` (`user_id`, `status`),
-  KEY `idx_sup_conv_last_msg` (`last_message_at`),
-  CONSTRAINT `fk_sup_conv_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `idx_sup_conv_visitor` (`visitor_token`),
+  KEY `idx_sup_conv_last_msg` (`last_message_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `support_messages` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `conversation_id` VARCHAR(50) NOT NULL,
-  `sender_id` VARCHAR(36) NOT NULL,
+  `sender_id` VARCHAR(36) DEFAULT NULL,
+  `sender_name` VARCHAR(100) DEFAULT NULL,
   `sender_type` VARCHAR(20) NOT NULL,
   `message` TEXT NOT NULL,
   `message_type` VARCHAR(50) DEFAULT 'text',
@@ -409,7 +414,10 @@ INSERT INTO `support_settings` (`key`, `value`) VALUES
 ('support_enabled', 'true'),
 ('support_hours', '24/7 Live Agent Support'),
 ('auto_reply_enabled', 'true'),
-('rate_limit_messages_per_min', '15')
+('auto_reply_message', 'Thank you for reaching out! A technical support engineer has been notified and will assist you shortly.'),
+('livechat_widget_title', 'ProfileVault Live Support'),
+('livechat_welcome_message', 'Hello! 👋 How can we help you today with your browser profiles, proxies, or subscriptions?'),
+('rate_limit_messages_per_min', '25')
 ON DUPLICATE KEY UPDATE `key`=`key`;
 
 -- 9. Google SEO & AI Search Optimization (AEO/GEO) Tables
