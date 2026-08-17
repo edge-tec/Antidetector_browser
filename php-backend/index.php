@@ -3448,6 +3448,16 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <script>
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function toggleFaq(item) {
             const answer = item.querySelector('.faq-answer');
             const icon = item.querySelector('.faq-icon');
