@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Login Page
+// AntiProfiles — Login Page
 // ──────────────────────────────────────────────
 
 import React, { useState } from 'react'
@@ -97,9 +97,9 @@ export const LoginPage: React.FC<Props> = ({ onNavigateRegister, onNavigateVerif
       }}>
         {/* Logo & Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img src={logoImg} alt="ProfileVault Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: '12px', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.6))' }} />
+          <img src={logoImg} alt="AntiProfiles Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: '12px', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.6))' }} />
           <h2 style={{ margin: '0 0 6px', fontSize: '22px', color: '#F1F5F9', fontWeight: 700 }}>
-            Welcome to ProfileVault
+            Welcome to AntiProfiles
           </h2>
           <p style={{ margin: 0, fontSize: '13px', color: '#94A3B8' }}>
             Sign in to access your anti-detect browser profiles

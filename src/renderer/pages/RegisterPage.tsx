@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Registration Page
+// AntiProfiles — Registration Page
 // ──────────────────────────────────────────────
 
 import React, { useState } from 'react'
@@ -90,7 +90,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigateLogin, onRegistrationS
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img src={logoImg} alt="ProfileVault Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: '12px', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.6))' }} />
+          <img src={logoImg} alt="AntiProfiles Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: '12px', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.6))' }} />
           <h2 style={{ margin: '0 0 6px', fontSize: '22px', color: '#F1F5F9', fontWeight: 700 }}>
             Create Your Account
           </h2>

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Canvas Injection Script Builder
+// AntiProfiles — Canvas Injection Script Builder
 // Adds deterministic noise or blocks canvas fingerprinting
 // Uses per-profile seed for stable, reproducible noise
 // ──────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Media Devices Injection Script Builder
+// AntiProfiles — Media Devices Injection Script Builder
 // Overrides navigator.mediaDevices.enumerateDevices() safely
 // ──────────────────────────────────────────────────────────────────
 

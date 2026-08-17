@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — IP Geo-Lookup Module
+// AntiProfiles v2 — IP Geo-Lookup Module
 // Resolves location, timezone, ISP, ASN, and coordinates for proxy IPs
 // ──────────────────────────────────────────────────────────────────
 

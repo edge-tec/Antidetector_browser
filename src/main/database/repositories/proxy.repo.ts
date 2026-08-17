@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Proxy Repository
+// AntiProfiles — Proxy Repository
 // ──────────────────────────────────────────────
 
 import { v4 as uuidv4 } from 'uuid'

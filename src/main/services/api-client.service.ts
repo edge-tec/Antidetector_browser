@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Central Backend HTTPS API Client
+// AntiProfiles — Central Backend HTTPS API Client
 // Connects Electron Desktop Application to Central Server (https://app.edgecash.net)
 // ──────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Admin Live Support Dashboard Manager Component
+// AntiProfiles — Admin Live Support Dashboard Manager Component
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
@@ -36,7 +36,7 @@ export const AdminSupportManager: React.FC = () => {
     welcome_message: 'Hello! How can our support team assist you today?',
     offline_message: 'Our support team is currently offline. Please leave a message and we will respond shortly.',
     auto_reply_enabled: 'true',
-    auto_reply_message: 'Thanks for contacting ProfileVault support! An agent has been notified and will reply shortly.',
+    auto_reply_message: 'Thanks for contacting AntiProfiles support! An agent has been notified and will reply shortly.',
     max_attachment_size_mb: '10',
     allowed_file_types: 'jpg,jpeg,png,gif,webp,pdf,txt,zip',
     notification_sound_enabled: 'true',

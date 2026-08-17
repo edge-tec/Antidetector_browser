@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Migration Runner
+// AntiProfiles — Migration Runner
 // ──────────────────────────────────────────────
 
 import type Database from 'better-sqlite3'

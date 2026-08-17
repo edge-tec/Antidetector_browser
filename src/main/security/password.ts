@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Password Hashing & Verification
+// AntiProfiles — Password Hashing & Verification
 // ──────────────────────────────────────────────
 
 import crypto from 'crypto'

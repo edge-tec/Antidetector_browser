@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Email Verification Token Repository
+// AntiProfiles — Email Verification Token Repository
 // ──────────────────────────────────────────────
 
 import crypto from 'crypto'

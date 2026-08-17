@@ -1,6 +1,6 @@
 <?php
 // ──────────────────────────────────────────────
-// ProfileVault — Licensing & Device REST API (PHP)
+// AntiProfiles — Licensing & Device REST API (PHP)
 // ──────────────────────────────────────────────
 
 require_once __DIR__ . '/../helpers.php';

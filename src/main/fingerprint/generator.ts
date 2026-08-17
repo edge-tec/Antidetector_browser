@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — Fingerprint Generator
+// AntiProfiles v2 — Fingerprint Generator
 // Generates coherent, consistent fingerprints following the cascade:
 //   OS → Browser → Hardware → Display → Locale → Network → Validate
 // ──────────────────────────────────────────────────────────────────

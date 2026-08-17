@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Cross-Platform Chromium Resolver & Diagnostics
+// AntiProfiles — Cross-Platform Chromium Resolver & Diagnostics
 // ──────────────────────────────────────────────
 
 import { app } from 'electron'

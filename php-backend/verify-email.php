@@ -1,6 +1,6 @@
 <?php
 // ──────────────────────────────────────────────
-// ProfileVault — Central Web Email Verification Handler & Page
+// AntiProfiles — Central Web Email Verification Handler & Page
 // ──────────────────────────────────────────────
 
 require_once __DIR__ . '/config.php';
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($resendEmail)) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Verification — ProfileVault Anti-Detect Browser</title>
+  <title>Email Verification — AntiProfiles Anti-Detect Browser</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -216,10 +216,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($resendEmail)) {
     <?php if ($state === 'success'): ?>
       <div class="icon">✅</div>
       <h1>Email Verified Successfully!</h1>
-      <p>Welcome to ProfileVault<?php if ($userName) echo ', ' . htmlspecialchars($userName); ?>! Your account is now fully active across Web, Windows, macOS, and Linux.</p>
+      <p>Welcome to AntiProfiles<?php if ($userName) echo ', ' . htmlspecialchars($userName); ?>! Your account is now fully active across Web, Windows, macOS, and Linux.</p>
       
       <a href="/#login" class="btn btn-primary">Open Web Control Center ➔</a>
-      <a href="profilevault://verify-email?token=<?= htmlspecialchars($plainToken) ?>" class="btn btn-outline">Launch Desktop App</a>
+      <a href="antiprofiles://verify-email?token=<?= htmlspecialchars($plainToken) ?>" class="btn btn-outline">Launch Desktop App</a>
 
     <?php elseif ($state === 'already_verified'): ?>
       <div class="icon">🛡️</div>

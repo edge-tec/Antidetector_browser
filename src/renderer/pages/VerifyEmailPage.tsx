@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Email Verification Screen & Handler
+// AntiProfiles — Email Verification Screen & Handler
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback } from 'react'

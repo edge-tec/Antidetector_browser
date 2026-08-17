@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Confirmation Email Service (SMTP Support)
+// AntiProfiles — Confirmation Email Service (SMTP Support)
 // ──────────────────────────────────────────────
 
 import crypto from 'crypto'
@@ -41,7 +41,7 @@ export class EmailService {
       port: parseInt(map['smtp_port'] || process.env.SMTP_PORT || '587', 10),
       user: map['smtp_user'] || process.env.SMTP_USER || '',
       password: map['smtp_password'] || process.env.SMTP_PASSWORD || '',
-      fromEmail: map['smtp_from_email'] || process.env.SMTP_FROM || map['smtp_user'] || 'noreply@profilevault.local',
+      fromEmail: map['smtp_from_email'] || process.env.SMTP_FROM || map['smtp_user'] || 'noreply@antiprofiles.com',
       secure: map['smtp_secure'] === 'true',
       enabled: map['smtp_enabled'] === 'true' || (!!map['smtp_host'] && !!map['smtp_user'])
     }
@@ -104,7 +104,7 @@ export class EmailService {
     tokenRepo.createToken(userId, plainToken, 24)
 
     // Construct verification link
-    const baseUrl = process.env.APP_BASE_URL || 'app://profilevault'
+    const baseUrl = process.env.APP_BASE_URL || 'app://antiprofiles'
     const verificationUrl = `${baseUrl}/verify-email?token=${plainToken}`
 
     const htmlContent = this.renderEmailHtml(name, verificationUrl)
@@ -126,9 +126,9 @@ export class EmailService {
         })
 
         await transporter.sendMail({
-          from: `"ProfileVault Security" <${smtpConfig.fromEmail || smtpConfig.user}>`,
+          from: `"AntiProfiles Security" <${smtpConfig.fromEmail || smtpConfig.user}>`,
           to: email,
-          subject: 'Confirm your ProfileVault Account',
+          subject: 'Confirm your AntiProfiles Account',
           html: htmlContent
         })
 
@@ -178,9 +178,9 @@ export class EmailService {
         })
 
         await transporter.sendMail({
-          from: `"ProfileVault Security" <${smtpConfig.fromEmail || smtpConfig.user}>`,
+          from: `"AntiProfiles Security" <${smtpConfig.fromEmail || smtpConfig.user}>`,
           to: email,
-          subject: '🎉 ProfileVault Account Confirmed & Ready!',
+          subject: '🎉 AntiProfiles Account Confirmed & Ready!',
           html: htmlContent
         })
 
@@ -234,7 +234,7 @@ export class EmailService {
         for (const recipient of recipients) {
           try {
             await transporter.sendMail({
-              from: `"ProfileVault Updates" <${smtpConfig.fromEmail || smtpConfig.user}>`,
+              from: `"AntiProfiles Updates" <${smtpConfig.fromEmail || smtpConfig.user}>`,
               to: recipient,
               subject: subject,
               html: htmlContent
@@ -284,7 +284,7 @@ export class EmailService {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Verify your ProfileVault Account</title>
+  <title>Verify your AntiProfiles Account</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0F0F17; color: #CBD5E1; margin: 0; padding: 40px 20px; }
     .container { max-width: 580px; margin: 0 auto; background: #1C1C28; border: 1px solid #2C2C3E; border-radius: 12px; padding: 36px; }
@@ -301,11 +301,11 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🛡️ ProfileVault Antidetect</div>
+      <div class="logo">🛡️ AntiProfiles Antidetect</div>
     </div>
     <h2>Verify your email address</h2>
     <p>Hello <strong>${userName}</strong>,</p>
-    <p>Thank you for registering with ProfileVault! Please confirm your email address to activate your account and start creating isolated browser profiles.</p>
+    <p>Thank you for registering with AntiProfiles! Please confirm your email address to activate your account and start creating isolated browser profiles.</p>
 
     <div class="btn-container">
       <a href="${verificationUrl}" class="btn">Verify Account</a>
@@ -315,11 +315,11 @@ export class EmailService {
     <span style="color: #2DD4BF; word-break: break-all;">${verificationUrl}</span></p>
 
     <div class="notice">
-      ⏰ <strong>Security Notice:</strong> This single-use verification link will expire in 24 hours. If you did not create a ProfileVault account, you can safely ignore this message.
+      ⏰ <strong>Security Notice:</strong> This single-use verification link will expire in 24 hours. If you did not create a AntiProfiles account, you can safely ignore this message.
     </div>
 
     <div class="footer">
-      © ${new Date().getFullYear()} ProfileVault Antidetect Software. All rights reserved.
+      © ${new Date().getFullYear()} AntiProfiles Antidetect Software. All rights reserved.
     </div>
   </div>
 </body>
@@ -336,7 +336,7 @@ export class EmailService {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Account Verified — ProfileVault</title>
+  <title>Account Verified — AntiProfiles</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0F0F17; color: #CBD5E1; margin: 0; padding: 40px 20px; }
     .container { max-width: 580px; margin: 0 auto; background: #1C1C28; border: 1px solid #2C2C3E; border-radius: 12px; padding: 36px; }
@@ -355,11 +355,11 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🛡️ ProfileVault Antidetect</div>
+      <div class="logo">🛡️ AntiProfiles Antidetect</div>
     </div>
     <div style="text-align: center;">
       <span class="badge">✓ Email Verified Successfully</span>
-      <h2>Welcome to ProfileVault, ${userName}!</h2>
+      <h2>Welcome to AntiProfiles, ${userName}!</h2>
     </div>
     <p>Your email address (<strong>${email}</strong>) has been verified. Your account is now fully active and ready to use.</p>
 
@@ -372,11 +372,11 @@ export class EmailService {
     </div>
 
     <div class="btn-container">
-      <a href="app://profilevault" class="btn">Open ProfileVault Application</a>
+      <a href="app://antiprofiles" class="btn">Open AntiProfiles Application</a>
     </div>
 
     <div class="footer">
-      © ${new Date().getFullYear()} ProfileVault Antidetect Software. All rights reserved.
+      © ${new Date().getFullYear()} AntiProfiles Antidetect Software. All rights reserved.
     </div>
   </div>
 </body>
@@ -409,7 +409,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🛡️ ProfileVault System Announcement</div>
+      <div class="logo">🛡️ AntiProfiles System Announcement</div>
     </div>
     <div>
       <span class="badge">📢 System Update</span>
@@ -420,10 +420,10 @@ export class EmailService {
       ${formattedBody}
     </div>
 
-    <p style="font-size: 12px; color: #64748B;">You are receiving this official update because you are a registered user of ProfileVault Antidetect Software.</p>
+    <p style="font-size: 12px; color: #64748B;">You are receiving this official update because you are a registered user of AntiProfiles Antidetect Software.</p>
 
     <div class="footer">
-      © ${new Date().getFullYear()} ProfileVault Antidetect Software. All rights reserved.
+      © ${new Date().getFullYear()} AntiProfiles Antidetect Software. All rights reserved.
     </div>
   </div>
 </body>

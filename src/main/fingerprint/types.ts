@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — Fingerprint Type Definitions
+// AntiProfiles v2 — Fingerprint Type Definitions
 // Central type system for all 35 fingerprint subsystems
 // ──────────────────────────────────────────────────────────────────
 

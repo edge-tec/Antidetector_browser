@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Landing Page Repository
+// AntiProfiles — Landing Page Repository
 // ──────────────────────────────────────────────
 
 import { getDatabase } from '../connection'
@@ -29,16 +29,16 @@ export class LandingRepository {
     const db = getDatabase()
 
     let branding: Record<string, string> = {
-      site_name: 'ProfileVault',
-      logo_text: '🛡️ ProfileVault',
+      site_name: 'AntiProfiles',
+      logo_text: '🛡️ AntiProfiles',
       tagline: 'Next-Gen Anti-Detect & Browser Profile Isolation',
       primary_color: '#6366F1',
       secondary_color: '#8B5CF6',
       accent_color: '#2DD4BF',
-      contact_email: 'support@profilevault.local',
-      contact_telegram: 'https://t.me/profilevault_support',
+      contact_email: 'support@antiprofiles.com',
+      contact_telegram: 'https://t.me/antiprofiles_support',
       contact_whatsapp: '+1 (555) 019-2834',
-      support_url: 'https://docs.profilevault.local/help'
+      support_url: 'https://docs.antiprofiles.com/help'
     }
 
     let hero: any = {
@@ -98,20 +98,20 @@ export class LandingRepository {
     let faqs: any[] = [
       { id: 'faq_1', question: 'What is an anti-detect browser?', answer: 'An anti-detect browser is a specialized software environment designed to isolate browser profiles and provide configurable hardware, network, and device parameters.' },
       { id: 'faq_2', question: 'What is a browser profile?', answer: 'A browser profile is a completely isolated container containing its own browser data, cookies, local storage, cache, proxies, and hardware fingerprint settings.' },
-      { id: 'faq_3', question: 'Can I use HTTP, SOCKS4, and SOCKS5 proxies?', answer: 'Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in connection checking and IP geolocation display.' },
+      { id: 'faq_3', question: 'Can I use HTTP, SOCKS4, and SOCKS5 proxies?', answer: 'Yes! AntiProfiles supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in connection checking and IP geolocation display.' },
       { id: 'faq_4', question: 'Can I upgrade or downgrade my plan at any time?', answer: 'Yes. You can upgrade or modify your subscription tier at any time according to your operational needs.' },
-      { id: 'faq_5', question: 'Does ProfileVault offer an Automation API?', answer: 'Yes. Professional and Business plans provide local REST endpoints and automation integration for Puppeteer and Selenium drivers.' }
+      { id: 'faq_5', question: 'Does AntiProfiles offer an Automation API?', answer: 'Yes. Professional and Business plans provide local REST endpoints and automation integration for Puppeteer and Selenium drivers.' }
     ]
 
     let testimonials: any[] = [
-      { id: 'test_1', name: 'Alex Rivera', position: 'E-Commerce Manager', company: 'Apex Brands', avatar_url: '👤', rating: 5, testimonial: 'ProfileVault completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', is_demo: 1 },
+      { id: 'test_1', name: 'Alex Rivera', position: 'E-Commerce Manager', company: 'Apex Brands', avatar_url: '👤', rating: 5, testimonial: 'AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', is_demo: 1 },
       { id: 'test_2', name: 'Sarah Chen', position: 'Lead Growth Engineer', company: 'Veloce Digital', avatar_url: '👩‍💻', rating: 5, testimonial: 'The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless.', is_demo: 1 },
       { id: 'test_3', name: 'Marcus Vance', position: 'Privacy Consultant', company: 'CyberShield', avatar_url: '🛡️', rating: 5, testimonial: 'Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require.', is_demo: 1 }
     ]
 
     let seo: Record<string, string> = {
-      meta_title: 'ProfileVault — Next-Gen Anti-Detect & Privacy Browser',
-      meta_description: 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Antidetect Software.'
+      meta_title: 'AntiProfiles — Next-Gen Anti-Detect & Privacy Browser',
+      meta_description: 'Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Antidetect Software.'
     }
 
     try {

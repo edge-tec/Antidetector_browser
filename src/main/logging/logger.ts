@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Logger (file + database)
+// AntiProfiles — Logger (file + database)
 // ──────────────────────────────────────────────
 
 import { app } from 'electron'
@@ -36,7 +36,7 @@ class Logger {
     } catch {
       this.logDir = path.join(process.cwd(), 'logs')
     }
-    this.logFile = path.join(this.logDir, 'profilevault.log')
+    this.logFile = path.join(this.logDir, 'antiprofiles.log')
 
     try {
       if (!fs.existsSync(this.logDir)) {
@@ -89,13 +89,13 @@ class Logger {
       if (stats.size > 10 * 1024 * 1024) {
         // Rotate: rename current file, keep up to 5 history files
         for (let i = 4; i >= 1; i--) {
-          const from = path.join(this.logDir, `profilevault.${i}.log`)
-          const to = path.join(this.logDir, `profilevault.${i + 1}.log`)
+          const from = path.join(this.logDir, `antiprofiles.${i}.log`)
+          const to = path.join(this.logDir, `antiprofiles.${i + 1}.log`)
           if (fs.existsSync(from)) {
             fs.renameSync(from, to)
           }
         }
-        fs.renameSync(this.logFile, path.join(this.logDir, 'profilevault.1.log'))
+        fs.renameSync(this.logFile, path.join(this.logDir, 'antiprofiles.1.log'))
       }
     } catch {
       // Non-critical

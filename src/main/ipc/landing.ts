@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Landing Page & CMS IPC Handlers
+// AntiProfiles — Landing Page & CMS IPC Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'

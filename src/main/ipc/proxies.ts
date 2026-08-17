@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — IPC Proxy Handlers
+// AntiProfiles — IPC Proxy Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Geolocation Injection Script Builder
+// AntiProfiles — Geolocation Injection Script Builder
 // Overrides navigator.geolocation API
 // ──────────────────────────────────────────────────────────────────
 

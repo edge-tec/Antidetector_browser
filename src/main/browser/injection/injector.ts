@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — Browser Injection Orchestrator
+// AntiProfiles v2 — Browser Injection Orchestrator
 // Builds and injects fingerprint override scripts via CDP
 // Page.addScriptToEvaluateOnNewDocument & Emulation domain
 // ──────────────────────────────────────────────────────────────────

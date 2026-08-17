@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — IPC Profile Handlers (With Authorization & Central Sync)
+// AntiProfiles — IPC Profile Handlers (With Authorization & Central Sync)
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'

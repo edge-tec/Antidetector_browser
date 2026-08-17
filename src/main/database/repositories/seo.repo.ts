@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — SEO & AEO Repository (SQLite)
+// AntiProfiles — SEO & AEO Repository (SQLite)
 // ──────────────────────────────────────────────
 
 import { v4 as uuidv4 } from 'uuid'
@@ -127,7 +127,7 @@ export class SeoRepository {
       targetId,
       page.page_path || '/',
       page.page_type || 'webpage',
-      page.title || 'ProfileVault',
+      page.title || 'AntiProfiles',
       page.description || '',
       page.keywords || '',
       page.canonical_url || '',

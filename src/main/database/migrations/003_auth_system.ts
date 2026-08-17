@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Authentication & User System Migration
+// AntiProfiles — Authentication & User System Migration
 // ──────────────────────────────────────────────
 
 import type Database from 'better-sqlite3'
@@ -59,7 +59,7 @@ export function up(db: Database.Database): void {
   // Create default Admin account if no users exist
   const defaultAdminHash = hashPassword('admin123')
 
-  const adminUser = db.prepare("SELECT id FROM users WHERE email = 'admin@profilevault.local'").get()
+  const adminUser = db.prepare("SELECT id FROM users WHERE email = 'admin@antiprofiles.com'").get()
   if (!adminUser) {
     db.prepare(`
       INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
@@ -67,7 +67,7 @@ export function up(db: Database.Database): void {
     `).run(
       'admin-default',
       'System Admin',
-      'admin@profilevault.local',
+      'admin@antiprofiles.com',
       defaultAdminHash,
       'admin',
       1, // Verified
@@ -75,7 +75,7 @@ export function up(db: Database.Database): void {
     )
   } else {
     // Ensure default admin password hash and verified status
-    db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = 'admin@profilevault.local'").run(defaultAdminHash)
+    db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = 'admin@antiprofiles.com'").run(defaultAdminHash)
   }
 
   // Ensure all profiles are linked to an active user ID

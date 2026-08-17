@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Navigator Injection Script Builder
+// AntiProfiles — Navigator Injection Script Builder
 // Overrides navigator.* properties using Object.defineProperty
 // ──────────────────────────────────────────────────────────────────
 

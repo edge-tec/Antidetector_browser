@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Migration 007: Google SEO + AI Search Optimization (AEO/GEO) System
+// AntiProfiles — Migration 007: Google SEO + AI Search Optimization (AEO/GEO) System
 // ──────────────────────────────────────────────
 
 import type Database from 'better-sqlite3'
@@ -29,17 +29,17 @@ export function up(db: Database.Database): void {
       internal_links_enabled: '1',
       seo_audit_enabled: '1',
       content_assistant_enabled: '1',
-      site_name: 'ProfileVault',
+      site_name: 'AntiProfiles',
       site_description: 'Professional Multi-Account Anti-Detect Browser with Isolated Profiles, Fingerprint Spoofing & Residential Proxy Support.',
-      site_url: 'https://profilevault.local',
-      default_og_image: 'https://profilevault.local/og-cover.png',
-      twitter_handle: '@ProfileVaultApp',
-      robots_content: "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://profilevault.local/sitemap.xml",
-      entity_brand_name: 'ProfileVault Software Inc.',
-      entity_logo: 'https://profilevault.local/logo.png',
-      entity_email: 'support@profilevault.local',
+      site_url: 'https://antiprofiles.com',
+      default_og_image: 'https://antiprofiles.com/og-cover.png',
+      twitter_handle: '@AntiProfilesApp',
+      robots_content: "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://antiprofiles.com/sitemap.xml",
+      entity_brand_name: 'AntiProfiles Software Inc.',
+      entity_logo: 'https://antiprofiles.com/logo.png',
+      entity_email: 'support@antiprofiles.com',
       entity_phone: '+1 (800) 555-0199',
-      entity_same_as: '["https://x.com/ProfileVaultApp", "https://github.com/edge-tec/Antidetector_browser"]'
+      entity_same_as: '["https://x.com/AntiProfilesApp", "https://github.com/edge-tec/Antidetector_browser"]'
     }
 
     const stmt = db.prepare('INSERT OR REPLACE INTO seo_settings (key, value) VALUES (?, ?)')
@@ -80,17 +80,17 @@ export function up(db: Database.Database): void {
       og_title, og_description, og_image, schema_type, primary_keyword, ai_quick_answer
     ) VALUES (
       'page_home', '/', 'homepage',
-      'ProfileVault — Anti-Detect Browser & Multi-Account Management Tool',
+      'AntiProfiles — Anti-Detect Browser & Multi-Account Management Tool',
       'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, fingerprint spoofing, and residential proxies.',
       'anti detect browser, multi account browser, browser profile isolation, fingerprint spoofing, proxy manager',
-      'https://profilevault.local/',
+      'https://antiprofiles.com/',
       'index, follow',
-      'ProfileVault — Anti-Detect Browser & Profile Isolation',
+      'AntiProfiles — Anti-Detect Browser & Profile Isolation',
       'Professional anti-detect browser for managing isolated web profiles without bans.',
-      'https://profilevault.local/og-cover.png',
+      'https://antiprofiles.com/og-cover.png',
       'SoftwareApplication',
       'anti detect browser',
-      'ProfileVault is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
+      'AntiProfiles is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
     )
   `).run()
 

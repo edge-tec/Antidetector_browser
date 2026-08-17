@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Credential Encryption (safeStorage)
+// AntiProfiles — Credential Encryption (safeStorage)
 // ──────────────────────────────────────────────
 
 import { safeStorage } from 'electron'

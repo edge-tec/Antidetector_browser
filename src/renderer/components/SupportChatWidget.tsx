@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — User & Guest Live Support Chat Widget Component
+// AntiProfiles — User & Guest Live Support Chat Widget Component
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -218,7 +218,7 @@ export const SupportChatWidget: React.FC = () => {
     if (!newSubject.trim() || !newMessage.trim()) return
 
     const finalGuestName = currentUser?.name || guestName.trim() || `Visitor #${Math.floor(1000 + Math.random() * 9000)}`
-    const finalGuestEmail = currentUser?.email || guestEmail.trim() || `${effectiveToken}@guest.profilevault.local`
+    const finalGuestEmail = currentUser?.email || guestEmail.trim() || `${effectiveToken}@guest.antiprofiles.com`
 
     setLoading(true)
     try {
@@ -356,7 +356,7 @@ export const SupportChatWidget: React.FC = () => {
                 <span style={{ position: 'absolute', bottom: 0, right: 0, width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#10B981', border: '2px solid #14141F' }} />
               </div>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 800, color: '#F1F5F9' }}>ProfileVault Support</div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: '#F1F5F9' }}>AntiProfiles Support</div>
                 <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 600 }}>● Support Agents Online</div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Process Tracker
+// AntiProfiles — Process Tracker
 // ──────────────────────────────────────────────
 
 import type { Browser } from 'puppeteer-core'

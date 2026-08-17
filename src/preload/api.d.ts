@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Preload API Type Declaration
+// AntiProfiles — Preload API Type Declaration
 // ──────────────────────────────────────────────
 
 import type { IpcApi } from './index'

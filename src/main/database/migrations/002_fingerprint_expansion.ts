@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Migration 002: Fingerprint Expansion
+// AntiProfiles — Migration 002: Fingerprint Expansion
 // Expands schema for full anti-detect browser support
 // ──────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Automation API Server
+// AntiProfiles — Automation API Server
 // ──────────────────────────────────────────────
 
 import express from 'express'

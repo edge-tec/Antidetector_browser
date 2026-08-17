@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Permissions Injection Script Builder
+// AntiProfiles — Permissions Injection Script Builder
 // Overrides navigator.permissions.query() safely
 // ──────────────────────────────────────────────────────────────────
 

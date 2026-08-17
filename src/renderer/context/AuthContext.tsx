@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Authentication Context (With Impersonation Support)
+// AntiProfiles — Authentication Context (With Impersonation Support)
 // ──────────────────────────────────────────────
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
@@ -55,11 +55,11 @@ const callIpc = async (channel: string, ...args: any[]) => {
   // Fallback for web preview / standalone renderer mode
   if (channel === 'auth:login') {
     const [payload] = args
-    if (payload?.email?.toLowerCase() === 'admin@profilevault.local') {
+    if (payload?.email?.toLowerCase() === 'admin@antiprofiles.com') {
       const mockAdmin: UserDisplay = {
         id: 'admin-default',
         name: 'System Admin',
-        email: 'admin@profilevault.local',
+        email: 'admin@antiprofiles.com',
         role: 'admin',
         emailVerified: true,
         accountStatus: 'active',
@@ -78,7 +78,7 @@ const callIpc = async (channel: string, ...args: any[]) => {
     const mockAdmin: UserDisplay = {
       id: 'admin-default',
       name: 'System Admin',
-      email: 'admin@profilevault.local',
+      email: 'admin@antiprofiles.com',
       role: 'admin',
       emailVerified: true,
       accountStatus: 'active',

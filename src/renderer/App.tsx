@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Main App Component
+// AntiProfiles — Main App Component
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
@@ -1204,7 +1204,7 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
         <h3 className="section-title">About</h3>
         <div className="card">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div><strong>ProfileVault</strong> v{version || '1.0.0'}</div>
+            <div><strong>AntiProfiles</strong> v{version || '1.0.0'}</div>
             <div className="text-sm text-secondary">Professional browser profile management for macOS</div>
             <div className="text-sm text-secondary" style={{ marginTop: 8 }}>Built with Electron, React, Puppeteer, and SQLite</div>
           </div>
@@ -1380,7 +1380,7 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
       <div className="page-header" style={{ marginBottom: 0 }}>
         <div>
           <h1 className="page-title">24/7 Live Support & Help Desk</h1>
-          <p className="page-description">Chat directly with ProfileVault technical engineers in real time.</p>
+          <p className="page-description">Chat directly with AntiProfiles technical engineers in real time.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
@@ -1397,8 +1397,8 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
               <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '40px' }}>Loading conversation history...</div>
             ) : messages.length === 0 ? (
               <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', maxWidth: '80%', alignSelf: 'flex-start' }}>
-                <span style={{ fontSize: '11px', color: '#2DD4BF', fontWeight: 700 }}>ProfileVault Support Team</span>
-                <p style={{ fontSize: '13px', color: '#FFF', marginTop: '4px' }}>Hello! 👋 Welcome to ProfileVault Live Support. How can we assist you with your antidetect browser profiles, proxies, or subscriptions today?</p>
+                <span style={{ fontSize: '11px', color: '#2DD4BF', fontWeight: 700 }}>AntiProfiles Support Team</span>
+                <p style={{ fontSize: '13px', color: '#FFF', marginTop: '4px' }}>Hello! 👋 Welcome to AntiProfiles Live Support. How can we assist you with your antidetect browser profiles, proxies, or subscriptions today?</p>
                 <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', display: 'block', marginTop: '6px' }}>Just now</span>
               </div>
             ) : (
@@ -1423,7 +1423,7 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '2px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: isAgent ? '#2DD4BF' : (isFailed ? '#EF4444' : '#000') }}>
-                        {isAgent ? (m.sender_name || 'ProfileVault Support') : 'You'}
+                        {isAgent ? (m.sender_name || 'AntiProfiles Support') : 'You'}
                       </span>
                       <span style={{ fontSize: '10px', opacity: 0.7 }}>
                         {isSendingMsg ? 'Sending... ⏳' : isFailed ? 'Failed ⚠️' : (m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now')}
@@ -1474,7 +1474,7 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
               </div>
               <div>
                 <strong style={{ color: '#2DD4BF', display: 'block' }}>Device Limits:</strong>
-                Manage active devices from your ProfileVault account settings.
+                Manage active devices from your AntiProfiles account settings.
               </div>
             </div>
           </div>
@@ -1662,7 +1662,7 @@ function AppContent() {
   if (isLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#0F0F14', color: '#2DD4BF', fontSize: '18px', fontWeight: 600 }}>
-        🛡️ Loading ProfileVault...
+        🛡️ Loading AntiProfiles...
       </div>
     )
   }
@@ -1813,8 +1813,8 @@ function AppContent() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="sidebar-brand">
-            <img src={logoImg} alt="ProfileVault Logo" className="sidebar-brand-img" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
-            <span className="sidebar-brand-text">ProfileVault</span>
+            <img src={logoImg} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
+            <span className="sidebar-brand-text">AntiProfiles</span>
           </div>
         </div>
 
@@ -1852,7 +1852,7 @@ function AppContent() {
       <main className="app-main">
         <div className="topbar">
           <span className="topbar-title" style={{ marginLeft: 8 }}>
-            {adminView ? '👑 Admin Control Center' : (navItems.find((n) => n.page === currentPage)?.label || 'ProfileVault')}
+            {adminView ? '👑 Admin Control Center' : (navItems.find((n) => n.page === currentPage)?.label || 'AntiProfiles')}
           </span>
           <div style={{ flex: 1 }} />
           <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flexShrink: 0 }}>
@@ -2030,7 +2030,7 @@ function AppContent() {
             {runningCount} profile{runningCount !== 1 ? 's' : ''} running
           </div>
           <div style={{ flex: 1 }} />
-          <span className="text-xs text-tertiary">ProfileVault v1.0.0</span>
+          <span className="text-xs text-tertiary">AntiProfiles v1.0.0</span>
         </div>
       </main>
 
@@ -2207,7 +2207,7 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary fallbackTitle="ProfileVault Application Error">
+    <ErrorBoundary fallbackTitle="AntiProfiles Application Error">
       <AuthProvider>
         <AppContent />
       </AuthProvider>

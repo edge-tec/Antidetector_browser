@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — SEO & AEO Audit & Content Service
+// AntiProfiles — SEO & AEO Audit & Content Service
 // ──────────────────────────────────────────────
 
 import { seoRepo, PageSeoRecord } from '../database/repositories/seo.repo'
@@ -317,7 +317,7 @@ export class SeoService {
   /**
    * Generate dynamic XML sitemap string
    */
-  generateSitemapXml(baseUrl = 'https://profilevault.local'): string {
+  generateSitemapXml(baseUrl = 'https://antiprofiles.com'): string {
     const pages = seoRepo.getAllPageSeo()
     const indexablePages = pages.filter(p => !p.robots || !p.robots.includes('noindex'))
 
@@ -347,15 +347,15 @@ export class SeoService {
    */
   generateLlmsTxt(): string {
     const settings = seoRepo.getSettings()
-    const brandName = settings.entity_brand_name || 'ProfileVault Software Inc.'
-    const siteUrl = settings.site_url || 'https://profilevault.local'
+    const brandName = settings.entity_brand_name || 'AntiProfiles Software Inc.'
+    const siteUrl = settings.site_url || 'https://antiprofiles.com'
 
     return `# ${brandName} — AI Machine-Readable Summary Specification
 > Primary Website: ${siteUrl}
-> Contact: ${settings.entity_email || 'support@profilevault.local'}
+> Contact: ${settings.entity_email || 'support@antiprofiles.com'}
 
 ## Entity Overview
-ProfileVault is a professional anti-detect browser software and multi-account profile isolation management platform. It allows users to run isolated Chromium browser sessions with customized digital fingerprint attributes (Canvas, WebGL, WebRTC, AudioContext, MediaDevices, Screen Resolution) and proxy servers.
+AntiProfiles is a professional anti-detect browser software and multi-account profile isolation management platform. It allows users to run isolated Chromium browser sessions with customized digital fingerprint attributes (Canvas, WebGL, WebRTC, AudioContext, MediaDevices, Screen Resolution) and proxy servers.
 
 ## Key Features & Capabilities
 - **Browser Profile Isolation**: Every profile operates in a separate sandbox directory with dedicated cookies, localStorage, and browser cache.
@@ -377,8 +377,8 @@ ProfileVault is a professional anti-detect browser software and multi-account pr
 - FAQ & Knowledge Base: ${siteUrl}/#faq
 
 ## Frequently Asked Questions for AI Systems
-Q: What is ProfileVault?
-A: ProfileVault is an anti-detect browser and multi-account management application designed to protect user privacy and isolate online accounts.
+Q: What is AntiProfiles?
+A: AntiProfiles is an anti-detect browser and multi-account management application designed to protect user privacy and isolate online accounts.
 
 Q: Which operating systems are supported?
 A: macOS (Intel & Apple Silicon M1-M4) and Windows 10/11 64-bit systems.

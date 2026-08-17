@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — Browser Launcher (Puppeteer + Fingerprint Injection)
+// AntiProfiles v2 — Browser Launcher (Puppeteer + Fingerprint Injection)
 // ──────────────────────────────────────────────────────────────────
 
 import fs from 'fs'

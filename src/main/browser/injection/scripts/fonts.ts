@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Font Masking Injection Script Builder
+// AntiProfiles — Font Masking Injection Script Builder
 // Intercepts font enumeration techniques
 // ──────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Battery Injection Script Builder
+// AntiProfiles — Battery Injection Script Builder
 // Overrides navigator.getBattery() API
 // ──────────────────────────────────────────────────────────────────
 

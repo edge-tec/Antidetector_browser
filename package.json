@@ -1,12 +1,12 @@
 {
-  "name": "profilevault",
+  "name": "antiprofiles",
   "version": "1.0.0",
-  "description": "Professional macOS Browser Profile & Privacy Management Application",
+  "description": "AntiProfiles — Professional Anti-Detect Browser Profile & Privacy Management Application",
   "main": "./out/main/index.js",
-  "homepage": "https://profilevault.local",
+  "homepage": "https://antiprofiles.com",
   "author": {
-    "name": "ProfileVault Team",
-    "email": "support@profilevault.local"
+    "name": "AntiProfiles Team",
+    "email": "support@antiprofiles.com"
   },
   "license": "MIT",
   "scripts": {

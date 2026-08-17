@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — AudioContext Injection Script Builder
+// AntiProfiles — AudioContext Injection Script Builder
 // Adds deterministic noise to AudioContext fingerprinting methods safely
 // ──────────────────────────────────────────────────────────────────
 

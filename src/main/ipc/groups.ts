@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — IPC Group Handlers
+// AntiProfiles — IPC Group Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'

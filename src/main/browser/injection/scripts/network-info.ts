@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Network Information Injection Script Builder
+// AntiProfiles — Network Information Injection Script Builder
 // Overrides navigator.connection properties
 // ──────────────────────────────────────────────────────────────────
 

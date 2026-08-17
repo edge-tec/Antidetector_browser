@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Admin Management Dashboard (Users, Subscriptions, Desktop App, CMS, SMTP)
+// AntiProfiles — Admin Management Dashboard (Users, Subscriptions, Desktop App, CMS, SMTP)
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react'
@@ -22,7 +22,7 @@ const mockUsersStore: UserDisplay[] = [
   {
     id: 'admin-default',
     name: 'System Admin',
-    email: 'admin@profilevault.local',
+    email: 'admin@antiprofiles.com',
     role: 'admin',
     emailVerified: true,
     accountStatus: 'active',
@@ -84,10 +84,10 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
     return {
       success: true,
       data: {
-        win_download_url: 'https://releases.profilevault.local/ProfileVault-Setup-1.0.0.exe',
+        win_download_url: 'https://releases.antiprofiles.com/AntiProfiles-Setup-1.0.0.exe',
         win_app_version: '1.0.0',
         win_enabled: 'true',
-        mac_download_url: 'https://releases.profilevault.local/ProfileVault-1.0.0.dmg',
+        mac_download_url: 'https://releases.antiprofiles.com/AntiProfiles-1.0.0.dmg',
         mac_app_version: '1.0.0',
         mac_enabled: 'true',
         release_notes: 'Initial stable release.',
@@ -105,9 +105,9 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
       data: {
         host: 'smtp.gmail.com',
         port: 587,
-        user: 'admin@profilevault.local',
+        user: 'admin@antiprofiles.com',
         password: '',
-        fromEmail: 'noreply@profilevault.local',
+        fromEmail: 'noreply@antiprofiles.com',
         secure: false,
         enabled: true
       }
@@ -152,10 +152,10 @@ export const AdminDashboard: React.FC = () => {
 
   // Desktop App Release Settings State
   const [desktopConfig, setDesktopConfig] = useState<Record<string, string>>({
-    win_download_url: 'https://releases.profilevault.local/ProfileVault-Setup-1.0.0.exe',
+    win_download_url: 'https://releases.antiprofiles.com/AntiProfiles-Setup-1.0.0.exe',
     win_app_version: '1.0.0',
     win_enabled: 'true',
-    mac_download_url: 'https://releases.profilevault.local/ProfileVault-1.0.0.dmg',
+    mac_download_url: 'https://releases.antiprofiles.com/AntiProfiles-1.0.0.dmg',
     mac_app_version: '1.0.0',
     mac_enabled: 'true',
     release_notes: 'Initial stable release with multi-profile isolation.',
@@ -208,15 +208,15 @@ export const AdminDashboard: React.FC = () => {
   const [broadcastForm, setBroadcastForm] = useState({
     targetGroup: 'all',
     customEmails: '',
-    subject: '⚡ ProfileVault Latest Update & Feature Announcement',
-    messageBody: 'Hello,\n\nWe are excited to share our latest product updates with you! Check out the new performance improvements, updated browser fingerprint databases, and enhanced security features in ProfileVault.\n\nThank you for choosing ProfileVault!'
+    subject: '⚡ AntiProfiles Latest Update & Feature Announcement',
+    messageBody: 'Hello,\n\nWe are excited to share our latest product updates with you! Check out the new performance improvements, updated browser fingerprint databases, and enhanced security features in AntiProfiles.\n\nThank you for choosing AntiProfiles!'
   })
   const [sendingBroadcast, setSendingBroadcast] = useState(false)
   const [broadcastStatus, setBroadcastStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Landing CMS State
   const [cmsTab, setCmsTab] = useState<'branding' | 'hero' | 'pricing' | 'faq' | 'seo'>('branding')
-  const [cmsBranding, setCmsBranding] = useState<Record<string, string>>({ site_name: 'ProfileVault', accent_color: '#2DD4BF' })
+  const [cmsBranding, setCmsBranding] = useState<Record<string, string>>({ site_name: 'AntiProfiles', accent_color: '#2DD4BF' })
   const [cmsHero, setCmsHero] = useState({ headline: '', subheadline: '', cta_primary_text: '', cta_primary_url: '', cta_secondary_text: '', cta_secondary_url: '', trust_text: '' })
   const [cmsPlans, setCmsPlans] = useState<any[]>([])
   const [cmsFaqs, setCmsFaqs] = useState<any[]>([])
@@ -882,7 +882,7 @@ export const AdminDashboard: React.FC = () => {
                 <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#60A5FA' }}>🪟 Windows (x64) Release</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '10px', marginBottom: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (ProfileVault-Windows-x64.exe)</label>
+                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (AntiProfiles-Windows-x64.exe)</label>
                     <input type="text" value={desktopConfig.win_download_url || ''} onChange={e => setDesktopConfig({ ...desktopConfig, win_download_url: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
                   </div>
                   <div>
@@ -896,7 +896,7 @@ export const AdminDashboard: React.FC = () => {
                 <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#10B981' }}>🍏 macOS Intel (x64) Release</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '10px', marginBottom: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (ProfileVault-macOS-Intel-x64.dmg)</label>
+                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (AntiProfiles-macOS-Intel-x64.dmg)</label>
                     <input type="text" value={desktopConfig.mac_intel_download_url || desktopConfig.mac_download_url || ''} onChange={e => setDesktopConfig({ ...desktopConfig, mac_intel_download_url: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
                   </div>
                   <div>
@@ -910,7 +910,7 @@ export const AdminDashboard: React.FC = () => {
                 <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#F59E0B' }}>⚡ macOS Apple Silicon (arm64) Release</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '10px', marginBottom: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (ProfileVault-macOS-Apple-Silicon-arm64.dmg)</label>
+                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (AntiProfiles-macOS-Apple-Silicon-arm64.dmg)</label>
                     <input type="text" value={desktopConfig.mac_arm_download_url || desktopConfig.mac_download_url || ''} onChange={e => setDesktopConfig({ ...desktopConfig, mac_arm_download_url: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
                   </div>
                   <div>
@@ -1243,7 +1243,7 @@ export const AdminDashboard: React.FC = () => {
                 </label>
                 <input
                   type="email"
-                  placeholder="e.g. noreply@profilevault.com"
+                  placeholder="e.g. noreply@antiprofiles.com"
                   value={smtpForm.fromEmail}
                   onChange={e => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', outline: 'none' }}
@@ -1371,7 +1371,7 @@ export const AdminDashboard: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. ⚡ ProfileVault Update: New Features Released!"
+                    placeholder="e.g. ⚡ AntiProfiles Update: New Features Released!"
                     value={broadcastForm.subject}
                     onChange={e => setBroadcastForm({ ...broadcastForm, subject: e.target.value })}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#1C1C28', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}

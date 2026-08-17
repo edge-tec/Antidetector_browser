@@ -1,6 +1,6 @@
 <?php
 // ──────────────────────────────────────────────
-// ProfileVault — Landing Page Database-Driven CMS API (PHP)
+// AntiProfiles — Landing Page Database-Driven CMS API (PHP)
 // ──────────────────────────────────────────────
 
 require_once __DIR__ . '/../helpers.php';
@@ -77,22 +77,22 @@ foreach ($seoRows as $s) {
 $config = getDesktopAppConfigMap();
 $releases = [
     'windows' => [
-        'url' => $config['win_download_url'] ?? 'https://releases.profilevault.local/ProfileVault-Windows-x64.exe',
+        'url' => $config['win_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe',
         'version' => $config['win_app_version'] ?? '1.0.0',
         'enabled' => ($config['win_enabled'] ?? 'true') !== 'false'
     ],
     'mac_intel' => [
-        'url' => $config['mac_intel_download_url'] ?? $config['mac_download_url'] ?? 'https://releases.profilevault.local/ProfileVault-macOS-Intel-x64.dmg',
+        'url' => $config['mac_intel_download_url'] ?? $config['mac_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg',
         'version' => $config['mac_intel_app_version'] ?? '1.0.0',
         'enabled' => ($config['mac_intel_enabled'] ?? 'true') !== 'false'
     ],
     'mac_arm' => [
-        'url' => $config['mac_arm_download_url'] ?? $config['mac_download_url'] ?? 'https://releases.profilevault.local/ProfileVault-macOS-Apple-Silicon-arm64.dmg',
+        'url' => $config['mac_arm_download_url'] ?? $config['mac_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg',
         'version' => $config['mac_arm_app_version'] ?? '1.0.0',
         'enabled' => ($config['mac_arm_enabled'] ?? 'true') !== 'false'
     ],
     'linux' => [
-        'url' => $config['linux_download_url'] ?? 'https://releases.profilevault.local/ProfileVault-Linux-x86_64.AppImage',
+        'url' => $config['linux_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-Linux-x86_64.AppImage',
         'version' => $config['linux_app_version'] ?? '1.0.0',
         'enabled' => ($config['linux_enabled'] ?? 'true') !== 'false'
     ]

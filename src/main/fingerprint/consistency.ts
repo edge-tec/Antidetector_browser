@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — Fingerprint Consistency Engine
+// AntiProfiles v2 — Fingerprint Consistency Engine
 // Validates cross-parameter coherence and returns a consistency score.
 // "Don't make random fingerprint the core feature.
 //  Make consistent fingerprint the core feature."

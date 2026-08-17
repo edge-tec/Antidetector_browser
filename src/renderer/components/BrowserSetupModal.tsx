@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Browser Setup & Diagnostic Modal
+// AntiProfiles — Browser Setup & Diagnostic Modal
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react'
@@ -218,7 +218,7 @@ export function BrowserSetupModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, padding: 12 }}>
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
-                  ProfileVault launches isolated browser sessions using Google Chrome or Chromium. Ensure a compatible executable is configured below.
+                  AntiProfiles launches isolated browser sessions using Google Chrome or Chromium. Ensure a compatible executable is configured below.
                 </p>
               </div>
 

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Shared Types (Renderer)
+// AntiProfiles — Shared Types (Renderer)
 // ──────────────────────────────────────────────
 
 export type ProfileStatus = 'running' | 'stopped' | 'launching' | 'error'

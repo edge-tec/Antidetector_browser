@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — WebGL Injection Script Builder
+// AntiProfiles — WebGL Injection Script Builder
 // Intercepts WebGL API calls to spoof GPU identity with safe defaults
 // ──────────────────────────────────────────────────────────────────
 

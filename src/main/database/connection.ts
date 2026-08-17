@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — SQLite Connection Manager
+// AntiProfiles — SQLite Connection Manager
 // ──────────────────────────────────────────────
 
 import Database from 'better-sqlite3'
@@ -15,12 +15,12 @@ export function getDbPath(): string {
   try {
     if (app && typeof app.getPath === 'function') {
       const userDataPath = app.getPath('userData')
-      return path.join(userDataPath, 'profilevault.db')
+      return path.join(userDataPath, 'antiprofiles.db')
     }
   } catch {
     // Fallback for non-Electron / test context
   }
-  return path.join(process.cwd(), 'profilevault.db')
+  return path.join(process.cwd(), 'antiprofiles.db')
 }
 
 export function getDatabase(): Database.Database {
@@ -62,7 +62,7 @@ export function initDatabase(): Database.Database {
   runMigrations(db)
 
   try {
-    db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = 'admin@profilevault.local'").run(hashPassword('admin123'))
+    db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = 'admin@antiprofiles.com'").run(hashPassword('admin123'))
   } catch {
     // Ignore if table doesn't exist yet
   }

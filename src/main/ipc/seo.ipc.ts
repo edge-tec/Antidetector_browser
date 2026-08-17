@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — IPC Handlers for SEO & AEO Management System
+// AntiProfiles — IPC Handlers for SEO & AEO Management System
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'

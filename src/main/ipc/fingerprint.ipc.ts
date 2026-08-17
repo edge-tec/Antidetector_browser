@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — Fingerprint IPC Handlers
+// AntiProfiles v2 — Fingerprint IPC Handlers
 // Exposes fingerprint operations to the renderer via contextBridge
 // ──────────────────────────────────────────────────────────────────
 

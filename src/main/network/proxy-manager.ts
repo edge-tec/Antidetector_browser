@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Proxy Manager
+// AntiProfiles — Proxy Manager
 // ──────────────────────────────────────────────
 
 import { Proxy } from '../database/models'

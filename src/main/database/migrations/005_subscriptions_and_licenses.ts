@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Migration 005: Subscriptions, Licensing & Desktop App Config
+// AntiProfiles — Migration 005: Subscriptions, Licensing & Desktop App Config
 // ──────────────────────────────────────────────
 
 import type Database from 'better-sqlite3'
@@ -64,13 +64,13 @@ export function up(db: Database.Database): void {
 
   // Default Desktop App & Release Configuration Seed
   const defaultAppConfig = [
-    ['win_download_url', 'https://releases.profilevault.local/ProfileVault-Windows-x64.exe'],
+    ['win_download_url', 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe'],
     ['win_app_version', '1.0.0'],
     ['win_enabled', 'true'],
-    ['mac_intel_download_url', 'https://releases.profilevault.local/ProfileVault-macOS-Intel-x64.dmg'],
+    ['mac_intel_download_url', 'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg'],
     ['mac_intel_app_version', '1.0.0'],
     ['mac_intel_enabled', 'true'],
-    ['mac_arm_download_url', 'https://releases.profilevault.local/ProfileVault-macOS-Apple-Silicon-arm64.dmg'],
+    ['mac_arm_download_url', 'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg'],
     ['mac_arm_app_version', '1.0.0'],
     ['mac_arm_enabled', 'true'],
     ['release_notes', 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.'],

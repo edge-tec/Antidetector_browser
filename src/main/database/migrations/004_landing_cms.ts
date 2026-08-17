@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Migration 004: Landing Page & CMS System
+// AntiProfiles — Migration 004: Landing Page & CMS System
 // ──────────────────────────────────────────────
 
 import type Database from 'better-sqlite3'
@@ -18,22 +18,22 @@ export function up(db: Database.Database): void {
 
   // Initial Branding Seed
   const defaultBranding = [
-    ['site_name', 'ProfileVault'],
-    ['logo_text', '🛡️ ProfileVault'],
+    ['site_name', 'AntiProfiles'],
+    ['logo_text', '🛡️ AntiProfiles'],
     ['tagline', 'Next-Gen Anti-Detect & Browser Profile Isolation'],
     ['primary_color', '#6366F1'],
     ['secondary_color', '#8B5CF6'],
     ['accent_color', '#2DD4BF'],
     ['dark_mode_default', 'true'],
-    ['contact_email', 'support@profilevault.local'],
-    ['contact_telegram', 'https://t.me/profilevault_support'],
+    ['contact_email', 'support@antiprofiles.com'],
+    ['contact_telegram', 'https://t.me/antiprofiles_support'],
     ['contact_whatsapp', '+1 (555) 019-2834'],
-    ['support_url', 'https://docs.profilevault.local/help'],
-    ['facebook_url', 'https://facebook.com/profilevault'],
-    ['twitter_url', 'https://twitter.com/profilevault'],
-    ['linkedin_url', 'https://linkedin.com/company/profilevault'],
-    ['telegram_channel', 'https://t.me/profilevault_official'],
-    ['youtube_url', 'https://youtube.com/@profilevault']
+    ['support_url', 'https://docs.antiprofiles.com/help'],
+    ['facebook_url', 'https://facebook.com/antiprofiles'],
+    ['twitter_url', 'https://twitter.com/antiprofiles'],
+    ['linkedin_url', 'https://linkedin.com/company/antiprofiles'],
+    ['telegram_channel', 'https://t.me/antiprofiles_official'],
+    ['youtube_url', 'https://youtube.com/@antiprofiles']
   ]
 
   const insertBranding = db.prepare('INSERT OR IGNORE INTO landing_branding (key, value) VALUES (?, ?)')
@@ -237,9 +237,9 @@ export function up(db: Database.Database): void {
   const defaultFaqs = [
     ['faq_1', 'What is an anti-detect browser?', 'An anti-detect browser is a specialized software environment designed to isolate browser profiles and provide configurable hardware, network, and device parameters to keep sessions separated.', 'General', 1],
     ['faq_2', 'What is a browser profile?', 'A browser profile is a completely isolated container containing its own browser data, cookies, local storage, cache, proxies, and hardware fingerprint settings.', 'Profiles', 2],
-    ['faq_3', 'Can I use HTTP, SOCKS4, and SOCKS5 proxies?', 'Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in connection checking and IP geolocation display.', 'Proxies', 3],
+    ['faq_3', 'Can I use HTTP, SOCKS4, and SOCKS5 proxies?', 'Yes! AntiProfiles supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in connection checking and IP geolocation display.', 'Proxies', 3],
     ['faq_4', 'Can I upgrade or downgrade my plan at any time?', 'Yes. You can upgrade or modify your subscription tier at any time according to your operational needs.', 'Billing', 4],
-    ['faq_5', 'Does ProfileVault offer an Automation API?', 'Yes. Professional and Business plans provide local REST endpoints and automation integration for Puppeteer and Selenium drivers.', 'API', 5]
+    ['faq_5', 'Does AntiProfiles offer an Automation API?', 'Yes. Professional and Business plans provide local REST endpoints and automation integration for Puppeteer and Selenium drivers.', 'API', 5]
   ]
 
   const insertFaq = db.prepare('INSERT OR IGNORE INTO landing_faqs (id, question, answer, category, sort_order) VALUES (?, ?, ?, ?, ?)')
@@ -262,7 +262,7 @@ export function up(db: Database.Database): void {
   `)
 
   const defaultTestimonials = [
-    ['test_1', 'Alex Rivera', 'E-Commerce Manager', 'Apex Brands', '👤', 5, 'ProfileVault completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', 1, 1],
+    ['test_1', 'Alex Rivera', 'E-Commerce Manager', 'Apex Brands', '👤', 5, 'AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', 1, 1],
     ['test_2', 'Sarah Chen', 'Lead Growth Engineer', 'Veloce Digital', '👩‍💻', 5, 'The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless.', 1, 2],
     ['test_3', 'Marcus Vance', 'Privacy Consultant', 'CyberShield', '🛡️', 5, 'Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require.', 1, 3]
   ]
@@ -279,12 +279,12 @@ export function up(db: Database.Database): void {
   `)
 
   const defaultSeo = [
-    ['meta_title', 'ProfileVault — Next-Gen Anti-Detect & Privacy Browser'],
-    ['meta_description', 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Antidetect Software.'],
+    ['meta_title', 'AntiProfiles — Next-Gen Anti-Detect & Privacy Browser'],
+    ['meta_description', 'Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Antidetect Software.'],
     ['meta_keywords', 'anti detect browser, browser isolation, proxy manager, multi accounting, browser fingerprinting, privacy browser'],
-    ['og_title', 'ProfileVault — Anti-Detect Browser Platform'],
+    ['og_title', 'AntiProfiles — Anti-Detect Browser Platform'],
     ['og_description', 'Create isolated browser profiles with configurable environments, secure session storage, and team access.'],
-    ['canonical_url', 'https://profilevault.local'],
+    ['canonical_url', 'https://antiprofiles.com'],
     ['robots_txt', 'User-agent: *\nAllow: /']
   ]
 

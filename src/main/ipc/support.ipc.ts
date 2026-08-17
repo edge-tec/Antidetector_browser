@@ -21,7 +21,7 @@ function getAuthUserFromToken(token: string, guestInfo?: { name?: string; email?
   }
 
   // Always create or retrieve guest user for live chat so ticket creation never fails
-  const guestEmail = guestInfo?.email?.trim().toLowerCase() || `${defaultToken}@guest.profilevault.local`
+  const guestEmail = guestInfo?.email?.trim().toLowerCase() || `${defaultToken}@guest.antiprofiles.com`
   const guestName = guestInfo?.name?.trim() || 'Visitor Guest'
 
   try {

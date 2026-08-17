@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Proxy Connection Tester
+// AntiProfiles — Proxy Connection Tester
 // ──────────────────────────────────────────────
 
 import http from 'http'

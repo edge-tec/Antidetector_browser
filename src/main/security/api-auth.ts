@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — API Token Authentication
+// AntiProfiles — API Token Authentication
 // ──────────────────────────────────────────────
 
 import { v4 as uuidv4 } from 'uuid'

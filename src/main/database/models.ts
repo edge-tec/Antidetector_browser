@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Data Models & TypeScript Interfaces
+// AntiProfiles — Data Models & TypeScript Interfaces
 // ──────────────────────────────────────────────
 
 export type ProfileStatus = 'running' | 'stopped' | 'launching' | 'error'

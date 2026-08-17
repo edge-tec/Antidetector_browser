@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Main Process Entry Point
+// AntiProfiles — Main Process Entry Point
 // ──────────────────────────────────────────────
 
 import { app, BrowserWindow, shell, nativeTheme } from 'electron'
@@ -28,7 +28,7 @@ function createWindow(): void {
     height: 900,
     minWidth: 1000,
     minHeight: 700,
-    title: 'ProfileVault',
+    title: 'AntiProfiles',
     icon: path.join(__dirname, '../../resources/icon.png'),
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
@@ -77,7 +77,7 @@ function createWindow(): void {
 // ── App Lifecycle ──
 
 app.whenReady().then(async () => {
-  logger.info('system', 'ProfileVault starting...')
+  logger.info('system', 'AntiProfiles starting...')
 
   // Initialize database
   try {
@@ -129,12 +129,12 @@ app.whenReady().then(async () => {
     }
   })
 
-  logger.info('system', 'ProfileVault started successfully')
+  logger.info('system', 'AntiProfiles started successfully')
 })
 
 // Graceful shutdown
 app.on('before-quit', async () => {
-  logger.info('system', 'ProfileVault shutting down...')
+  logger.info('system', 'AntiProfiles shutting down...')
   try {
     await profileManager.shutdown()
   } catch (err: any) {

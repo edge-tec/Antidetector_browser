@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Input Validators & Sanitizers
+// AntiProfiles — Input Validators & Sanitizers
 // ──────────────────────────────────────────────
 
 import path from 'path'

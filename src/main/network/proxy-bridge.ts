@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Local SOCKS5 Auth Tunnel Bridge
+// AntiProfiles — Local SOCKS5 Auth Tunnel Bridge
 // ──────────────────────────────────────────────
 
 import net from 'net'

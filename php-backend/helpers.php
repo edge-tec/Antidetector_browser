@@ -1,6 +1,6 @@
 <?php
 // ──────────────────────────────────────────────
-// ProfileVault — Central Helper Functions
+// AntiProfiles — Central Helper Functions
 // ──────────────────────────────────────────────
 
 require_once __DIR__ . '/config.php';
@@ -188,7 +188,7 @@ function ensureDatabaseTablesExist() {
             $db->exec("
                 INSERT INTO `payment_gateways` (`id`, `gateway_key`, `name`, `is_enabled`, `is_test_mode`, `public_key`, `secret_key`, `webhook_secret`, `currency`, `config_json`)
                 VALUES
-                ('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{\"checkout_title\":\"ProfileVault Subscription\",\"allow_promotion_codes\":true,\"billing_address_collection\":\"auto\"}'),
+                ('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{\"checkout_title\":\"AntiProfiles Subscription\",\"allow_promotion_codes\":true,\"billing_address_collection\":\"auto\"}'),
                 ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{\"provider\":\"nowpayments\",\"supported_coins\":[\"BTC\",\"ETH\",\"USDT\",\"USDC\"],\"network\":\"TRC20,ERC20,BTC\",\"min_amount\":10,\"confirmations_required\":2}')
                 ON DUPLICATE KEY UPDATE `id`=`id`;
             ");
@@ -341,7 +341,7 @@ function ensureDatabaseTablesExist() {
             ('support_hours', '24/7 Live Agent Support'),
             ('auto_reply_enabled', 'true'),
             ('auto_reply_message', 'Thank you for reaching out! A technical support engineer has been notified and will assist you shortly.'),
-            ('livechat_widget_title', 'ProfileVault Live Support'),
+            ('livechat_widget_title', 'AntiProfiles Live Support'),
             ('livechat_welcome_message', 'Hello! 👋 How can we help you today with your browser profiles, proxies, or subscriptions?'),
             ('rate_limit_messages_per_min', '25')
             ON DUPLICATE KEY UPDATE `key`=`key`;
@@ -357,17 +357,17 @@ function ensureDatabaseTablesExist() {
 
         $db->exec("
             INSERT INTO `seo_settings` (`key`, `value`) VALUES
-            ('site_title', 'ProfileVault — Anti-Detect Browser & Profile Isolation'),
+            ('site_title', 'AntiProfiles — Anti-Detect Browser & Profile Isolation'),
             ('site_description', 'Professional Multi-Account Anti-Detect Browser with Isolated Profiles, Fingerprint Spoofing & Residential Proxy Support.'),
             ('site_url', 'https://antiprofiles.com'),
             ('default_og_image', 'https://antiprofiles.com/og-cover.png'),
-            ('twitter_handle', '@ProfileVaultApp'),
+            ('twitter_handle', '@AntiProfilesApp'),
             ('robots_content', 'User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://antiprofiles.com/sitemap.xml'),
-            ('entity_brand_name', 'ProfileVault Software Inc.'),
+            ('entity_brand_name', 'AntiProfiles Software Inc.'),
             ('entity_logo', 'https://antiprofiles.com/logo.png'),
             ('entity_email', 'support@antiprofiles.com'),
             ('entity_phone', '+1 (800) 555-0199'),
-            ('entity_same_as', '[\"https://x.com/ProfileVaultApp\", \"https://github.com/edge-tec/Antidetector_browser\"]')
+            ('entity_same_as', '[\"https://x.com/AntiProfilesApp\", \"https://github.com/edge-tec/Antidetector_browser\"]')
             ON DUPLICATE KEY UPDATE `key`=`key`;
         ");
 
@@ -401,17 +401,17 @@ function ensureDatabaseTablesExist() {
               `og_title`, `og_description`, `og_image`, `schema_type`, `primary_keyword`, `ai_quick_answer`
             ) VALUES (
               'page_home', '/', 'homepage',
-              'ProfileVault — Anti-Detect Browser & Multi-Account Management Tool',
+              'AntiProfiles — Anti-Detect Browser & Multi-Account Management Tool',
               'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, fingerprint spoofing, and residential proxies.',
               'anti detect browser, multi account browser, browser profile isolation, fingerprint spoofing, proxy manager',
               'https://antiprofiles.com/',
               'index, follow',
-              'ProfileVault — Anti-Detect Browser & Profile Isolation',
+              'AntiProfiles — Anti-Detect Browser & Profile Isolation',
               'Professional anti-detect browser for managing isolated web profiles without bans.',
               'https://antiprofiles.com/og-cover.png',
               'SoftwareApplication',
               'anti detect browser',
-              'ProfileVault is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
+              'AntiProfiles is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
             ) ON DUPLICATE KEY UPDATE `id`=`id`;
         ");
 
@@ -674,7 +674,7 @@ function getSmtpSettingsPhp(): array {
         $user = $map['smtp_user'] ?? getenv('SMTP_USER') ?: '';
         $pass = $map['smtp_password'] ?? getenv('SMTP_PASSWORD') ?: '';
         $from = $map['smtp_from_email'] ?? getenv('SMTP_FROM_EMAIL') ?: ($user ?: 'noreply@antiprofiles.com');
-        $fromName = $map['smtp_from_name'] ?? getenv('SMTP_FROM_NAME') ?: 'ProfileVault';
+        $fromName = $map['smtp_from_name'] ?? getenv('SMTP_FROM_NAME') ?: 'AntiProfiles';
         $secure = ($map['smtp_secure'] ?? (getenv('SMTP_SECURE') ?: 'false')) === 'true';
         $enabled = ($map['smtp_enabled'] ?? (getenv('SMTP_ENABLED') ?: 'true')) === 'true';
 
@@ -703,7 +703,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
         $user = $smtp['user'];
         $pass = $smtp['password'] ?? '';
         $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $user;
-        $fromName = !empty($smtp['fromName']) ? $smtp['fromName'] : 'ProfileVault';
+        $fromName = !empty($smtp['fromName']) ? $smtp['fromName'] : 'AntiProfiles';
         $secure = (bool)($smtp['secure'] ?? false);
 
         $timeout = 15;
@@ -810,7 +810,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
             $headers[] = "MIME-Version: 1.0";
             $headers[] = "Content-Type: text/html; charset=UTF-8";
             $headers[] = "Content-Transfer-Encoding: base64";
-            $headers[] = "X-Mailer: ProfileVault-Mailer/1.0";
+            $headers[] = "X-Mailer: AntiProfiles-Mailer/1.0";
 
             $payload = implode("\r\n", $headers) . "\r\n\r\n" . chunk_split(base64_encode($htmlBody)) . "\r\n.";
             $write($payload);
@@ -828,7 +828,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
     // 2. Fallback to PHP native mail()
     fallback_native_mail:
     try {
-        $fromName = $smtp['fromName'] ?? 'ProfileVault';
+        $fromName = $smtp['fromName'] ?? 'AntiProfiles';
         $fromEmail = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : (!empty($smtp['user']) ? $smtp['user'] : 'noreply@antiprofiles.com');
 
         $headers = [
@@ -977,7 +977,7 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'https://';
     $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ($protocol . $host);
     $verificationUrl = rtrim($baseUrl, '/') . '/verify-email?token=' . $plainToken;
-    $deepLinkUrl = 'profilevault://verify-email?token=' . $plainToken;
+    $deepLinkUrl = 'antiprofiles://verify-email?token=' . $plainToken;
 
     // 6. Responsive HTML Email Content
     $html = "
@@ -986,7 +986,7 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     <head>
       <meta charset='utf-8'>
       <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-      <title>Verify Your ProfileVault Account</title>
+      <title>Verify Your AntiProfiles Account</title>
     </head>
     <body style='margin:0; padding:0; background-color:#0A0A0F; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color:#CBD5E1;'>
       <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#0A0A0F; padding:40px 10px;'>
@@ -999,13 +999,13 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
                     <span style='font-size:28px;'>🛡️</span>
                   </div>
                   <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Verify Your Account</h1>
-                  <p style='color:#94A3B8; font-size:14px; margin:0;'>Welcome to ProfileVault Central Anti-Detect Ecosystem</p>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>Welcome to AntiProfiles Central Anti-Detect Ecosystem</p>
                 </td>
               </tr>
               <tr>
                 <td style='padding:0 36px 30px 36px;'>
                   <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
-                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your ProfileVault account has been registered successfully. To activate full browser profile isolation, proxies, and team capabilities, please confirm your email address by clicking the button below:</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your AntiProfiles account has been registered successfully. To activate full browser profile isolation, proxies, and team capabilities, please confirm your email address by clicking the button below:</p>
                   
                   <div style='text-align:center; margin:32px 0;'>
                     <a href='" . $verificationUrl . "' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#0F0F17; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block; box-shadow:0 4px 16px rgba(45,212,191,0.35);'>Verify Email Address</a>
@@ -1024,7 +1024,7 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
               </tr>
               <tr>
                 <td style='background:#0F0F17; padding:20px 36px; border-top:1px solid #2C2C3E; text-align:center;'>
-                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " ProfileVault Anti-Detect Browser. Unified Web & Desktop Security.</p>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Anti-Detect Browser. Unified Web & Desktop Security.</p>
                 </td>
               </tr>
             </table>
@@ -1034,7 +1034,7 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     </body>
     </html>";
 
-    $sent = sendSmtpMailPhp($email, 'Verify Your ProfileVault Account', $html);
+    $sent = sendSmtpMailPhp($email, 'Verify Your AntiProfiles Account', $html);
 
     if ($sent) {
         recordSecurityEvent('VERIFICATION_EMAIL_SENT', 'info', $userId, "Verification token dispatched to {$email}");
@@ -1055,7 +1055,7 @@ function sendAccountVerifiedConfirmationPhp(string $userName, string $email): bo
     $html = "
     <!DOCTYPE html>
     <html>
-    <head><meta charset='utf-8'><title>ProfileVault Account Confirmed</title></head>
+    <head><meta charset='utf-8'><title>AntiProfiles Account Confirmed</title></head>
     <body style='background-color:#0A0A0F; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
       <div style='max-width:560px; margin:0 auto; background:#161622; padding:32px; border-radius:14px; border:1px solid #2C2C3E;'>
         <div style='text-align:center;'>
@@ -1070,7 +1070,7 @@ function sendAccountVerifiedConfirmationPhp(string $userName, string $email): bo
     </body>
     </html>";
 
-    return sendSmtpMailPhp($email, '🎉 ProfileVault Account Confirmed & Ready!', $html);
+    return sendSmtpMailPhp($email, '🎉 AntiProfiles Account Confirmed & Ready!', $html);
 }
 
 // Audit Logging Helper
@@ -1287,7 +1287,7 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
         $stmt->execute([$userId]);
         return $stmt->fetch() ?: [];
     } catch (Throwable $e) {
-        error_log("[ProfileVault] Error in ensureUserFreeSubscription: " . $e->getMessage());
+        error_log("[AntiProfiles] Error in ensureUserFreeSubscription: " . $e->getMessage());
         return [];
     }
 }

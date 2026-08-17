@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — ClientRects Injection Script Builder
+// AntiProfiles — ClientRects Injection Script Builder
 // Adds deterministic noise to getBoundingClientRect / getClientRects safely
 // ──────────────────────────────────────────────────────────────────
 

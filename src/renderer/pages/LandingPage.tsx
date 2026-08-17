@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Public Anti-Detect SaaS Landing Page
+// AntiProfiles — Public Anti-Detect SaaS Landing Page
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react'
@@ -13,15 +13,15 @@ interface LandingProps {
 
 const DEFAULT_LANDING_DATA = {
   branding: {
-    site_name: 'ProfileVault',
-    logo_text: '🛡️ ProfileVault',
+    site_name: 'AntiProfiles',
+    logo_text: '🛡️ AntiProfiles',
     primary_color: '#6366F1',
     secondary_color: '#8B5CF6',
     accent_color: '#2DD4BF',
-    contact_email: 'support@profilevault.local',
-    contact_telegram: 'https://t.me/profilevault_support',
+    contact_email: 'support@antiprofiles.com',
+    contact_telegram: 'https://t.me/antiprofiles_support',
     contact_whatsapp: '+1 (555) 019-2834',
-    support_url: 'https://docs.profilevault.local/help'
+    support_url: 'https://docs.antiprofiles.com/help'
   },
   hero: {
     headline: 'Browse Privately. Manage Profiles. Scale Your Workflow.',
@@ -75,18 +75,18 @@ const DEFAULT_LANDING_DATA = {
   faqs: [
     { id: '1', question: 'What is an anti-detect browser?', answer: 'An anti-detect browser is a specialized software environment designed to isolate browser profiles and provide configurable hardware, network, and device parameters.' },
     { id: '2', question: 'What is a browser profile?', answer: 'A browser profile is a completely isolated container containing its own browser data, cookies, local storage, cache, proxies, and hardware fingerprint settings.' },
-    { id: '3', question: 'Can I use HTTP, SOCKS4, and SOCKS5 proxies?', answer: 'Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in connection checking and IP geolocation display.' },
+    { id: '3', question: 'Can I use HTTP, SOCKS4, and SOCKS5 proxies?', answer: 'Yes! AntiProfiles supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with built-in connection checking and IP geolocation display.' },
     { id: '4', question: 'Can I upgrade or downgrade my plan at any time?', answer: 'Yes. You can upgrade or modify your subscription tier at any time according to your operational needs.' },
-    { id: '5', question: 'Does ProfileVault offer an Automation API?', answer: 'Yes. Professional and Business plans provide local REST endpoints and automation integration for Puppeteer and Selenium drivers.' }
+    { id: '5', question: 'Does AntiProfiles offer an Automation API?', answer: 'Yes. Professional and Business plans provide local REST endpoints and automation integration for Puppeteer and Selenium drivers.' }
   ],
   testimonials: [
-    { id: '1', name: 'Alex Rivera', position: 'E-Commerce Manager', company: 'Apex Brands', avatar_url: '👤', rating: 5, testimonial: 'ProfileVault completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', is_demo: 1 },
+    { id: '1', name: 'Alex Rivera', position: 'E-Commerce Manager', company: 'Apex Brands', avatar_url: '👤', rating: 5, testimonial: 'AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', is_demo: 1 },
     { id: '2', name: 'Sarah Chen', position: 'Lead Growth Engineer', company: 'Veloce Digital', avatar_url: '👩‍💻', rating: 5, testimonial: 'The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless.', is_demo: 1 },
     { id: '3', name: 'Marcus Vance', position: 'Privacy Consultant', company: 'CyberShield', avatar_url: '🛡️', rating: 5, testimonial: 'Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require.', is_demo: 1 }
   ],
   seo: {
-    meta_title: 'ProfileVault — Next-Gen Anti-Detect & Privacy Browser',
-    meta_description: 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Antidetect Software.'
+    meta_title: 'AntiProfiles — Next-Gen Anti-Detect & Privacy Browser',
+    meta_description: 'Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Antidetect Software.'
   }
 }
 
@@ -195,7 +195,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
   if (!data) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#0F0F14', color: '#2DD4BF', fontSize: '18px', fontWeight: 600 }}>
-        🛡️ Loading ProfileVault...
+        🛡️ Loading AntiProfiles...
       </div>
     )
   }
@@ -232,9 +232,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           
           {/* Brand Logo & Name */}
           <div className="window-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <img src={logoImg} alt="ProfileVault Logo" style={{ width: 32, height: 32, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.6))' }} />
+            <img src={logoImg} alt="AntiProfiles Logo" style={{ width: 32, height: 32, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.6))' }} />
             <span style={{ fontSize: '20px', fontWeight: 800, color: '#F1F5F9', letterSpacing: '-0.5px' }}>
-              {branding.site_name || 'ProfileVault'}
+              {branding.site_name || 'AntiProfiles'}
             </span>
           </div>
 
@@ -313,7 +313,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
       <section style={{ padding: '80px 24px 60px', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', backgroundColor: `${primaryColor}20`, border: `1px solid ${primaryColor}40`, color: accentColor, fontSize: '12px', fontWeight: 600, marginBottom: '20px' }}>
-            <span>🚀</span> Next-Generation Profile Vault Architecture
+            <span>🚀</span> Next-Generation AntiProfiles Architecture
           </div>
           
           <h1 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, color: '#F8FAFC', lineHeight: 1.15, margin: '0 0 20px', letterSpacing: '-1px' }}>
@@ -381,7 +381,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#F59E0B' }} />
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
             </div>
-            <span style={{ fontSize: '12px', color: '#64748B', fontFamily: 'monospace' }}>ProfileVault Dashboard v1.0</span>
+            <span style={{ fontSize: '12px', color: '#64748B', fontFamily: 'monospace' }}>AntiProfiles Dashboard v1.0</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -592,7 +592,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '60px' }}>
             <h2 style={{ fontSize: '32px', fontWeight: 800, color: '#F8FAFC', margin: '0 0 12px' }}>
-              How ProfileVault Works
+              How AntiProfiles Works
             </h2>
             <p style={{ fontSize: '16px', color: '#94A3B8', maxWidth: '600px', margin: '0 auto' }}>
               Get started in four easy steps and launch your isolated browser profiles in seconds.
@@ -678,7 +678,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               </p>
             </div>
             <a
-              href={appReleases?.win_download_url || 'https://releases.profilevault.local/ProfileVault-Windows-x64.exe'}
+              href={appReleases?.win_download_url || 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe'}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -727,7 +727,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               </p>
             </div>
             <a
-              href={appReleases?.mac_intel_download_url || appReleases?.mac_download_url || 'https://releases.profilevault.local/ProfileVault-macOS-Intel-x64.dmg'}
+              href={appReleases?.mac_intel_download_url || appReleases?.mac_download_url || 'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg'}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -776,7 +776,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               </p>
             </div>
             <a
-              href={appReleases?.mac_arm_download_url || appReleases?.mac_download_url || 'https://releases.profilevault.local/ProfileVault-macOS-Apple-Silicon-arm64.dmg'}
+              href={appReleases?.mac_arm_download_url || appReleases?.mac_download_url || 'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg'}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -1029,7 +1029,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
             Frequently Asked Questions
           </h2>
           <p style={{ fontSize: '15px', color: '#94A3B8' }}>
-            Have questions about ProfileVault? Find answers below.
+            Have questions about AntiProfiles? Find answers below.
           </p>
         </div>
 
@@ -1078,7 +1078,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               Trusted by Professionals World-Wide
             </h2>
             <p style={{ fontSize: '15px', color: '#94A3B8' }}>
-              See what engineers, agencies, and security researchers say about ProfileVault.
+              See what engineers, agencies, and security researchers say about AntiProfiles.
             </p>
           </div>
 
@@ -1123,7 +1123,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               MACHINE & AI READABILITY LAYER
             </span>
             <h2 style={{ fontSize: '28px', fontWeight: 800, color: '#F8FAFC', margin: '10px 0 8px' }}>
-              ProfileVault Platform Specifications & AI Search Knowledge Base
+              AntiProfiles Platform Specifications & AI Search Knowledge Base
             </h2>
             <p style={{ fontSize: '14px', color: '#94A3B8', maxWidth: '650px', margin: '0 auto' }}>
               Verified factual overview structured for web indexers, search engines, and AI answer systems (ChatGPT, Gemini, Perplexity, Copilot, Claude).
@@ -1132,14 +1132,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
             <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', padding: '20px', borderRadius: '12px' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: accentColor, fontWeight: 700 }}>What is ProfileVault?</h3>
+              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: accentColor, fontWeight: 700 }}>What is AntiProfiles?</h3>
               <p style={{ margin: 0, fontSize: '13px', color: '#CBD5E1', lineHeight: 1.6 }}>
-                ProfileVault is an anti-detect browser and multi-account management application. It enables users to run multiple isolated Chromium browser sessions with distinct digital fingerprints (Canvas, WebGL, WebRTC, RAM, CPU cores) and dedicated proxies.
+                AntiProfiles is an anti-detect browser and multi-account management application. It enables users to run multiple isolated Chromium browser sessions with distinct digital fingerprints (Canvas, WebGL, WebRTC, RAM, CPU cores) and dedicated proxies.
               </p>
             </div>
 
             <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', padding: '20px', borderRadius: '12px' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: accentColor, fontWeight: 700 }}>Who is ProfileVault for?</h3>
+              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: accentColor, fontWeight: 700 }}>Who is AntiProfiles for?</h3>
               <p style={{ margin: 0, fontSize: '13px', color: '#CBD5E1', lineHeight: 1.6 }}>
                 Built for digital marketing agencies, e-commerce sellers, social media managers, affiliate marketers, and security researchers managing multiple client or business accounts safely.
               </p>
@@ -1282,7 +1282,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         </div>
 
         <div style={{ borderTop: '1px solid #2C2C3E30', paddingTop: '24px', textAlign: 'center', fontSize: '12px', color: '#475569' }}>
-          © {new Date().getFullYear()} {branding.site_name || 'ProfileVault'}. All rights reserved.
+          © {new Date().getFullYear()} {branding.site_name || 'AntiProfiles'}. All rights reserved.
         </div>
       </footer>
 

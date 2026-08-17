@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Initial Database Migration
+// AntiProfiles — Initial Database Migration
 // ──────────────────────────────────────────────
 
 import type Database from 'better-sqlite3'

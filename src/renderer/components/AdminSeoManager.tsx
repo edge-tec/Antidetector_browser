@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Admin SEO & AI Search Optimization (AEO/GEO) Manager
+// AntiProfiles — Admin SEO & AI Search Optimization (AEO/GEO) Manager
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react'
@@ -477,12 +477,12 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
             {/* Google Live Search Preview Widget */}
             <div style={{ backgroundColor: '#1E1E2E', border: '1px solid #313244', borderRadius: '10px', padding: '18px' }}>
               <div style={{ fontSize: '11px', fontWeight: 800, color: '#94A3B8', marginBottom: '8px' }}>🔍 GOOGLE SEARCH RESULT PREVIEW</div>
-              <div style={{ fontSize: '14px', color: '#BDC3C7', marginBottom: '2px' }}>{settings.site_name || 'ProfileVault'}</div>
+              <div style={{ fontSize: '14px', color: '#BDC3C7', marginBottom: '2px' }}>{settings.site_name || 'AntiProfiles'}</div>
               <div style={{ fontSize: '18px', color: '#8AB4F8', fontWeight: 600, cursor: 'pointer', marginBottom: '4px' }}>
                 {pageForm.title || 'Page Title Preview'}
               </div>
               <div style={{ fontSize: '13px', color: '#202124', backgroundColor: '#E8EAED', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginBottom: '6px', fontFamily: 'monospace' }}>
-                {pageForm.canonical_url || `https://profilevault.local${pageForm.page_path}`}
+                {pageForm.canonical_url || `https://antiprofiles.com${pageForm.page_path}`}
               </div>
               <div style={{ fontSize: '13px', color: '#BDC3C7', lineHeight: 1.5 }}>
                 {pageForm.description || 'Page meta description preview will appear here...'}

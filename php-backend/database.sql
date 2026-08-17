@@ -1,5 +1,5 @@
 -- ──────────────────────────────────────────────
--- ProfileVault — Full MySQL Production Database Schema & Seeds
+-- AntiProfiles — Full MySQL Production Database Schema & Seeds
 -- Import this SQL into aaPanel MySQL Database
 -- ──────────────────────────────────────────────
 
@@ -41,9 +41,9 @@ ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_attempts` INT DEFAULT
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `account_status` VARCHAR(50) NOT NULL DEFAULT 'pending';
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME DEFAULT NULL;
 
--- Initial Admin Account Seed (admin@profilevault.local / Password: admin)
+-- Initial Admin Account Seed (admin@antiprofiles.com / Password: admin)
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `permissions`, `auth_version`, `email_verified`, `email_verified_at`, `account_status`, `created_at`)
-VALUES ('admin-default', 'System Admin', 'admin@profilevault.local', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'super_admin', '["*"]', 1, 1, NOW(), 'active', NOW())
+VALUES ('admin-default', 'System Admin', 'admin@antiprofiles.com', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'super_admin', '["*"]', 1, 1, NOW(), 'active', NOW())
 ON DUPLICATE KEY UPDATE `password_hash`='$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', `role`='super_admin', `permissions`='["*"]', `email_verified`=1, `account_status`='active';
 
 -- 1.0 Verification Tokens Table
@@ -183,10 +183,10 @@ CREATE TABLE IF NOT EXISTS `app_releases` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `app_releases` (`id`, `platform`, `version`, `release_name`, `file_path`, `download_url`, `original_filename`, `file_size`, `release_notes`, `status`, `uploaded_by`) VALUES
-('rel_win_100', 'windows-x64', '1.0.0', 'ProfileVault v1.0.0 Stable Release', 'releases/ProfileVault-Windows-x64.exe', '/download/windows', 'ProfileVault-Windows-x64.exe', 159, 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.', 'active', 'system'),
-('rel_mac_arm_100', 'macos-arm64', '1.0.0', 'ProfileVault Apple Silicon v1.0.0 Stable Release', 'releases/ProfileVault-macOS-AppleSilicon-arm64.dmg', '/download/macos-arm64', 'ProfileVault-macOS-AppleSilicon-arm64.dmg', 159, 'ARM64 build engineered specifically for Apple Silicon M-series chips.', 'active', 'system'),
-('rel_mac_intel_100', 'macos-x64', '1.0.0', 'ProfileVault macOS Intel v1.0.0 Stable Release', 'releases/ProfileVault-macOS-Intel-x64.dmg', '/download/macos-intel', 'ProfileVault-macOS-Intel-x64.dmg', 159, 'x64 build for Intel-based Mac computers.', 'active', 'system'),
-('rel_linux_100', 'linux-x64', '1.0.0', 'ProfileVault Linux v1.0.0 AppImage', 'releases/ProfileVault-Linux-x86_64.AppImage', '/download/linux', 'ProfileVault-Linux-x86_64.AppImage', 159, 'Native Linux AppImage installer package.', 'active', 'system')
+('rel_win_100', 'windows-x64', '1.0.0', 'AntiProfiles v1.0.0 Stable Release', 'releases/AntiProfiles-Windows-x64.exe', '/download/windows', 'AntiProfiles-Windows-x64.exe', 159, 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.', 'active', 'system'),
+('rel_mac_arm_100', 'macos-arm64', '1.0.0', 'AntiProfiles Apple Silicon v1.0.0 Stable Release', 'releases/AntiProfiles-macOS-AppleSilicon-arm64.dmg', '/download/macos-arm64', 'AntiProfiles-macOS-AppleSilicon-arm64.dmg', 159, 'ARM64 build engineered specifically for Apple Silicon M-series chips.', 'active', 'system'),
+('rel_mac_intel_100', 'macos-x64', '1.0.0', 'AntiProfiles macOS Intel v1.0.0 Stable Release', 'releases/AntiProfiles-macOS-Intel-x64.dmg', '/download/macos-intel', 'AntiProfiles-macOS-Intel-x64.dmg', 159, 'x64 build for Intel-based Mac computers.', 'active', 'system'),
+('rel_linux_100', 'linux-x64', '1.0.0', 'AntiProfiles Linux v1.0.0 AppImage', 'releases/AntiProfiles-Linux-x86_64.AppImage', '/download/linux', 'AntiProfiles-Linux-x86_64.AppImage', 159, 'Native Linux AppImage installer package.', 'active', 'system')
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
 -- 5. Desktop App Configuration (Downloads & Releases)
@@ -222,8 +222,8 @@ CREATE TABLE IF NOT EXISTS `landing_branding` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `landing_branding` (`config_key`, `config_value`) VALUES
-('site_name', 'ProfileVault'),
-('logo_text', 'ProfileVault'),
+('site_name', 'AntiProfiles'),
+('logo_text', 'AntiProfiles'),
 ('primary_color', '#6366F1'),
 ('secondary_color', '#8B5CF6'),
 ('accent_color', '#2DD4BF'),
@@ -309,7 +309,7 @@ CREATE TABLE IF NOT EXISTS `landing_faqs` (
 
 INSERT INTO `landing_faqs` (`id`, `question`, `answer`, `category`, `sort_order`) VALUES
 ('faq_1', 'What is an anti-detect browser?', 'An anti-detect browser is specialized software designed to isolate browser profiles and provide configurable hardware, network, and device parameters.', 'General', 1),
-('faq_2', 'Can I use HTTP and SOCKS5 proxies?', 'Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with connection checking.', 'Proxies', 2)
+('faq_2', 'Can I use HTTP and SOCKS5 proxies?', 'Yes! AntiProfiles supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with connection checking.', 'Proxies', 2)
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
 CREATE TABLE IF NOT EXISTS `landing_testimonials` (
@@ -325,7 +325,7 @@ CREATE TABLE IF NOT EXISTS `landing_testimonials` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `landing_testimonials` (`id`, `name`, `position`, `company`, `avatar_url`, `rating`, `testimonial`, `sort_order`) VALUES
-('test_1', 'Alex Rivera', 'E-Commerce Manager', 'Apex Brands', '👤', 5, 'ProfileVault completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', 1)
+('test_1', 'Alex Rivera', 'E-Commerce Manager', 'Apex Brands', '👤', 5, 'AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', 1)
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
 CREATE TABLE IF NOT EXISTS `landing_seo` (
@@ -334,8 +334,8 @@ CREATE TABLE IF NOT EXISTS `landing_seo` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `landing_seo` (`config_key`, `config_value`) VALUES
-('meta_title', 'ProfileVault — Next-Gen Anti-Detect & Privacy Browser'),
-('meta_description', 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Antidetect Software.')
+('meta_title', 'AntiProfiles — Next-Gen Anti-Detect & Privacy Browser'),
+('meta_description', 'Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Antidetect Software.')
 ON DUPLICATE KEY UPDATE `config_key`=`config_key`;
 
 -- 7. System Settings Table (SMTP & General System Configuration)
@@ -349,7 +349,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
 ('smtp_port', '587'),
 ('smtp_user', ''),
 ('smtp_password', ''),
-('smtp_from_email', 'noreply@profilevault.local'),
+('smtp_from_email', 'noreply@antiprofiles.com'),
 ('smtp_secure', 'false'),
 ('smtp_enabled', 'false')
 ON DUPLICATE KEY UPDATE `key`=`key`;
@@ -415,7 +415,7 @@ INSERT INTO `support_settings` (`key`, `value`) VALUES
 ('support_hours', '24/7 Live Agent Support'),
 ('auto_reply_enabled', 'true'),
 ('auto_reply_message', 'Thank you for reaching out! A technical support engineer has been notified and will assist you shortly.'),
-('livechat_widget_title', 'ProfileVault Live Support'),
+('livechat_widget_title', 'AntiProfiles Live Support'),
 ('livechat_welcome_message', 'Hello! 👋 How can we help you today with your browser profiles, proxies, or subscriptions?'),
 ('rate_limit_messages_per_min', '25')
 ON DUPLICATE KEY UPDATE `key`=`key`;
@@ -436,17 +436,17 @@ INSERT INTO `seo_settings` (`key`, `value`) VALUES
 ('internal_links_enabled', '1'),
 ('seo_audit_enabled', '1'),
 ('content_assistant_enabled', '1'),
-('site_name', 'ProfileVault'),
+('site_name', 'AntiProfiles'),
 ('site_description', 'Professional Multi-Account Anti-Detect Browser with Isolated Profiles, Fingerprint Spoofing & Residential Proxy Support.'),
-('site_url', 'https://profilevault.local'),
-('default_og_image', 'https://profilevault.local/og-cover.png'),
-('twitter_handle', '@ProfileVaultApp'),
-('robots_content', 'User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://profilevault.local/sitemap.xml'),
-('entity_brand_name', 'ProfileVault Software Inc.'),
-('entity_logo', 'https://profilevault.local/logo.png'),
-('entity_email', 'support@profilevault.local'),
+('site_url', 'https://antiprofiles.com'),
+('default_og_image', 'https://antiprofiles.com/og-cover.png'),
+('twitter_handle', '@AntiProfilesApp'),
+('robots_content', 'User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://antiprofiles.com/sitemap.xml'),
+('entity_brand_name', 'AntiProfiles Software Inc.'),
+('entity_logo', 'https://antiprofiles.com/logo.png'),
+('entity_email', 'support@antiprofiles.com'),
 ('entity_phone', '+1 (800) 555-0199'),
-('entity_same_as', '["https://x.com/ProfileVaultApp", "https://github.com/edge-tec/Antidetector_browser"]')
+('entity_same_as', '["https://x.com/AntiProfilesApp", "https://github.com/edge-tec/Antidetector_browser"]')
 ON DUPLICATE KEY UPDATE `key`=`key`;
 
 CREATE TABLE IF NOT EXISTS `page_seo` (
@@ -476,17 +476,17 @@ INSERT INTO `page_seo` (
   `og_title`, `og_description`, `og_image`, `schema_type`, `primary_keyword`, `ai_quick_answer`
 ) VALUES (
   'page_home', '/', 'homepage',
-  'ProfileVault — Anti-Detect Browser & Multi-Account Management Tool',
+  'AntiProfiles — Anti-Detect Browser & Multi-Account Management Tool',
   'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, fingerprint spoofing, and residential proxies.',
   'anti detect browser, multi account browser, browser profile isolation, fingerprint spoofing, proxy manager',
-  'https://profilevault.local/',
+  'https://antiprofiles.com/',
   'index, follow',
-  'ProfileVault — Anti-Detect Browser & Profile Isolation',
+  'AntiProfiles — Anti-Detect Browser & Profile Isolation',
   'Professional anti-detect browser for managing isolated web profiles without bans.',
-  'https://profilevault.local/og-cover.png',
+  'https://antiprofiles.com/og-cover.png',
   'SoftwareApplication',
   'anti detect browser',
-  'ProfileVault is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
+  'AntiProfiles is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
 ) ON DUPLICATE KEY UPDATE `id`=`id`;
 
 CREATE TABLE IF NOT EXISTS `seo_keywords` (
@@ -652,7 +652,7 @@ CREATE TABLE IF NOT EXISTS `payment_events` (
 -- Seed default gateway records
 INSERT INTO `payment_gateways` (`id`, `gateway_key`, `name`, `is_enabled`, `is_test_mode`, `public_key`, `secret_key`, `webhook_secret`, `currency`, `config_json`)
 VALUES
-('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{"checkout_title":"ProfileVault Subscription","allow_promotion_codes":true,"billing_address_collection":"auto"}'),
+('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{"checkout_title":"AntiProfiles Subscription","allow_promotion_codes":true,"billing_address_collection":"auto"}'),
 ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{"provider":"nowpayments","supported_coins":["BTC","ETH","USDT","USDC"],"network":"TRC20,ERC20,BTC","min_amount":10,"confirmations_required":2}')
 ON DUPLICATE KEY UPDATE `id`=`id`;
 

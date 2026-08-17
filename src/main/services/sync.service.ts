@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Central Real-Time Synchronization Engine (Cross-Platform)
+// AntiProfiles — Central Real-Time Synchronization Engine (Cross-Platform)
 // ──────────────────────────────────────────────
 
 import { BrowserWindow, app } from 'electron'
@@ -227,7 +227,7 @@ class RealtimeSyncService {
           'Authorization': `Bearer ${this.sessionToken}`,
           'Accept': 'text/event-stream',
           'Cache-Control': 'no-cache',
-          'User-Agent': `ProfileVault-Desktop/${app.getVersion()} (${process.platform})`
+          'User-Agent': `AntiProfiles-Desktop/${app.getVersion()} (${process.platform})`
         },
         timeout: 0 // Keep-alive stream
       }
@@ -486,7 +486,7 @@ class RealtimeSyncService {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',
-            'User-Agent': `ProfileVault-Desktop/${app.getVersion()} (${process.platform})`
+            'User-Agent': `AntiProfiles-Desktop/${app.getVersion()} (${process.platform})`
           },
           timeout: 10000
         },

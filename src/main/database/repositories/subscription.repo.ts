@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Subscription, Licensing & Device Repository
+// AntiProfiles — Subscription, Licensing & Device Repository
 // ──────────────────────────────────────────────
 
 import { getDatabase } from '../connection'
@@ -361,19 +361,19 @@ export class SubscriptionRepository {
       platforms: {
         'windows-x64': {
           version: cfg.win_app_version || '1.0.0',
-          download_url: cfg.win_download_url || 'https://releases.profilevault.local/ProfileVault-Windows-x64.exe',
+          download_url: cfg.win_download_url || 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe',
           enabled: cfg.win_enabled !== 'false',
           required: cfg.force_update === 'true'
         },
         'macos-x64': {
           version: cfg.mac_intel_app_version || cfg.mac_app_version || '1.0.0',
-          download_url: cfg.mac_intel_download_url || cfg.mac_download_url || 'https://releases.profilevault.local/ProfileVault-macOS-Intel-x64.dmg',
+          download_url: cfg.mac_intel_download_url || cfg.mac_download_url || 'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg',
           enabled: cfg.mac_intel_enabled !== 'false',
           required: cfg.force_update === 'true'
         },
         'macos-arm64': {
           version: cfg.mac_arm_app_version || cfg.mac_app_version || '1.0.0',
-          download_url: cfg.mac_arm_download_url || cfg.mac_download_url || 'https://releases.profilevault.local/ProfileVault-macOS-Apple-Silicon-arm64.dmg',
+          download_url: cfg.mac_arm_download_url || cfg.mac_download_url || 'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg',
           enabled: cfg.mac_arm_enabled !== 'false',
           required: cfg.force_update === 'true'
         }

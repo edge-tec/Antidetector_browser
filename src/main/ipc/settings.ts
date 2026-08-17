@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — IPC Settings & System Handlers
+// AntiProfiles — IPC Settings & System Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain, app, shell, dialog } from 'electron'

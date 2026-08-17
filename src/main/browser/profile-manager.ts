@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Profile Lifecycle Manager
+// AntiProfiles — Profile Lifecycle Manager
 // ──────────────────────────────────────────────
 
 import { app } from 'electron'

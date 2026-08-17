@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault — Screen Injection Script Builder
+// AntiProfiles — Screen Injection Script Builder
 // Overrides window.screen.* and viewport properties safely
 // ──────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Admin Management IPC Handlers
+// AntiProfiles — Admin Management IPC Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'

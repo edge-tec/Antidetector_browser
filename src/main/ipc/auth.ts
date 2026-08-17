@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Authentication IPC Handlers
+// AntiProfiles — Authentication IPC Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'
@@ -207,12 +207,12 @@ export function setupAuthIPC(): void {
 
       // 2. Offline / Local SQLite Fallback
       let user = userRepo.getByEmail(cleanEmail)
-      if (cleanEmail === 'admin@profilevault.local') {
+      if (cleanEmail === 'admin@antiprofiles.com') {
         const targetPass = (password === 'Admin123!' || password === 'admin123') ? password : 'admin123'
         if (!user) {
           userRepo.create({
             name: 'System Admin',
-            email: 'admin@profilevault.local',
+            email: 'admin@antiprofiles.com',
             password: targetPass,
             role: 'admin',
             emailVerified: true,

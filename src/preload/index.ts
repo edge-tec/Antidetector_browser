@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Preload Script (contextBridge)
+// AntiProfiles — Preload Script (contextBridge)
 // ──────────────────────────────────────────────
 
 import { contextBridge, ipcRenderer } from 'electron'

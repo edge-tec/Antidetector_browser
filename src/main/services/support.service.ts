@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Support Messaging Service
+// AntiProfiles — Support Messaging Service
 // ──────────────────────────────────────────────
 
 import { getDatabase } from '../database/connection'
@@ -118,7 +118,7 @@ export class SupportService {
       SELECT 
         c.*,
         COALESCE(u.name, c.user_id, 'Visitor Guest') as user_name,
-        COALESCE(u.email, 'guest@profilevault.local') as user_email,
+        COALESCE(u.email, 'guest@antiprofiles.com') as user_email,
         COALESCE(u.account_status, 'active') as user_status,
         COALESCE(u.created_at, c.created_at) as user_created_at,
         (SELECT name FROM users WHERE id = c.assigned_agent_id) as assigned_agent_name,
@@ -176,7 +176,7 @@ export class SupportService {
       db.prepare(`
         INSERT OR IGNORE INTO users (id, name, email, role, email_verified, account_status)
         VALUES (?, 'Visitor Guest', ?, 'user', 1, 'active')
-      `).run(userId, `${userId}@guest.profilevault.local`)
+      `).run(userId, `${userId}@guest.antiprofiles.com`)
     } catch {}
 
     // Check open conversation limit for user

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
-// ProfileVault v2 — Proxy Pool Manager
+// AntiProfiles v2 — Proxy Pool Manager
 // Manages proxy rotation pools and round-robin / random selection
 // ──────────────────────────────────────────────────────────────────
 

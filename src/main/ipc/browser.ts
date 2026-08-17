@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — IPC Browser Control Handlers
+// AntiProfiles — IPC Browser Control Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain, BrowserWindow } from 'electron'

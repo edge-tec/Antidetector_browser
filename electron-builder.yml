@@ -1,5 +1,5 @@
-appId: com.profilevault.app
-productName: ProfileVault
+appId: com.antiprofiles.app
+productName: AntiProfiles
 directories:
   buildResources: resources
   output: dist
@@ -27,7 +27,7 @@ mac:
         - x64
         - arm64
 dmg:
-  artifactName: 'ProfileVault-macOS-${arch}.${ext}'
+  artifactName: 'AntiProfiles-macOS-${arch}.${ext}'
   contents:
     - x: 130
       y: 220
@@ -43,15 +43,15 @@ win:
     - target: nsis
       arch:
         - x64
-  artifactName: 'ProfileVault-Windows-x64.${ext}'
+  artifactName: 'AntiProfiles-Windows-x64.${ext}'
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ProfileVault
-  uninstallDisplayName: ProfileVault Anti-Detect Browser
+  shortcutName: AntiProfiles
+  uninstallDisplayName: AntiProfiles Anti-Detect Browser
   runAfterFinish: true
 
 npmRebuild: true
@@ -61,7 +61,7 @@ linux:
   icon: resources/icon.png
   category: Utility;Development;Network;
   synopsis: Professional Anti-Detect Browser Profile & Privacy Management Application
-  maintainer: ProfileVault Support <support@profilevault.local>
+  maintainer: AntiProfiles Support <support@antiprofiles.com>
   target:
     - target: AppImage
       arch:
@@ -72,7 +72,7 @@ linux:
     - target: rpm
       arch:
         - x64
-  artifactName: 'ProfileVault-Linux-${arch}.${ext}'
+  artifactName: 'AntiProfiles-Linux-${arch}.${ext}'
 
 publish:
   provider: generic

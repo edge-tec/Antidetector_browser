@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// ProfileVault — Session & Security Authorization Manager
+// AntiProfiles — Session & Security Authorization Manager
 // ──────────────────────────────────────────────
 
 import crypto from 'crypto'

@@ -1,6 +1,6 @@
 <?php
 // ──────────────────────────────────────────────
-// ProfileVault — Central PHP Front Controller & Router for aaPanel
+// AntiProfiles — Central PHP Front Controller & Router for aaPanel
 // Handles REST APIs, Dynamic SEO/AEO System, Web App & Landing Page
 // ──────────────────────────────────────────────
 
@@ -184,8 +184,8 @@ try {
 
 
 $appBaseUrl = defined('APP_URL') ? APP_URL : 'https://antiprofiles.com';
-$pageTitle = $pageSeo['title'] ?? 'ProfileVault — Anti-Detect Browser & Profile Isolation';
-$pageDesc = $pageSeo['description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.';
+$pageTitle = $pageSeo['title'] ?? 'AntiProfiles — Anti-Detect Browser & Profile Isolation';
+$pageDesc = $pageSeo['description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Software.';
 $pageCanonical = $pageSeo['canonical_url'] ?? (rtrim($appBaseUrl, '/') . $requestUri);
 $pageRobots = $pageSeo['robots'] ?? 'index, follow';
 $ogTitle = $pageSeo['og_title'] ?? $pageTitle;
@@ -197,19 +197,19 @@ $schemas = [
     [
         "@context" => "https://schema.org",
         "@type" => "Organization",
-        "name" => "ProfileVault Software Inc.",
+        "name" => "AntiProfiles Software Inc.",
         "url" => $appBaseUrl,
 
-        "logo" => "https://profilevault.local/logo.png",
+        "logo" => "https://antiprofiles.com/logo.png",
         "sameAs" => [
-            "https://x.com/ProfileVaultApp",
+            "https://x.com/AntiProfilesApp",
             "https://github.com/edge-tec/Antidetector_browser"
         ]
     ],
     [
         "@context" => "https://schema.org",
         "@type" => "SoftwareApplication",
-        "name" => "ProfileVault Anti-Detect Browser",
+        "name" => "AntiProfiles Anti-Detect Browser",
         "operatingSystem" => "macOS, Windows",
         "applicationCategory" => "BusinessApplication",
         "offers" => [
@@ -572,8 +572,8 @@ header('Content-Type: text/html; charset=utf-8');
     <!-- Navbar -->
     <nav class="navbar">
         <a href="/" class="logo">
-            <img src="/logo.png" alt="ProfileVault Logo" style="width: 36px; height: 36px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
-            <span>ProfileVault</span>
+            <img src="/logo.png" alt="AntiProfiles Logo" style="width: 36px; height: 36px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
+            <span>AntiProfiles</span>
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
@@ -595,7 +595,7 @@ header('Content-Type: text/html; charset=utf-8');
     <section class="hero container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 48px; align-items: center; padding-top: 140px; padding-bottom: 60px;">
         <div>
             <div class="badge" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 700; margin-bottom: 24px;">
-                🚀 Next-Generation Profile Vault Architecture
+                🚀 Next-Generation AntiProfiles Architecture
             </div>
             <h1 style="font-size: clamp(36px, 5vw, 54px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; color: #FFF;">
                 Browse Privately.<br>Manage Profiles.<br>Scale Your Workflow.
@@ -618,7 +618,7 @@ header('Content-Type: text/html; charset=utf-8');
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: #F59E0B;"></span>
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981;"></span>
                 </div>
-                <span style="font-family: monospace; font-size: 12px; color: var(--text-muted);">ProfileVault Dashboard v1.0</span>
+                <span style="font-family: monospace; font-size: 12px; color: var(--text-muted);">AntiProfiles Dashboard v1.0</span>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 14px;">
@@ -861,7 +861,7 @@ header('Content-Type: text/html; charset=utf-8');
     <!-- 4. How It Works Section (4 Steps) -->
     <section id="how-it-works" class="section container">
         <div class="section-title">
-            <h2>How ProfileVault Works</h2>
+            <h2>How AntiProfiles Works</h2>
             <p>Get started in four easy steps and launch your isolated browser profiles in seconds.</p>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
@@ -1102,7 +1102,7 @@ header('Content-Type: text/html; charset=utf-8');
                     </h2>
 
                     <p style="color: var(--text-muted); font-size: 15px; line-height: 1.65; margin-bottom: 32px; max-width: 480px;">
-                        ProfileVault has the highest rated client support in software. We're here 24 hours a day, every day of the week, including holidays.
+                        AntiProfiles has the highest rated client support in software. We're here 24 hours a day, every day of the week, including holidays.
                     </p>
 
                     <!-- 4 Support Channels Grid -->
@@ -1141,7 +1141,7 @@ header('Content-Type: text/html; charset=utf-8');
                                     🛡️
                                 </div>
                                 <div>
-                                    <h4 style="font-size: 14px; color: #FFF; margin: 0; font-weight: 700;">ProfileVault Support</h4>
+                                    <h4 style="font-size: 14px; color: #FFF; margin: 0; font-weight: 700;">AntiProfiles Support</h4>
                                     <span style="font-size: 11px; color: #10B981; font-weight: 600;">● Online • Typical reply &lt; 1 min</span>
                                 </div>
                             </div>
@@ -1252,7 +1252,7 @@ header('Content-Type: text/html; charset=utf-8');
     <section id="faq" class="section container">
         <div class="section-title">
             <h2>Frequently Asked Questions</h2>
-            <p>Have questions about ProfileVault? Find answers below.</p>
+            <p>Have questions about AntiProfiles? Find answers below.</p>
         </div>
         <div style="max-width: 840px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
             <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
@@ -1281,7 +1281,7 @@ header('Content-Type: text/html; charset=utf-8');
                     <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
-                    Yes! ProfileVault supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with full authentication (username/password or IP whitelist). You can configure proxies per profile, test connections in real time, auto-detect geographical location, and automatically route WebRTC and DNS traffic through your proxy to prevent IP leaks.
+                    Yes! AntiProfiles supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with full authentication (username/password or IP whitelist). You can configure proxies per profile, test connections in real time, auto-detect geographical location, and automatically route WebRTC and DNS traffic through your proxy to prevent IP leaks.
                 </div>
             </div>
 
@@ -1297,11 +1297,11 @@ header('Content-Type: text/html; charset=utf-8');
 
             <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
                 <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
-                    <span>Does ProfileVault offer an Automation API?</span>
+                    <span>Does AntiProfiles offer an Automation API?</span>
                     <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
                 </div>
                 <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
-                    Yes! ProfileVault includes a robust local REST API and WebSocket endpoints compatible with Selenium, Puppeteer, Playwright, and custom automation tools. You can programmatically launch profiles, manage browser sessions, inspect runtime status, and automate multi-account workflows at scale.
+                    Yes! AntiProfiles includes a robust local REST API and WebSocket endpoints compatible with Selenium, Puppeteer, Playwright, and custom automation tools. You can programmatically launch profiles, manage browser sessions, inspect runtime status, and automate multi-account workflows at scale.
                 </div>
             </div>
         </div>
@@ -1311,13 +1311,13 @@ header('Content-Type: text/html; charset=utf-8');
     <section class="section container">
         <div class="section-title">
             <h2>Trusted by Professionals World-Wide</h2>
-            <p>See what engineers, agencies, and security researchers say about ProfileVault.</p>
+            <p>See what engineers, agencies, and security researchers say about AntiProfiles.</p>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
                 <div style="color: #F59E0B; font-size: 18px; margin-bottom: 12px;">⭐⭐⭐⭐⭐</div>
                 <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-                    "ProfileVault completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid."
+                    "AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid."
                 </p>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div style="width: 40px; height: 40px; border-radius: 50%; background: #6366F1; display: flex; align-items: center; justify-content: center; font-weight: 700;">AR</div>
@@ -1368,12 +1368,12 @@ header('Content-Type: text/html; charset=utf-8');
             <div style="display: flex; flex-direction: column; gap: 20px;">
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
                     <div style="font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">✉️ EMAIL SUPPORT</div>
-                    <a href="mailto:support@profilevault.local" style="font-size: 16px; color: #2DD4BF; font-weight: 700; text-decoration: none;">support@profilevault.local</a>
+                    <a href="mailto:support@antiprofiles.com" style="font-size: 16px; color: #2DD4BF; font-weight: 700; text-decoration: none;">support@antiprofiles.com</a>
                 </div>
 
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
                     <div style="font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">✈️ TELEGRAM COMMUNITY</div>
-                    <a href="https://t.me/profilevault_support" target="_blank" class="btn btn-outline" style="margin-top: 8px;">Join Telegram Support</a>
+                    <a href="https://t.me/antiprofiles_support" target="_blank" class="btn btn-outline" style="margin-top: 8px;">Join Telegram Support</a>
                 </div>
             </div>
 
@@ -1404,8 +1404,8 @@ header('Content-Type: text/html; charset=utf-8');
         <div class="container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border);">
             <div>
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <img src="/logo.png" alt="ProfileVault Logo" style="width: 32px; height: 32px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
-                    <span style="font-size: 18px; font-weight: 800; color: #FFF;">ProfileVault</span>
+                    <img src="/logo.png" alt="AntiProfiles Logo" style="width: 32px; height: 32px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
+                    <span style="font-size: 18px; font-weight: 800; color: #FFF;">AntiProfiles</span>
                 </div>
                 <p style="color: var(--text-muted); font-size: 13px; line-height: 1.6;">Professional browser profile isolation and anti-detect privacy management software.</p>
             </div>
@@ -1435,7 +1435,7 @@ header('Content-Type: text/html; charset=utf-8');
             </div>
         </div>
         <div class="container" style="text-align: center; padding-top: 24px; font-size: 12px; color: var(--text-muted);">
-            © <?php echo date('Y'); ?> ProfileVault Software. All rights reserved.
+            © <?php echo date('Y'); ?> AntiProfiles Software. All rights reserved.
         </div>
     </footer>
 
@@ -1557,9 +1557,9 @@ header('Content-Type: text/html; charset=utf-8');
             <!-- Top Bar Header -->
             <div style="padding: 14px 24px; background: #151720; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <img src="/logo.png" alt="ProfileVault Logo" style="width: 38px; height: 38px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
+                    <img src="/logo.png" alt="AntiProfiles Logo" style="width: 38px; height: 38px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
                     <div>
-                        <h2 style="font-size: 18px; color: #FFF;">ProfileVault Anti-Detect Browser — Central Web Control Center</h2>
+                        <h2 style="font-size: 18px; color: #FFF;">AntiProfiles Anti-Detect Browser — Central Web Control Center</h2>
                         <p style="font-size: 12px; color: var(--text-muted);" id="adminUserInfo">Logged in as System Admin</p>
                     </div>
                 </div>
@@ -1733,7 +1733,7 @@ header('Content-Type: text/html; charset=utf-8');
                                 <span>🚀 Download Official Desktop Application</span>
                                 <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">v1.0.0 Stable</span>
                             </h3>
-                            <p style="color: var(--text-muted); font-size: 13px; margin: 0;">Download and install the native ProfileVault anti-detect browser application for Windows, macOS, or Linux.</p>
+                            <p style="color: var(--text-muted); font-size: 13px; margin: 0;">Download and install the native AntiProfiles anti-detect browser application for Windows, macOS, or Linux.</p>
                         </div>
 
                         <!-- 4-Card Responsive Grid -->
@@ -1836,7 +1836,7 @@ header('Content-Type: text/html; charset=utf-8');
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <div>
                                 <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Live Help & Support Chat</h3>
-                                <p style="color: var(--text-muted); font-size: 13px;">Chat directly with ProfileVault technical support team.</p>
+                                <p style="color: var(--text-muted); font-size: 13px;">Chat directly with AntiProfiles technical support team.</p>
                             </div>
                             <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 800;">🟢 Support Team Online</span>
                         </div>
@@ -1845,8 +1845,8 @@ header('Content-Type: text/html; charset=utf-8');
                         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; height: 420px; display: flex; flex-direction: column;">
                             <div id="userChatThread" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 10px;">
                                 <div style="background: #181B26; border: 1px solid #272A3B; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-start;">
-                                    <span style="font-size: 11px; color: #2DD4BF; font-weight: 700;">ProfileVault Support Team</span>
-                                    <p style="font-size: 13px; color: #FFF; margin-top: 4px;">Hello! Welcome to ProfileVault Support. How can we assist you with your browser profiles or proxy configurations today?</p>
+                                    <span style="font-size: 11px; color: #2DD4BF; font-weight: 700;">AntiProfiles Support Team</span>
+                                    <p style="font-size: 13px; color: #FFF; margin-top: 4px;">Hello! Welcome to AntiProfiles Support. How can we assist you with your browser profiles or proxy configurations today?</p>
                                     <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 6px;">Today 12:00 PM</span>
                                 </div>
                             </div>
@@ -2116,7 +2116,7 @@ header('Content-Type: text/html; charset=utf-8');
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Release Name / Headline</label>
-                                        <input type="text" id="relName" placeholder="ProfileVault v2.1.0 Feature & Performance Release" required style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                        <input type="text" id="relName" placeholder="AntiProfiles v2.1.0 Feature & Performance Release" required style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Publish Status</label>
@@ -2135,7 +2135,7 @@ header('Content-Type: text/html; charset=utf-8');
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">OR External Direct Download URL (Google Drive / S3 / GitHub)</label>
-                                        <input type="url" id="relDirectUrl" placeholder="https://github.com/.../ProfileVault-2.1.0.exe" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
+                                        <input type="url" id="relDirectUrl" placeholder="https://github.com/.../AntiProfiles-2.1.0.exe" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;">
                                         <span style="font-size: 11px; color: var(--text-muted);">Optional if uploading binary file above</span>
                                     </div>
                                 </div>
@@ -2249,7 +2249,7 @@ header('Content-Type: text/html; charset=utf-8');
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Broadcast Title</label>
-                                        <input type="text" id="notifTitle" oninput="updateBroadcastLivePreview()" placeholder="e.g. ProfileVault Desktop v1.0.1 Released!" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                        <input type="text" id="notifTitle" oninput="updateBroadcastLivePreview()" placeholder="e.g. AntiProfiles Desktop v1.0.1 Released!" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Broadcast Message Body</label>
@@ -2269,7 +2269,7 @@ header('Content-Type: text/html; charset=utf-8');
                                         <span id="previewNotifBadge" style="background: rgba(99,102,241,0.2); color: #818CF8; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px;">ANNOUNCEMENT</span>
                                         <span style="font-size: 11px; color: var(--text-muted);">Just now</span>
                                     </div>
-                                    <h5 id="previewNotifTitle" style="color: #FFF; font-size: 14px; margin-bottom: 6px;">ProfileVault Desktop v1.0.1 Released!</h5>
+                                    <h5 id="previewNotifTitle" style="color: #FFF; font-size: 14px; margin-bottom: 6px;">AntiProfiles Desktop v1.0.1 Released!</h5>
                                     <p id="previewNotifMsg" style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Enter announcement text to send via email and in-app notifications...</p>
                                 </div>
 
@@ -2468,7 +2468,7 @@ header('Content-Type: text/html; charset=utf-8');
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 14px;">
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Global Site Title</label>
-                                    <input type="text" id="seoGlobalTitle" value="ProfileVault — Anti-Detect Browser & Profile Isolation" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                    <input type="text" id="seoGlobalTitle" value="AntiProfiles — Anti-Detect Browser & Profile Isolation" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Default Canonical Domain</label>
@@ -2481,7 +2481,7 @@ header('Content-Type: text/html; charset=utf-8');
                             </div>
                             <div style="margin-bottom: 14px;">
                                 <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Global Meta Description</label>
-                                <textarea id="seoGlobalDesc" rows="2" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.</textarea>
+                                <textarea id="seoGlobalDesc" rows="2" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Software.</textarea>
                             </div>
                             <button class="btn btn-primary" id="btnSaveGlobalSeo" onclick="saveGlobalSeoSettings()">Save Global SEO Settings</button>
                         </div>
@@ -2955,7 +2955,7 @@ header('Content-Type: text/html; charset=utf-8');
                     <span style="position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background: #10B981; border: 2px solid #181B26;"></span>
                 </div>
                 <div>
-                    <h4 style="font-size: 15px; color: #FFF; margin: 0; font-weight: 700;">ProfileVault Support</h4>
+                    <h4 style="font-size: 15px; color: #FFF; margin: 0; font-weight: 700;">AntiProfiles Support</h4>
                     <span style="font-size: 11px; color: #2DD4BF; display: flex; align-items: center; gap: 4px;">⚡ Active • Instant 24/7 Replies</span>
                 </div>
             </div>
@@ -2966,8 +2966,8 @@ header('Content-Type: text/html; charset=utf-8');
         <div id="liveChatMessagesStream" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: rgba(10, 11, 16, 0.6);">
             <!-- Welcome default bot message -->
             <div class="chat-bubble-agent">
-                <span style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block;">ProfileVault Support Team</span>
-                <p style="font-size: 13px; margin-top: 4px; line-height: 1.4;">Hello! 👋 Welcome to ProfileVault. How can we help you with browser profiles, proxies, or subscriptions today?</p>
+                <span style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block;">AntiProfiles Support Team</span>
+                <p style="font-size: 13px; margin-top: 4px; line-height: 1.4;">Hello! 👋 Welcome to AntiProfiles. How can we help you with browser profiles, proxies, or subscriptions today?</p>
                 <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">Just now</span>
             </div>
         </div>
@@ -3311,7 +3311,7 @@ header('Content-Type: text/html; charset=utf-8');
                 // Skip server re-validation if user just logged in (grace period)
                 if (window._pvJustLoggedIn) {
                     window._pvJustLoggedIn = false;
-                    console.log('[ProfileVault] Skipping /api/auth/me re-validation (just logged in)');
+                    console.log('[AntiProfiles] Skipping /api/auth/me re-validation (just logged in)');
                     return;
                 }
 
@@ -3322,14 +3322,14 @@ header('Content-Type: text/html; charset=utf-8');
 
                 if (res.status === 401 || res.status === 403) {
                     // Don't immediately destroy session — log the issue first
-                    console.warn('[ProfileVault] /api/auth/me returned ' + res.status + '. Token may be expired or server may not be receiving Authorization header.');
+                    console.warn('[AntiProfiles] /api/auth/me returned ' + res.status + '. Token may be expired or server may not be receiving Authorization header.');
                     
                     // Only clear session if the token is genuinely expired (not a server config issue)
                     // Verify by checking if the response body explicitly says expired
                     try {
                         const errData = await res.json();
                         if (errData.error && (errData.error.includes('expired') || errData.error.includes('Unauthorized'))) {
-                            console.warn('[ProfileVault] Session confirmed expired. Clearing session.');
+                            console.warn('[AntiProfiles] Session confirmed expired. Clearing session.');
                             localStorage.removeItem('sessionToken');
                             localStorage.removeItem('user');
                             if (window.history && window.history.replaceState) {
@@ -3339,7 +3339,7 @@ header('Content-Type: text/html; charset=utf-8');
                             openModal('login');
                         }
                     } catch(jsonErr) {
-                        console.warn('[ProfileVault] Could not parse 401 response body.');
+                        console.warn('[AntiProfiles] Could not parse 401 response body.');
                     }
                     return;
                 }
@@ -3583,7 +3583,7 @@ header('Content-Type: text/html; charset=utf-8');
                         const isAgent = m.sender_type === 'agent';
                         return `
                             <div class="${isAgent ? 'chat-bubble-agent' : 'chat-bubble-user'}">
-                                <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#000'}; display: block; margin-bottom: 2px;">${isAgent ? (m.sender_name || 'ProfileVault Support') : 'You'}</span>
+                                <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#000'}; display: block; margin-bottom: 2px;">${isAgent ? (m.sender_name || 'AntiProfiles Support') : 'You'}</span>
                                 <p style="font-size: 13px; margin: 0; line-height: 1.4; word-break: break-word;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
                                 <span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 4px;">${m.created_at ? m.created_at.substring(11, 16) : 'Just now'}</span>
                             </div>
@@ -3682,7 +3682,7 @@ header('Content-Type: text/html; charset=utf-8');
                         const isAgent = m.sender_type === 'agent';
                         return `
                             <div class="${isAgent ? 'chat-bubble-agent' : 'chat-bubble-user'}" style="${isAgent ? 'align-self:flex-start; background:#181B26; color:#FFF; border:1px solid #272A3B;' : 'align-self:flex-end; background:#2DD4BF; color:#000;'}">
-                                <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#000'}; display: block; margin-bottom: 2px;">${isAgent ? (m.sender_name || 'ProfileVault Support') : 'You'}</span>
+                                <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#000'}; display: block; margin-bottom: 2px;">${isAgent ? (m.sender_name || 'AntiProfiles Support') : 'You'}</span>
                                 <p style="font-size: 13px; margin: 0; line-height: 1.4;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
                                 <span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 4px;">${m.created_at || 'Just now'}</span>
                             </div>
@@ -4351,7 +4351,7 @@ header('Content-Type: text/html; charset=utf-8');
                         'Authorization': 'Bearer ' + token
                     },
                     body: JSON.stringify({
-                        subject: subject || 'ProfileVault Customer Support Response',
+                        subject: subject || 'AntiProfiles Customer Support Response',
                         messageBody: message,
                         customEmails: [email]
                     })
@@ -4366,7 +4366,7 @@ header('Content-Type: text/html; charset=utf-8');
 
         function updateBroadcastLivePreview() {
             const type = document.getElementById('notifType')?.value || 'info';
-            const title = document.getElementById('notifTitle')?.value.trim() || 'ProfileVault Desktop Update';
+            const title = document.getElementById('notifTitle')?.value.trim() || 'AntiProfiles Desktop Update';
             const msg = document.getElementById('notifMsg')?.value.trim() || 'Enter announcement text to send via email and in-app notifications...';
             
             const badge = document.getElementById('previewNotifBadge');
