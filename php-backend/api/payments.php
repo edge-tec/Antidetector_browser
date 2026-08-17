@@ -285,6 +285,25 @@ function processSuccessfulPayment(
             'timestamp' => date('c')
         ], null, $newVer);
 
+        // I. Send Purchase Confirmation & Invoice Email
+        try {
+            $uStmt = $db->prepare("SELECT id, name, email FROM users WHERE id = ?");
+            $uStmt->execute([$userId]);
+            $userRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+            if ($userRow && !empty($userRow['email'])) {
+                sendPurchaseConfirmationEmailPhp($userId, $userRow['name'] ?? 'Customer', $userRow['email'], [
+                    'plan_name' => $plan['name'],
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'transaction_id' => $transactionId ?: $invoice['invoice_number'],
+                    'purchase_date' => date('Y-m-d H:i:s T'),
+                    'profile_limit' => $plan['profile_limit'] ?? 10
+                ]);
+            }
+        } catch (Throwable $mailEx) {
+            error_log("[AntiProfiles Payment Email Error] " . $mailEx->getMessage());
+        }
+
         $db->commit();
         return [
             'success' => true,

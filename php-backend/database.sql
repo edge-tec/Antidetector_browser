@@ -80,6 +80,24 @@ CREATE TABLE IF NOT EXISTS `password_resets` (
   KEY `idx_pwd_reset_user` (`user_id`, `expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 1.0.2 Transactional Email Audit Logs
+CREATE TABLE IF NOT EXISTS `email_logs` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `recipient` VARCHAR(191) NOT NULL,
+  `email_type` VARCHAR(50) NOT NULL,
+  `subject` VARCHAR(255) NOT NULL,
+  `status` VARCHAR(20) NOT NULL,
+  `delivery_method` VARCHAR(50) DEFAULT 'smtp',
+  `error_message` TEXT DEFAULT NULL,
+  `user_id` VARCHAR(36) DEFAULT NULL,
+  `metadata_json` LONGTEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_el_recipient` (`recipient`),
+  KEY `idx_el_type` (`email_type`),
+  KEY `idx_el_status` (`status`),
+  KEY `idx_el_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 1.1 Real-Time Outbox Events Table
 CREATE TABLE IF NOT EXISTS `realtime_events` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,

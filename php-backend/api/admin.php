@@ -653,7 +653,7 @@ switch ($action) {
         }
         break;
 
-    // ── 5. SMTP Configuration APIs ──
+    // ── 5. SMTP Configuration & Email Auditing APIs ──
     case 'get-smtp-config':
         try {
             $stmt = $db->prepare("SELECT `key`, `value` FROM settings WHERE `key` LIKE 'smtp_%'");
@@ -663,12 +663,15 @@ switch ($action) {
             foreach ($rows as $r) {
                 $map[$r['key']] = $r['value'];
             }
+            $hasPass = !empty($map['smtp_password']);
             $config = [
                 'host' => $map['smtp_host'] ?? '',
                 'port' => (int)($map['smtp_port'] ?? 587),
                 'user' => $map['smtp_user'] ?? '',
-                'password' => $map['smtp_password'] ?? '',
+                'password' => $hasPass ? '••••••••' : '',
+                'hasPassword' => $hasPass,
                 'fromEmail' => $map['smtp_from_email'] ?? '',
+                'fromName' => $map['smtp_from_name'] ?? 'AntiProfiles',
                 'secure' => ($map['smtp_secure'] ?? 'false') === 'true',
                 'enabled' => ($map['smtp_enabled'] ?? 'false') === 'true'
             ];
@@ -686,13 +689,153 @@ switch ($action) {
             if (isset($input['host'])) $stmt->execute(['smtp_host', trim((string)$input['host'])]);
             if (isset($input['port'])) $stmt->execute(['smtp_port', (string)(int)$input['port']]);
             if (isset($input['user'])) $stmt->execute(['smtp_user', trim((string)$input['user'])]);
-            if (isset($input['password']) && $input['password'] !== '') $stmt->execute(['smtp_password', (string)$input['password']]);
+            if (isset($input['password']) && $input['password'] !== '' && $input['password'] !== '••••••••') {
+                $stmt->execute(['smtp_password', (string)$input['password']]);
+            }
             if (isset($input['fromEmail'])) $stmt->execute(['smtp_from_email', trim((string)$input['fromEmail'])]);
+            if (isset($input['fromName'])) $stmt->execute(['smtp_from_name', trim((string)$input['fromName'])]);
             if (isset($input['secure'])) $stmt->execute(['smtp_secure', ($input['secure'] === true || $input['secure'] === 'true') ? 'true' : 'false']);
             if (isset($input['enabled'])) $stmt->execute(['smtp_enabled', ($input['enabled'] === true || $input['enabled'] === 'true') ? 'true' : 'false']);
 
             logAdminAction($adminUser['id'], $adminUser['email'], 'Updated SMTP Configuration', null, 'Host: ' . ($input['host'] ?? ''));
-            respondJson(['success' => true, 'message' => 'SMTP configuration saved successfully and activated for Website & Application!']);
+            respondJson(['success' => true, 'message' => 'SMTP configuration saved successfully and activated for Website & Applications!']);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'test-smtp-config':
+    case 'test-smtp-connection':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        
+        // If password is masked, fetch stored password from database
+        if (empty($input['password']) || $input['password'] === '••••••••') {
+            $currSmtp = getSmtpSettingsPhp();
+            $input['password'] = $currSmtp['password'] ?? '';
+            if (empty($input['host'])) $input['host'] = $currSmtp['host'] ?? '';
+            if (empty($input['user'])) $input['user'] = $currSmtp['user'] ?? '';
+            if (empty($input['port'])) $input['port'] = $currSmtp['port'] ?? 587;
+        }
+
+        $diag = testSmtpDiagnosticsPhp($input);
+
+        $testRecipient = trim($input['testRecipient'] ?? $input['test_recipient'] ?? '');
+        $testEmailSent = false;
+        if (!empty($testRecipient) && $diag['success']) {
+            $testRes = sendAdminTestEmailPhp($testRecipient, $input);
+            $testEmailSent = $testRes['success'];
+            $diag['steps']['testEmail'] = [
+                'status' => $testEmailSent ? 'PASS' : 'FAIL',
+                'detail' => $testEmailSent ? "Delivered to {$testRecipient}" : "Failed to deliver to {$testRecipient}"
+            ];
+        }
+
+        respondJson([
+            'success' => $diag['success'],
+            'message' => $diag['success'] ? 'All SMTP Connection and Authentication tests PASSED.' : ($diag['error'] ?? 'SMTP diagnostic failed.'),
+            'diagnostics' => $diag['steps'],
+            'testEmailSent' => $testEmailSent
+        ]);
+        break;
+
+    case 'send-test-email':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $recipient = trim($input['recipient'] ?? $input['email'] ?? $input['to'] ?? '');
+
+        if (!$recipient || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            respondJson(['success' => false, 'error' => 'Please provide a valid recipient email address.'], 400);
+        }
+
+        $override = null;
+        if (!empty($input['host'])) {
+            $override = $input;
+            if (empty($override['password']) || $override['password'] === '••••••••') {
+                $curr = getSmtpSettingsPhp();
+                $override['password'] = $curr['password'] ?? '';
+            }
+        }
+
+        $res = sendAdminTestEmailPhp($recipient, $override);
+        logAdminAction($adminUser['id'], $adminUser['email'], 'SENT_ADMIN_TEST_EMAIL', null, "Recipient: {$recipient}, Success: " . ($res['success'] ? 'Yes' : 'No'));
+
+        if ($res['success']) {
+            respondJson([
+                'success' => true,
+                'message' => "Test email successfully delivered to {$recipient}!",
+                'timestamp' => $res['timestamp']
+            ]);
+        } else {
+            respondJson([
+                'success' => false,
+                'error' => "Failed to deliver test email to {$recipient}. Please verify SMTP credentials and check Email Logs."
+            ], 500);
+        }
+        break;
+
+    case 'get-email-logs':
+        try {
+            $page = max(1, (int)($_GET['page'] ?? 1));
+            $limit = max(1, min(100, (int)($_GET['limit'] ?? 25)));
+            $offset = ($page - 1) * $limit;
+            $status = trim($_GET['status'] ?? 'all');
+            $search = trim($_GET['search'] ?? '');
+
+            $whereClauses = [];
+            $params = [];
+
+            if ($status && $status !== 'all') {
+                $whereClauses[] = "status = ?";
+                $params[] = $status;
+            }
+
+            if ($search) {
+                $whereClauses[] = "(recipient LIKE ? OR subject LIKE ? OR email_type LIKE ? OR error_message LIKE ?)";
+                $s = "%{$search}%";
+                $params = array_merge($params, [$s, $s, $s, $s]);
+            }
+
+            $whereSql = $whereClauses ? "WHERE " . implode(" AND ", $whereClauses) : "";
+
+            $countStmt = $db->prepare("SELECT COUNT(*) FROM email_logs {$whereSql}");
+            $countStmt->execute($params);
+            $total = (int)$countStmt->fetchColumn();
+
+            $stmt = $db->prepare("
+                SELECT id, recipient, email_type, subject, status, delivery_method, error_message, user_id, created_at
+                FROM email_logs
+                {$whereSql}
+                ORDER BY created_at DESC
+                LIMIT {$limit} OFFSET {$offset}
+            ");
+            $stmt->execute($params);
+            $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Summary stats
+            $sentCount = (int)$db->query("SELECT COUNT(*) FROM email_logs WHERE status = 'sent'")->fetchColumn();
+            $failedCount = (int)$db->query("SELECT COUNT(*) FROM email_logs WHERE status = 'failed'")->fetchColumn();
+
+            respondJson([
+                'success' => true,
+                'data' => $logs,
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+                'stats' => [
+                    'total' => $total,
+                    'sent' => $sentCount,
+                    'failed' => $failedCount
+                ]
+            ]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'clear-email-logs':
+        try {
+            $db->exec("DELETE FROM email_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+            logAdminAction($adminUser['id'], $adminUser['email'], 'CLEARED_OLD_EMAIL_LOGS', null, "Cleared logs older than 30 days");
+            respondJson(['success' => true, 'message' => 'Email logs older than 30 days cleared.']);
         } catch (Throwable $e) {
             respondJson(['success' => false, 'error' => $e->getMessage()], 500);
         }
@@ -715,7 +858,7 @@ switch ($action) {
         }
 
         $emailRes = sendVerificationEmailPhp($targetUser['id'], $targetUser['name'], $targetUser['email']);
-        logAdminAction($admin['id'], $admin['email'], 'RESENT_USER_VERIFICATION', $userId, "Resent verification link to {$targetUser['email']}");
+        logAdminAction($adminUser['id'], $adminUser['email'], 'RESENT_USER_VERIFICATION', $userId, "Resent verification link to {$targetUser['email']}");
 
         respondJson([
             'success' => true,
@@ -725,29 +868,6 @@ switch ($action) {
                 : "Verification link generated. (SMTP connection issue).",
             'verificationUrl' => $emailRes['verificationUrl'] ?? null,
             'token' => $emailRes['token'] ?? null
-        ]);
-        break;
-
-    case 'test-smtp-config':
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $diag = testSmtpDiagnosticsPhp($input);
-
-        $testRecipient = trim($input['testRecipient'] ?? $input['test_recipient'] ?? '');
-        $testEmailSent = false;
-        if (!empty($testRecipient) && $diag['success']) {
-            $testHtml = "<div style='font-family:sans-serif; background:#0F0F17; color:#FFF; padding:24px; border-radius:8px;'><h2>ProfileVault SMTP Test Successful</h2><p>This test confirms that your central SMTP mailer is properly configured and operational.</p></div>";
-            $testEmailSent = sendSmtpMailPhp($testRecipient, 'ProfileVault SMTP Diagnostic Test', $testHtml, $input);
-            $diag['steps']['testEmail'] = [
-                'status' => $testEmailSent ? 'PASS' : 'FAIL',
-                'detail' => $testEmailSent ? "Delivered to {$testRecipient}" : "Failed to deliver to {$testRecipient}"
-            ];
-        }
-
-        respondJson([
-            'success' => $diag['success'],
-            'message' => $diag['success'] ? 'All SMTP Connection and Authentication tests PASSED.' : ($diag['error'] ?? 'SMTP diagnostic failed.'),
-            'diagnostics' => $diag['steps'],
-            'testEmailSent' => $testEmailSent
         ]);
         break;
 

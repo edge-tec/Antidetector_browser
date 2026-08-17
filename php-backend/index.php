@@ -2447,11 +2447,11 @@ header('Content-Type: text/html; charset=utf-8');
                             <!-- Left: SMTP Form -->
                             <div class="admin-card-box">
                                 <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                                    <span>📧</span> Outgoing Mail Server (SMTP)
+                                    <span>📧</span> Outgoing Mail Server (SMTP) Configuration
                                 </h4>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;">
                                     <div>
-                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP System Status</label>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Delivery Mode</label>
                                         <select id="smtpEnabled" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
                                             <option value="true">✅ Enabled (Send via SMTP)</option>
                                             <option value="false">❌ Disabled (Fallback to PHP mail)</option>
@@ -2460,21 +2460,27 @@ header('Content-Type: text/html; charset=utf-8');
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Security / Encryption</label>
                                         <select id="smtpSecure" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
-                                            <option value="false">TLS / STARTTLS (Port 587)</option>
+                                            <option value="false">TLS / STARTTLS (Port 587 / 25)</option>
                                             <option value="true">SSL (Port 465)</option>
                                         </select>
                                     </div>
                                 </div>
 
-                                <div style="margin-bottom: 14px;">
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">From Email Address</label>
-                                    <input type="email" id="smtpFromEmail" placeholder="e.g. noreply@antiprofiles.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">From Name</label>
+                                        <input type="text" id="smtpFromName" placeholder="e.g. AntiProfiles Security" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">From Email Address</label>
+                                        <input type="email" id="smtpFromEmail" placeholder="e.g. noreply@antiprofiles.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    </div>
                                 </div>
 
                                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px;">
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Host</label>
-                                        <input type="text" id="smtpHost" placeholder="e.g. smtp.gmail.com or mail.domain.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                        <input type="text" id="smtpHost" placeholder="e.g. smtp.gmail.com or mail.antiprofiles.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Port</label>
@@ -2485,7 +2491,7 @@ header('Content-Type: text/html; charset=utf-8');
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px;">
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Username / Account</label>
-                                        <input type="text" id="smtpUser" placeholder="e.g. info@antiprofiles.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                        <input type="text" id="smtpUser" placeholder="e.g. noreply@antiprofiles.com" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">SMTP Password</label>
@@ -2501,19 +2507,68 @@ header('Content-Type: text/html; charset=utf-8');
                             <!-- Right: Diagnostics & Live Test -->
                             <div class="admin-card-box" style="background: #11131C;">
                                 <h4 style="color: #2DD4BF; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                                    <span>🧪</span> Diagnostics & Real-time Test
+                                    <span>🧪</span> SMTP Diagnostic Suite & Test Delivery
                                 </h4>
-                                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">Test your SMTP handshake, authentication, and dispatch a real test verification message.</p>
+                                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">Test your SMTP connection handshake and send a live verification test email.</p>
 
-                                <div style="margin-bottom: 18px;">
-                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Test Recipient Email Address</label>
-                                    <input type="email" id="smtpTestRecipient" placeholder="e.g. your-email@gmail.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                                    <button class="btn btn-outline" id="btnTestSmtp" onclick="testSmtpConnection()" style="flex: 1; padding: 11px 16px; font-weight: 700; border-color: #2DD4BF; color: #2DD4BF;">🔌 Test Connection Only</button>
                                 </div>
 
-                                <button class="btn btn-outline" id="btnTestSmtp" onclick="testSmtpConnection()" style="width: 100%; padding: 11px 20px; font-weight: 700; border-color: #2DD4BF; color: #2DD4BF; margin-bottom: 18px;">🧪 Run Connection & Dispatch Test</button>
+                                <div style="border-top: 1px solid var(--border); padding-top: 14px; margin-bottom: 14px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Recipient for Live Test Email</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="email" id="smtpTestRecipient" placeholder="recipient@example.com" style="flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                        <button class="btn btn-primary" id="btnSendTestEmail" onclick="sendTestEmailDirect()" style="padding: 10px 18px; font-weight: 700; white-space: nowrap;">📨 Send Email</button>
+                                    </div>
+                                </div>
 
-                                <div id="smtpDiagResults" style="display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-size: 12px;"></div>
+                                <div id="smtpDiagResults" style="display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-size: 12px; line-height: 1.6;"></div>
                             </div>
+                        </div>
+
+                        <!-- Email Logs Audit Section -->
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-top: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <h4 style="color: #FFF; font-size: 16px; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
+                                        <span>📜</span> Transactional Email Audit Logs
+                                    </h4>
+                                    <p style="color: var(--text-muted); font-size: 13px; margin: 0;">Real-time history of all dispatched emails, verification links, password resets, receipts, and errors.</p>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                    <select id="emailLogStatusFilter" onchange="loadEmailLogs(1)" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: #FFF; font-size: 12px;">
+                                        <option value="all">All Statuses</option>
+                                        <option value="sent">✓ Sent (Delivered)</option>
+                                        <option value="failed">⚠️ Failed Delivery</option>
+                                    </select>
+                                    <input type="text" id="emailLogSearch" onkeyup="if(event.key==='Enter') loadEmailLogs(1)" placeholder="Search recipient, type..." style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: #FFF; font-size: 12px; width: 180px;">
+                                    <button class="btn btn-outline" onclick="loadEmailLogs(1)" style="padding: 8px 14px; font-size: 12px;">🔄 Refresh Logs</button>
+                                </div>
+                            </div>
+
+                            <div style="overflow-x: auto;">
+                                <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted);">
+                                            <th style="padding: 10px 12px;">Recipient</th>
+                                            <th style="padding: 10px 12px;">Type</th>
+                                            <th style="padding: 10px 12px;">Subject</th>
+                                            <th style="padding: 10px 12px;">Method</th>
+                                            <th style="padding: 10px 12px;">Status</th>
+                                            <th style="padding: 10px 12px;">Date & Time</th>
+                                            <th style="padding: 10px 12px;">Diagnostics</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="emailLogsTableBody">
+                                        <tr>
+                                            <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">Loading email audit logs...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div id="emailLogsPagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 12px; color: var(--text-muted);"></div>
                         </div>
                     </div>
 
@@ -3832,7 +3887,10 @@ header('Content-Type: text/html; charset=utf-8');
             }
             if (tabName === 'releases') loadAppReleasesTable();
             if (tabName === 'google-oauth') loadGoogleOAuthConfig();
-            if (tabName === 'smtp') loadSmtpConfig();
+            if (tabName === 'smtp') {
+                loadSmtpConfig();
+                loadEmailLogs(1);
+            }
         }
 
         async function loadSmtpConfig() {
@@ -3853,14 +3911,16 @@ header('Content-Type: text/html; charset=utf-8');
                     const userInput = document.getElementById('smtpUser');
                     const passInput = document.getElementById('smtpPass');
                     const fromEmailInput = document.getElementById('smtpFromEmail');
+                    const fromNameInput = document.getElementById('smtpFromName');
                     const secureSelect = document.getElementById('smtpSecure');
                     const enabledSelect = document.getElementById('smtpEnabled');
 
                     if (hostInput) hostInput.value = cfg.host || '';
                     if (portInput) portInput.value = cfg.port || 587;
                     if (userInput) userInput.value = cfg.user || '';
-                    if (passInput && cfg.password) passInput.placeholder = '•••••••••••• (Saved)';
+                    if (passInput) passInput.placeholder = cfg.hasPassword ? '•••••••••••• (Saved)' : 'Enter SMTP password';
                     if (fromEmailInput) fromEmailInput.value = cfg.fromEmail || '';
+                    if (fromNameInput) fromNameInput.value = cfg.fromName || 'AntiProfiles';
                     if (secureSelect) secureSelect.value = cfg.secure ? 'true' : 'false';
                     if (enabledSelect) enabledSelect.value = cfg.enabled ? 'true' : 'false';
                 }
@@ -3878,31 +3938,32 @@ header('Content-Type: text/html; charset=utf-8');
             const user = document.getElementById('smtpUser').value.trim();
             const pass = document.getElementById('smtpPass').value;
             const fromEmail = document.getElementById('smtpFromEmail').value.trim();
+            const fromName = document.getElementById('smtpFromName').value.trim();
             const secure = document.getElementById('smtpSecure').value === 'true';
             const enabled = document.getElementById('smtpEnabled').value === 'true';
             const msg = document.getElementById('smtpAdminMsg');
             const saveBtn = document.getElementById('btnSaveSmtp');
 
-            if (!host || !user) {
+            if (!host) {
                 if (msg) {
                     msg.style.display = 'block';
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
-                    msg.innerText = '❌ SMTP Host and Username are required.';
+                    msg.innerText = '❌ SMTP Host is required.';
                 }
                 return;
             }
 
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerText = 'Saving SMTP Configuration...';
+                saveBtn.innerText = 'Saving Configuration...';
             }
 
             if (msg) {
                 msg.style.display = 'block';
                 msg.style.background = 'rgba(99,102,241,0.2)';
                 msg.style.color = '#818CF8';
-                msg.innerText = 'Saving SMTP configuration to central database...';
+                msg.innerText = 'Saving SMTP configuration...';
             }
 
             try {
@@ -3911,10 +3972,11 @@ header('Content-Type: text/html; charset=utf-8');
                     port: port,
                     user: user,
                     fromEmail: fromEmail,
+                    fromName: fromName,
                     secure: secure,
                     enabled: enabled
                 };
-                if (pass) {
+                if (pass && pass !== '••••••••••••') {
                     payload.password = pass;
                 }
 
@@ -3932,10 +3994,11 @@ header('Content-Type: text/html; charset=utf-8');
                     if (msg) {
                         msg.style.background = 'rgba(45,212,191,0.2)';
                         msg.style.color = '#2DD4BF';
-                        msg.innerText = '✅ ' + (data.message || 'SMTP settings saved and active for both Website and Application!');
+                        msg.innerText = '✅ ' + (data.message || 'SMTP settings saved and active for both Website and Applications!');
                     }
                     const passInput = document.getElementById('smtpPass');
                     if (passInput) passInput.placeholder = '•••••••••••• (Saved)';
+                    if (passInput) passInput.value = '';
                 } else {
                     if (msg) {
                         msg.style.background = 'rgba(239,68,68,0.2)';
@@ -3952,7 +4015,7 @@ header('Content-Type: text/html; charset=utf-8');
             } finally {
                 if (saveBtn) {
                     saveBtn.disabled = false;
-                    saveBtn.innerText = '💾 Save SMTP Configuration';
+                    saveBtn.innerText = '💾 Save SMTP Settings';
                 }
             }
         }
@@ -3964,68 +4027,239 @@ header('Content-Type: text/html; charset=utf-8');
             const host = document.getElementById('smtpHost').value.trim();
             const port = parseInt(document.getElementById('smtpPort').value, 10) || 587;
             const user = document.getElementById('smtpUser').value.trim();
+            const pass = document.getElementById('smtpPass').value;
             const secure = document.getElementById('smtpSecure').value === 'true';
-            const msg = document.getElementById('smtpAdminMsg');
+            const fromEmail = document.getElementById('smtpFromEmail').value.trim();
+            const resultsBox = document.getElementById('smtpDiagResults');
             const testBtn = document.getElementById('btnTestSmtp');
 
-            if (!host || !user) {
-                alert('Please enter SMTP Host and Username before testing.');
+            if (!host) {
+                alert('Please enter an SMTP Host before running diagnostics.');
                 return;
             }
 
             if (testBtn) {
                 testBtn.disabled = true;
-                testBtn.innerText = 'Testing Connection...';
+                testBtn.innerText = 'Testing Handshake...';
             }
 
-            if (msg) {
-                msg.style.display = 'block';
-                msg.style.background = 'rgba(99,102,241,0.2)';
-                msg.style.color = '#818CF8';
-                msg.innerText = `Connecting to ${host}:${port}...`;
+            if (resultsBox) {
+                resultsBox.style.display = 'block';
+                resultsBox.innerHTML = '<div style="color:#818CF8;">⏳ Connecting to ' + host + ':' + port + ' and testing SMTP handshake...</div>';
             }
 
             try {
-                const res = await fetch('/api/admin/test-smtp-config', {
+                const payload = { host, port, user, secure, fromEmail };
+                if (pass && pass !== '••••••••••••') payload.password = pass;
+
+                const res = await fetch('/api/admin/test-smtp-connection', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({
-                        host: host,
-                        port: port,
-                        user: user,
-                        secure: secure
-                    })
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                let html = '<div style="margin-bottom:8px; font-weight:700; color:' + (data.success ? '#2DD4BF' : '#F87171') + ';">';
+                html += (data.success ? '✓ SMTP Handshake & Auth Succeeded' : '⚠️ SMTP Diagnostic Issues Detected') + '</div>';
+
+                if (data.diagnostics) {
+                    const d = data.diagnostics;
+                    html += '<div style="display:flex; flex-direction:column; gap:6px;">';
+                    for (const [step, info] of Object.entries(d)) {
+                        const isPass = info.status === 'PASS';
+                        html += '<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:6px 10px; border-radius:6px;">';
+                        html += '<span style="text-transform:uppercase; font-weight:600; color:#94A3B8;">' + step + '</span>';
+                        html += '<span style="color:' + (isPass ? '#2DD4BF' : '#F87171') + '; font-weight:700;">' + (isPass ? '✓ PASS' : '✗ FAIL') + ' (' + (info.detail || '') + ')</span>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                if (data.error) {
+                    html += '<div style="margin-top:8px; color:#F87171;"><strong>Error:</strong> ' + data.error + '</div>';
+                }
+
+                if (resultsBox) resultsBox.innerHTML = html;
+            } catch(e) {
+                if (resultsBox) resultsBox.innerHTML = '<div style="color:#F87171;">❌ Network error testing SMTP server.</div>';
+            } finally {
+                if (testBtn) {
+                    testBtn.disabled = false;
+                    testBtn.innerText = '🔌 Test Connection Only';
+                }
+                loadEmailLogs(1);
+            }
+        }
+
+        async function sendTestEmailDirect() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const recipient = document.getElementById('smtpTestRecipient').value.trim();
+            const host = document.getElementById('smtpHost').value.trim();
+            const port = parseInt(document.getElementById('smtpPort').value, 10) || 587;
+            const user = document.getElementById('smtpUser').value.trim();
+            const pass = document.getElementById('smtpPass').value;
+            const secure = document.getElementById('smtpSecure').value === 'true';
+            const fromEmail = document.getElementById('smtpFromEmail').value.trim();
+            const fromName = document.getElementById('smtpFromName').value.trim();
+            const sendBtn = document.getElementById('btnSendTestEmail');
+            const resultsBox = document.getElementById('smtpDiagResults');
+
+            if (!recipient || !recipient.includes('@')) {
+                alert('Please enter a valid test recipient email address.');
+                return;
+            }
+
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.innerText = 'Sending...';
+            }
+
+            if (resultsBox) {
+                resultsBox.style.display = 'block';
+                resultsBox.innerHTML = '<div style="color:#818CF8;">⏳ Dispatching live test email to ' + recipient + '...</div>';
+            }
+
+            try {
+                const payload = { recipient, host, port, user, secure, fromEmail, fromName };
+                if (pass && pass !== '••••••••••••') payload.password = pass;
+
+                const res = await fetch('/api/admin/send-test-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await res.json();
                 if (data.success) {
-                    if (msg) {
-                        msg.style.background = 'rgba(45,212,191,0.2)';
-                        msg.style.color = '#2DD4BF';
-                        msg.innerText = '✅ ' + (data.message || 'SMTP Connection Test Passed!');
+                    if (resultsBox) {
+                        resultsBox.innerHTML = '<div style="color:#2DD4BF; font-weight:700;">✓ ' + (data.message || 'Test email dispatched successfully!') + '</div><div style="color:#94A3B8; font-size:11px; margin-top:4px;">Check inbox/spam folder for ' + recipient + '</div>';
                     }
                 } else {
-                    if (msg) {
-                        msg.style.background = 'rgba(239,68,68,0.2)';
-                        msg.style.color = '#F87171';
-                        msg.innerText = '❌ ' + (data.message || 'SMTP Connection Test Failed.');
+                    if (resultsBox) {
+                        resultsBox.innerHTML = '<div style="color:#F87171; font-weight:700;">✗ ' + (data.error || 'Failed to dispatch test email.') + '</div>';
                     }
                 }
             } catch(e) {
-                if (msg) {
-                    msg.style.background = 'rgba(239,68,68,0.2)';
-                    msg.style.color = '#F87171';
-                    msg.innerText = '❌ Error testing SMTP connection.';
-                }
+                if (resultsBox) resultsBox.innerHTML = '<div style="color:#F87171;">❌ Network error delivering test email.</div>';
             } finally {
-                if (testBtn) {
-                    testBtn.disabled = false;
-                    testBtn.innerText = '🧪 Test SMTP Connection';
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = '📨 Send Email';
+                }
+                loadEmailLogs(1);
+            }
+        }
+
+        let _emailLogsData = [];
+        let _emailLogsCurrentPage = 1;
+
+        async function loadEmailLogs(page = 1) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const tbody = document.getElementById('emailLogsTableBody');
+            const statusFilter = document.getElementById('emailLogStatusFilter')?.value || 'all';
+            const searchVal = document.getElementById('emailLogSearch')?.value?.trim() || '';
+
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted);">Loading email logs...</td></tr>';
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: 15,
+                    status: statusFilter
+                });
+                if (searchVal) params.append('search', searchVal);
+
+                const res = await fetch('/api/admin/get-email-logs?' + params.toString(), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+
+                if (data.success && Array.isArray(data.data)) {
+                    _emailLogsData = data.data;
+                    _emailLogsCurrentPage = page;
+                    renderEmailLogsTable(data.data, data.total, page, data.limit);
+                } else {
+                    if (tbody) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#F87171;">Failed to load email logs.</td></tr>';
+                    }
+                }
+            } catch(e) {
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#F87171;">Network error loading email logs.</td></tr>';
                 }
             }
+        }
+
+        function renderEmailLogsTable(logs, total, page, limit) {
+            const tbody = document.getElementById('emailLogsTableBody');
+            const pag = document.getElementById('emailLogsPagination');
+            if (!tbody) return;
+
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No email logs recorded yet.</td></tr>';
+                if (pag) pag.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            logs.forEach((log, index) => {
+                const isSent = log.status === 'sent';
+                const statusBadge = isSent
+                    ? '<span style="background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); color:#2DD4BF; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;">✓ Delivered</span>'
+                    : '<span style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#F87171; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;">⚠️ Failed</span>';
+
+                const typeBadge = '<span style="background:rgba(99,102,241,0.15); color:#818CF8; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; text-transform:uppercase;">' + escapeHtml(log.email_type || 'system') + '</span>';
+
+                html += '<tr style="border-bottom:1px solid #1E2333;">';
+                html += '<td style="padding:10px 12px; font-weight:600; color:#FFF;">' + escapeHtml(log.recipient) + '</td>';
+                html += '<td style="padding:10px 12px;">' + typeBadge + '</td>';
+                html += '<td style="padding:10px 12px; color:#CBD5E1; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(log.subject) + '</td>';
+                html += '<td style="padding:10px 12px; color:#94A3B8; text-transform:uppercase; font-size:11px;">' + escapeHtml(log.delivery_method || 'smtp') + '</td>';
+                html += '<td style="padding:10px 12px;">' + statusBadge + '</td>';
+                html += '<td style="padding:10px 12px; color:#94A3B8; font-size:12px;">' + new Date(log.created_at).toLocaleString() + '</td>';
+                html += '<td style="padding:10px 12px;">';
+                if (log.error_message) {
+                    html += '<button onclick="showEmailDiagModal(' + index + ')" class="btn btn-outline" style="padding:3px 8px; font-size:11px; color:#F87171; border-color:rgba(239,68,68,0.4);">View Error</button>';
+                } else {
+                    html += '<span style="color:#2DD4BF; font-size:12px;">250 OK</span>';
+                }
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            tbody.innerHTML = html;
+
+            if (pag) {
+                const totalPages = Math.ceil(total / limit) || 1;
+                let pagHtml = '<span>Showing ' + logs.length + ' of ' + total + ' logs (Page ' + page + ' of ' + totalPages + ')</span>';
+                pagHtml += '<div style="display:flex; gap:6px;">';
+                if (page > 1) {
+                    pagHtml += '<button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="loadEmailLogs(' + (page - 1) + ')">Previous</button>';
+                }
+                if (page < totalPages) {
+                    pagHtml += '<button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="loadEmailLogs(' + (page + 1) + ')">Next</button>';
+                }
+                pagHtml += '</div>';
+                pag.innerHTML = pagHtml;
+            }
+        }
+
+        function showEmailDiagModal(index) {
+            const item = _emailLogsData[index];
+            if (!item) return;
+            alert('=== EMAIL DIAGNOSTIC DETAILS ===\n\nRecipient: ' + item.recipient + '\nSubject: ' + item.subject + '\nType: ' + item.email_type + '\nDate: ' + item.created_at + '\n\nDiagnostic Error:\n' + (item.error_message || 'None reported'));
         }
 
         // ═══════════════════════════════════════════════════════════════════════

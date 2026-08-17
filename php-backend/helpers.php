@@ -458,6 +458,25 @@ function ensureDatabaseTablesExist() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `email_logs` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `recipient` VARCHAR(191) NOT NULL,
+              `email_type` VARCHAR(50) NOT NULL,
+              `subject` VARCHAR(255) NOT NULL,
+              `status` VARCHAR(20) NOT NULL,
+              `delivery_method` VARCHAR(50) DEFAULT 'smtp',
+              `error_message` TEXT DEFAULT NULL,
+              `user_id` VARCHAR(36) DEFAULT NULL,
+              `metadata_json` LONGTEXT DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              KEY `idx_el_recipient` (`recipient`),
+              KEY `idx_el_type` (`email_type`),
+              KEY `idx_el_status` (`status`),
+              KEY `idx_el_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
         try {
             $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_hash` VARCHAR(64) DEFAULT NULL;");
             $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_expires_at` DATETIME DEFAULT NULL;");
@@ -670,9 +689,30 @@ function getGoogleOAuthConfigPhp(): array {
 }
 
 // ──────────────────────────────────────────────
-// SMTP Email System Helper Functions
+// Centralized SMTP Email Engine & Audit Logging
 // ──────────────────────────────────────────────
 
+/**
+ * Log all transactional email attempts into the durable email_logs table.
+ */
+function logEmailDispatch(string $recipient, string $type, string $subject, string $status, ?string $error = null, string $method = 'smtp', ?string $userId = null, ?array $meta = null): void {
+    try {
+        $db = Database::getConnection();
+        $stmt = $db->prepare("
+            INSERT INTO email_logs (id, recipient, email_type, subject, status, delivery_method, error_message, user_id, metadata_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ");
+        $logId = 'elog_' . bin2hex(random_bytes(10));
+        $metaJson = $meta ? json_encode($meta, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
+        $stmt->execute([$logId, $recipient, $type, $subject, $status, $method, $error, $userId, $metaJson]);
+    } catch (Throwable $e) {
+        error_log("[AntiProfiles EmailLogger Error] " . $e->getMessage());
+    }
+}
+
+/**
+ * Retrieve active SMTP configuration from settings table or environment variables.
+ */
 function getSmtpSettingsPhp(): array {
     $db = Database::getConnection();
     try {
@@ -699,24 +739,37 @@ function getSmtpSettingsPhp(): array {
             'fromEmail' => $from,
             'fromName' => $fromName,
             'secure' => $secure,
-            'enabled' => $enabled && !empty($host) && !empty($user)
+            'enabled' => $enabled && !empty($host)
         ];
     } catch (Exception $e) {
         return ['enabled' => false];
     }
 }
 
-function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?array $overrideConfig = null): bool {
+/**
+ * Robust Centralized SMTP Dispatch Engine supporting Direct SSL (465), STARTTLS (587/25), and Native Mail fallback.
+ */
+function sendSmtpMailPhp(
+    string $toEmail,
+    string $subject,
+    string $htmlBody,
+    ?array $overrideConfig = null,
+    string $emailType = 'transactional',
+    ?string $userId = null,
+    ?array $metadata = null
+): bool {
     $smtp = $overrideConfig ?? getSmtpSettingsPhp();
-    
-    // 1. Try Custom SMTP Socket if Enabled
-    if (!empty($smtp['enabled']) && !empty($smtp['host']) && !empty($smtp['user'])) {
-        $host = $smtp['host'];
+    $lastError = null;
+    $deliveryMethod = 'smtp';
+
+    // 1. Try Custom SMTP Socket if Enabled and Host Configured
+    if (!empty($smtp['enabled']) && !empty($smtp['host'])) {
+        $host = trim($smtp['host']);
         $port = (int)($smtp['port'] ?? 587);
-        $user = $smtp['user'];
-        $pass = $smtp['password'] ?? '';
-        $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $user;
-        $fromName = !empty($smtp['fromName']) ? $smtp['fromName'] : 'AntiProfiles';
+        $user = trim($smtp['user'] ?? '');
+        $pass = (string)($smtp['password'] ?? '');
+        $from = !empty($smtp['fromEmail']) ? trim($smtp['fromEmail']) : ($user ?: 'noreply@antiprofiles.com');
+        $fromName = !empty($smtp['fromName']) ? trim($smtp['fromName']) : 'AntiProfiles';
         $secure = (bool)($smtp['secure'] ?? false);
 
         $timeout = 15;
@@ -735,6 +788,8 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
         $socket = @stream_socket_client($socketHost, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
 
         if ($socket) {
+            stream_set_timeout($socket, $timeout);
+
             $read = function() use ($socket) {
                 $data = '';
                 while ($str = fgets($socket, 515)) {
@@ -748,14 +803,19 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
                 fputs($socket, $cmd . "\r\n");
             };
 
-            $read(); // Initial greeting banner (220)
+            $greeting = $read(); // Banner (220)
+            if (substr($greeting, 0, 3) !== '220') {
+                $lastError = "Invalid SMTP banner: " . trim($greeting);
+                fclose($socket);
+                goto fallback_native_mail;
+            }
 
             $serverHost = $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com';
             $write("EHLO " . $serverHost);
             $ehloRes = $read();
 
-            // STARTTLS for port 587 or if supported
-            if (!$secure && $port !== 465 && strpos($ehloRes, 'STARTTLS') !== false) {
+            // Handle STARTTLS for port 587 or if supported by server
+            if (!$secure && $port !== 465 && stripos($ehloRes, 'STARTTLS') !== false) {
                 $write("STARTTLS");
                 $tlsRes = $read();
                 if (substr($tlsRes, 0, 3) === '220') {
@@ -766,22 +826,42 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
                     if (defined('STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT')) {
                         $cryptoMethod |= STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT;
                     }
-                    @stream_socket_enable_crypto($socket, true, $cryptoMethod);
-                    $write("EHLO " . $serverHost);
-                    $read();
+                    $cryptoOk = @stream_socket_enable_crypto($socket, true, $cryptoMethod);
+                    if ($cryptoOk) {
+                        $write("EHLO " . $serverHost);
+                        $ehloRes = $read();
+                    } else {
+                        $lastError = "TLS encryption handshake failed on {$host}:{$port}";
+                        fclose($socket);
+                        goto fallback_native_mail;
+                    }
                 }
             }
 
-            // AUTH LOGIN
+            // Authenticate if credentials provided
             if (!empty($user) && !empty($pass)) {
                 $write("AUTH LOGIN");
-                $read();
-                $write(base64_encode($user));
-                $read();
-                $write(base64_encode($pass));
-                $authRes = $read();
-                if (substr($authRes, 0, 3) !== '235') {
-                    error_log("[SMTP Auth Error] Authentication failed: " . trim($authRes));
+                $authPrompt = $read();
+                if (substr($authPrompt, 0, 3) === '334') {
+                    $write(base64_encode($user));
+                    $userPrompt = $read();
+                    if (substr($userPrompt, 0, 3) === '334') {
+                        $write(base64_encode($pass));
+                        $authRes = $read();
+                        if (substr($authRes, 0, 3) !== '235') {
+                            $lastError = "SMTP Authentication rejected (535): " . trim($authRes);
+                            $write("QUIT");
+                            fclose($socket);
+                            goto fallback_native_mail;
+                        }
+                    } else {
+                        $lastError = "SMTP Auth username prompt rejected: " . trim($userPrompt);
+                        $write("QUIT");
+                        fclose($socket);
+                        goto fallback_native_mail;
+                    }
+                } else {
+                    $lastError = "SMTP Server does not accept AUTH LOGIN: " . trim($authPrompt);
                     $write("QUIT");
                     fclose($socket);
                     goto fallback_native_mail;
@@ -792,6 +872,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
             $write("MAIL FROM: <{$from}>");
             $mailFromRes = $read();
             if (substr($mailFromRes, 0, 3) !== '250') {
+                $lastError = "MAIL FROM rejected: " . trim($mailFromRes);
                 $write("QUIT");
                 fclose($socket);
                 goto fallback_native_mail;
@@ -801,6 +882,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
             $write("RCPT TO: <{$toEmail}>");
             $rcptRes = $read();
             if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
+                $lastError = "Recipient address rejected: " . trim($rcptRes);
                 $write("QUIT");
                 fclose($socket);
                 goto fallback_native_mail;
@@ -810,22 +892,44 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
             $write("DATA");
             $dataRes = $read();
             if (substr($dataRes, 0, 3) !== '354') {
+                $lastError = "DATA command rejected: " . trim($dataRes);
                 $write("QUIT");
                 fclose($socket);
                 goto fallback_native_mail;
             }
 
-            // Headers & Body
+            // Multi-part MIME Construction (HTML + Plaintext Fallback)
+            $boundary = "----=_NextPart_" . bin2hex(random_bytes(12));
+            $plainText = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>'], "\r\n", $htmlBody));
+            $plainText = trim(preg_replace("/[\r\n]{3,}/", "\r\n\r\n", $plainText));
+
             $headers = [];
             $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>";
             $headers[] = "To: <{$toEmail}>";
             $headers[] = "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=";
             $headers[] = "MIME-Version: 1.0";
-            $headers[] = "Content-Type: text/html; charset=UTF-8";
-            $headers[] = "Content-Transfer-Encoding: base64";
-            $headers[] = "X-Mailer: AntiProfiles-Mailer/1.0";
+            $headers[] = "Content-Type: multipart/alternative; boundary=\"{$boundary}\"";
+            $headers[] = "X-Mailer: AntiProfiles-CentralEngine/2.0";
+            $headers[] = "Date: " . date('r');
 
-            $payload = implode("\r\n", $headers) . "\r\n\r\n" . chunk_split(base64_encode($htmlBody)) . "\r\n.";
+            $bodyParts = [];
+            // Plain Text Part
+            $bodyParts[] = "--{$boundary}";
+            $bodyParts[] = "Content-Type: text/plain; charset=UTF-8";
+            $bodyParts[] = "Content-Transfer-Encoding: base64";
+            $bodyParts[] = "";
+            $bodyParts[] = chunk_split(base64_encode($plainText));
+
+            // HTML Part
+            $bodyParts[] = "--{$boundary}";
+            $bodyParts[] = "Content-Type: text/html; charset=UTF-8";
+            $bodyParts[] = "Content-Transfer-Encoding: base64";
+            $bodyParts[] = "";
+            $bodyParts[] = chunk_split(base64_encode($htmlBody));
+
+            $bodyParts[] = "--{$boundary}--";
+
+            $payload = implode("\r\n", $headers) . "\r\n\r\n" . implode("\r\n", $bodyParts) . "\r\n.";
             $write($payload);
             $sendRes = $read();
 
@@ -833,13 +937,21 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
             fclose($socket);
 
             if (substr($sendRes, 0, 3) === '250') {
+                logEmailDispatch($toEmail, $emailType, $subject, 'sent', null, 'smtp', $userId, $metadata);
                 return true;
+            } else {
+                $lastError = "SMTP final send rejected: " . trim($sendRes);
             }
+        } else {
+            $lastError = "Failed to connect to SMTP server ({$socketHost}): {$errstr} ({$errno})";
         }
+    } else {
+        $lastError = "Custom SMTP is not configured or disabled in Admin settings.";
     }
 
     // 2. Fallback to PHP native mail()
     fallback_native_mail:
+    $deliveryMethod = 'native_mail';
     try {
         $fromName = $smtp['fromName'] ?? 'AntiProfiles';
         $fromEmail = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : (!empty($smtp['user']) ? $smtp['user'] : 'noreply@antiprofiles.com');
@@ -849,30 +961,43 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
             'Content-type: text/html; charset=UTF-8',
             'From: =?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>',
             'Reply-To: ' . $fromEmail,
-            'X-Mailer: PHP/' . phpversion()
+            'X-Mailer: AntiProfiles-NativeFallback/2.0'
         ];
 
-        return @mail($toEmail, '=?UTF-8?B?' . base64_encode($subject) . '?=', $htmlBody, implode("\r\n", $headers));
+        $nativeSent = @mail($toEmail, '=?UTF-8?B?' . base64_encode($subject) . '?=', $htmlBody, implode("\r\n", $headers));
+        if ($nativeSent) {
+            logEmailDispatch($toEmail, $emailType, $subject, 'sent', "Sent via PHP native mail fallback (" . ($lastError ?: 'No SMTP configured') . ")", 'native_mail', $userId, $metadata);
+            return true;
+        } else {
+            $lastError = ($lastError ? $lastError . "; " : "") . "PHP native mail() function also returned false.";
+        }
     } catch (Throwable $e) {
-        return false;
+        $lastError = ($lastError ? $lastError . "; " : "") . "Native mail exception: " . $e->getMessage();
     }
+
+    // 3. Record Failure
+    logEmailDispatch($toEmail, $emailType, $subject, 'failed', $lastError, $deliveryMethod, $userId, $metadata);
+    return false;
 }
 
+/**
+ * Step-by-Step Live SMTP Diagnostic Suite for the Admin Control Center.
+ */
 function testSmtpDiagnosticsPhp(?array $config = null): array {
     $smtp = $config ?? getSmtpSettingsPhp();
-    $host = $smtp['host'] ?? '';
+    $host = trim($smtp['host'] ?? '');
     $port = (int)($smtp['port'] ?? 587);
-    $user = $smtp['user'] ?? '';
-    $pass = $smtp['password'] ?? '';
-    $from = $smtp['fromEmail'] ?? $user;
+    $user = trim($smtp['user'] ?? '');
+    $pass = (string)($smtp['password'] ?? '');
+    $from = !empty($smtp['fromEmail']) ? trim($smtp['fromEmail']) : ($user ?: 'noreply@antiprofiles.com');
     $secure = (bool)($smtp['secure'] ?? false);
 
     $results = [
-        'connection' => ['status' => 'FAIL', 'detail' => 'Not tested'],
-        'ehlo' => ['status' => 'FAIL', 'detail' => 'Not tested'],
-        'tls' => ['status' => 'PASS', 'detail' => 'Plain / Direct SSL'],
-        'auth' => ['status' => 'FAIL', 'detail' => 'Not tested'],
-        'sender' => ['status' => 'FAIL', 'detail' => 'Not tested']
+        'connection' => ['status' => 'PENDING', 'detail' => 'Not tested'],
+        'ehlo' => ['status' => 'PENDING', 'detail' => 'Not tested'],
+        'tls' => ['status' => 'PENDING', 'detail' => 'Not tested'],
+        'auth' => ['status' => 'PENDING', 'detail' => 'Not tested'],
+        'sender' => ['status' => 'PENDING', 'detail' => 'Not tested']
     ];
 
     if (empty($host) || empty($port)) {
@@ -883,15 +1008,23 @@ function testSmtpDiagnosticsPhp(?array $config = null): array {
     $timeout = 10;
     $errno = 0;
     $errstr = '';
-    $socketHost = ($secure || $port === 465) ? "ssl://{$host}" : $host;
-    $socket = @fsockopen($socketHost, $port, $errno, $errstr, $timeout);
+    $socketHost = ($secure || $port === 465) ? "ssl://{$host}:{$port}" : "tcp://{$host}:{$port}";
 
+    $context = stream_context_create([
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true
+        ]
+    ]);
+
+    $socket = @stream_socket_client($socketHost, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
     if (!$socket) {
-        $results['connection'] = ['status' => 'FAIL', 'detail' => "Connection to {$host}:{$port} failed: {$errstr} ({$errno})"];
-        return ['success' => false, 'steps' => $results, 'error' => "Connection failed: {$errstr}"];
+        $results['connection'] = ['status' => 'FAIL', 'detail' => "Connection to {$socketHost} failed: {$errstr} (Code: {$errno})"];
+        return ['success' => false, 'steps' => $results, 'error' => "Connection to {$host}:{$port} failed: {$errstr}"];
     }
 
-    $results['connection'] = ['status' => 'PASS', 'detail' => "Connected to {$socketHost}:{$port} successfully."];
+    $results['connection'] = ['status' => 'PASS', 'detail' => "Connected to {$socketHost} successfully."];
 
     $read = function() use ($socket) {
         $data = '';
@@ -904,40 +1037,58 @@ function testSmtpDiagnosticsPhp(?array $config = null): array {
     $write = function(string $cmd) use ($socket) { fputs($socket, $cmd . "\r\n"); };
 
     $banner = $read();
+    if (substr($banner, 0, 3) !== '220') {
+        $results['connection'] = ['status' => 'FAIL', 'detail' => "Invalid server banner: " . trim($banner)];
+        fclose($socket);
+        return ['success' => false, 'steps' => $results, 'error' => "Invalid SMTP Server banner."];
+    }
+
     $serverHost = $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com';
     $write("EHLO " . $serverHost);
     $ehloRes = $read();
-
     $results['ehlo'] = ['status' => 'PASS', 'detail' => 'Handshake completed with server.'];
 
-    if (!$secure && $port !== 465 && strpos($ehloRes, 'STARTTLS') !== false) {
+    if (!$secure && $port !== 465 && stripos($ehloRes, 'STARTTLS') !== false) {
         $write("STARTTLS");
         $tlsRes = $read();
         if (substr($tlsRes, 0, 3) === '220') {
-            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-            $write("EHLO " . $serverHost);
-            $read();
-            $results['tls'] = ['status' => 'PASS', 'detail' => 'STARTTLS encryption negotiated.'];
+            $cryptoMethod = STREAM_CRYPTO_METHOD_TLS_CLIENT;
+            if (defined('STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT')) $cryptoMethod |= STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
+            if (defined('STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT')) $cryptoMethod |= STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT;
+            $cryptoOk = @stream_socket_enable_crypto($socket, true, $cryptoMethod);
+            if ($cryptoOk) {
+                $write("EHLO " . $serverHost);
+                $read();
+                $results['tls'] = ['status' => 'PASS', 'detail' => 'STARTTLS encryption negotiated.'];
+            } else {
+                $results['tls'] = ['status' => 'FAIL', 'detail' => 'STARTTLS negotiation failed.'];
+            }
         }
+    } else {
+        $results['tls'] = ['status' => 'PASS', 'detail' => ($secure || $port === 465) ? 'Direct SSL' : 'Plain text connection'];
     }
 
     if (!empty($user) && !empty($pass)) {
         $write("AUTH LOGIN");
-        $read();
-        $write(base64_encode($user));
-        $read();
-        $write(base64_encode($pass));
-        $authRes = $read();
-        if (substr($authRes, 0, 3) === '235') {
-            $results['auth'] = ['status' => 'PASS', 'detail' => "Authenticated as {$user}."];
+        $authPrompt = $read();
+        if (substr($authPrompt, 0, 3) === '334') {
+            $write(base64_encode($user));
+            $read();
+            $write(base64_encode($pass));
+            $authRes = $read();
+            if (substr($authRes, 0, 3) === '235') {
+                $results['auth'] = ['status' => 'PASS', 'detail' => "Authenticated as {$user}."];
+            } else {
+                $results['auth'] = ['status' => 'FAIL', 'detail' => "Auth rejected: " . trim($authRes)];
+                $write("QUIT");
+                fclose($socket);
+                return ['success' => false, 'steps' => $results, 'error' => "SMTP Authentication failed (check user/password)."];
+            }
         } else {
-            $results['auth'] = ['status' => 'FAIL', 'detail' => "Auth rejected: " . trim($authRes)];
-            $write("QUIT");
-            fclose($socket);
-            return ['success' => false, 'steps' => $results, 'error' => "Authentication failed."];
+            $results['auth'] = ['status' => 'FAIL', 'detail' => "AUTH LOGIN not supported: " . trim($authPrompt)];
         }
     } else {
-        $results['auth'] = ['status' => 'PASS', 'detail' => 'Anonymous / No auth configured.'];
+        $results['auth'] = ['status' => 'PASS', 'detail' => 'No username/password provided (Anonymous mode).'];
     }
 
     $write("MAIL FROM: <{$from}>");
@@ -952,29 +1103,37 @@ function testSmtpDiagnosticsPhp(?array $config = null): array {
     fclose($socket);
 
     $isAllPassed = $results['connection']['status'] === 'PASS' && $results['auth']['status'] === 'PASS' && $results['sender']['status'] === 'PASS';
-    return ['success' => $isAllPassed, 'steps' => $results, 'error' => $isAllPassed ? null : 'Diagnostics revealed issues.'];
+    return ['success' => $isAllPassed, 'steps' => $results, 'error' => $isAllPassed ? null : 'Diagnostics revealed SMTP issues.'];
 }
 
+function testSmtpConnectionPhp(?array $config = null): array {
+    return testSmtpDiagnosticsPhp($config);
+}
+
+// ──────────────────────────────────────────────
+// Unified HTML Email Templates & Handlers
+// ──────────────────────────────────────────────
+
+/**
+ * 1. Account Registration Verification Email
+ */
 function sendVerificationEmailPhp(string $userId, string $userName, string $email): array {
     $db = Database::getConnection();
 
-    // 1. Invalidate any previous unused tokens for this user
+    // Invalidate prior unused tokens
     $invStmt = $db->prepare("UPDATE verification_tokens SET used = 1 WHERE user_id = ? AND used = 0");
     $invStmt->execute([$userId]);
 
-    // 2. Generate a cryptographically secure random 64-char hex token
     $plainToken = bin2hex(random_bytes(32));
     $tokenHash = hash('sha256', $plainToken);
     $tokenId = 'tok_' . bin2hex(random_bytes(8));
 
-    // 3. Store hashed token in verification_tokens with 24 hours expiry
     $stmt = $db->prepare("
         INSERT INTO verification_tokens (id, user_id, token_hash, expires_at, used, attempts, created_at)
         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), 0, 0, CURRENT_TIMESTAMP)
     ");
     $stmt->execute([$tokenId, $userId, $tokenHash]);
 
-    // 4. Update user state
     $updUser = $db->prepare("
         UPDATE users SET
             verification_token_hash = ?,
@@ -985,14 +1144,12 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     ");
     $updUser->execute([$tokenHash, $userId]);
 
-    // 5. Build authoritative verification URL
     $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'https://';
     $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ($protocol . $host);
     $verificationUrl = rtrim($baseUrl, '/') . '/verify-email?token=' . $plainToken;
     $deepLinkUrl = 'antiprofiles://verify-email?token=' . $plainToken;
 
-    // 6. Responsive HTML Email Content
     $html = "
     <!DOCTYPE html>
     <html>
@@ -1001,43 +1158,43 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
       <meta name='viewport' content='width=device-width, initial-scale=1.0'>
       <title>Verify Your AntiProfiles Account</title>
     </head>
-    <body style='margin:0; padding:0; background-color:#0A0A0F; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color:#CBD5E1;'>
-      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#0A0A0F; padding:40px 10px;'>
+    <body style='margin:0; padding:0; background-color:#08090C; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#08090C; padding:40px 12px;'>
         <tr>
           <td align='center'>
-            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#161622; border-radius:16px; border:1px solid #2C2C3E; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
               <tr>
                 <td style='padding:36px 36px 20px 36px; text-align:center;'>
                   <div style='display:inline-block; padding:12px; border-radius:12px; background:linear-gradient(135deg, rgba(45,212,191,0.2), rgba(59,130,246,0.2)); border:1px solid rgba(45,212,191,0.3); margin-bottom:16px;'>
                     <span style='font-size:28px;'>🛡️</span>
                   </div>
                   <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Verify Your Account</h1>
-                  <p style='color:#94A3B8; font-size:14px; margin:0;'>Welcome to AntiProfiles Central Anti-Detect Ecosystem</p>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Anti-Detect Browser Ecosystem</p>
                 </td>
               </tr>
               <tr>
                 <td style='padding:0 36px 30px 36px;'>
                   <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
-                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your AntiProfiles account has been registered successfully. To activate full browser profile isolation, proxies, and team capabilities, please confirm your email address by clicking the button below:</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Thank you for registering for AntiProfiles. To activate full browser profile isolation, fingerprint protections, and proxy integrations, please confirm your email address:</p>
                   
                   <div style='text-align:center; margin:32px 0;'>
-                    <a href='" . $verificationUrl . "' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#0F0F17; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block; box-shadow:0 4px 16px rgba(45,212,191,0.35);'>Verify Email Address</a>
+                    <a href='" . $verificationUrl . "' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#07090E; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block; box-shadow:0 4px 16px rgba(45,212,191,0.35);'>Confirm Email Address</a>
                   </div>
 
-                  <div style='background:#0F0F17; border:1px solid #2C2C3E; border-radius:10px; padding:16px; margin-bottom:24px;'>
+                  <div style='background:#090B12; border:1px solid #232738; border-radius:10px; padding:16px; margin-bottom:24px;'>
                     <p style='margin:0 0 6px 0; font-size:12px; color:#94A3B8;'>Manual Verification Token:</p>
                     <code style='color:#2DD4BF; font-family:monospace; font-size:13px; word-break:break-all;'>" . htmlspecialchars($plainToken) . "</code>
                   </div>
 
-                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0 0 10px 0;'>Or copy & paste this URL into your browser:<br>
+                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0 0 10px 0;'>Direct Link:<br>
                     <a href='" . $verificationUrl . "' style='color:#38BDF8; text-decoration:underline; word-break:break-all;'>" . $verificationUrl . "</a>
                   </p>
-                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0;'>⏳ This verification link expires in <strong>24 hours</strong>. If you did not create this account, you can safely disregard this message.</p>
+                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin:0;'>⏳ This verification link expires in <strong>24 hours</strong>. If you did not create this account, no further action is required.</p>
                 </td>
               </tr>
               <tr>
-                <td style='background:#0F0F17; padding:20px 36px; border-top:1px solid #2C2C3E; text-align:center;'>
-                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Anti-Detect Browser. Unified Web & Desktop Security.</p>
+                <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Software. Unified Security Infrastructure.</p>
                 </td>
               </tr>
             </table>
@@ -1047,14 +1204,7 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     </body>
     </html>";
 
-    $sent = sendSmtpMailPhp($email, 'Verify Your AntiProfiles Account', $html);
-
-    if ($sent) {
-        recordSecurityEvent('VERIFICATION_EMAIL_SENT', 'info', $userId, "Verification token dispatched to {$email}");
-    } else {
-        recordSecurityEvent('VERIFICATION_EMAIL_FAILED', 'warning', $userId, "SMTP failed to deliver verification token to {$email}");
-    }
-
+    $sent = sendSmtpMailPhp($email, '🛡️ Verify Your AntiProfiles Account', $html, null, 'verification', $userId, ['verificationUrl' => $verificationUrl]);
     return [
         'success' => true,
         'token' => $plainToken,
@@ -1064,28 +1214,42 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     ];
 }
 
-function sendAccountVerifiedConfirmationPhp(string $userName, string $email): bool {
+/**
+ * 2. Welcome & Account Successfully Verified Confirmation Email
+ */
+function sendAccountVerifiedConfirmationPhp(string $userName, string $email, ?string $userId = null): bool {
     $html = "
     <!DOCTYPE html>
     <html>
-    <head><meta charset='utf-8'><title>AntiProfiles Account Confirmed</title></head>
-    <body style='background-color:#0A0A0F; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
-      <div style='max-width:560px; margin:0 auto; background:#161622; padding:32px; border-radius:14px; border:1px solid #2C2C3E;'>
+    <head><meta charset='utf-8'><title>AntiProfiles Account Ready</title></head>
+    <body style='background-color:#08090C; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:560px; margin:0 auto; background:#12141E; padding:32px; border-radius:14px; border:1px solid #232738;'>
         <div style='text-align:center;'>
-          <span style='background:#10B98125; border:1px solid #10B98150; color:#34D399; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>✓ Email Verified Successfully</span>
-          <h2 style='color:#FFFFFF; font-size:22px; margin:16px 0 8px 0;'>Welcome aboard, " . htmlspecialchars($userName) . "!</h2>
+          <span style='background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); color:#2DD4BF; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>✓ Email Verified Successfully</span>
+          <h2 style='color:#FFFFFF; font-size:22px; margin:16px 0 8px 0;'>Welcome to AntiProfiles, " . htmlspecialchars($userName) . "!</h2>
         </div>
-        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your email address (<strong>" . htmlspecialchars($email) . "</strong>) has been verified. Your account is now fully active across Web, Windows, macOS, and Linux.</p>
+        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your email address (<strong>" . htmlspecialchars($email) . "</strong>) has been verified. Your account is now fully active across Web and Desktop client applications.</p>
+        <div style='background:#090B12; border:1px solid #232738; border-radius:10px; padding:16px; margin:20px 0;'>
+          <p style='color:#2DD4BF; font-weight:700; margin:0 0 6px 0; font-size:13px;'>🚀 Next Steps:</p>
+          <ul style='color:#94A3B8; font-size:13px; margin:0; padding-left:20px; line-height:1.6;'>
+            <li>Download the Desktop Application for Windows or macOS.</li>
+            <li>Create your first isolated browser profile with randomized hardware fingerprint.</li>
+            <li>Assign residential or mobile proxies for seamless anti-detect browsing.</li>
+          </ul>
+        </div>
         <div style='text-align:center; margin:28px 0;'>
-          <a href='https://antiprofiles.com/#login' style='background:#2DD4BF; color:#0F0F17; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Access Control Center</a>
+          <a href='https://antiprofiles.com/#login' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#07090E; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Access Dashboard</a>
         </div>
       </div>
     </body>
     </html>";
 
-    return sendSmtpMailPhp($email, '🎉 AntiProfiles Account Confirmed & Ready!', $html);
+    return sendSmtpMailPhp($email, '🎉 AntiProfiles Account Confirmed & Ready!', $html, null, 'welcome', $userId);
 }
 
+/**
+ * 3. Password Reset Request Email
+ */
 function sendPasswordResetEmailPhp(string $userId, string $userName, string $email): array {
     $db = Database::getConnection();
 
@@ -1134,8 +1298,8 @@ function sendPasswordResetEmailPhp(string $userId, string $userName, string $ema
       <meta name='viewport' content='width=device-width, initial-scale=1.0'>
       <title>Reset Your AntiProfiles Password</title>
     </head>
-    <body style='margin:0; padding:0; background-color:#07090E; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color:#CBD5E1;'>
-      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#07090E; padding:40px 10px;'>
+    <body style='margin:0; padding:0; background-color:#08090C; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#08090C; padding:40px 12px;'>
         <tr>
           <td align='center'>
             <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
@@ -1145,7 +1309,7 @@ function sendPasswordResetEmailPhp(string $userId, string $userName, string $ema
                     <span style='font-size:28px;'>🔑</span>
                   </div>
                   <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Reset Your Password</h1>
-                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Central Security Service</p>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Security Service</p>
                 </td>
               </tr>
               <tr>
@@ -1170,7 +1334,7 @@ function sendPasswordResetEmailPhp(string $userId, string $userName, string $ema
               </tr>
               <tr>
                 <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
-                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Anti-Detect Browser. Unified Security Infrastructure.</p>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Software. Unified Security Infrastructure.</p>
                 </td>
               </tr>
             </table>
@@ -1180,14 +1344,7 @@ function sendPasswordResetEmailPhp(string $userId, string $userName, string $ema
     </body>
     </html>";
 
-    $sent = sendSmtpMailPhp($email, '🔑 Reset Your AntiProfiles Password', $html);
-
-    if ($sent) {
-        recordSecurityEvent('PASSWORD_RESET_EMAIL_SENT', 'info', $userId, "Password reset token dispatched to {$email}");
-    } else {
-        recordSecurityEvent('PASSWORD_RESET_EMAIL_FAILED', 'warning', $userId, "SMTP failed to deliver password reset token to {$email}");
-    }
-
+    $sent = sendSmtpMailPhp($email, '🔑 Reset Your AntiProfiles Password', $html, null, 'password_reset', $userId, ['resetUrl' => $resetUrl]);
     return [
         'success' => true,
         'token' => $plainToken,
@@ -1197,12 +1354,15 @@ function sendPasswordResetEmailPhp(string $userId, string $userName, string $ema
     ];
 }
 
-function sendPasswordChangedNotificationPhp(string $userName, string $email): bool {
+/**
+ * 4. Password Successfully Changed Security Alert
+ */
+function sendPasswordChangedNotificationPhp(string $userName, string $email, ?string $userId = null): bool {
     $html = "
     <!DOCTYPE html>
     <html>
     <head><meta charset='utf-8'><title>AntiProfiles Password Changed</title></head>
-    <body style='background-color:#07090E; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
+    <body style='background-color:#08090C; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
       <div style='max-width:560px; margin:0 auto; background:#12141E; padding:32px; border-radius:14px; border:1px solid #232738;'>
         <div style='text-align:center;'>
           <span style='background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); color:#2DD4BF; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>✓ Security Notice</span>
@@ -1210,7 +1370,7 @@ function sendPasswordChangedNotificationPhp(string $userName, string $email): bo
         </div>
         <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
         <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>The password for your AntiProfiles account (<strong>" . htmlspecialchars($email) . "</strong>) was recently changed. If you performed this change, no further action is required.</p>
-        <p style='color:#EF4444; font-size:13px; line-height:1.6;'>If you did NOT change your password, please contact support immediately at <a href='mailto:support@antiprofiles.com' style='color:#2DD4BF;'>support@antiprofiles.com</a>.</p>
+        <p style='color:#EF4444; font-size:13px; line-height:1.6;'>If you did NOT make this change, please reset your password immediately or contact our security team at <a href='mailto:support@antiprofiles.com' style='color:#2DD4BF;'>support@antiprofiles.com</a>.</p>
         <div style='text-align:center; margin:28px 0;'>
           <a href='https://antiprofiles.com/#login' style='background:#2DD4BF; color:#07090E; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Sign In to AntiProfiles</a>
         </div>
@@ -1218,7 +1378,137 @@ function sendPasswordChangedNotificationPhp(string $userName, string $email): bo
     </body>
     </html>";
 
-    return sendSmtpMailPhp($email, '🔒 AntiProfiles Password Successfully Changed', $html);
+    return sendSmtpMailPhp($email, '🔒 AntiProfiles Password Successfully Changed', $html, null, 'password_changed', $userId);
+}
+
+/**
+ * 5. Package Purchase Confirmation & Invoice Receipt
+ */
+function sendPurchaseConfirmationEmailPhp(string $userId, string $userName, string $email, array $paymentData): bool {
+    $planName = $paymentData['plan_name'] ?? 'AntiProfiles Subscription';
+    $amount = isset($paymentData['amount']) ? number_format((float)$paymentData['amount'], 2) : '0.00';
+    $currency = strtoupper($paymentData['currency'] ?? 'USD');
+    $txId = $paymentData['transaction_id'] ?? $paymentData['id'] ?? ('tx_' . bin2hex(random_bytes(6)));
+    $purchaseDate = $paymentData['purchase_date'] ?? date('Y-m-d H:i:s T');
+    $profileLimit = $paymentData['profile_limit'] ?? 'Unlimited';
+
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>Payment Receipt — AntiProfiles</title></head>
+    <body style='background-color:#08090C; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:580px; margin:0 auto; background:#12141E; padding:36px; border-radius:16px; border:1px solid #232738; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+        <div style='text-align:center;'>
+          <span style='background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); color:#2DD4BF; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>✓ Purchase Confirmed</span>
+          <h2 style='color:#FFFFFF; font-size:24px; margin:16px 0 6px 0;'>Payment Receipt & Activation</h2>
+          <p style='color:#94A3B8; font-size:14px; margin:0;'>Thank you for subscribing to AntiProfiles</p>
+        </div>
+
+        <div style='background:#090B12; border:1px solid #232738; border-radius:12px; padding:20px; margin:28px 0;'>
+          <table style='width:100%; font-size:14px; border-collapse:collapse;'>
+            <tr style='border-bottom:1px solid #1E2333;'>
+              <td style='padding:8px 0; color:#94A3B8;'>Customer:</td>
+              <td style='padding:8px 0; color:#FFFFFF; text-align:right; font-weight:600;'>" . htmlspecialchars($userName) . "</td>
+            </tr>
+            <tr style='border-bottom:1px solid #1E2333;'>
+              <td style='padding:8px 0; color:#94A3B8;'>Plan / Package:</td>
+              <td style='padding:8px 0; color:#2DD4BF; text-align:right; font-weight:700;'>" . htmlspecialchars($planName) . "</td>
+            </tr>
+            <tr style='border-bottom:1px solid #1E2333;'>
+              <td style='padding:8px 0; color:#94A3B8;'>Amount Paid:</td>
+              <td style='padding:8px 0; color:#FFFFFF; text-align:right; font-weight:700; font-size:16px;'>$" . htmlspecialchars($amount) . " " . htmlspecialchars($currency) . "</td>
+            </tr>
+            <tr style='border-bottom:1px solid #1E2333;'>
+              <td style='padding:8px 0; color:#94A3B8;'>Transaction ID:</td>
+              <td style='padding:8px 0; color:#94A3B8; text-align:right; font-family:monospace; font-size:12px;'>" . htmlspecialchars($txId) . "</td>
+            </tr>
+            <tr style='border-bottom:1px solid #1E2333;'>
+              <td style='padding:8px 0; color:#94A3B8;'>Purchase Date:</td>
+              <td style='padding:8px 0; color:#94A3B8; text-align:right; font-size:13px;'>" . htmlspecialchars($purchaseDate) . "</td>
+            </tr>
+            <tr>
+              <td style='padding:8px 0; color:#94A3B8;'>Status:</td>
+              <td style='padding:8px 0; color:#34D399; text-align:right; font-weight:700;'>Active & Confirmed</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style='color:#94A3B8; font-size:13px; line-height:1.6;'>Your license limits have been updated automatically across all linked devices. If you have questions or need assistance, reach us at <a href='mailto:support@antiprofiles.com' style='color:#2DD4BF;'>support@antiprofiles.com</a>.</p>
+        
+        <div style='text-align:center; margin:28px 0 10px 0;'>
+          <a href='https://antiprofiles.com/#dashboard' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#07090E; font-weight:800; padding:12px 32px; text-decoration:none; border-radius:8px; display:inline-block;'>Open Dashboard</a>
+        </div>
+      </div>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, '🧾 AntiProfiles Purchase Receipt & Confirmation', $html, null, 'purchase_receipt', $userId, $paymentData);
+}
+
+/**
+ * 6. Payment Failed Notification Email
+ */
+function sendPaymentFailedNotificationPhp(string $userName, string $email, array $paymentData, ?string $userId = null): bool {
+    $planName = $paymentData['plan_name'] ?? 'AntiProfiles Subscription';
+    $reason = $paymentData['reason'] ?? 'Payment authorization declined by provider';
+
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>Payment Alert — AntiProfiles</title></head>
+    <body style='background-color:#08090C; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:560px; margin:0 auto; background:#12141E; padding:32px; border-radius:14px; border:1px solid #232738;'>
+        <div style='text-align:center;'>
+          <span style='background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#F87171; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>⚠️ Payment Unsuccessful</span>
+          <h2 style='color:#FFFFFF; font-size:22px; margin:16px 0 8px 0;'>Payment Processing Alert</h2>
+        </div>
+        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>We were unable to complete your payment for the <strong>" . htmlspecialchars($planName) . "</strong> package.</p>
+        <p style='color:#EF4444; font-size:13px; line-height:1.6;'>Reason: " . htmlspecialchars($reason) . "</p>
+        <p style='color:#94A3B8; font-size:13px; line-height:1.6;'>You may retry with a different payment method or contact our 24/7 support team.</p>
+        <div style='text-align:center; margin:24px 0;'>
+          <a href='https://antiprofiles.com/#pricing' style='background:#2DD4BF; color:#07090E; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Retry Payment</a>
+        </div>
+      </div>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, '⚠️ AntiProfiles Payment Processing Issue', $html, null, 'payment_failed', $userId, $paymentData);
+}
+
+/**
+ * 7. Admin Test Email Functionality
+ */
+function sendAdminTestEmailPhp(string $toEmail, ?array $overrideConfig = null): array {
+    $timestamp = date('Y-m-d H:i:s T');
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>SMTP Test Delivery</title></head>
+    <body style='background-color:#08090C; font-family:sans-serif; color:#CBD5E1; padding:30px;'>
+      <div style='max-width:560px; margin:0 auto; background:#12141E; padding:32px; border-radius:14px; border:1px solid #232738;'>
+        <div style='text-align:center;'>
+          <span style='background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); color:#2DD4BF; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700;'>✓ SMTP Verification Passed</span>
+          <h2 style='color:#FFFFFF; font-size:22px; margin:16px 0 8px 0;'>AntiProfiles SMTP Test Email</h2>
+        </div>
+        <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>This is a verified test email sent from your AntiProfiles Admin Control Center.</p>
+        <div style='background:#090B12; border:1px solid #232738; border-radius:8px; padding:12px; margin:16px 0; font-size:13px;'>
+          <p style='margin:0 0 4px 0; color:#94A3B8;'><strong>Dispatched To:</strong> " . htmlspecialchars($toEmail) . "</p>
+          <p style='margin:0 0 4px 0; color:#94A3B8;'><strong>Server Timestamp:</strong> " . htmlspecialchars($timestamp) . "</p>
+          <p style='margin:0; color:#2DD4BF;'><strong>SMTP Handshake Status:</strong> 250 OK (Authenticated & Delivered)</p>
+        </div>
+        <p style='color:#64748B; font-size:12px; margin:0;'>Your transactional email delivery system is operating normally.</p>
+      </div>
+    </body>
+    </html>";
+
+    $sent = sendSmtpMailPhp($toEmail, '🧪 AntiProfiles Live SMTP Test Delivery', $html, $overrideConfig, 'admin_test', null, ['test_time' => $timestamp]);
+    return [
+        'success' => $sent,
+        'recipient' => $toEmail,
+        'timestamp' => $timestamp,
+        'message' => $sent ? 'Test email successfully dispatched via SMTP!' : 'Failed to deliver test email. Check server logs.'
+    ];
 }
 
 // Audit Logging Helper

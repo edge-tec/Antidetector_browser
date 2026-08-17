@@ -509,7 +509,7 @@ switch ($action) {
         ], null, $newAuthVersion);
 
         // Send confirmation email
-        @sendAccountVerifiedConfirmationPhp($targetUser['name'], $targetUser['email']);
+        @sendAccountVerifiedConfirmationPhp($targetUser['name'], $targetUser['email'], $userId);
 
         // Generate session token
         $sessionToken = createSessionToken($userId);
@@ -745,7 +745,7 @@ switch ($action) {
 
         // Send confirmation email
         try {
-            sendPasswordChangedNotificationPhp($resetRecord['name'] ?? 'User', $resetRecord['email']);
+            sendPasswordChangedNotificationPhp($resetRecord['name'] ?? 'User', $resetRecord['email'], $userId);
         } catch (Throwable $e) {}
 
         recordSecurityEvent('PASSWORD_RESET_SUCCESSFUL', 'info', $userId, "Password reset successfully completed for {$resetRecord['email']}");
