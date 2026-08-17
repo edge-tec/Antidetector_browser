@@ -198,7 +198,7 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
                 'subscription_status' => 'expired',
                 'plan' => ['id' => $plan['id'], 'name' => $plan['name']],
                 'expires_at' => $sub['expires_at'],
-                'error' => 'Your subscription has expired. Please renew to continue using desktop browser profiles.',
+                'error' => 'Your account has expired. Please contact support or the administrator to renew your access.',
                 'renewal_url' => '#pricing'
             ];
         }
@@ -246,18 +246,24 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
     ];
 }
 
-// REST API Handler for /api/license
-if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
-    $user = getAuthenticatedUser();
-    if (!$user) {
-        respondJson(['success' => false, 'error' => 'Authentication required.'], 401);
-    }
-
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-    $installationId = $_SERVER['HTTP_X_INSTALLATION_ID'] ?? $input['installationId'] ?? null;
-    $platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? null;
-    $appVersion = $_SERVER['HTTP_X_APP_VERSION'] ?? $input['appVersion'] ?? null;
-
-    $result = validateUserLicenseInternal($user['id'], $installationId, $platform, $appVersion);
-    respondJson(['success' => true, 'data' => $result]);
+// REST API Handler for /api/license and /api/license/*
+$user = getAuthenticatedUser();
+if (!$user) {
+    respondJson(['success' => false, 'error' => 'Authentication required. Please sign in.'], 401);
 }
+
+$input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+$installationId = $_SERVER['HTTP_X_INSTALLATION_ID'] ?? $input['installationId'] ?? null;
+$platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? null;
+$appVersion = $_SERVER['HTTP_X_APP_VERSION'] ?? $input['appVersion'] ?? null;
+
+$result = validateUserLicenseInternal($user['id'], $installationId, $platform, $appVersion);
+if (!$result['valid']) {
+    respondJson([
+        'success' => false,
+        'error' => $result['error'] ?? 'Your account has expired or is suspended.',
+        'data' => $result
+    ], 403);
+}
+
+respondJson(['success' => true, 'data' => $result]);

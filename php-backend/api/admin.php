@@ -226,7 +226,34 @@ switch ($action) {
             $updSub->execute([$planId, $status, $expiresAt, $graceDays, $userId]);
         }
 
-        respondJson(['success' => true]);
+        logAdminAction($adminUser['id'], $adminUser['email'], 'Updated User Subscription & Expiry', $userId, "Plan: $planId, Status: $status, Expires: $expiresAt");
+        respondJson(['success' => true, 'message' => 'User subscription and expiration updated successfully.']);
+        break;
+
+    case 'update-user-expiry':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $input['userId'] ?? $input['user_id'] ?? $_GET['userId'] ?? null;
+        $expiresAt = $input['expires_at'] ?? $input['expiresAt'] ?? null;
+
+        if (!$userId || !$expiresAt) {
+            respondJson(['success' => false, 'error' => 'User ID and expiration date (YYYY-MM-DD HH:MM:SS) are required.'], 400);
+        }
+
+        $formattedExpiry = date('Y-m-d H:i:s', strtotime($expiresAt));
+        $now = time();
+        $isFuture = strtotime($formattedExpiry) > $now;
+        $newStatus = $isFuture ? 'active' : 'expired';
+
+        $db->prepare("
+            UPDATE subscriptions SET 
+                expires_at = ?, 
+                status = ?, 
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE user_id = ?
+        ")->execute([$formattedExpiry, $newStatus, $userId]);
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'Set User Expiry Date', $userId, "New Expiry: $formattedExpiry (Status: $newStatus)");
+        respondJson(['success' => true, 'message' => "Expiry date updated to $formattedExpiry ($newStatus)"]);
         break;
 
     // ── 3. Application Downloads Management APIs ──

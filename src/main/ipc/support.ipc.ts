@@ -1,11 +1,8 @@
-// ──────────────────────────────────────────────
-// ProfileVault — Support IPC Channel Handlers
-// ──────────────────────────────────────────────
-
 import { ipcMain, BrowserWindow } from 'electron'
 import { supportService } from '../services/support.service'
 import { sessionManager } from '../security/session'
 import { getDatabase } from '../database/connection'
+import { centralApi } from '../services/api-client.service'
 
 function getAuthUserFromToken(token: string, guestInfo?: { name?: string; email?: string }): { id: string; role: string; name: string; email: string } {
   const defaultToken = token || `guest_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`
@@ -52,8 +49,16 @@ function safeHandle(channel: string, listener: (event: Electron.IpcMainInvokeEve
 }
 
 export function setupSupportIPC(): void {
-  // 1. Get Conversations for User
+  // 1. Get Conversations for User (Central Server First)
   safeHandle('support:get-user-conversations', async (_, token: string) => {
+    if (token) centralApi.setSessionToken(token)
+    try {
+      const centralRes = await centralApi.getUserConversations()
+      if (centralRes.success && centralRes.data) {
+        return { success: true, data: centralRes.data }
+      }
+    } catch {}
+
     const user = getAuthUserFromToken(token)
     try {
       const conversations = supportService.getUserConversations(user.id)
@@ -63,8 +68,16 @@ export function setupSupportIPC(): void {
     }
   })
 
-  // 2. Get Single Conversation Details
+  // 2. Get Single Conversation Details (Central Server First)
   safeHandle('support:get-conversation', async (_, token: string, conversationId: string) => {
+    if (token) centralApi.setSessionToken(token)
+    try {
+      const centralRes = await centralApi.getConversation(conversationId)
+      if (centralRes.success && centralRes.data) {
+        return { success: true, data: centralRes.data }
+      }
+    } catch {}
+
     const user = getAuthUserFromToken(token)
     try {
       const isAdmin = user.role === 'admin'
@@ -75,8 +88,16 @@ export function setupSupportIPC(): void {
     }
   })
 
-  // 3. Create Support Conversation
+  // 3. Create Support Conversation (Central Server First)
   safeHandle('support:create-conversation', async (_, token: string, input: { subject: string; initialMessage: string; priority?: string; attachment?: any; guestName?: string; guestEmail?: string }) => {
+    if (token) centralApi.setSessionToken(token)
+    try {
+      const centralRes = await centralApi.createTicket(input.subject, input.initialMessage, input.priority)
+      if (centralRes.success) {
+        return { success: true, data: centralRes.data, conversation_id: centralRes.conversation_id }
+      }
+    } catch {}
+
     const user = getAuthUserFromToken(token, { name: input?.guestName, email: input?.guestEmail })
     try {
       const conv = supportService.createConversation(
@@ -92,8 +113,16 @@ export function setupSupportIPC(): void {
     }
   })
 
-  // 4. Send Support Message
+  // 4. Send Support Message (Central Server First)
   safeHandle('support:send-message', async (_, token: string, conversationId: string, message: string, attachment?: any) => {
+    if (token) centralApi.setSessionToken(token)
+    try {
+      const centralRes = await centralApi.sendMessage(conversationId, message)
+      if (centralRes.success) {
+        return { success: true, message_id: centralRes.message_id }
+      }
+    } catch {}
+
     const user = getAuthUserFromToken(token)
     try {
       const senderType = user.role === 'admin' ? 'agent' : 'user'

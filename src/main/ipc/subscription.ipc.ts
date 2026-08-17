@@ -1,15 +1,35 @@
-// ──────────────────────────────────────────────
-// ProfileVault — Subscriptions & Licensing IPC Handlers
-// ──────────────────────────────────────────────
-
 import { ipcMain } from 'electron'
 import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { authorizeUser } from '../security/session'
 import { logger } from '../logging/logger'
+import { centralApi } from '../services/api-client.service'
 
 export function setupSubscriptionIPC(): void {
-  // Validate User License & Device Heartbeat
+  // Validate User License & Device Heartbeat (Central Server First)
   ipcMain.handle('subscription:get-license-status', async (_event, sessionToken: string, installationId?: string, platform?: string, appVersion?: string) => {
+    if (sessionToken) {
+      centralApi.setSessionToken(sessionToken)
+    }
+    if (installationId) {
+      centralApi.setInstallationId(installationId)
+    }
+
+    // 1. Try Central Server
+    try {
+      const centralRes = await centralApi.validateLicense()
+      if (centralRes && centralRes.data) {
+        if (!centralRes.data.valid) {
+          return {
+            success: false,
+            error: centralRes.data.error || 'Your account has expired. Please contact support or the administrator to renew your access.',
+            data: centralRes.data
+          }
+        }
+        return { success: true, data: centralRes.data }
+      }
+    } catch {}
+
+    // 2. Offline / Local fallback
     const auth = authorizeUser(sessionToken)
     if (auth.error || !auth.user) {
       return { success: false, error: auth.error || 'Authentication required.' }

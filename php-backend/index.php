@@ -2522,6 +2522,82 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'seo') loadSeoPagesTable();
             if (tabName === 'releases') loadAppReleasesTable();
             if (tabName === 'google-oauth') loadGoogleOAuthConfig();
+            if (tabName === 'support') loadSupportConversations();
+        }
+
+        async function loadSupportConversations() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const container = document.getElementById('supportConvList');
+            if (!container) return;
+
+            container.innerHTML = '<p style="color:var(--text-muted);">Fetching unified support tickets from central server...</p>';
+
+            try {
+                const res = await fetch('/api/support/admin-conversations', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    container.innerHTML = data.data.map(conv => `
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; text-align: left;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div>
+                                    <strong style="color: #FFF; font-size: 15px;">${conv.subject || 'Support Request'}</strong>
+                                    <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">(${conv.user_name || 'User'} - ${conv.user_email || ''})</span>
+                                </div>
+                                <span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: ${conv.status === 'open' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color: ${conv.status === 'open' ? '#10B981' : '#F87171'};">
+                                    ${(conv.status || 'open').toUpperCase()}
+                                </span>
+                            </div>
+                            <p style="font-size: 13px; color: #CBD5E1; margin-bottom: 12px;">${conv.last_message_preview || 'No message content'}</p>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="replyInput_${conv.id}" placeholder="Type reply..." style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
+                                <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="replySupportTicket('${conv.id}')">✉️ Send Reply</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p style="color:var(--text-muted); padding: 20px;">No support tickets in inbox. Support system is live and unified across Website and Desktop App.</p>';
+                }
+            } catch(e) {
+                container.innerHTML = '<p style="color:#F87171;">Failed to load support conversations.</p>';
+            }
+        }
+
+        async function replySupportTicket(convId) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const input = document.getElementById('replyInput_' + convId);
+            const msg = input ? input.value.trim() : '';
+            if (!msg) {
+                alert('Please enter reply text.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/support/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        conversation_id: convId,
+                        message: msg
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Support reply sent successfully!');
+                    if (input) input.value = '';
+                    loadSupportConversations();
+                } else {
+                    alert('Failed to send reply: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Error sending reply: ' + e.message);
+            }
         }
 
         async function loadGoogleOAuthConfig() {

@@ -257,7 +257,7 @@ switch ($action) {
         ]);
         break;
 
-    // ── 3. Get Current Profile ──
+    // ── 3. Get Current Profile & Permissions ──
     case 'me':
         $user = getAuthenticatedUser();
         if (!$user) {
@@ -270,9 +270,29 @@ switch ($action) {
 
         respondJson([
             'success' => true,
-            'user' => $user,
+            'user' => [
+                'id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role'],
+                'emailVerified' => (bool)($user['email_verified'] ?? 1),
+                'accountStatus' => $user['account_status'] ?? 'active',
+                'createdAt' => $user['created_at'] ?? date('c'),
+                'lastLoginAt' => $user['last_login_at'] ?? date('c')
+            ],
             'license' => $license
         ]);
+        break;
+
+    // ── 3.5. Logout & Session Invalidation ──
+    case 'logout':
+        $user = getAuthenticatedUser();
+        if ($user) {
+            try {
+                $db->prepare("UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$user['id']]);
+            } catch (Throwable $e) {}
+        }
+        respondJson(['success' => true, 'message' => 'Logged out successfully.']);
         break;
 
     // ── 5. User Update Profile (Editable: Name, Phone, Password ONLY) ──

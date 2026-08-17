@@ -37,6 +37,32 @@ export class UserRepository {
     return this.getDisplayById(id)!
   }
 
+  createWithId(input: UserCreateInput & { id: string }): UserDisplay {
+    const db = getDatabase()
+    const id = input.id
+    const passwordHash = input.password ? hashPassword(input.password) : null
+    const role = input.role || 'user'
+    const emailVerified = input.emailVerified ?? false
+    const accountStatus = input.accountStatus || (emailVerified ? 'active' : 'pending')
+    const googleId = input.googleId || null
+
+    db.prepare(`
+      INSERT OR REPLACE INTO users (id, name, email, password_hash, role, email_verified, account_status, google_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).run(
+      id,
+      input.name.trim(),
+      input.email.trim().toLowerCase(),
+      passwordHash,
+      role,
+      emailVerified ? 1 : 0,
+      accountStatus,
+      googleId
+    )
+
+    return this.getDisplayById(id)!
+  }
+
   getById(id: string): User | null {
     const db = getDatabase()
     const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined
