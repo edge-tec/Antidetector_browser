@@ -48,44 +48,68 @@ class SessionManager {
   }
 
   getSessionUser(token: string | undefined | null): UserDisplay | null {
-    if (!token) return null
-    const session = this.sessions.get(token)
-    if (session) {
-      if (Date.now() > session.expiresAt) {
-        this.sessions.delete(token)
-        return null
+    // 1. Direct session lookup
+    if (token) {
+      const session = this.sessions.get(token)
+      if (session) {
+        if (Date.now() > session.expiresAt) {
+          this.sessions.delete(token)
+        } else {
+          const user = userRepo.getDisplayById(session.userId)
+          if (user) return user
+        }
       }
-      const user = userRepo.getDisplayById(session.userId)
-      if (user) return user
-    }
 
-    // Fallback: If token is a JWT from Central Backend, decode userId
-    try {
-      if (token.includes('.')) {
-        const parts = token.split('.')
-        if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
-          const uid = payload.sub || payload.userId || payload.id
-          if (uid) {
-            let u = userRepo.getDisplayById(uid)
-            if (!u && payload.email) {
-              u = userRepo.getDisplayByEmail(payload.email)
-            }
-            if (u) {
-              this.registerSession(token, u)
-              return u
+      // 2. JWT Decode lookup
+      try {
+        if (token.includes('.')) {
+          const parts = token.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
+            const uid = payload.sub || payload.userId || payload.id
+            if (uid) {
+              let u = userRepo.getDisplayById(uid)
+              if (!u && payload.email) {
+                u = userRepo.getDisplayByEmail(payload.email)
+              }
+              if (u) {
+                this.registerSession(token, u)
+                return u
+              }
             }
           }
         }
-      }
-    } catch {}
+      } catch {}
 
-    // Fallback: Check if there is only 1 active local user (single-tenant desktop mode)
+      // 3. Check if token matches a known user ID directly
+      try {
+        const userById = userRepo.getDisplayById(token)
+        if (userById) {
+          this.registerSession(token, userById)
+          return userById
+        }
+      } catch {}
+    }
+
+    // 4. If any active session exists in memory, return the active session user
+    if (this.sessions.size > 0) {
+      for (const sess of this.sessions.values()) {
+        if (Date.now() <= sess.expiresAt) {
+          const u = userRepo.getDisplayById(sess.userId)
+          if (u) return u
+        }
+      }
+    }
+
+    // 5. Fallback: Return single active local user (single-tenant desktop mode)
     try {
       const all = userRepo.getAllDisplay()
-      if (all.length === 1) {
-        this.registerSession(token, all[0])
-        return all[0]
+      if (all.length > 0) {
+        const active = all.find(u => u.accountStatus === 'active') || all[0]
+        if (token) {
+          this.registerSession(token, active)
+        }
+        return active
       }
     } catch {}
 

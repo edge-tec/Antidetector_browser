@@ -427,6 +427,12 @@ export function setupAuthIPC(): void {
     try {
       const centralRes = await centralApi.getProfile()
       if (centralRes.success && centralRes.user) {
+        if (token) {
+          sessionManager.registerSession(token, centralRes.user as any)
+          try {
+            syncService.startSync(token)
+          } catch {}
+        }
         return {
           success: true,
           data: centralRes.user,
@@ -439,6 +445,14 @@ export function setupAuthIPC(): void {
     if (error || !user) {
       return { success: false, error }
     }
+
+    if (token && user) {
+      sessionManager.registerSession(token, user)
+      try {
+        syncService.startSync(token)
+      } catch {}
+    }
+
     return { success: true, data: user }
   })
 

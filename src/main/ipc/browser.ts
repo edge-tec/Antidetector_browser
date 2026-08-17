@@ -12,21 +12,32 @@ import { logger } from '../logging/logger'
 import { authorizeUser } from '../security/session'
 
 export function registerBrowserHandlers(): void {
-  ipcMain.handle('browser:start', async (event, sessionToken: string, id: string) => {
+  ipcMain.handle('browser:start', async (event, sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const sessionToken = maybeId ? sessionTokenOrId : ''
+
+    logger.info('browser', `[PROFILE_START_CLICKED] Profile start requested for ID: "${id}"`)
+
     try {
+      logger.info('browser', `[AUTH_STATE_CHECK] Validating session token for profile "${id}"`)
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user) {
-        return { success: false, error: auth.error || 'Authentication required' }
+        logger.warn('browser', `[PROFILE_ACCESS_DENIED] Authentication check failed: ${auth.error || 'Authentication required'}`)
+        return { success: false, error: auth.error || 'Authentication required. Please log in.' }
       }
 
       validateId(id)
       const role = (auth.user.role || '').toLowerCase()
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
+        logger.warn('browser', `[PROFILE_ACCESS_DENIED] User "${auth.user.email}" (${auth.user.id}) denied access to profile "${id}"`)
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
+      logger.info('browser', `[PROFILE_AUTHORIZED] User "${auth.user.email}" authorized to run profile "${id}"`)
+      logger.info('browser', `[BROWSER_LAUNCH_STARTED] Launching Chromium process for profile "${id}"`)
       const result = await profileManager.startProfile(id)
+      logger.info('browser', `[BROWSER_LAUNCH_SUCCESS] Profile "${id}" is running (PID: ${result.pid})`)
 
       // Notify renderer of status change
       const win = BrowserWindow.fromWebContents(event.sender)
@@ -45,7 +56,7 @@ export function registerBrowserHandlers(): void {
 
       return { success: true, data: result }
     } catch (err: any) {
-      logger.error('browser', `Failed to start profile: ${err.message}`)
+      logger.error('browser', `[BROWSER_LAUNCH_FAILED] Failed to start profile "${id}": ${err.message}`)
 
       const win = BrowserWindow.fromWebContents(event.sender)
       if (win) {
@@ -60,11 +71,14 @@ export function registerBrowserHandlers(): void {
     }
   })
 
-  ipcMain.handle('browser:stop', async (event, sessionToken: string, id: string) => {
+  ipcMain.handle('browser:stop', async (event, sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const sessionToken = maybeId ? sessionTokenOrId : ''
+
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user) {
-        return { success: false, error: auth.error || 'Authentication required' }
+        return { success: false, error: auth.error || 'Authentication required. Please log in.' }
       }
 
       validateId(id)

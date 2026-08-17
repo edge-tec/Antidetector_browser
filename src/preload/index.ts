@@ -6,6 +6,15 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 export type IpcApi = typeof api
 
+function getSavedToken(): string {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem('pv_session_token') || ''
+    }
+  } catch {}
+  return ''
+}
+
 const api = {
   // ── Authentication ──
   registerUser: (input: any) => ipcRenderer.invoke('auth:register', input),
@@ -56,20 +65,73 @@ const api = {
     ipcRenderer.invoke('admin:save-desktop-app-config', token, config),
 
   // ── Profiles ──
-  getProfiles: (sessionToken?: string, search?: string, groupId?: string, status?: string) =>
-    ipcRenderer.invoke('profiles:getAll', sessionToken, search, groupId, status),
-  getProfile: (sessionToken: string, id: string) => ipcRenderer.invoke('profiles:getById', sessionToken, id),
-  createProfile: (sessionToken: string, input: any) => ipcRenderer.invoke('profiles:create', sessionToken, input),
-  updateProfile: (sessionToken: string, id: string, input: any) => ipcRenderer.invoke('profiles:update', sessionToken, id, input),
-  deleteProfile: (sessionToken: string, id: string) => ipcRenderer.invoke('profiles:delete', sessionToken, id),
-  duplicateProfile: (sessionToken: string, id: string) => ipcRenderer.invoke('profiles:duplicate', sessionToken, id),
-  exportProfile: (sessionToken: string, id: string) => ipcRenderer.invoke('profiles:export', sessionToken, id),
-  importProfile: (sessionToken: string, data: any) => ipcRenderer.invoke('profiles:import', sessionToken, data),
-  getProfileSize: (sessionToken: string, id: string) => ipcRenderer.invoke('profiles:getSize', sessionToken, id),
+  getProfiles: (sessionTokenOrSearch?: string, maybeSearch?: string, groupId?: string, status?: string) => {
+    let token = sessionTokenOrSearch || getSavedToken()
+    let search = maybeSearch
+    if (sessionTokenOrSearch && !maybeSearch && !sessionTokenOrSearch.includes('.') && sessionTokenOrSearch.length < 30) {
+      search = sessionTokenOrSearch
+      token = getSavedToken()
+    }
+    return ipcRenderer.invoke('profiles:getAll', token, search, groupId, status)
+  },
+  getProfile: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:getById', token, id)
+  },
+  createProfile: (sessionTokenOrInput: any, maybeInput?: any) => {
+    const input = maybeInput !== undefined ? maybeInput : sessionTokenOrInput
+    const token = typeof sessionTokenOrInput === 'string' && maybeInput !== undefined ? sessionTokenOrInput : getSavedToken()
+    return ipcRenderer.invoke('profiles:create', token, input)
+  },
+  updateProfile: (sessionTokenOrId: string, idOrInput: any, maybeInput?: any) => {
+    let token = getSavedToken()
+    let id = sessionTokenOrId
+    let input = idOrInput
+    if (maybeInput !== undefined) {
+      token = sessionTokenOrId
+      id = idOrInput
+      input = maybeInput
+    }
+    return ipcRenderer.invoke('profiles:update', token, id, input)
+  },
+  deleteProfile: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:delete', token, id)
+  },
+  duplicateProfile: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:duplicate', token, id)
+  },
+  exportProfile: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:export', token, id)
+  },
+  importProfile: (sessionTokenOrData: any, maybeData?: any) => {
+    const data = maybeData !== undefined ? maybeData : sessionTokenOrData
+    const token = typeof sessionTokenOrData === 'string' && maybeData !== undefined ? sessionTokenOrData : getSavedToken()
+    return ipcRenderer.invoke('profiles:import', token, data)
+  },
+  getProfileSize: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:getSize', token, id)
+  },
 
   // ── Browser Control ──
-  startProfile: (sessionToken: string, id: string) => ipcRenderer.invoke('browser:start', sessionToken, id),
-  stopProfile: (sessionToken: string, id: string) => ipcRenderer.invoke('browser:stop', sessionToken, id),
+  startProfile: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('browser:start', token, id)
+  },
+  stopProfile: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('browser:stop', token, id)
+  },
   getProfileStatus: (id: string) => ipcRenderer.invoke('browser:status', id),
   getRunningCount: () => ipcRenderer.invoke('browser:runningCount'),
 

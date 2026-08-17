@@ -119,6 +119,7 @@ function ConfirmDialog({ state, onCancel }: { state: ConfirmState; onCancel: () 
 // ═══════════════════════════════════════════
 
 function DashboardPage({ onNavigate, showToast }: { onNavigate: (page: Page) => void; showToast: (type: ToastItem['type'], message: string) => void }) {
+  const { sessionToken } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -180,12 +181,12 @@ function DashboardPage({ onNavigate, showToast }: { onNavigate: (page: Page) => 
           <div className="grid-profiles">
             {stats.recentProfiles.map((profile) => (
               <ProfileCardComponent key={profile.id} profile={profile} onStart={async () => {
-                const r = await window.api.startProfile(profile.id)
+                const r = await window.api.startProfile(sessionToken || '', profile.id)
                 if (r.success) showToast('success', `Started "${profile.name}"`)
                 else showToast('error', r.error || 'Failed to start')
                 loadStats()
               }} onStop={async () => {
-                const r = await window.api.stopProfile(profile.id)
+                const r = await window.api.stopProfile(sessionToken || '', profile.id)
                 if (r.success) showToast('success', `Stopped "${profile.name}"`)
                 else showToast('error', r.error || 'Failed to stop')
                 loadStats()
