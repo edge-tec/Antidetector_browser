@@ -357,12 +357,15 @@ switch ($action) {
             $userName = $userRec['name'] ?: 'User';
 
             // Revoke sessions and installations
-            $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'User deleted', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]);
-            $db->prepare("UPDATE desktop_installations SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]);
+            try { $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'User deleted', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
+            try { $db->prepare("UPDATE desktop_installations SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
 
-            // Clean up subscriptions & user
-            $db->prepare("DELETE FROM subscriptions WHERE user_id = ?")->execute([$userId]);
-            $db->prepare("DELETE FROM user_subscriptions WHERE user_id = ?")->execute([$userId]);
+            // Clean up related user records
+            try { $db->prepare("DELETE FROM subscriptions WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
+            try { $db->prepare("DELETE FROM profiles WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
+            try { $db->prepare("DELETE FROM account_notifications WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) {}
+            
+            // Delete user
             $db->prepare("DELETE FROM users WHERE id = ?")->execute([$userId]);
 
             logAdminAction($admin['id'], $admin['email'], 'USER_DELETED', $userId, "Deleted user {$userEmail}" . ($reason ? " (Reason: {$reason})" : ''));
