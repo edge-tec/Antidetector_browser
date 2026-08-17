@@ -557,4 +557,145 @@ function recordSecurityEvent(string $eventType, string $severity = 'warning', ?s
     } catch (Throwable $e) {}
 }
 
+// ──────────────────────────────────────────────
+// Central RBAC & Real-Time Synchronization Engine
+// ──────────────────────────────────────────────
+
+const ROLE_PERMISSIONS = [
+    'super_admin' => ['*'],
+    'admin' => [
+        'profiles.view', 'profiles.create', 'profiles.edit', 'profiles.delete', 'profiles.start', 'profiles.stop',
+        'users.view', 'users.create', 'users.edit', 'users.delete',
+        'subscriptions.view', 'subscriptions.manage',
+        'settings.view', 'settings.manage',
+        'support.view', 'support.manage',
+        'releases.view', 'releases.manage',
+        'audit.view', 'security.view'
+    ],
+    'manager' => [
+        'profiles.view', 'profiles.create', 'profiles.edit', 'profiles.delete', 'profiles.start', 'profiles.stop',
+        'users.view', 'subscriptions.view',
+        'support.view', 'support.manage'
+    ],
+    'user' => [
+        'profiles.view', 'profiles.create', 'profiles.edit', 'profiles.delete', 'profiles.start', 'profiles.stop',
+        'support.view'
+    ]
+];
+
+/**
+ * Resolve granular permissions for a given user role and custom override json.
+ */
+function resolveUserPermissions(string $role, ?string $customPermissionsJson = null): array {
+    $normalizedRole = strtolower(trim($role));
+    $basePermissions = ROLE_PERMISSIONS[$normalizedRole] ?? ROLE_PERMISSIONS['user'];
+
+    if ($customPermissionsJson) {
+        $custom = json_decode($customPermissionsJson, true);
+        if (is_array($custom)) {
+            if (in_array('*', $custom, true)) {
+                return ['*'];
+            }
+            return array_values(array_unique(array_merge($basePermissions, $custom)));
+        }
+    }
+
+    return $basePermissions;
+}
+
+/**
+ * Check if resolved user permissions satisfy a required action.
+ */
+function checkUserPermission(array $userPermissions, string $requiredPermission): bool {
+    if (in_array('*', $userPermissions, true)) {
+        return true;
+    }
+    if (in_array($requiredPermission, $userPermissions, true)) {
+        return true;
+    }
+    // Check wildcard prefix e.g. profiles.* matching profiles.create
+    $parts = explode('.', $requiredPermission);
+    if (count($parts) === 2 && in_array($parts[0] . '.*', $userPermissions, true)) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Publish an authoritative Real-Time Event into durable outbox stream.
+ */
+function publishRealtimeEvent(PDO $db, ?string $userId, string $eventType, array $payload, ?string $targetRole = null, int $version = 1): string {
+    $eventId = 'evt_' . bin2hex(random_bytes(10));
+    $stmt = $db->prepare("
+        INSERT INTO realtime_events (event_id, user_id, target_role, event_type, payload, version, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ");
+    $stmt->execute([
+        $eventId,
+        $userId,
+        $targetRole,
+        $eventType,
+        json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        $version
+    ]);
+    return $eventId;
+}
+
+/**
+ * Register active user session for token revocation & platform tracking.
+ */
+function registerUserSession(PDO $db, string $userId, string $token, string $platform = 'desktop', string $deviceName = 'Desktop Client', int $authVersion = 1): string {
+    $sessionId = 'sess_' . bin2hex(random_bytes(8));
+    $tokenHash = hash('sha256', $token);
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+    $stmt = $db->prepare("
+        INSERT INTO user_sessions (id, user_id, token_hash, platform, device_name, ip_address, auth_version, is_revoked, expires_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, DATE_ADD(NOW(), INTERVAL 30 DAY), CURRENT_TIMESTAMP)
+        ON DUPLICATE KEY UPDATE auth_version = VALUES(auth_version), is_revoked = 0, revoked_at = NULL, expires_at = VALUES(expires_at)
+    ");
+    $stmt->execute([$sessionId, $userId, $tokenHash, $platform, $deviceName, $ip, $authVersion]);
+    return $sessionId;
+}
+
+/**
+ * Check if a session token has been revoked or invalidated by auth version bump.
+ */
+function isUserSessionRevoked(PDO $db, string $userId, string $token): bool {
+    $tokenHash = hash('sha256', $token);
+    $stmt = $db->prepare("
+        SELECT s.is_revoked, s.auth_version AS sess_version, u.auth_version AS user_version, u.account_status
+        FROM user_sessions s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.token_hash = ? AND s.user_id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$tokenHash, $userId]);
+    $row = $stmt->fetch();
+
+    if (!$row) return false; // fallback to stateless token if not in session table
+
+    if ((int)$row['is_revoked'] === 1) return true;
+    if ($row['account_status'] === 'suspended' || $row['account_status'] === 'disabled') return true;
+    if ((int)$row['sess_version'] < (int)$row['user_version']) return true;
+
+    return false;
+}
+
+/**
+ * Revoke all active sessions for a user (e.g. on role/status change or explicit revoke).
+ */
+function revokeAllUserSessions(PDO $db, string $userId, string $reason = 'Administrative revocation'): void {
+    $stmt = $db->prepare("
+        UPDATE user_sessions
+        SET is_revoked = 1, revoked_reason = ?, revoked_at = CURRENT_TIMESTAMP
+        WHERE user_id = ? AND is_revoked = 0
+    ");
+    $stmt->execute([$reason, $userId]);
+
+    // Also increment user auth_version so any cached tokens become invalid
+    $stmt2 = $db->prepare("UPDATE users SET auth_version = auth_version + 1 WHERE id = ?");
+    $stmt2->execute([$userId]);
+}
+
 

@@ -39,12 +39,23 @@ switch ($action) {
         // Generate JWT session token
         $sessionToken = createSessionToken($user['id']);
 
+        $platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? 'desktop';
+        $deviceName = $_SERVER['HTTP_X_DEVICE_NAME'] ?? $input['deviceName'] ?? 'Desktop Client';
+        $authVersion = (int)($user['auth_version'] ?? 1);
+
+        // Register active session for tracking & revocation
+        try {
+            registerUserSession($db, $user['id'], $sessionToken, $platform, $deviceName, $authVersion);
+        } catch (Throwable $e) {}
+
+        // Resolve Granular RBAC Permissions
+        $permissions = resolveUserPermissions($user['role'] ?? 'user', $user['permissions'] ?? null);
+
         // License & Subscription Verification safely
         $license = null;
         try {
             require_once __DIR__ . '/license.php';
             $installationId = $_SERVER['HTTP_X_INSTALLATION_ID'] ?? $input['installationId'] ?? null;
-            $platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? null;
             $appVersion = $_SERVER['HTTP_X_APP_VERSION'] ?? $input['appVersion'] ?? null;
             $license = validateUserLicenseInternal($user['id'], $installationId, $platform, $appVersion);
         } catch (Throwable $e) {
@@ -65,10 +76,19 @@ switch ($action) {
                 'name' => $user['name'],
                 'email' => $user['email'],
                 'role' => $user['role'],
+                'permissions' => $permissions,
+                'authVersion' => $authVersion,
                 'emailVerified' => (bool)$user['email_verified'],
                 'accountStatus' => $user['account_status'],
                 'createdAt' => $user['created_at'],
                 'lastLoginAt' => date('c')
+            ],
+            'authorization' => [
+                'role' => $user['role'],
+                'permissions' => $permissions,
+                'authVersion' => $authVersion,
+                'accountStatus' => $user['account_status'],
+                'isAuthorized' => ($user['account_status'] === 'active')
             ],
             'license' => $license
         ]);
@@ -259,10 +279,32 @@ switch ($action) {
 
     // ── 3. Get Current Profile & Permissions ──
     case 'me':
+    case 'authorization':
+        $token = getBearerToken();
         $user = getAuthenticatedUser();
         if (!$user) {
             respondJson(['success' => false, 'error' => 'Unauthorized or expired session.'], 401);
         }
+
+        // Check if session token was revoked
+        if ($token && isUserSessionRevoked($db, $user['id'], $token)) {
+            respondJson([
+                'success' => false,
+                'sessionRevoked' => true,
+                'error' => 'Session has been invalidated or revoked by administrator. Please log in again.'
+            ], 401);
+        }
+
+        if ($user['account_status'] === 'suspended' || $user['account_status'] === 'disabled') {
+            respondJson([
+                'success' => false,
+                'accountSuspended' => true,
+                'error' => 'Your account is ' . $user['account_status'] . '. Access restricted.'
+            ], 403);
+        }
+
+        $authVersion = (int)($user['auth_version'] ?? 1);
+        $permissions = resolveUserPermissions($user['role'] ?? 'user', $user['permissions'] ?? null);
 
         // Fetch user license & subscription details
         require_once __DIR__ . '/license.php';
@@ -275,21 +317,33 @@ switch ($action) {
                 'name' => $user['name'],
                 'email' => $user['email'],
                 'role' => $user['role'],
+                'permissions' => $permissions,
+                'authVersion' => $authVersion,
                 'emailVerified' => (bool)($user['email_verified'] ?? 1),
                 'accountStatus' => $user['account_status'] ?? 'active',
                 'createdAt' => $user['created_at'] ?? date('c'),
                 'lastLoginAt' => $user['last_login_at'] ?? date('c')
             ],
-            'license' => $license
+            'authorization' => [
+                'role' => $user['role'],
+                'permissions' => $permissions,
+                'authVersion' => $authVersion,
+                'accountStatus' => $user['account_status'] ?? 'active',
+                'isAuthorized' => ($user['account_status'] === 'active')
+            ],
+            'license' => $license,
+            'timestamp' => date('c')
         ]);
         break;
 
     // ── 3.5. Logout & Session Invalidation ──
     case 'logout':
+        $token = getBearerToken();
         $user = getAuthenticatedUser();
-        if ($user) {
+        if ($user && $token) {
             try {
-                $db->prepare("UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$user['id']]);
+                $tokenHash = hash('sha256', $token);
+                $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'User logout', revoked_at = CURRENT_TIMESTAMP WHERE token_hash = ?")->execute([$tokenHash]);
             } catch (Throwable $e) {}
         }
         respondJson(['success' => true, 'message' => 'Logged out successfully.']);

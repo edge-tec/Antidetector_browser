@@ -85,6 +85,134 @@ switch ($action) {
         respondJson(['success' => true, 'data' => ['id' => $userId, 'name' => $name, 'email' => $email, 'role' => $role]]);
         break;
 
+    case 'update-user-role':
+    case 'update-role':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $_GET['id'] ?? $input['userId'] ?? $input['id'] ?? null;
+        $newRole = strtolower(trim($input['role'] ?? ''));
+
+        if (!$userId || !$newRole) {
+            respondJson(['success' => false, 'error' => 'User ID and new Role are required.'], 400);
+        }
+
+        $db->beginTransaction();
+        try {
+            $userStmt = $db->prepare("SELECT id, email, role, permissions, auth_version FROM users WHERE id = ? FOR UPDATE");
+            $userStmt->execute([$userId]);
+            $targetUser = $userStmt->fetch();
+
+            if (!$targetUser) {
+                $db->rollBack();
+                respondJson(['success' => false, 'error' => 'User not found.'], 404);
+            }
+
+            $oldRole = $targetUser['role'];
+            $newVersion = (int)($targetUser['auth_version'] ?? 1) + 1;
+
+            $upd = $db->prepare("UPDATE users SET role = ?, auth_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $upd->execute([$newRole, $newVersion, $userId]);
+
+            // Audit log
+            logAdminAction($admin['id'], $admin['email'], 'ROLE_CHANGED', $userId, "Changed user role from {$oldRole} to {$newRole}", $oldRole, $newRole);
+
+            // Publish Real-Time Event
+            $eventPayload = [
+                'type' => 'user.role.updated',
+                'userId' => $userId,
+                'previousRole' => $oldRole,
+                'newRole' => $newRole,
+                'version' => $newVersion,
+                'timestamp' => date('c')
+            ];
+            publishRealtimeEvent($db, $userId, 'user.role.updated', $eventPayload, null, $newVersion);
+
+            $db->commit();
+            respondJson(['success' => true, 'data' => ['userId' => $userId, 'role' => $newRole, 'version' => $newVersion]]);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            respondJson(['success' => false, 'error' => 'Failed to update role: ' . $e->getMessage()], 500);
+        }
+        break;
+
+    case 'update-user-permissions':
+    case 'update-permissions':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $_GET['id'] ?? $input['userId'] ?? $input['id'] ?? null;
+        $perms = $input['permissions'] ?? null;
+
+        if (!$userId || $perms === null) {
+            respondJson(['success' => false, 'error' => 'User ID and permissions array/json required.'], 400);
+        }
+
+        $permsJson = is_array($perms) ? json_encode($perms) : $perms;
+
+        $db->beginTransaction();
+        try {
+            $userStmt = $db->prepare("SELECT id, email, role, permissions, auth_version FROM users WHERE id = ? FOR UPDATE");
+            $userStmt->execute([$userId]);
+            $targetUser = $userStmt->fetch();
+
+            if (!$targetUser) {
+                $db->rollBack();
+                respondJson(['success' => false, 'error' => 'User not found.'], 404);
+            }
+
+            $newVersion = (int)($targetUser['auth_version'] ?? 1) + 1;
+
+            $upd = $db->prepare("UPDATE users SET permissions = ?, auth_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $upd->execute([$permsJson, $newVersion, $userId]);
+
+            logAdminAction($admin['id'], $admin['email'], 'PERMISSIONS_CHANGED', $userId, "Updated granular permissions", $targetUser['permissions'], $permsJson);
+
+            $resolved = resolveUserPermissions($targetUser['role'], $permsJson);
+            $eventPayload = [
+                'type' => 'user.permissions.updated',
+                'userId' => $userId,
+                'permissions' => $resolved,
+                'version' => $newVersion,
+                'timestamp' => date('c')
+            ];
+            publishRealtimeEvent($db, $userId, 'user.permissions.updated', $eventPayload, null, $newVersion);
+
+            $db->commit();
+            respondJson(['success' => true, 'data' => ['userId' => $userId, 'permissions' => $resolved, 'version' => $newVersion]]);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            respondJson(['success' => false, 'error' => 'Failed to update permissions: ' . $e->getMessage()], 500);
+        }
+        break;
+
+    case 'revoke-user-sessions':
+    case 'revoke-sessions':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $_GET['id'] ?? $input['userId'] ?? $input['id'] ?? null;
+        $reason = $input['reason'] ?? 'Revoked by administrator';
+
+        if (!$userId) {
+            respondJson(['success' => false, 'error' => 'User ID required.'], 400);
+        }
+
+        $db->beginTransaction();
+        try {
+            revokeAllUserSessions($db, $userId, $reason);
+            logAdminAction($admin['id'], $admin['email'], 'SESSIONS_REVOKED', $userId, $reason);
+
+            $eventPayload = [
+                'type' => 'session.revoked',
+                'userId' => $userId,
+                'reason' => $reason,
+                'timestamp' => date('c')
+            ];
+            publishRealtimeEvent($db, $userId, 'session.revoked', $eventPayload);
+
+            $db->commit();
+            respondJson(['success' => true, 'message' => 'User sessions revoked successfully.']);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            respondJson(['success' => false, 'error' => 'Failed to revoke sessions: ' . $e->getMessage()], 500);
+        }
+        break;
+
     case 'update-user-status':
     case 'update-user':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
@@ -94,30 +222,106 @@ switch ($action) {
             respondJson(['success' => false, 'error' => 'User ID is required.'], 400);
         }
 
-        $sets = [];
-        $params = [];
+        $db->beginTransaction();
+        try {
+            $userStmt = $db->prepare("SELECT * FROM users WHERE id = ? FOR UPDATE");
+            $userStmt->execute([$userId]);
+            $targetUser = $userStmt->fetch();
 
-        if (isset($input['name'])) { $sets[] = "name = ?"; $params[] = trim($input['name']); }
-        if (isset($input['email'])) { $sets[] = "email = ?"; $params[] = strtolower(trim($input['email'])); }
-        if (isset($input['role'])) { $sets[] = "role = ?"; $params[] = $input['role']; }
-        if (isset($input['accountStatus']) || isset($input['account_status'])) {
-            $sets[] = "account_status = ?";
-            $params[] = $input['accountStatus'] ?? $input['account_status'];
+            if (!$targetUser) {
+                $db->rollBack();
+                respondJson(['success' => false, 'error' => 'User not found.'], 404);
+            }
+
+            $sets = [];
+            $params = [];
+            $newStatus = $input['accountStatus'] ?? $input['account_status'] ?? null;
+            $newRole = $input['role'] ?? null;
+            $isStatusChanged = false;
+            $isRoleChanged = false;
+
+            if (isset($input['name'])) { $sets[] = "name = ?"; $params[] = trim($input['name']); }
+            if (isset($input['email'])) { $sets[] = "email = ?"; $params[] = strtolower(trim($input['email'])); }
+            if ($newRole && $newRole !== $targetUser['role']) {
+                $sets[] = "role = ?";
+                $params[] = $newRole;
+                $isRoleChanged = true;
+            }
+            if ($newStatus && $newStatus !== $targetUser['account_status']) {
+                $sets[] = "account_status = ?";
+                $params[] = $newStatus;
+                $isStatusChanged = true;
+            }
+            if (isset($input['password']) && strlen($input['password']) >= 6) {
+                $sets[] = "password_hash = ?";
+                $params[] = hashUserPassword($input['password']);
+            }
+
+            $newVersion = (int)($targetUser['auth_version'] ?? 1) + 1;
+            $sets[] = "auth_version = ?";
+            $params[] = $newVersion;
+
+            if (empty($sets)) {
+                $db->rollBack();
+                respondJson(['success' => false, 'error' => 'No update parameters specified.'], 400);
+            }
+
+            $params[] = $userId;
+            $updStmt = $db->prepare("UPDATE users SET " . implode(', ', $sets) . ", updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $updStmt->execute($params);
+
+            // If account is suspended or disabled, automatically revoke sessions
+            if ($isStatusChanged && ($newStatus === 'suspended' || $newStatus === 'disabled')) {
+                $revStmt = $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = ?, revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?");
+                $revStmt->execute(["Account status changed to {$newStatus}", $userId]);
+
+                publishRealtimeEvent($db, $userId, 'session.revoked', [
+                    'type' => 'session.revoked',
+                    'userId' => $userId,
+                    'status' => $newStatus,
+                    'reason' => "Account {$newStatus} by administrator",
+                    'version' => $newVersion,
+                    'timestamp' => date('c')
+                ], null, $newVersion);
+            }
+
+            if ($isStatusChanged) {
+                logAdminAction($admin['id'], $admin['email'], 'ACCOUNT_STATUS_CHANGED', $userId, "Changed status from {$targetUser['account_status']} to {$newStatus}", $targetUser['account_status'], $newStatus);
+                publishRealtimeEvent($db, $userId, 'user.status.updated', [
+                    'type' => 'user.status.updated',
+                    'userId' => $userId,
+                    'status' => $newStatus,
+                    'version' => $newVersion,
+                    'timestamp' => date('c')
+                ], null, $newVersion);
+            }
+
+            if ($isRoleChanged) {
+                logAdminAction($admin['id'], $admin['email'], 'ROLE_CHANGED', $userId, "Changed role from {$targetUser['role']} to {$newRole}", $targetUser['role'], $newRole);
+                publishRealtimeEvent($db, $userId, 'user.role.updated', [
+                    'type' => 'user.role.updated',
+                    'userId' => $userId,
+                    'previousRole' => $targetUser['role'],
+                    'newRole' => $newRole,
+                    'version' => $newVersion,
+                    'timestamp' => date('c')
+                ], null, $newVersion);
+            }
+
+            // General user update event
+            publishRealtimeEvent($db, $userId, 'user.updated', [
+                'type' => 'user.updated',
+                'userId' => $userId,
+                'version' => $newVersion,
+                'timestamp' => date('c')
+            ], null, $newVersion);
+
+            $db->commit();
+            respondJson(['success' => true, 'version' => $newVersion]);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            respondJson(['success' => false, 'error' => 'Update failed: ' . $e->getMessage()], 500);
         }
-        if (isset($input['password']) && strlen($input['password']) >= 6) {
-            $sets[] = "password_hash = ?";
-            $params[] = hashUserPassword($input['password']);
-        }
-
-        if (empty($sets)) {
-            respondJson(['success' => false, 'error' => 'No update parameters specified.'], 400);
-        }
-
-        $params[] = $userId;
-        $updStmt = $db->prepare("UPDATE users SET " . implode(', ', $sets) . ", updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-        $updStmt->execute($params);
-
-        respondJson(['success' => true]);
         break;
 
     case 'delete-user':
@@ -126,9 +330,33 @@ switch ($action) {
             respondJson(['success' => false, 'error' => 'User ID required.'], 400);
         }
 
-        $delStmt = $db->prepare("DELETE FROM users WHERE id = ?");
-        $delStmt->execute([$userId]);
-        respondJson(['success' => true]);
+        $db->beginTransaction();
+        try {
+            $userStmt = $db->prepare("SELECT email FROM users WHERE id = ?");
+            $userStmt->execute([$userId]);
+            $userEmail = $userStmt->fetchColumn() ?: 'unknown';
+
+            // Revoke sessions first
+            $revStmt = $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'User deleted', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?");
+            $revStmt->execute([$userId]);
+
+            $delStmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            $delStmt->execute([$userId]);
+
+            logAdminAction($admin['id'], $admin['email'], 'USER_DELETED', $userId, "Deleted user {$userEmail}");
+
+            publishRealtimeEvent($db, $userId, 'user.deleted', [
+                'type' => 'user.deleted',
+                'userId' => $userId,
+                'timestamp' => date('c')
+            ]);
+
+            $db->commit();
+            respondJson(['success' => true]);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            respondJson(['success' => false, 'error' => 'Failed to delete user: ' . $e->getMessage()], 500);
+        }
         break;
 
     // ── 2. Subscriptions Management APIs ──
@@ -183,6 +411,7 @@ switch ($action) {
         break;
 
     case 'update-subscription':
+    case 'update-user-subscription':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $userId = $input['userId'] ?? $input['user_id'] ?? $_GET['userId'] ?? null;
 
@@ -195,39 +424,63 @@ switch ($action) {
         $expiresAt = $input['expires_at'] ?? null;
         $graceDays = isset($input['grace_period_days']) ? (int)$input['grace_period_days'] : null;
 
-        $checkSub = $db->prepare("SELECT id FROM subscriptions WHERE user_id = ?");
-        $checkSub->execute([$userId]);
-        $sub = $checkSub->fetch();
+        $db->beginTransaction();
+        try {
+            $checkSub = $db->prepare("SELECT id FROM subscriptions WHERE user_id = ? FOR UPDATE");
+            $checkSub->execute([$userId]);
+            $sub = $checkSub->fetch();
 
-        if (!$sub) {
-            $subId = 'sub_' . $userId;
-            $insSub = $db->prepare("
-                INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)
-            ");
-            $insSub->execute([
-                $subId,
-                $userId,
-                $planId ?: 'plan_starter',
-                $status ?: 'active',
-                $expiresAt ?: date('Y-m-d H:i:s', strtotime('+1 year')),
-                $graceDays ?? 3
-            ]);
-        } else {
-            $updSub = $db->prepare("
-                UPDATE subscriptions SET
-                    plan_id = COALESCE(?, plan_id),
-                    status = COALESCE(?, status),
-                    expires_at = COALESCE(?, expires_at),
-                    grace_period_days = COALESCE(?, grace_period_days),
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-            ");
-            $updSub->execute([$planId, $status, $expiresAt, $graceDays, $userId]);
+            if (!$sub) {
+                $subId = 'sub_' . $userId;
+                $insSub = $db->prepare("
+                    INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)
+                ");
+                $insSub->execute([
+                    $subId,
+                    $userId,
+                    $planId ?: 'plan_starter',
+                    $status ?: 'active',
+                    $expiresAt ?: date('Y-m-d H:i:s', strtotime('+1 year')),
+                    $graceDays ?? 3
+                ]);
+            } else {
+                $updSub = $db->prepare("
+                    UPDATE subscriptions SET
+                        plan_id = COALESCE(?, plan_id),
+                        status = COALESCE(?, status),
+                        expires_at = COALESCE(?, expires_at),
+                        grace_period_days = COALESCE(?, grace_period_days),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                ");
+                $updSub->execute([$planId, $status, $expiresAt, $graceDays, $userId]);
+            }
+
+            // Bump user auth_version for subscription state sync
+            $db->prepare("UPDATE users SET auth_version = auth_version + 1 WHERE id = ?")->execute([$userId]);
+            $verStmt = $db->prepare("SELECT auth_version FROM users WHERE id = ?");
+            $verStmt->execute([$userId]);
+            $newVer = (int)($verStmt->fetchColumn() ?: 1);
+
+            logAdminAction($admin['id'], $admin['email'], 'SUBSCRIPTION_CHANGED', $userId, "Plan: $planId, Status: $status, Expires: $expiresAt");
+
+            publishRealtimeEvent($db, $userId, 'subscription.updated', [
+                'type' => 'subscription.updated',
+                'userId' => $userId,
+                'planId' => $planId,
+                'status' => $status,
+                'expiresAt' => $expiresAt,
+                'version' => $newVer,
+                'timestamp' => date('c')
+            ], null, $newVer);
+
+            $db->commit();
+            respondJson(['success' => true, 'message' => 'User subscription and expiration updated successfully.']);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            respondJson(['success' => false, 'error' => 'Failed to update subscription: ' . $e->getMessage()], 500);
         }
-
-        logAdminAction($adminUser['id'], $adminUser['email'], 'Updated User Subscription & Expiry', $userId, "Plan: $planId, Status: $status, Expires: $expiresAt");
-        respondJson(['success' => true, 'message' => 'User subscription and expiration updated successfully.']);
         break;
 
     case 'update-user-expiry':
@@ -244,16 +497,38 @@ switch ($action) {
         $isFuture = strtotime($formattedExpiry) > $now;
         $newStatus = $isFuture ? 'active' : 'expired';
 
-        $db->prepare("
-            UPDATE subscriptions SET 
-                expires_at = ?, 
-                status = ?, 
-                updated_at = CURRENT_TIMESTAMP 
-            WHERE user_id = ?
-        ")->execute([$formattedExpiry, $newStatus, $userId]);
+        $db->beginTransaction();
+        try {
+            $db->prepare("
+                UPDATE subscriptions SET 
+                    expires_at = ?, 
+                    status = ?, 
+                    updated_at = CURRENT_TIMESTAMP 
+                WHERE user_id = ?
+            ")->execute([$formattedExpiry, $newStatus, $userId]);
 
-        logAdminAction($adminUser['id'], $adminUser['email'], 'Set User Expiry Date', $userId, "New Expiry: $formattedExpiry (Status: $newStatus)");
-        respondJson(['success' => true, 'message' => "Expiry date updated to $formattedExpiry ($newStatus)"]);
+            $db->prepare("UPDATE users SET auth_version = auth_version + 1 WHERE id = ?")->execute([$userId]);
+            $verStmt = $db->prepare("SELECT auth_version FROM users WHERE id = ?");
+            $verStmt->execute([$userId]);
+            $newVer = (int)($verStmt->fetchColumn() ?: 1);
+
+            logAdminAction($admin['id'], $admin['email'], 'EXPIRY_CHANGED', $userId, "Expires: $formattedExpiry, Status: $newStatus");
+
+            publishRealtimeEvent($db, $userId, 'subscription.updated', [
+                'type' => 'subscription.updated',
+                'userId' => $userId,
+                'status' => $newStatus,
+                'expiresAt' => $formattedExpiry,
+                'version' => $newVer,
+                'timestamp' => date('c')
+            ], null, $newVer);
+
+            $db->commit();
+            respondJson(['success' => true, 'message' => 'Subscription expiration updated successfully.']);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            respondJson(['success' => false, 'error' => 'Failed to update expiry: ' . $e->getMessage()], 500);
+        }
         break;
 
     // ── 3. Application Downloads Management APIs ──

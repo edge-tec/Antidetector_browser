@@ -1311,6 +1311,18 @@ function AppContent() {
   const [userDevices, setUserDevices] = useState<any[]>([])
   const [showDevicesModal, setShowDevicesModal] = useState(false)
 
+  // Real-Time Central Synchronization State
+  const [syncStatus, setSyncStatus] = useState<{
+    status: 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'syncing' | 'error'
+    authVersion: number
+    lastSyncTime: string
+    cachedState?: any
+  }>({
+    status: 'disconnected',
+    authVersion: 1,
+    lastSyncTime: 'Never'
+  })
+
   const [installationId] = useState(() => {
     let id = localStorage.getItem('pv_installation_id')
     if (!id) {
@@ -1339,6 +1351,46 @@ function AppContent() {
     const timer = setInterval(checkLicense, 10000)
     return () => clearInterval(timer)
   }, [isAuthenticated, checkLicense])
+
+  // Real-Time Central Synchronization Listeners
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    if (window.api?.getSyncStatus) {
+      window.api.getSyncStatus().then((s: any) => {
+        if (s) setSyncStatus(s)
+      }).catch(() => {})
+    }
+
+    const unsubStatus = window.api?.onSyncStatusChanged?.((_e: any, data: any) => {
+      if (data) setSyncStatus((prev) => ({ ...prev, ...data }))
+    })
+
+    const unsubAuth = window.api?.onAuthStateUpdated?.((_e: any, newState: any) => {
+      if (newState) {
+        setSyncStatus((prev) => ({
+          ...prev,
+          authVersion: newState.authVersion,
+          cachedState: newState,
+          lastSyncTime: newState.lastSyncAt || new Date().toISOString()
+        }))
+        showToast('info', `⚡ Real-Time Sync: Authorization updated to role "${newState.role.toUpperCase()}" (v${newState.authVersion})`)
+      }
+    })
+
+    const unsubRevoked = window.api?.onSessionRevoked?.((_e: any, data: any) => {
+      showToast('error', `🚫 ${data?.reason || 'Account access restricted or session revoked by administrator.'}`)
+      setTimeout(() => {
+        logout()
+      }, 500)
+    })
+
+    return () => {
+      unsubStatus?.()
+      unsubAuth?.()
+      unsubRevoked?.()
+    }
+  }, [isAuthenticated, logout, showToast])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -1619,6 +1671,43 @@ function AppContent() {
                 {adminView ? '🌐 Profiles' : '👑 Admin'}
               </button>
             )}
+
+            {/* Real-Time Central Synchronization Pill */}
+            <div
+              onClick={async () => {
+                try {
+                  showToast('info', '⚡ Refreshing authoritative synchronization...')
+                  await (window as any).api?.resyncAuthoritativeState?.()
+                } catch {}
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                backgroundColor: syncStatus.status === 'connected' ? '#10B98115' : (syncStatus.status === 'error' ? '#EF444415' : '#F59E0B15'),
+                border: `1px solid ${syncStatus.status === 'connected' ? '#10B98150' : (syncStatus.status === 'error' ? '#EF444450' : '#F59E0B50')}`,
+                cursor: 'pointer',
+                fontSize: '11px',
+                whiteSpace: 'nowrap'
+              }}
+              title={`Central Sync: ${syncStatus.status.toUpperCase()} | Version: v${syncStatus.authVersion} | Click to Force Resync`}
+            >
+              <span style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                backgroundColor: syncStatus.status === 'connected' ? '#10B981' : (syncStatus.status === 'error' ? '#EF4444' : '#F59E0B'),
+                boxShadow: syncStatus.status === 'connected' ? '0 0 6px #10B981' : 'none'
+              }} />
+              <span style={{
+                fontWeight: 700,
+                color: syncStatus.status === 'connected' ? '#10B981' : (syncStatus.status === 'error' ? '#F87171' : '#F59E0B')
+              }}>
+                {syncStatus.status === 'connected' ? `Live Sync (v${syncStatus.authVersion})` : (syncStatus.status === 'syncing' ? 'Syncing...' : (syncStatus.status === 'reconnecting' ? 'Reconnecting...' : 'Offline'))}
+              </span>
+            </div>
 
             {/* Subscription & Plan Status Pill */}
             {licenseInfo && (

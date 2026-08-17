@@ -10,6 +10,7 @@ import { sessionManager, authorizeUser } from '../security/session'
 import { emailService } from '../services/email.service'
 import { logger } from '../logging/logger'
 import { centralApi } from '../services/api-client.service'
+import { syncService } from '../services/sync.service'
 import crypto from 'crypto'
 
 export function setupAuthIPC(): void {
@@ -62,6 +63,12 @@ export function setupAuthIPC(): void {
         }
 
         const localToken = centralRes.sessionToken || sessionManager.createSession(displayUser as any)
+        
+        // Start real-time synchronization with Central Server
+        try {
+          syncService.startSync(localToken)
+        } catch {}
+
         return {
           success: true,
           user: displayUser,
@@ -91,6 +98,10 @@ export function setupAuthIPC(): void {
 
       const displayUser = userRepo.getDisplayById(user.id)!
       const token = sessionManager.createSession(displayUser)
+
+      try {
+        syncService.startSync(token)
+      } catch {}
 
       return {
         success: true,
@@ -156,6 +167,11 @@ export function setupAuthIPC(): void {
 
         const token = centralRes.sessionToken || sessionManager.createSession(displayUser as any)
         logger.info('auth', `User authenticated with Central Server: "${u.email}" (${u.id})`)
+
+        // Start real-time synchronization with Central Server
+        try {
+          syncService.startSync(token)
+        } catch {}
 
         return {
           success: true,
@@ -400,6 +416,9 @@ export function setupAuthIPC(): void {
 
   // ── Logout Handler ──
   ipcMain.handle('auth:logout', async (_event, token: string) => {
+    try {
+      syncService.stopSync()
+    } catch {}
     if (token) {
       sessionManager.destroySession(token)
     }
@@ -407,5 +426,38 @@ export function setupAuthIPC(): void {
       await centralApi.logout()
     } catch {}
     return { success: true }
+  })
+
+  // ── Real-Time Synchronization & RBAC IPC Handlers ──
+  ipcMain.handle('sync:get-status', async () => {
+    return syncService.getStatus()
+  })
+
+  ipcMain.handle('sync:resync', async () => {
+    const updatedState = await syncService.resyncAuthoritativeState()
+    return { success: !!updatedState, data: updatedState }
+  })
+
+  ipcMain.handle('sync:reconnect', async () => {
+    await syncService.reconnect(true)
+    return { success: true }
+  })
+
+  ipcMain.handle('auth:check-permission', async (_event, permission: string) => {
+    return {
+      permission,
+      allowed: syncService.hasPermission(permission)
+    }
+  })
+
+  ipcMain.handle('auth:get-authoritative-state', async () => {
+    const status = syncService.getStatus()
+    return {
+      success: true,
+      authVersion: status.authVersion,
+      cachedState: status.cachedState,
+      syncStatus: status.status,
+      lastSyncTime: status.lastSyncTime
+    }
   })
 }

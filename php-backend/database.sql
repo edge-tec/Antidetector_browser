@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` VARCHAR(255) NOT NULL UNIQUE,
   `password_hash` VARCHAR(255) DEFAULT NULL,
   `role` VARCHAR(50) NOT NULL DEFAULT 'user',
+  `permissions` TEXT DEFAULT NULL,
+  `auth_version` INT NOT NULL DEFAULT 1,
   `email_verified` TINYINT(1) NOT NULL DEFAULT 1,
   `account_status` VARCHAR(50) NOT NULL DEFAULT 'active',
   `google_id` VARCHAR(255) DEFAULT NULL,
@@ -21,9 +23,42 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Initial Admin Account Seed (admin@profilevault.local / Password: admin)
-INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `email_verified`, `account_status`, `created_at`)
-VALUES ('admin-default', 'System Admin', 'admin@profilevault.local', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'admin', 1, 'active', NOW())
-ON DUPLICATE KEY UPDATE `password_hash`='$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu';
+INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `permissions`, `auth_version`, `email_verified`, `account_status`, `created_at`)
+VALUES ('admin-default', 'System Admin', 'admin@profilevault.local', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'super_admin', '["*"]', 1, 1, 'active', NOW())
+ON DUPLICATE KEY UPDATE `password_hash`='$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', `role`='super_admin', `permissions`='["*"]';
+
+-- 1.1 Real-Time Outbox Events Table
+CREATE TABLE IF NOT EXISTS `realtime_events` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `event_id` VARCHAR(50) NOT NULL UNIQUE,
+  `user_id` VARCHAR(36) NULL,
+  `target_role` VARCHAR(50) NULL,
+  `event_type` VARCHAR(100) NOT NULL,
+  `payload` LONGTEXT NOT NULL,
+  `version` INT NOT NULL DEFAULT 1,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_evt_user_time` (`user_id`, `created_at`),
+  KEY `idx_evt_type` (`event_type`),
+  KEY `idx_evt_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 1.2 User Active Sessions & Revocation Tracking
+CREATE TABLE IF NOT EXISTS `user_sessions` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL UNIQUE,
+  `platform` VARCHAR(50) DEFAULT 'desktop',
+  `device_name` VARCHAR(255) DEFAULT 'Device',
+  `ip_address` VARCHAR(50) DEFAULT NULL,
+  `auth_version` INT NOT NULL DEFAULT 1,
+  `is_revoked` TINYINT(1) NOT NULL DEFAULT 0,
+  `revoked_reason` VARCHAR(255) DEFAULT NULL,
+  `revoked_at` DATETIME DEFAULT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_sess_user` (`user_id`, `is_revoked`),
+  CONSTRAINT `fk_sess_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 -- 2. Pricing Plans Table

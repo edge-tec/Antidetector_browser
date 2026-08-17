@@ -167,6 +167,29 @@ const api = {
     return () => ipcRenderer.removeListener('support:status-updated', callback)
   },
 
+  // ── Real-Time Synchronization & RBAC ──
+  getSyncStatus: () => ipcRenderer.invoke('sync:get-status'),
+  resyncAuthoritativeState: () => ipcRenderer.invoke('sync:resync'),
+  reconnectSync: () => ipcRenderer.invoke('sync:reconnect'),
+  checkPermission: (permission: string) => ipcRenderer.invoke('auth:check-permission', permission),
+  getAuthoritativeState: () => ipcRenderer.invoke('auth:get-authoritative-state'),
+  onSyncStatusChanged: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('sync:status-changed', callback)
+    return () => ipcRenderer.removeListener('sync:status-changed', callback)
+  },
+  onAuthStateUpdated: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('auth:state-updated', callback)
+    return () => ipcRenderer.removeListener('auth:state-updated', callback)
+  },
+  onSessionRevoked: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('auth:session-revoked', callback)
+    return () => ipcRenderer.removeListener('auth:session-revoked', callback)
+  },
+  onRealtimeSyncEvent: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('sync:realtime-event', callback)
+    return () => ipcRenderer.removeListener('sync:realtime-event', callback)
+  },
+
   // ── SEO & AEO Management APIs ──
   seoGetSettings: (token?: string) => ipcRenderer.invoke('seo:get-settings', token),
   seoSaveSettings: (token: string, settings: any) => ipcRenderer.invoke('seo:save-settings', token, settings),

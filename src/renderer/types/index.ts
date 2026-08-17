@@ -223,6 +223,16 @@ declare global {
       selectDirectory: () => Promise<IpcResult<string>>
       onProfileStatusChanged: (callback: (event: any, data: any) => void) => () => void
       onToast: (callback: (event: any, data: any) => void) => () => void
+      getSyncStatus: () => Promise<any>
+      resyncAuthoritativeState: () => Promise<any>
+      reconnectSync: () => Promise<any>
+      checkPermission: (permission: string) => Promise<{ permission: string; allowed: boolean }>
+      getAuthoritativeState: () => Promise<any>
+      onSyncStatusChanged: (callback: (event: any, data: any) => void) => () => void
+      onAuthStateUpdated: (callback: (event: any, data: any) => void) => () => void
+      onSessionRevoked: (callback: (event: any, data: any) => void) => () => void
+      onRealtimeSyncEvent: (callback: (event: any, data: any) => void) => () => void
+      [key: string]: any
     }
   }
 }

@@ -59,15 +59,20 @@ if (strpos($requestUri, '/download/') === 0 || $requestUri === '/download') {
 // ── 1. API Route Dispatcher ──
 if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
     
-    // Health Check
-    if ($requestUri === '/api/health') {
-        respondJson([
-            'status' => 'online',
-            'engine' => 'PHP ' . PHP_VERSION,
-            'app' => APP_NAME,
-            'version' => APP_VERSION,
-            'timestamp' => date('c')
-        ]);
+    // Health Check & Sync Diagnostic
+    if ($requestUri === '/api/health' || $requestUri === '/api/health/sync') {
+        require_once __DIR__ . '/api/health.php';
+        exit();
+    }
+
+    // Real-Time Events API (/api/events/stream, /api/events/poll)
+    if (strpos($requestUri, '/api/events') === 0) {
+        $action = str_replace('/api/events/', '', $requestUri);
+        $action = str_replace('/api/events', '', $action);
+        $action = trim($action, '/');
+        $_GET['action'] = $action ?: 'stream';
+        require_once __DIR__ . '/api/events.php';
+        exit();
     }
 
     // Public Releases & App Downloads Manifest API
@@ -3995,6 +4000,67 @@ header('Content-Type: text/html; charset=utf-8');
             return false;
         }
 
+        // ── Real-Time Web Synchronization via Server-Sent Events (SSE) ──
+        let sseSource = null;
+        function initRealtimeWebSync() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token || typeof EventSource === 'undefined') return;
+
+            if (sseSource) {
+                try { sseSource.close(); } catch(e) {}
+            }
+
+            try {
+                sseSource = new EventSource('/api/events/stream?token=' + encodeURIComponent(token));
+
+                sseSource.addEventListener('connected', (e) => {
+                    console.log('⚡ [WebSync] Connected to Central Real-Time Event Stream:', e.data);
+                });
+
+                sseSource.addEventListener('user.role.updated', (e) => {
+                    console.log('⚡ [WebSync] user.role.updated received');
+                    loadUsersTable();
+                    loadUserPortalData();
+                });
+
+                sseSource.addEventListener('user.permissions.updated', (e) => {
+                    console.log('⚡ [WebSync] user.permissions.updated received');
+                    loadUsersTable();
+                });
+
+                sseSource.addEventListener('user.status.updated', (e) => {
+                    console.log('⚡ [WebSync] user.status.updated received');
+                    loadUsersTable();
+                });
+
+                sseSource.addEventListener('subscription.updated', (e) => {
+                    console.log('⚡ [WebSync] subscription.updated received');
+                    loadSubscriptionsTable();
+                    loadUserPortalData();
+                });
+
+                sseSource.addEventListener('user.deleted', (e) => {
+                    console.log('⚡ [WebSync] user.deleted received');
+                    loadUsersTable();
+                    loadSubscriptionsTable();
+                });
+
+                sseSource.addEventListener('session.revoked', (e) => {
+                    console.warn('🚫 [WebSync] Session revoked by administrator');
+                    alert('Your account access has been restricted or session revoked by an administrator.');
+                    localStorage.removeItem('sessionToken');
+                    localStorage.removeItem('user');
+                    window.location.reload();
+                });
+
+                sseSource.onerror = () => {
+                    // Reconnects automatically via EventSource standard
+                };
+            } catch(err) {
+                console.warn('WebSync setup failed:', err);
+            }
+        }
+
         // Router & Route Guard on Page Load
         window.addEventListener('DOMContentLoaded', () => {
             const path = window.location.pathname.toLowerCase();
@@ -4025,6 +4091,7 @@ header('Content-Type: text/html; charset=utf-8');
             if (isAuthenticated) {
                 closeModal();
                 checkSession();
+                initRealtimeWebSync();
             } else {
                 closeAdminDashboard();
                 if (path.includes('/login')) {
