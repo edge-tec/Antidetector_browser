@@ -140,35 +140,48 @@ switch ($action) {
 
         $insertStmt = $db->prepare("
             INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 0, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ");
         $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role]);
 
         // Automatically provision Free plan subscription for new user
         ensureUserFreeSubscription($db, $userId, $role);
 
-        // Automatically dispatch cryptographically secure verification email
-        $emailRes = sendVerificationEmailPhp($userId, $name, $email);
+        // Generate JWT session token
+        $sessionToken = createSessionToken($userId);
+        $platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? 'desktop';
+        $deviceName = $_SERVER['HTTP_X_DEVICE_NAME'] ?? $input['deviceName'] ?? 'Web/Desktop Client';
+
+        try {
+            registerUserSession($db, $userId, $sessionToken, $platform, $deviceName, 1);
+        } catch (Throwable $e) {}
+
+        // Resolve Granular RBAC Permissions
+        $permissions = resolveUserPermissions($role, null);
+
+        // Automatically dispatch welcome / verification email
+        $emailRes = ['sentViaSmtp' => false];
+        try {
+            $emailRes = sendVerificationEmailPhp($userId, $name, $email);
+        } catch (Throwable $e) {}
 
         recordSecurityEvent('USER_REGISTERED', 'info', $userId, "User registered with email {$email}");
 
-        $sentSmtp = (bool)($emailRes['sentViaSmtp'] ?? false);
-        $message = $sentSmtp
-            ? 'Your account has been created. Please check your email and click the confirmation link to activate your account.'
-            : 'Your account was created, but we could not send the verification email. Please try Resend Verification Email.';
-
         respondJson([
             'success' => true,
-            'requiresVerification' => true,
-            'emailSent' => $sentSmtp,
-            'message' => $message,
+            'sessionToken' => $sessionToken,
+            'emailSent' => (bool)($emailRes['sentViaSmtp'] ?? false),
+            'message' => 'Account created successfully! Welcome to AntiProfiles.',
             'user' => [
                 'id' => $userId,
                 'name' => $name,
                 'email' => strtolower($email),
                 'role' => $role,
-                'emailVerified' => false,
-                'accountStatus' => 'pending'
+                'permissions' => $permissions,
+                'emailVerified' => true,
+                'accountStatus' => 'active',
+                'createdAt' => date('c'),
+                'lastLoginAt' => date('c')
             ],
             'token' => $emailRes['token'] ?? null,
             'verificationUrl' => $emailRes['verificationUrl'] ?? null

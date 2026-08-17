@@ -477,11 +477,11 @@ function ensureDatabaseTablesExist() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
-        try {
-            $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_hash` VARCHAR(64) DEFAULT NULL;");
-            $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_expires_at` DATETIME DEFAULT NULL;");
-            $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_created_at` DATETIME DEFAULT NULL;");
-        } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `reset_token_hash` VARCHAR(128) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `reset_token_expires_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `reset_token_created_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` MODIFY COLUMN `reset_token_hash` VARCHAR(128) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `password_resets` MODIFY COLUMN `token_hash` VARCHAR(128) NOT NULL"); } catch (Throwable $e) {}
     } catch (Throwable $e) {}
 }
 

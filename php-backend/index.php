@@ -3459,13 +3459,17 @@ header('Content-Type: text/html; charset=utf-8');
                 }
 
                 const data = await res.json();
-                if (data.success && data.sessionToken && data.user) {
+                if (data.success) {
                     msg.style.background = 'rgba(45,212,191,0.2)';
                     msg.style.color = '#2DD4BF';
-                    msg.innerText = 'Account created successfully! Opening dashboard...';
+                    msg.innerText = data.message || 'Account created successfully! Opening dashboard...';
 
-                    localStorage.setItem('sessionToken', data.sessionToken);
-                    localStorage.setItem('user', JSON.stringify(data.user));
+                    if (data.sessionToken) {
+                        localStorage.setItem('sessionToken', data.sessionToken);
+                    }
+                    if (data.user) {
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                    }
 
                     if (window.history && window.history.pushState) {
                         window.history.pushState({}, '', '/dashboard');
@@ -3477,7 +3481,7 @@ header('Content-Type: text/html; charset=utf-8');
                     setTimeout(() => {
                         closeModal();
                         checkSession();
-                    }, 300);
+                    }, 400);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
