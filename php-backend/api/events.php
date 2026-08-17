@@ -32,6 +32,7 @@ switch ($action) {
 
         // Token Authentication (Header or Query Param for EventSource)
         $token = null;
+        $visitorToken = trim($_GET['visitor_token'] ?? '');
         $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
         if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
             $token = $matches[1];
@@ -39,32 +40,36 @@ switch ($action) {
             $token = $_GET['token'];
         }
 
-        if (!$token) {
+        $userId = null;
+        $userRole = 'guest';
+        $authVersion = 1;
+
+        if ($token) {
+            $userId = verifySessionToken($token);
+            if (!$userId) {
+                echo "event: error\n";
+                echo "data: " . json_encode(['error' => 'Invalid or expired session token']) . "\n\n";
+                exit();
+            }
+
+            // Fetch User and Permissions
+            $stmt = $db->prepare("SELECT id, email, role, permissions, auth_version, account_status FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch();
+
+            if (!$user || $user['account_status'] === 'suspended' || $user['account_status'] === 'disabled') {
+                echo "event: session.revoked\n";
+                echo "data: " . json_encode(['reason' => 'Account is suspended or disabled', 'userId' => $userId]) . "\n\n";
+                exit();
+            }
+
+            $userRole = strtolower($user['role'] ?? 'user');
+            $authVersion = (int)($user['auth_version'] ?? 1);
+        } elseif (!$visitorToken) {
             echo "event: error\n";
-            echo "data: " . json_encode(['error' => 'Authentication token required']) . "\n\n";
+            echo "data: " . json_encode(['error' => 'Authentication token or visitor identification required']) . "\n\n";
             exit();
         }
-
-        $userId = verifySessionToken($token);
-        if (!$userId) {
-            echo "event: error\n";
-            echo "data: " . json_encode(['error' => 'Invalid or expired session token']) . "\n\n";
-            exit();
-        }
-
-        // Fetch User and Permissions
-        $stmt = $db->prepare("SELECT id, email, role, permissions, auth_version, account_status FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $user = $stmt->fetch();
-
-        if (!$user || $user['account_status'] === 'suspended' || $user['account_status'] === 'disabled') {
-            echo "event: session.revoked\n";
-            echo "data: " . json_encode(['reason' => 'Account is suspended or disabled', 'userId' => $userId]) . "\n\n";
-            exit();
-        }
-
-        $userRole = strtolower($user['role'] ?? 'user');
-        $authVersion = (int)($user['auth_version'] ?? 1);
 
         // Replay missed events if client provides Last-Event-ID or since_id
         $lastEventId = $_SERVER['HTTP_LAST_EVENT_ID'] ?? $_GET['last_event_id'] ?? null;
@@ -84,6 +89,7 @@ switch ($action) {
         $handshake = [
             'type' => 'connection.established',
             'userId' => $userId,
+            'visitorToken' => $visitorToken ?: null,
             'role' => $userRole,
             'authVersion' => $authVersion,
             'serverTime' => date('c')
@@ -123,8 +129,8 @@ switch ($action) {
                 break;
             }
 
-            // Check if user status or auth version changed
-            if ($loopCount % 5 === 0) {
+            // Check if user status or auth version changed (for logged in users)
+            if ($userId && $loopCount % 5 === 0) {
                 $chkStmt = $db->prepare("SELECT auth_version, account_status FROM users WHERE id = ?");
                 $chkStmt->execute([$userId]);
                 $currentStatus = $chkStmt->fetch();
@@ -145,15 +151,28 @@ switch ($action) {
             // Poll for newly published events
             $pollStmt = $db->prepare("
                 SELECT * FROM realtime_events
-                WHERE id > ? AND (user_id = ? OR target_role = ? OR target_role = '*' OR (user_id IS NULL AND target_role IS NULL))
+                WHERE id > ? AND (
+                    user_id = ? 
+                    OR target_role = ? 
+                    OR target_role = '*' 
+                    OR (user_id IS NULL AND target_role IS NULL)
+                    OR (? = 'guest' AND target_role = 'guest')
+                )
                 ORDER BY id ASC LIMIT 20
             ");
-            $pollStmt->execute([$lastIdNumeric, $userId, $userRole]);
+            $pollStmt->execute([$lastIdNumeric, $userId, $userRole, $userRole]);
             $events = $pollStmt->fetchAll(PDO::FETCH_ASSOC);
 
             if (!empty($events)) {
                 foreach ($events as $evt) {
                     $lastIdNumeric = max($lastIdNumeric, (int)$evt['id']);
+                    // For guests, ensure private user events are not leaked
+                    if ($userRole === 'guest') {
+                        $p = json_decode($evt['payload'], true);
+                        if (isset($p['visitor_token']) && $p['visitor_token'] !== $visitorToken) {
+                            continue; // skip other guests' messages
+                        }
+                    }
                     echo "id: {$evt['event_id']}\n";
                     echo "event: {$evt['event_type']}\n";
                     echo "data: " . $evt['payload'] . "\n\n";

@@ -1257,7 +1257,10 @@ header('Content-Type: text/html; charset=utf-8');
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profiles', this)">🌐 Browser Profiles Engine</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profile-audit', this)">🔬 7-Layer Settings Audit</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('releases', this)">🚀 App Downloads Config</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('support', this)">💬 Admin Support Inbox</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('support', this)" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>💬 Admin Support Inbox</span>
+                        <span id="adminSupportSidebarBadge" style="display:none; background:#EF4444; color:#FFF; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">0</span>
+                    </button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('notifications', this)">🔔 Broadcast Notifications</button>
                     <button class="admin-sidebar-btn admin-only-section" id="btnTabGoogleOauth" onclick="switchAdminTab('google-oauth', this)">🔑 Google OAuth Config</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
@@ -3180,22 +3183,24 @@ header('Content-Type: text/html; charset=utf-8');
 
             const token = localStorage.getItem('sessionToken');
             const visitorToken = getOrCreateVisitorToken();
+            const clientMsgId = 'cmsg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
 
             const nameInput = document.getElementById('liveChatGuestName');
             const emailInput = document.getElementById('liveChatGuestEmail');
-            const guestName = nameInput ? nameInput.value.trim() : '';
-            const guestEmail = emailInput ? emailInput.value.trim() : '';
+            const guestName = nameInput ? nameInput.value.trim() : (localStorage.getItem('pv_visitor_name') || '');
+            const guestEmail = emailInput ? emailInput.value.trim() : (localStorage.getItem('pv_visitor_email') || '');
 
             if (guestName) localStorage.setItem('pv_visitor_name', guestName);
             if (guestEmail) localStorage.setItem('pv_visitor_email', guestEmail);
 
-            // Optimistic UI Append
+            // Create Optimistic Message with 'Sending...' status
             const tempBubble = document.createElement('div');
             tempBubble.className = 'chat-bubble-user';
+            tempBubble.id = 'bubble_' + clientMsgId;
             tempBubble.innerHTML = `
                 <span style="font-size: 11px; font-weight: 700; color: #000; display: block; margin-bottom: 2px;">You</span>
                 <p style="font-size: 13px; margin: 0; line-height: 1.4; word-break: break-word;">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
-                <span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 4px;">Sending...</span>
+                <span id="status_${clientMsgId}" style="font-size: 10px; opacity: 0.7; display: block; margin-top: 4px;">Sending... ⏳</span>
             `;
             stream.appendChild(tempBubble);
             stream.scrollTop = stream.scrollHeight;
@@ -3210,6 +3215,7 @@ header('Content-Type: text/html; charset=utf-8');
                     headers,
                     body: JSON.stringify({
                         visitor_token: visitorToken,
+                        client_message_id: clientMsgId,
                         name: guestName,
                         email: guestEmail,
                         message: text,
@@ -3217,10 +3223,24 @@ header('Content-Type: text/html; charset=utf-8');
                     })
                 });
                 const data = await res.json();
+                const statusEl = document.getElementById('status_' + clientMsgId);
                 if (data.success) {
+                    if (statusEl) {
+                        statusEl.style.opacity = '0.7';
+                        statusEl.innerText = data.created_at ? data.created_at.substring(11, 16) : 'Sent ✓';
+                    }
                     loadLiveChatMessages();
+                } else {
+                    if (statusEl) {
+                        statusEl.innerHTML = '<span style="color:#EF4444; font-weight:700;">⚠️ Message could not be sent. Please try again.</span>';
+                    }
                 }
-            } catch(e) {}
+            } catch(err) {
+                const statusEl = document.getElementById('status_' + clientMsgId);
+                if (statusEl) {
+                    statusEl.innerHTML = '<span style="color:#EF4444; font-weight:700;">⚠️ Message could not be sent. Please try again.</span>';
+                }
+            }
         }
 
         // User Portal Support Chat (Inside Dashboard)
@@ -3262,11 +3282,13 @@ header('Content-Type: text/html; charset=utf-8');
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
 
+            const clientMsgId = 'cmsg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
             const userMsg = document.createElement('div');
             userMsg.style.cssText = 'background: #2DD4BF; color: #000; font-weight: 600; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-end;';
             userMsg.innerHTML = '<span style="font-size: 11px; opacity: 0.8; font-weight: 700; display: block;">You</span>' +
                                 '<p style="font-size: 13px; margin-top: 4px;">' + text.replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</p>' +
-                                '<span style="font-size: 10px; opacity: 0.7; display: block; margin-top: 6px;">Just now</span>';
+                                '<span id="status_portal_' + clientMsgId + '" style="font-size: 10px; opacity: 0.7; display: block; margin-top: 6px;">Sending... ⏳</span>';
 
             thread.appendChild(userMsg);
             thread.scrollTop = thread.scrollHeight;
@@ -3276,13 +3298,20 @@ header('Content-Type: text/html; charset=utf-8');
                 const res = await fetch('/api/support/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify({ message: text, channel: 'dashboard' })
+                    body: JSON.stringify({ message: text, client_message_id: clientMsgId, channel: 'dashboard' })
                 });
                 const data = await res.json();
+                const statusEl = document.getElementById('status_portal_' + clientMsgId);
                 if (data.success) {
+                    if (statusEl) statusEl.innerText = data.created_at ? data.created_at.substring(11, 16) : 'Sent ✓';
                     loadUserPortalSupportThread();
+                } else {
+                    if (statusEl) statusEl.innerHTML = '<span style="color:#EF4444;">⚠️ Message could not be sent. Please try again.</span>';
                 }
-            } catch(e) {}
+            } catch(e) {
+                const statusEl = document.getElementById('status_portal_' + clientMsgId);
+                if (statusEl) statusEl.innerHTML = '<span style="color:#EF4444;">⚠️ Message could not be sent. Please try again.</span>';
+            }
         }
 
         function switchAdminTab(tabName, btn) {
@@ -3528,6 +3557,19 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success && Array.isArray(data.data)) {
                     _allAdminConversations = data.data;
                     renderAdminSupportList();
+
+                    // Calculate total unread count for sidebar indicator
+                    const totalUnread = _allAdminConversations.reduce((sum, c) => sum + parseInt(c.unread_count || 0, 10), 0);
+                    const sbBadge = document.getElementById('adminSupportSidebarBadge');
+                    if (sbBadge) {
+                        if (totalUnread > 0) {
+                            sbBadge.style.display = 'inline-block';
+                            sbBadge.innerText = totalUnread;
+                        } else {
+                            sbBadge.style.display = 'none';
+                        }
+                    }
+
                     // If an active conversation is open, refresh its thread
                     if (_activeSupportConvId) {
                         openAdminSupportThread(_activeSupportConvId, true);
@@ -5351,15 +5393,17 @@ header('Content-Type: text/html; charset=utf-8');
         // ── Real-Time Web Synchronization via Server-Sent Events (SSE) ──
         let sseSource = null;
         function initRealtimeWebSync() {
+            if (typeof EventSource === 'undefined') return;
             const token = localStorage.getItem('sessionToken');
-            if (!token || typeof EventSource === 'undefined') return;
+            const visitorToken = typeof getOrCreateVisitorToken === 'function' ? getOrCreateVisitorToken() : 'vis_guest';
 
             if (sseSource) {
                 try { sseSource.close(); } catch(e) {}
             }
 
             try {
-                sseSource = new EventSource('/api/events/stream?token=' + encodeURIComponent(token));
+                const sseUrl = '/api/events/stream?' + (token ? 'token=' + encodeURIComponent(token) : 'visitor_token=' + encodeURIComponent(visitorToken));
+                sseSource = new EventSource(sseUrl);
 
                 sseSource.addEventListener('connected', (e) => {
                     console.log('⚡ [WebSync] Connected to Central Real-Time Event Stream:', e.data);
@@ -5417,17 +5461,29 @@ header('Content-Type: text/html; charset=utf-8');
                 sseSource.addEventListener('support.message.created', (e) => {
                     console.log('💬 [WebSync] support.message.created received', e.data);
                     loadSupportConversations();
+                    try {
+                        const payload = JSON.parse(e.data);
+                        if (_activeSupportConvId && payload.conversation_id === _activeSupportConvId) {
+                            openAdminSupportThread(_activeSupportConvId, true);
+                        }
+                    } catch(err) {}
                 });
 
                 sseSource.addEventListener('support.reply.created', (e) => {
                     console.log('💬 [WebSync] support.reply.created received', e.data);
-                    if (_liveChatOpen) {
-                        loadLiveChatMessages();
-                    } else {
-                        const unread = document.getElementById('liveChatUnreadBadge');
-                        if (unread) unread.style.display = 'inline-block';
-                    }
-                    loadUserPortalSupportThread();
+                    try {
+                        const payload = JSON.parse(e.data);
+                        if (_liveChatOpen) {
+                            loadLiveChatMessages();
+                        } else {
+                            const unread = document.getElementById('liveChatUnreadBadge');
+                            if (unread) unread.style.display = 'inline-block';
+                        }
+                        loadUserPortalSupportThread();
+                        if (_activeSupportConvId && payload.conversation_id === _activeSupportConvId) {
+                            openAdminSupportThread(_activeSupportConvId, true);
+                        }
+                    } catch(err) {}
                 });
 
                 sseSource.addEventListener('support.conversation.closed', (e) => {
@@ -5474,7 +5530,6 @@ header('Content-Type: text/html; charset=utf-8');
             if (isAuthenticated) {
                 closeModal();
                 checkSession();
-                initRealtimeWebSync();
             } else {
                 closeAdminDashboard();
                 if (path.includes('/login')) {
@@ -5483,6 +5538,7 @@ header('Content-Type: text/html; charset=utf-8');
                     openModal('register');
                 }
             }
+            initRealtimeWebSync();
             loadUserPortalData();
         });
     </script>

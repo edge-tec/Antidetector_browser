@@ -278,11 +278,13 @@ function ensureDatabaseTablesExist() {
             CREATE TABLE IF NOT EXISTS `support_messages` (
               `id` VARCHAR(50) NOT NULL PRIMARY KEY,
               `conversation_id` VARCHAR(50) NOT NULL,
+              `client_message_id` VARCHAR(100) DEFAULT NULL,
               `sender_id` VARCHAR(36) DEFAULT NULL,
               `sender_name` VARCHAR(100) DEFAULT NULL,
               `sender_type` VARCHAR(20) NOT NULL,
               `message` TEXT NOT NULL,
               `message_type` VARCHAR(50) DEFAULT 'text',
+              `status` VARCHAR(20) NOT NULL DEFAULT 'sent',
               `attachment_path` VARCHAR(255) DEFAULT NULL,
               `attachment_name` VARCHAR(255) DEFAULT NULL,
               `attachment_size` INT DEFAULT NULL,
@@ -291,11 +293,14 @@ function ensureDatabaseTablesExist() {
               `read_at` DATETIME DEFAULT NULL,
               `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
               KEY `idx_sup_msg_conv_created` (`conversation_id`, `created_at`),
-              KEY `idx_sup_msg_unread` (`conversation_id`, `sender_type`, `is_read`)
+              KEY `idx_sup_msg_unread` (`conversation_id`, `sender_type`, `is_read`),
+              KEY `idx_sup_msg_client_id` (`conversation_id`, `client_message_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
         try {
+            $db->exec("ALTER TABLE `support_messages` ADD COLUMN IF NOT EXISTS `client_message_id` VARCHAR(100) DEFAULT NULL;");
+            $db->exec("ALTER TABLE `support_messages` ADD COLUMN IF NOT EXISTS `status` VARCHAR(20) NOT NULL DEFAULT 'sent';");
             $db->exec("ALTER TABLE `support_messages` ADD COLUMN IF NOT EXISTS `sender_name` VARCHAR(100) DEFAULT NULL;");
             $db->exec("ALTER TABLE `support_messages` MODIFY `sender_id` VARCHAR(36) DEFAULT NULL;");
         } catch (Throwable $e) {}
@@ -1166,6 +1171,14 @@ function publishRealtimeEvent(PDO $db, ?string $userId, string $eventType, array
         $version
     ]);
     return $eventId;
+}
+
+/**
+ * Global helper for emitting SSE and WebSocket broadcast events.
+ */
+function publishEvent(string $eventType, array $payload, ?string $userId = null, ?string $targetRole = null): string {
+    $db = Database::getConnection();
+    return publishRealtimeEvent($db, $userId, $eventType, $payload, $targetRole);
 }
 
 /**

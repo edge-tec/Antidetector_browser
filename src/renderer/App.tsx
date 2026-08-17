@@ -1332,12 +1332,16 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
     setIsSending(true)
     setInputMessage('')
 
-    // Optimistic message
+    const clientMsgId = 'cmsg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)
+
+    // Optimistic message with status = 'sending'
     const tempMsg = {
-      id: 'temp_' + Date.now(),
+      id: 'temp_' + clientMsgId,
+      client_message_id: clientMsgId,
       sender_type: 'user',
       sender_name: currentUser?.name || 'You',
       message: text,
+      status: 'sending',
       created_at: new Date().toISOString()
     }
     setMessages(prev => [...prev, tempMsg])
@@ -1351,17 +1355,21 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
         },
         body: JSON.stringify({
           message: text,
+          client_message_id: clientMsgId,
           channel: 'desktop'
         })
       })
       const data = await res.json()
       if (data.success) {
+        setMessages(prev => prev.map(m => m.client_message_id === clientMsgId ? { ...m, id: data.message_id, status: 'sent', created_at: data.created_at || m.created_at } : m))
         loadMessages()
       } else {
-        showToast('error', data.error || 'Failed to send message')
+        setMessages(prev => prev.map(m => m.client_message_id === clientMsgId ? { ...m, status: 'failed' } : m))
+        showToast('error', data.error || 'Message could not be sent. Please try again.')
       }
     } catch (err: any) {
-      showToast('error', 'Network error sending message to support.')
+      setMessages(prev => prev.map(m => m.client_message_id === clientMsgId ? { ...m, status: 'failed' } : m))
+      showToast('error', 'Network error. Message could not be sent.')
     } finally {
       setIsSending(false)
     }
@@ -1396,13 +1404,16 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
             ) : (
               messages.map(m => {
                 const isAgent = m.sender_type === 'agent'
+                const isFailed = m.status === 'failed'
+                const isSendingMsg = m.status === 'sending'
+
                 return (
                   <div
-                    key={m.id || Math.random()}
+                    key={m.id || m.client_message_id || Math.random()}
                     style={{
-                      background: isAgent ? 'var(--color-bg-tertiary)' : 'linear-gradient(135deg, #2DD4BF, #06B6D4)',
-                      color: isAgent ? '#FFF' : '#000',
-                      border: isAgent ? '1px solid var(--color-border)' : 'none',
+                      background: isAgent ? 'var(--color-bg-tertiary)' : (isFailed ? 'rgba(239, 68, 68, 0.2)' : 'linear-gradient(135deg, #2DD4BF, #06B6D4)'),
+                      color: isAgent ? '#FFF' : (isFailed ? '#FCA5A5' : '#000'),
+                      border: isAgent ? '1px solid var(--color-border)' : (isFailed ? '1px solid #EF4444' : 'none'),
                       borderRadius: isAgent ? '12px 12px 12px 2px' : '12px 12px 2px 12px',
                       padding: '12px 16px',
                       maxWidth: '75%',
@@ -1411,14 +1422,19 @@ function SupportPage({ showToast }: { showToast: (type: ToastItem['type'], msg: 
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '2px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: isAgent ? '#2DD4BF' : '#000' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: isAgent ? '#2DD4BF' : (isFailed ? '#EF4444' : '#000') }}>
                         {isAgent ? (m.sender_name || 'ProfileVault Support') : 'You'}
                       </span>
                       <span style={{ fontSize: '10px', opacity: 0.7 }}>
-                        {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                        {isSendingMsg ? 'Sending... ⏳' : isFailed ? 'Failed ⚠️' : (m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now')}
                       </span>
                     </div>
                     <p style={{ fontSize: '13px', margin: 0, lineHeight: 1.4, wordBreak: 'break-word' }}>{m.message}</p>
+                    {isFailed && (
+                      <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: 700, display: 'block', marginTop: '4px' }}>
+                        ⚠️ Message could not be sent. Please try again.
+                      </span>
+                    )}
                   </div>
                 )
               })
