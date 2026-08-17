@@ -571,9 +571,8 @@ header('Content-Type: text/html; charset=utf-8');
 
     <!-- Navbar -->
     <nav class="navbar">
-        <a href="/" class="logo">
-            <img src="/logo.png" alt="AntiProfiles Logo" style="width: 36px; height: 36px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
-            <span>AntiProfiles</span>
+        <a href="/" class="logo" style="display: flex; align-items: center;">
+            <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 38px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
@@ -1404,8 +1403,7 @@ header('Content-Type: text/html; charset=utf-8');
         <div class="container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border);">
             <div>
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <img src="/logo.png" alt="AntiProfiles Logo" style="width: 32px; height: 32px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
-                    <span style="font-size: 18px; font-weight: 800; color: #FFF;">AntiProfiles</span>
+                    <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
                 </div>
                 <p style="color: var(--text-muted); font-size: 13px; line-height: 1.6;">Professional browser profile isolation and anti-detect privacy management software.</p>
             </div>
@@ -1443,6 +1441,11 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="modal-overlay" id="loginModal">
         <div class="modal-box" style="max-width: 440px; border-radius: 16px; padding: 32px; background: #12141D;">
             <button class="close-modal" onclick="closeModal()">✕</button>
+
+            <!-- Brand Logo Header in Login Modal -->
+            <div style="text-align: center; margin-bottom: 22px;">
+                <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 44px; width: auto; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(59,130,246,0.3));" onerror="this.onerror=null; this.src='/logo.png';">
+            </div>
 
             <!-- Mode Switcher Tabs -->
             <div style="display: flex; background: var(--bg-input); padding: 4px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border);">
@@ -1556,11 +1559,11 @@ header('Content-Type: text/html; charset=utf-8');
             
             <!-- Top Bar Header -->
             <div style="padding: 14px 24px; background: #151720; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <img src="/logo.png" alt="AntiProfiles Logo" style="width: 38px; height: 38px; object-fit: contain;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%232DD4BF\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'3\' y=\'11\' width=\'18\' height=\'11\' rx=\'2\' ry=\'2\'/><path d=\'M7 11V7a5 5 0 0 1 10 0v4\'/></svg>';">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 38px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
                     <div>
-                        <h2 style="font-size: 18px; color: #FFF;">AntiProfiles Anti-Detect Browser — Central Web Control Center</h2>
-                        <p style="font-size: 12px; color: var(--text-muted);" id="adminUserInfo">Logged in as System Admin</p>
+                        <h2 style="font-size: 17px; color: #FFF; margin: 0;">Central Web Control Center</h2>
+                        <p style="font-size: 12px; color: var(--text-muted); margin: 0;" id="adminUserInfo">Logged in as System Admin</p>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">

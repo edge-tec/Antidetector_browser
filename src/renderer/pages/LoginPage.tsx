@@ -97,7 +97,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigateRegister, onNavigateVerif
       }}>
         {/* Logo & Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img src={logoImg} alt="AntiProfiles Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: '12px', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.6))' }} />
+          <img src={brandLogoImg} alt="AntiProfiles Logo" style={{ height: 48, width: 'auto', objectFit: 'contain', marginBottom: '16px', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.4))' }} />
           <h2 style={{ margin: '0 0 6px', fontSize: '22px', color: '#F1F5F9', fontWeight: 700 }}>
             Welcome to AntiProfiles
           </h2>
