@@ -329,6 +329,110 @@ function ensureDatabaseTablesExist() {
             ('rate_limit_messages_per_min', '25')
             ON DUPLICATE KEY UPDATE `key`=`key`;
         ");
+
+        // 11. SEO, AEO & Meta Management Tables
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `seo_settings` (
+              `key` VARCHAR(100) NOT NULL PRIMARY KEY,
+              `value` TEXT NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $db->exec("
+            INSERT INTO `seo_settings` (`key`, `value`) VALUES
+            ('site_title', 'ProfileVault — Anti-Detect Browser & Profile Isolation'),
+            ('site_description', 'Professional Multi-Account Anti-Detect Browser with Isolated Profiles, Fingerprint Spoofing & Residential Proxy Support.'),
+            ('site_url', 'https://antiprofiles.com'),
+            ('default_og_image', 'https://antiprofiles.com/og-cover.png'),
+            ('twitter_handle', '@ProfileVaultApp'),
+            ('robots_content', 'User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://antiprofiles.com/sitemap.xml'),
+            ('entity_brand_name', 'ProfileVault Software Inc.'),
+            ('entity_logo', 'https://antiprofiles.com/logo.png'),
+            ('entity_email', 'support@antiprofiles.com'),
+            ('entity_phone', '+1 (800) 555-0199'),
+            ('entity_same_as', '[\"https://x.com/ProfileVaultApp\", \"https://github.com/edge-tec/Antidetector_browser\"]')
+            ON DUPLICATE KEY UPDATE `key`=`key`;
+        ");
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `page_seo` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `page_path` VARCHAR(255) NOT NULL UNIQUE,
+              `page_type` VARCHAR(50) NOT NULL DEFAULT 'webpage',
+              `title` VARCHAR(255) NOT NULL,
+              `description` TEXT NOT NULL,
+              `keywords` TEXT DEFAULT NULL,
+              `canonical_url` VARCHAR(255) DEFAULT NULL,
+              `robots` VARCHAR(100) DEFAULT 'index, follow',
+              `og_title` VARCHAR(255) DEFAULT NULL,
+              `og_description` TEXT DEFAULT NULL,
+              `og_image` VARCHAR(255) DEFAULT NULL,
+              `twitter_card` VARCHAR(50) DEFAULT 'summary_large_image',
+              `twitter_title` VARCHAR(255) DEFAULT NULL,
+              `twitter_description` TEXT DEFAULT NULL,
+              `schema_type` VARCHAR(50) DEFAULT 'SoftwareApplication',
+              `primary_keyword` VARCHAR(255) DEFAULT NULL,
+              `ai_quick_answer` TEXT DEFAULT NULL,
+              `structured_data_json` TEXT DEFAULT NULL,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $db->exec("
+            INSERT INTO `page_seo` (
+              `id`, `page_path`, `page_type`, `title`, `description`, `keywords`, `canonical_url`, `robots`,
+              `og_title`, `og_description`, `og_image`, `schema_type`, `primary_keyword`, `ai_quick_answer`
+            ) VALUES (
+              'page_home', '/', 'homepage',
+              'ProfileVault — Anti-Detect Browser & Multi-Account Management Tool',
+              'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, fingerprint spoofing, and residential proxies.',
+              'anti detect browser, multi account browser, browser profile isolation, fingerprint spoofing, proxy manager',
+              'https://antiprofiles.com/',
+              'index, follow',
+              'ProfileVault — Anti-Detect Browser & Profile Isolation',
+              'Professional anti-detect browser for managing isolated web profiles without bans.',
+              'https://antiprofiles.com/og-cover.png',
+              'SoftwareApplication',
+              'anti detect browser',
+              'ProfileVault is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
+            ) ON DUPLICATE KEY UPDATE `id`=`id`;
+        ");
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `seo_keywords` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `keyword` VARCHAR(255) NOT NULL UNIQUE,
+              `keyword_type` VARCHAR(50) DEFAULT 'primary',
+              `search_intent` VARCHAR(50) DEFAULT 'commercial',
+              `target_url` VARCHAR(255) NOT NULL,
+              `country` VARCHAR(10) DEFAULT 'US',
+              `language` VARCHAR(10) DEFAULT 'en',
+              `status` VARCHAR(50) DEFAULT 'active',
+              `ranking_position` INT DEFAULT 0,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `seo_redirects` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `source_path` VARCHAR(255) NOT NULL UNIQUE,
+              `target_path` VARCHAR(255) NOT NULL,
+              `status_code` INT DEFAULT 301,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `seo_404_logs` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `request_path` VARCHAR(255) NOT NULL,
+              `referrer` TEXT DEFAULT NULL,
+              `user_agent` TEXT DEFAULT NULL,
+              `hit_count` INT DEFAULT 1,
+              `last_seen_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
     } catch (Throwable $e) {}
 }
 
