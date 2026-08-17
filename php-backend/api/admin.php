@@ -280,6 +280,14 @@ switch ($action) {
                     'version' => $newVersion,
                     'timestamp' => date('c')
                 ], null, $newVersion);
+
+                // Send Suspension Email Notification
+                if ($newStatus === 'suspended') {
+                    @sendAccountSuspensionNotificationPhp($targetUser['name'] ?: 'User', $targetUser['email'], $input['reason'] ?? null, $userId);
+                }
+            } elseif ($isStatusChanged && $newStatus === 'active' && ($targetUser['account_status'] === 'suspended' || $targetUser['account_status'] === 'expired')) {
+                // Send Reactivation Email Notification
+                @sendAccountReactivationNotificationPhp($targetUser['name'] ?: 'User', $targetUser['email'], $userId);
             }
 
             if ($isStatusChanged) {
@@ -322,25 +330,42 @@ switch ($action) {
         break;
 
     case 'delete-user':
-        $userId = $_GET['id'] ?? null;
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $input['userId'] ?? $input['id'] ?? $_GET['id'] ?? $_GET['userId'] ?? null;
+        $reason = trim($input['reason'] ?? $_GET['reason'] ?? '');
+
         if (!$userId) {
             respondJson(['success' => false, 'error' => 'User ID required.'], 400);
         }
 
+        if ($userId === $admin['id']) {
+            respondJson(['success' => false, 'error' => 'You cannot delete your own admin account.'], 400);
+        }
+
         $db->beginTransaction();
         try {
-            $userStmt = $db->prepare("SELECT email FROM users WHERE id = ?");
+            $userStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
             $userStmt->execute([$userId]);
-            $userEmail = $userStmt->fetchColumn() ?: 'unknown';
+            $userRec = $userStmt->fetch();
 
-            // Revoke sessions first
-            $revStmt = $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'User deleted', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?");
-            $revStmt->execute([$userId]);
+            if (!$userRec) {
+                $db->rollBack();
+                respondJson(['success' => false, 'error' => 'User not found.'], 404);
+            }
 
-            $delStmt = $db->prepare("DELETE FROM users WHERE id = ?");
-            $delStmt->execute([$userId]);
+            $userEmail = $userRec['email'];
+            $userName = $userRec['name'] ?: 'User';
 
-            logAdminAction($admin['id'], $admin['email'], 'USER_DELETED', $userId, "Deleted user {$userEmail}");
+            // Revoke sessions and installations
+            $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'User deleted', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]);
+            $db->prepare("UPDATE desktop_installations SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]);
+
+            // Clean up subscriptions & user
+            $db->prepare("DELETE FROM subscriptions WHERE user_id = ?")->execute([$userId]);
+            $db->prepare("DELETE FROM user_subscriptions WHERE user_id = ?")->execute([$userId]);
+            $db->prepare("DELETE FROM users WHERE id = ?")->execute([$userId]);
+
+            logAdminAction($admin['id'], $admin['email'], 'USER_DELETED', $userId, "Deleted user {$userEmail}" . ($reason ? " (Reason: {$reason})" : ''));
 
             publishRealtimeEvent($db, $userId, 'user.deleted', [
                 'type' => 'user.deleted',
@@ -349,11 +374,115 @@ switch ($action) {
             ]);
 
             $db->commit();
-            respondJson(['success' => true]);
+
+            // Automatically dispatch account deletion notification email
+            @sendAccountDeletionNotificationPhp($userName, $userEmail, $reason ?: null, $userId);
+
+            respondJson(['success' => true, 'message' => "User {$userEmail} deleted and notification email dispatched."]);
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             respondJson(['success' => false, 'error' => 'Failed to delete user: ' . $e->getMessage()], 500);
         }
+        break;
+
+    case 'suspend-user':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $input['userId'] ?? $input['id'] ?? $_GET['id'] ?? null;
+        $reason = trim($input['reason'] ?? $_GET['reason'] ?? '');
+
+        if (!$userId) {
+            respondJson(['success' => false, 'error' => 'User ID required.'], 400);
+        }
+
+        if ($userId === $admin['id']) {
+            respondJson(['success' => false, 'error' => 'You cannot suspend your own admin account.'], 400);
+        }
+
+        $uStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $targetUser = $uStmt->fetch();
+
+        if (!$targetUser) {
+            respondJson(['success' => false, 'error' => 'User not found.'], 404);
+        }
+
+        $newVersion = (int)($targetUser['auth_version'] ?? 1) + 1;
+        $db->prepare("UPDATE users SET account_status = 'suspended', auth_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$newVersion, $userId]);
+        $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'Account suspended by administrator', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]);
+
+        logAdminAction($admin['id'], $admin['email'], 'USER_SUSPENDED', $userId, "Suspended user {$targetUser['email']}" . ($reason ? " (Reason: {$reason})" : ''));
+
+        publishRealtimeEvent($db, $userId, 'session.revoked', [
+            'type' => 'session.revoked',
+            'userId' => $userId,
+            'status' => 'suspended',
+            'reason' => $reason ?: 'Account suspended by administrator',
+            'version' => $newVersion,
+            'timestamp' => date('c')
+        ], null, $newVersion);
+
+        @sendAccountSuspensionNotificationPhp($targetUser['name'] ?: 'User', $targetUser['email'], $reason ?: null, $userId);
+
+        respondJson(['success' => true, 'message' => "User {$targetUser['email']} suspended successfully."]);
+        break;
+
+    case 'reactivate-user':
+    case 'unsuspend-user':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = $input['userId'] ?? $input['id'] ?? $_GET['id'] ?? null;
+
+        if (!$userId) {
+            respondJson(['success' => false, 'error' => 'User ID required.'], 400);
+        }
+
+        $uStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $targetUser = $uStmt->fetch();
+
+        if (!$targetUser) {
+            respondJson(['success' => false, 'error' => 'User not found.'], 404);
+        }
+
+        $newVersion = (int)($targetUser['auth_version'] ?? 1) + 1;
+        $db->prepare("UPDATE users SET account_status = 'active', auth_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$newVersion, $userId]);
+        $db->prepare("UPDATE subscriptions SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]);
+
+        logAdminAction($admin['id'], $admin['email'], 'USER_REACTIVATED', $userId, "Reactivated user {$targetUser['email']}");
+
+        publishRealtimeEvent($db, $userId, 'user.status.updated', [
+            'type' => 'user.status.updated',
+            'userId' => $userId,
+            'status' => 'active',
+            'version' => $newVersion,
+            'timestamp' => date('c')
+        ], null, $newVersion);
+
+        @sendAccountReactivationNotificationPhp($targetUser['name'] ?: 'User', $targetUser['email'], $userId);
+
+        respondJson(['success' => true, 'message' => "User {$targetUser['email']} reactivated successfully."]);
+        break;
+
+    case 'run-cron':
+        $cronRes = runAccountExpirationAndRemindersCron($db);
+        respondJson(['success' => true, 'data' => $cronRes]);
+        break;
+
+    case 'retry-failed-emails':
+        $retryStmt = $db->prepare("SELECT * FROM email_logs WHERE status = 'failed' AND html_body IS NOT NULL ORDER BY created_at ASC LIMIT 25");
+        $retryStmt->execute();
+        $failedEmails = $retryStmt->fetchAll();
+        $retried = 0;
+        foreach ($failedEmails as $fe) {
+            $sent = sendSmtpMailPhp($fe['recipient'], $fe['subject'], $fe['html_body'], null, $fe['email_type'], $fe['user_id']);
+            $newRetryCount = (int)($fe['retry_count'] ?? 0) + 1;
+            if ($sent) {
+                $db->prepare("UPDATE email_logs SET status = 'sent', retry_count = ?, error_message = NULL, last_attempt_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$newRetryCount, $fe['id']]);
+                $retried++;
+            } else {
+                $db->prepare("UPDATE email_logs SET retry_count = ?, last_attempt_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$newRetryCount, $fe['id']]);
+            }
+        }
+        respondJson(['success' => true, 'retried' => $retried, 'totalFailed' => count($failedEmails)]);
         break;
 
     // ── 2. Subscriptions Management APIs ──

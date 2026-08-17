@@ -477,6 +477,22 @@ function ensureDatabaseTablesExist() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
+        // 13. Account Notifications Table (Prevents duplicate renewal / expiration reminders)
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `account_notifications` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL,
+              `notification_type` VARCHAR(50) NOT NULL,
+              `reference_date` VARCHAR(50) NOT NULL,
+              `sent_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE KEY `idx_user_notif_date` (`user_id`, `notification_type`, `reference_date`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `retry_count` INT DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `last_attempt_at` DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `html_body` LONGTEXT DEFAULT NULL"); } catch (Throwable $e) {}
+
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `reset_token_hash` VARCHAR(128) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `reset_token_expires_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `reset_token_created_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
@@ -695,16 +711,16 @@ function getGoogleOAuthConfigPhp(): array {
 /**
  * Log all transactional email attempts into the durable email_logs table.
  */
-function logEmailDispatch(string $recipient, string $type, string $subject, string $status, ?string $error = null, string $method = 'smtp', ?string $userId = null, ?array $meta = null): void {
+function logEmailDispatch(string $recipient, string $type, string $subject, string $status, ?string $error = null, string $method = 'smtp', ?string $userId = null, ?array $meta = null, ?string $htmlBody = null): void {
     try {
         $db = Database::getConnection();
         $stmt = $db->prepare("
-            INSERT INTO email_logs (id, recipient, email_type, subject, status, delivery_method, error_message, user_id, metadata_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO email_logs (id, recipient, email_type, subject, status, delivery_method, error_message, user_id, metadata_json, html_body, retry_count, created_at, last_attempt_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ");
         $logId = 'elog_' . bin2hex(random_bytes(10));
         $metaJson = $meta ? json_encode($meta, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
-        $stmt->execute([$logId, $recipient, $type, $subject, $status, $method, $error, $userId, $metaJson]);
+        $stmt->execute([$logId, $recipient, $type, $subject, $status, $method, $error, $userId, $metaJson, $htmlBody]);
     } catch (Throwable $e) {
         error_log("[AntiProfiles EmailLogger Error] " . $e->getMessage());
     }
@@ -946,7 +962,7 @@ function sendSmtpMailPhp(
             fclose($socket);
 
             if (substr($sendRes, 0, 3) === '250') {
-                logEmailDispatch($toEmail, $emailType, $subject, 'sent', null, 'smtp', $userId, $metadata);
+                logEmailDispatch($toEmail, $emailType, $subject, 'sent', null, 'smtp', $userId, $metadata, $htmlBody);
                 return true;
             } else {
                 $lastError = "SMTP final send rejected: " . trim($sendRes);
@@ -975,7 +991,7 @@ function sendSmtpMailPhp(
 
         $nativeSent = @mail($toEmail, '=?UTF-8?B?' . base64_encode($subject) . '?=', $htmlBody, implode("\r\n", $headers));
         if ($nativeSent) {
-            logEmailDispatch($toEmail, $emailType, $subject, 'sent', "Sent via PHP native mail fallback (" . ($lastError ?: 'No SMTP configured') . ")", 'native_mail', $userId, $metadata);
+            logEmailDispatch($toEmail, $emailType, $subject, 'sent', "Sent via PHP native mail fallback (" . ($lastError ?: 'No SMTP configured') . ")", 'native_mail', $userId, $metadata, $htmlBody);
             return true;
         } else {
             $lastError = ($lastError ? $lastError . "; " : "") . "PHP native mail() function also returned false.";
@@ -985,7 +1001,7 @@ function sendSmtpMailPhp(
     }
 
     // 3. Record Failure
-    logEmailDispatch($toEmail, $emailType, $subject, 'failed', $lastError, $deliveryMethod, $userId, $metadata);
+    logEmailDispatch($toEmail, $emailType, $subject, 'failed', $lastError, $deliveryMethod, $userId, $metadata, $htmlBody);
     return false;
 }
 
@@ -1792,6 +1808,429 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
         error_log("[AntiProfiles] Error in ensureUserFreeSubscription: " . $e->getMessage());
         return [];
     }
+}
+
+/**
+ * 6. Account Permanently Deleted Notification
+ */
+function sendAccountDeletionNotificationPhp(string $userName, string $email, ?string $reason = null, ?string $userId = null): bool {
+    $reasonHtml = '';
+    if (!empty($reason)) {
+        $reasonHtml = "
+        <div style='background:#18131E; border:1px solid #7F1D1D; border-radius:10px; padding:16px; margin:20px 0;'>
+          <p style='margin:0 0 6px 0; font-size:12px; color:#F87171; font-weight:700; text-transform:uppercase;'>Reason for Deletion:</p>
+          <p style='margin:0; font-size:14px; color:#FECACA; line-height:1.5;'>" . htmlspecialchars($reason) . "</p>
+        </div>";
+    }
+
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>Account Deleted — AntiProfiles</title></head>
+    <body style='margin:0; padding:0; background-color:#08090C; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#08090C; padding:40px 12px;'>
+        <tr>
+          <td align='center'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+              <tr>
+                <td style='padding:36px 36px 20px 36px; text-align:center;'>
+                  <div style='display:inline-block; padding:12px; border-radius:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); margin-bottom:16px;'>
+                    <span style='font-size:28px;'>🗑️</span>
+                  </div>
+                  <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Account Permanently Deleted</h1>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles User Management Notice</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='padding:0 36px 30px 36px;'>
+                  <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>This is an official notification that your AntiProfiles account associated with <strong>" . htmlspecialchars($email) . "</strong> has been permanently removed by an administrator.</p>
+                  {$reasonHtml}
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>All active desktop software access, isolated browser profiles, and synchronized licenses have been terminated.</p>
+                  <p style='color:#64748B; font-size:12px; line-height:1.5; margin-top:24px;'>If you believe this was done in error or require further clarification, please contact our support team at <a href='mailto:info@antiprofiles.com' style='color:#38BDF8;'>info@antiprofiles.com</a>.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Security Infrastructure.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, '🗑️ AntiProfiles Account Deletion Notice', $html, null, 'account_deleted', $userId, ['reason' => $reason]);
+}
+
+/**
+ * 7. Account Suspended Notification
+ */
+function sendAccountSuspensionNotificationPhp(string $userName, string $email, ?string $reason = null, ?string $userId = null): bool {
+    $reasonHtml = '';
+    if (!empty($reason)) {
+        $reasonHtml = "
+        <div style='background:#1C1613; border:1px solid #C2410C; border-radius:10px; padding:16px; margin:20px 0;'>
+          <p style='margin:0 0 6px 0; font-size:12px; color:#FB923C; font-weight:700; text-transform:uppercase;'>Suspension Reason:</p>
+          <p style='margin:0; font-size:14px; color:#FED7AA; line-height:1.5;'>" . htmlspecialchars($reason) . "</p>
+        </div>";
+    }
+
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>Account Suspended — AntiProfiles</title></head>
+    <body style='margin:0; padding:0; background-color:#08090C; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#08090C; padding:40px 12px;'>
+        <tr>
+          <td align='center'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+              <tr>
+                <td style='padding:36px 36px 20px 36px; text-align:center;'>
+                  <div style='display:inline-block; padding:12px; border-radius:12px; background:rgba(249,115,22,0.15); border:1px solid rgba(249,115,22,0.3); margin-bottom:16px;'>
+                    <span style='font-size:28px;'>⚠️</span>
+                  </div>
+                  <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Account Suspended</h1>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Security & Compliance Notice</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='padding:0 36px 30px 36px;'>
+                  <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your AntiProfiles account (<strong>" . htmlspecialchars($email) . "</strong>) has been temporarily suspended by an administrator.</p>
+                  {$reasonHtml}
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>While suspended, you will be unable to log in to the Web Portal or Desktop Software. To appeal or restore your account, please reach out to our team.</p>
+                  <div style='text-align:center; margin:28px 0;'>
+                    <a href='mailto:info@antiprofiles.com?subject=Account%20Suspension%20Appeal%20-%20" . urlencode($email) . "' style='background:linear-gradient(135deg, #F97316, #EA580C); color:#FFFFFF; font-weight:800; font-size:14px; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Contact Support</a>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Security Infrastructure.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, '⚠️ AntiProfiles Account Suspension Notice', $html, null, 'account_suspended', $userId, ['reason' => $reason]);
+}
+
+/**
+ * 8. Account Reactivated / Unsuspended Notification
+ */
+function sendAccountReactivationNotificationPhp(string $userName, string $email, ?string $userId = null): bool {
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>Account Reactivated — AntiProfiles</title></head>
+    <body style='margin:0; padding:0; background-color:#08090C; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#08090C; padding:40px 12px;'>
+        <tr>
+          <td align='center'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+              <tr>
+                <td style='padding:36px 36px 20px 36px; text-align:center;'>
+                  <div style='display:inline-block; padding:12px; border-radius:12px; background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.3); margin-bottom:16px;'>
+                    <span style='font-size:28px;'>🎉</span>
+                  </div>
+                  <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Account Reactivated</h1>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Service Restoration Notice</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='padding:0 36px 30px 36px;'>
+                  <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Good news! Your AntiProfiles account (<strong>" . htmlspecialchars($email) . "</strong>) has been fully reactivated. You can now log in and resume using all features across Web and Desktop applications.</p>
+                  <div style='text-align:center; margin:28px 0;'>
+                    <a href='https://antiprofiles.com/#login' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#07090E; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block;'>Log In to Dashboard</a>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Software Ecosystem.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, '🎉 AntiProfiles Account Reactivated & Restored', $html, null, 'account_reactivated', $userId);
+}
+
+/**
+ * 9. Account 7-Day Renewal Reminder Notification
+ */
+function sendAccountRenewalReminderNotificationPhp(string $userName, string $email, string $planName, string $expiresAt, int $daysLeft, ?string $userId = null): bool {
+    $formattedDate = date('F d, Y', strtotime($expiresAt));
+
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>Subscription Renewal Reminder — AntiProfiles</title></head>
+    <body style='margin:0; padding:0; background-color:#08090C; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#08090C; padding:40px 12px;'>
+        <tr>
+          <td align='center'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+              <tr>
+                <td style='padding:36px 36px 20px 36px; text-align:center;'>
+                  <div style='display:inline-block; padding:12px; border-radius:12px; background:rgba(234,179,8,0.15); border:1px solid rgba(234,179,8,0.3); margin-bottom:16px;'>
+                    <span style='font-size:28px;'>⏳</span>
+                  </div>
+                  <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Subscription Expiring in {$daysLeft} Days</h1>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Plan Renewal Notice</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='padding:0 36px 30px 36px;'>
+                  <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>This is a friendly reminder that your <strong>" . htmlspecialchars($planName) . "</strong> subscription is scheduled to expire on <strong>{$formattedDate}</strong> ({$daysLeft} days remaining).</p>
+                  
+                  <div style='background:#090B12; border:1px solid #232738; border-radius:12px; padding:20px; margin:24px 0;'>
+                    <table style='width:100%; font-size:14px; border-collapse:collapse;'>
+                      <tr style='border-bottom:1px solid #1E2333;'>
+                        <td style='padding:8px 0; color:#94A3B8;'>Current Plan:</td>
+                        <td style='padding:8px 0; color:#FFFFFF; text-align:right; font-weight:700;'>" . htmlspecialchars($planName) . "</td>
+                      </tr>
+                      <tr style='border-bottom:1px solid #1E2333;'>
+                        <td style='padding:8px 0; color:#94A3B8;'>Expiration Date:</td>
+                        <td style='padding:8px 0; color:#FCD34D; text-align:right; font-weight:700;'>{$formattedDate}</td>
+                      </tr>
+                      <tr>
+                        <td style='padding:8px 0; color:#94A3B8;'>Days Remaining:</td>
+                        <td style='padding:8px 0; color:#2DD4BF; text-align:right; font-weight:700;'>{$daysLeft} Days</td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>To maintain uninterrupted access to your browser profiles, proxies, and team features, please renew or upgrade your subscription:</p>
+                  
+                  <div style='text-align:center; margin:32px 0;'>
+                    <a href='https://antiprofiles.com/#pricing' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#07090E; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block;'>Renew / Upgrade Plan</a>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Billing Infrastructure.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, "⏳ Renewal Notice: Your AntiProfiles Subscription expires in {$daysLeft} days", $html, null, 'renewal_reminder', $userId, ['expiresAt' => $expiresAt, 'daysLeft' => $daysLeft]);
+}
+
+/**
+ * 10. Account Expired Notification
+ */
+function sendAccountExpiredNotificationPhp(string $userName, string $email, string $planName, string $expiredDate, ?string $userId = null): bool {
+    $formattedDate = date('F d, Y', strtotime($expiredDate));
+
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='utf-8'><title>Subscription Expired — AntiProfiles</title></head>
+    <body style='margin:0; padding:0; background-color:#08090C; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; color:#CBD5E1;'>
+      <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#08090C; padding:40px 12px;'>
+        <tr>
+          <td align='center'>
+            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px; background-color:#12141E; border-radius:16px; border:1px solid #232738; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6);'>
+              <tr>
+                <td style='padding:36px 36px 20px 36px; text-align:center;'>
+                  <div style='display:inline-block; padding:12px; border-radius:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); margin-bottom:16px;'>
+                    <span style='font-size:28px;'>🛑</span>
+                  </div>
+                  <h1 style='color:#FFFFFF; font-size:24px; font-weight:800; margin:0 0 8px 0;'>Subscription Has Expired</h1>
+                  <p style='color:#94A3B8; font-size:14px; margin:0;'>AntiProfiles Service Notice</p>
+                </td>
+              </tr>
+              <tr>
+                <td style='padding:0 36px 30px 36px;'>
+                  <p style='color:#E2E8F0; font-size:15px; line-height:1.6;'>Hello <strong>" . htmlspecialchars($userName) . "</strong>,</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your <strong>" . htmlspecialchars($planName) . "</strong> subscription reached its expiration date on <strong>{$formattedDate}</strong>.</p>
+                  <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your account access is currently restricted. Your browser profiles and configuration data remain safely preserved. To restore full access immediately, please renew your subscription:</p>
+                  
+                  <div style='text-align:center; margin:32px 0;'>
+                    <a href='https://antiprofiles.com/#pricing' style='background:linear-gradient(135deg, #2DD4BF, #3B82F6); color:#07090E; font-weight:800; font-size:15px; padding:14px 36px; text-decoration:none; border-radius:10px; display:inline-block;'>Renew Subscription Now</a>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style='background:#090B12; padding:20px 36px; border-top:1px solid #232738; text-align:center;'>
+                  <p style='color:#475569; font-size:11px; margin:0;'>&copy; " . date('Y') . " AntiProfiles Billing Infrastructure.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>";
+
+    return sendSmtpMailPhp($email, '🛑 AntiProfiles Subscription Expired — Action Required', $html, null, 'account_expired', $userId, ['expiredDate' => $expiredDate]);
+}
+
+/**
+ * 11. Automated Cron Service: Runs 7-day expiration reminders, accounts auto-expiration, and failed email retries.
+ */
+function runAccountExpirationAndRemindersCron(PDO $db): array {
+    $results = [
+        'reminders_sent' => 0,
+        'accounts_expired' => 0,
+        'emails_retried' => 0,
+        'errors' => []
+    ];
+
+    // 1. ── 7-Day Renewal Reminders ──
+    try {
+        $remStmt = $db->prepare("
+            SELECT u.id as user_id, u.name, u.email, u.account_status,
+                   s.expires_at, s.status as sub_status,
+                   p.name as plan_name,
+                   DATEDIFF(s.expires_at, NOW()) as days_left
+            FROM users u
+            JOIN subscriptions s ON u.id = s.user_id
+            LEFT JOIN pricing_plans p ON s.plan_id = p.id
+            WHERE s.expires_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)
+              AND u.account_status != 'suspended'
+              AND s.status = 'active'
+        ");
+        $remStmt->execute();
+        $dueUsers = $remStmt->fetchAll();
+
+        foreach ($dueUsers as $u) {
+            $refDate = date('Y-m-d', strtotime($u['expires_at']));
+            $daysLeft = max(1, (int)$u['days_left']);
+            
+            // Check if already notified for this expiration cycle
+            $checkNotif = $db->prepare("SELECT id FROM account_notifications WHERE user_id = ? AND notification_type = 'renewal_reminder_7d' AND reference_date = ?");
+            $checkNotif->execute([$u['user_id'], $refDate]);
+            if ($checkNotif->fetch()) {
+                continue; // Already sent, skip duplicate
+            }
+
+            $sent = sendAccountRenewalReminderNotificationPhp(
+                $u['name'] ?: 'Valued User',
+                $u['email'],
+                $u['plan_name'] ?: 'AntiProfiles Subscription',
+                $u['expires_at'],
+                $daysLeft,
+                $u['user_id']
+            );
+
+            if ($sent) {
+                $notifId = 'notif_' . bin2hex(random_bytes(8));
+                $insNotif = $db->prepare("INSERT INTO account_notifications (id, user_id, notification_type, reference_date, sent_at) VALUES (?, ?, 'renewal_reminder_7d', ?, CURRENT_TIMESTAMP)");
+                $insNotif->execute([$notifId, $u['user_id'], $refDate]);
+                $results['reminders_sent']++;
+            }
+        }
+    } catch (Throwable $e) {
+        $results['errors'][] = 'Reminders error: ' . $e->getMessage();
+    }
+
+    // 2. ── Auto-Expire Overdue Accounts ──
+    try {
+        $expStmt = $db->prepare("
+            SELECT u.id as user_id, u.name, u.email, u.account_status,
+                   s.expires_at, s.status as sub_status,
+                   p.name as plan_name
+            FROM users u
+            JOIN subscriptions s ON u.id = s.user_id
+            LEFT JOIN pricing_plans p ON s.plan_id = p.id
+            WHERE s.expires_at < NOW()
+              AND (s.status != 'expired' OR u.account_status != 'expired')
+              AND u.role != 'admin'
+        ");
+        $expStmt->execute();
+        $expiredUsers = $expStmt->fetchAll();
+
+        foreach ($expiredUsers as $u) {
+            $refDate = date('Y-m-d', strtotime($u['expires_at']));
+
+            // Update status to expired
+            $db->prepare("UPDATE subscriptions SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$u['user_id']]);
+            $db->prepare("UPDATE users SET account_status = 'expired', auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$u['user_id']]);
+
+            // Revoke active sessions
+            $db->prepare("UPDATE user_sessions SET is_revoked = 1, revoked_reason = 'Subscription expired', revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$u['user_id']]);
+
+            // Publish realtime event
+            publishRealtimeEvent($db, $u['user_id'], 'session.revoked', [
+                'type' => 'session.revoked',
+                'userId' => $u['user_id'],
+                'status' => 'expired',
+                'reason' => 'Subscription expired. Please renew to continue.',
+                'timestamp' => date('c')
+            ]);
+
+            // Send expiration email if not yet sent for this date
+            $checkNotif = $db->prepare("SELECT id FROM account_notifications WHERE user_id = ? AND notification_type = 'account_expired' AND reference_date = ?");
+            $checkNotif->execute([$u['user_id'], $refDate]);
+            if (!$checkNotif->fetch()) {
+                $sent = sendAccountExpiredNotificationPhp(
+                    $u['name'] ?: 'Valued User',
+                    $u['email'],
+                    $u['plan_name'] ?: 'AntiProfiles Subscription',
+                    $u['expires_at'],
+                    $u['user_id']
+                );
+                if ($sent) {
+                    $notifId = 'notif_' . bin2hex(random_bytes(8));
+                    $insNotif = $db->prepare("INSERT INTO account_notifications (id, user_id, notification_type, reference_date, sent_at) VALUES (?, ?, 'account_expired', ?, CURRENT_TIMESTAMP)");
+                    $insNotif->execute([$notifId, $u['user_id'], $refDate]);
+                }
+            }
+            $results['accounts_expired']++;
+        }
+    } catch (Throwable $e) {
+        $results['errors'][] = 'Expiration error: ' . $e->getMessage();
+    }
+
+    // 3. ── Retry Failed Emails ──
+    try {
+        $retryStmt = $db->prepare("
+            SELECT * FROM email_logs
+            WHERE status = 'failed'
+              AND retry_count < 3
+              AND html_body IS NOT NULL
+              AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            ORDER BY created_at ASC LIMIT 10
+        ");
+        $retryStmt->execute();
+        $failedEmails = $retryStmt->fetchAll();
+
+        foreach ($failedEmails as $fe) {
+            $sent = sendSmtpMailPhp($fe['recipient'], $fe['subject'], $fe['html_body'], null, $fe['email_type'], $fe['user_id']);
+            $newRetryCount = (int)($fe['retry_count'] ?? 0) + 1;
+            if ($sent) {
+                $db->prepare("UPDATE email_logs SET status = 'sent', retry_count = ?, error_message = NULL, last_attempt_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$newRetryCount, $fe['id']]);
+                $results['emails_retried']++;
+            } else {
+                $db->prepare("UPDATE email_logs SET retry_count = ?, last_attempt_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$newRetryCount, $fe['id']]);
+            }
+        }
+    } catch (Throwable $e) {
+        $results['errors'][] = 'Email retry error: ' . $e->getMessage();
+    }
+
+    return $results;
 }
 
 

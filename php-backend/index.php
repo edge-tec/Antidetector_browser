@@ -2278,10 +2278,12 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 1: USERS -->
                     <div id="tab-users" class="admin-tab-content">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
                             <h3 style="font-size: 18px; color: #FFF;">Registered User Accounts & Access Controls</h3>
-                            <div style="display: flex; gap: 10px;">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 <button class="btn btn-primary" onclick="showCreateUserForm()">➕ Create User</button>
+                                <button class="btn btn-outline" style="border-color: #F59E0B; color: #FBBF24;" onclick="triggerCronRunner()">⏳ Run Expiration & Reminders</button>
+                                <button class="btn btn-outline" style="border-color: #38BDF8; color: #38BDF8;" onclick="triggerRetryFailedEmails()">🔁 Retry Failed Emails</button>
                                 <button class="btn btn-outline" onclick="loadUsersTable()">🔄 Refresh</button>
                             </div>
                         </div>
@@ -6195,28 +6197,119 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        async function toggleUserStatus(userId, currentStatus) {
+        async function toggleUserStatus(userId, currentStatus, userEmail) {
             const token = localStorage.getItem('sessionToken');
-            const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-            if (!confirm(`Are you sure you want to change status to ${newStatus}?`)) return;
+            if (currentStatus === 'suspended') {
+                if (!confirm(`Are you sure you want to REACTIVATE user ${userEmail || ''}? A reactivation notification email will be dispatched automatically.`)) return;
+                try {
+                    const res = await fetch('/api/admin/reactivate-user', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({ userId })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(data.message || 'User successfully reactivated and notification email sent!');
+                        loadUsersTable();
+                    } else {
+                        alert('Failed: ' + (data.error || 'Error reactivating user'));
+                    }
+                } catch(e) {
+                    alert('Network error.');
+                }
+            } else {
+                const reason = prompt(`Enter suspension reason for ${userEmail || 'this user'} (optional, will be included in suspension notification email):`, 'Terms of service compliance review');
+                if (reason === null) return; // User pressed Cancel
+
+                try {
+                    const res = await fetch('/api/admin/suspend-user', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({ userId, reason: reason.trim() })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(data.message || 'User successfully suspended and notification email dispatched!');
+                        loadUsersTable();
+                    } else {
+                        alert('Failed: ' + (data.error || 'Error suspending user'));
+                    }
+                } catch(e) {
+                    alert('Network error.');
+                }
+            }
+        }
+
+        async function deleteUserPrompt(userId, userEmail) {
+            const token = localStorage.getItem('sessionToken');
+            if (!confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE user ${userEmail}?\n\nThis will revoke all active desktop and web sessions and cannot be undone.`)) return;
+
+            const reason = prompt(`Enter account deletion reason for ${userEmail} (optional, will be sent to user's email):`, 'Administrative account termination');
+            if (reason === null) return; // Cancelled
 
             try {
-                const res = await fetch('/api/admin/update-user-status', {
+                const res = await fetch('/api/admin/delete-user', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ userId, accountStatus: newStatus })
+                    body: JSON.stringify({ userId, reason: reason.trim() })
                 });
                 const data = await res.json();
                 if (data.success) {
+                    alert(data.message || `User ${userEmail} permanently deleted and notification email sent!`);
                     loadUsersTable();
                 } else {
-                    alert('Failed: ' + (data.error || 'Error updating status'));
+                    alert('Failed to delete user: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Network error deleting user.');
+            }
+        }
+
+        async function triggerCronRunner() {
+            const token = localStorage.getItem('sessionToken');
+            if (!confirm('Run Account Expiration & 7-Day Renewal Reminder Cron now?')) return;
+            try {
+                const res = await fetch('/api/admin/run-cron', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const d = data.data;
+                    alert(`✅ Cron Executed Successfully!\n\n• Renewal Reminders Sent (7-Day): ${d.reminders_sent}\n• Overdue Accounts Expired: ${d.accounts_expired}\n• Failed Emails Retried: ${d.emails_retried}` + (d.errors.length ? `\n• Errors: ${d.errors.join(', ')}` : ''));
+                    loadUsersTable();
+                    if (typeof loadSubscriptionsTable === 'function') loadSubscriptionsTable();
+                } else {
+                    alert('Cron execution failed: ' + (data.error || 'Unknown error'));
                 }
             } catch(e) {
-                alert('Network error.');
+                alert('Network error executing cron.');
+            }
+        }
+
+        async function triggerRetryFailedEmails() {
+            const token = localStorage.getItem('sessionToken');
+            try {
+                const res = await fetch('/api/admin/retry-failed-emails', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`🔁 Email Retry Cycle Completed!\n\n• Successfully retried: ${data.retried}\n• Total failed emails found: ${data.totalFailed}`);
+                    if (typeof loadEmailLogs === 'function') loadEmailLogs();
+                } else {
+                    alert('Email retry failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error retrying emails.');
             }
         }
 
@@ -6255,16 +6348,27 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data.success && Array.isArray(data.data)) {
                     tbody.innerHTML = data.data.map(u => {
                         const isVerified = (u.emailVerified === true || u.emailVerified === 1 || u.email_verified === 1);
+                        const isSuspended = (u.accountStatus === 'suspended');
+                        const isExpired = (u.accountStatus === 'expired');
+                        
+                        let statusBadge = '<span style="background: rgba(45,212,191,0.2); color: #2DD4BF; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">Active</span>';
+                        if (isSuspended) {
+                            statusBadge = '<span style="background: rgba(239,68,68,0.2); color: #F87171; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">Suspended</span>';
+                        } else if (isExpired) {
+                            statusBadge = '<span style="background: rgba(245,158,11,0.2); color: #FBBF24; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">Expired</span>';
+                        }
+
                         return `
                         <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${u.name}</td>
-                            <td style="padding: 12px 16px; color: var(--text-muted);">${u.email}</td>
+                            <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${window.escapeHtml ? window.escapeHtml(u.name || '') : (u.name || '')}</td>
+                            <td style="padding: 12px 16px; color: var(--text-muted);">${window.escapeHtml ? window.escapeHtml(u.email || '') : (u.email || '')}</td>
                             <td style="padding: 12px 16px;"><span style="background: rgba(99,102,241,0.2); color: #818CF8; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.role}</span></td>
                             <td style="padding: 12px 16px;"><span style="background: ${isVerified ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; color: ${isVerified ? '#34D399' : '#FBBF24'}; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${isVerified ? '✓ Verified' : '⚠ Unverified'}</span></td>
-                            <td style="padding: 12px 16px;"><span style="background: ${u.accountStatus === 'suspended' ? 'rgba(239,68,68,0.2)' : 'rgba(45,212,191,0.2)'}; color: ${u.accountStatus === 'suspended' ? '#F87171' : '#2DD4BF'}; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">${u.accountStatus || 'active'}</span></td>
+                            <td style="padding: 12px 16px;">${statusBadge}</td>
                             <td style="padding: 12px 16px; display: flex; gap: 6px; flex-wrap: wrap;">
-                                ${!isVerified ? `<button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; border-color: #FBBF24; color: #FBBF24;" onclick="resendUserVerification('${u.id}', '${u.email}')">✉️ Resend Verification</button>` : ''}
-                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserStatus('${u.id}', '${u.accountStatus || 'active'}')">${u.accountStatus === 'suspended' ? 'Activate' : 'Suspend'}</button>
+                                ${!isVerified ? `<button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; border-color: #FBBF24; color: #FBBF24;" onclick="resendUserVerification('${u.id}', '${window.escapeHtml ? window.escapeHtml(u.email || '') : (u.email || '')}')">✉️ Resend Verification</button>` : ''}
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; ${isSuspended ? 'border-color: #34D399; color: #34D399;' : 'border-color: #F97316; color: #FB923C;'}" onclick="toggleUserStatus('${u.id}', '${u.accountStatus || 'active'}', '${window.escapeHtml ? window.escapeHtml(u.email || '') : (u.email || '')}')">${isSuspended ? '✓ Reactivate' : '⚠️ Suspend'}</button>
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; border-color: #EF4444; color: #EF4444;" onclick="deleteUserPrompt('${u.id}', '${window.escapeHtml ? window.escapeHtml(u.email || '') : (u.email || '')}')">🗑️ Delete</button>
                                 <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; border-color: #818CF8; color: #818CF8;" onclick="loginAsUser('${u.id}')">🔑 Login as User</button>
                             </td>
                         </tr>
