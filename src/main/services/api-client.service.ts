@@ -157,10 +157,10 @@ export class CentralApiClient {
   }
 
   // ── Authentication APIs ──
-  public async login(email: string, password: string): Promise<AuthResponse> {
+  public async login(email: string, password: string, captchaToken?: string): Promise<AuthResponse> {
     const res = await this.request<AuthResponse>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password, installationId: this.installationId, platform: process.platform })
+      body: JSON.stringify({ email, password, captcha_token: captchaToken, installationId: this.installationId, platform: process.platform })
     })
 
     if (res.success && res.sessionToken && res.user) {
@@ -171,10 +171,10 @@ export class CentralApiClient {
     return res
   }
 
-  public async register(name: string, email: string, password: string): Promise<AuthResponse> {
+  public async register(name: string, email: string, password: string, captchaToken?: string): Promise<AuthResponse> {
     const res = await this.request<AuthResponse>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify({ name, email, password, captcha_token: captchaToken })
     })
 
     if (res.success && res.sessionToken && res.user) {
@@ -209,6 +209,12 @@ export class CentralApiClient {
     })
   }
 
+  public async getCaptchaConfig(): Promise<{ success: boolean; data?: any; error?: string }> {
+    return await this.request<{ success: boolean; data?: any; error?: string }>('/api/auth/captcha-config', {
+      method: 'GET'
+    })
+  }
+
   public async getProfile(): Promise<{ success: boolean; user?: CentralUser; license?: CentralLicense; error?: string }> {
     const res = await this.request<{ success: boolean; user?: CentralUser; license?: CentralLicense; error?: string }>('/api/auth/me', {
       method: 'GET'
@@ -231,10 +237,10 @@ export class CentralApiClient {
     return { success: true }
   }
 
-  public async forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  public async forgotPassword(email: string, captchaToken?: string): Promise<{ success: boolean; message?: string; error?: string }> {
     return await this.request('/api/auth/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email, captcha_token: captchaToken })
     })
   }
 

@@ -17,7 +17,8 @@ export function setupAuthIPC(): void {
   // ── Register Handler (Central Server First) ──
   ipcMain.handle('auth:register', async (_event, input: any) => {
     try {
-      const { name, email, password, confirmPassword } = input || {}
+      const { name, email, password, confirmPassword, captchaToken, captcha_token } = input || {}
+      const cTok = captchaToken || captcha_token || ''
 
       if (!name || typeof name !== 'string' || name.trim().length < 2) {
         return { success: false, error: 'Name must be at least 2 characters long.' }
@@ -33,7 +34,7 @@ export function setupAuthIPC(): void {
       }
 
       // Try central registration first
-      const centralRes = await centralApi.register(name, email, password)
+      const centralRes = await centralApi.register(name, email, password, cTok)
       if (centralRes.success && centralRes.user) {
         const u = centralRes.user
         
@@ -132,15 +133,16 @@ export function setupAuthIPC(): void {
   // ── Login Handler (Central Server First) ──
   ipcMain.handle('auth:login', async (_event, input: any) => {
     try {
-      const { email, password } = input || {}
+      const { email, password, captchaToken, captcha_token } = input || {}
       if (!email || !password) {
         return { success: false, error: 'Email and password are required.' }
       }
 
       const cleanEmail = email.trim().toLowerCase()
+      const cTok = captchaToken || captcha_token || ''
 
       // 1. Try Central Server Login
-      const centralRes = await centralApi.login(cleanEmail, password)
+      const centralRes = await centralApi.login(cleanEmail, password, cTok)
       if (centralRes.success && centralRes.user) {
         const u = centralRes.user
         
@@ -536,13 +538,16 @@ export function setupAuthIPC(): void {
   })
 
   // ── Forgot Password Handler ──
-  ipcMain.handle('auth:forgot-password', async (_event, email: string) => {
+  ipcMain.handle('auth:forgot-password', async (_event, input: any) => {
     try {
+      const email = typeof input === 'string' ? input : (input?.email || '')
+      const captchaToken = typeof input === 'object' ? (input?.captchaToken || input?.captcha_token || '') : ''
+
       if (!email || typeof email !== 'string') {
         return { success: false, error: 'Email address is required.' }
       }
       const cleanEmail = email.trim().toLowerCase()
-      const res = await centralApi.forgotPassword(cleanEmail)
+      const res = await centralApi.forgotPassword(cleanEmail, captchaToken)
       return res
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to request password reset.' }
