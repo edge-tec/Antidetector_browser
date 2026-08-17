@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS `desktop_installations` (
   CONSTRAINT `fk_inst_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+DROP TABLE IF EXISTS `app_releases`;
 CREATE TABLE IF NOT EXISTS `app_releases` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `platform` VARCHAR(50) NOT NULL,
@@ -174,15 +175,6 @@ CREATE TABLE IF NOT EXISTS `app_releases` (
   KEY `idx_rel_plat_status` (`platform`, `status`),
   KEY `idx_rel_ver` (`platform`, `version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Safe Migrations for app_releases
-ALTER TABLE `app_releases` ADD COLUMN IF NOT EXISTS `download_url` TEXT DEFAULT NULL;
-ALTER TABLE `app_releases` ADD COLUMN IF NOT EXISTS `original_filename` VARCHAR(255) DEFAULT NULL;
-ALTER TABLE `app_releases` ADD COLUMN IF NOT EXISTS `file_size` BIGINT DEFAULT 0;
-ALTER TABLE `app_releases` ADD COLUMN IF NOT EXISTS `release_notes` TEXT DEFAULT NULL;
-ALTER TABLE `app_releases` ADD COLUMN IF NOT EXISTS `status` VARCHAR(50) NOT NULL DEFAULT 'active';
-ALTER TABLE `app_releases` ADD COLUMN IF NOT EXISTS `published_at` DATETIME DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE `app_releases` ADD COLUMN IF NOT EXISTS `uploaded_by` VARCHAR(255) DEFAULT 'admin';
 
 INSERT INTO `app_releases` (`id`, `platform`, `version`, `release_name`, `file_path`, `download_url`, `original_filename`, `file_size`, `release_notes`, `status`, `uploaded_by`) VALUES
 ('rel_win_100', 'windows-x64', '1.0.0', 'ProfileVault v1.0.0 Stable Release', 'releases/ProfileVault-Windows-x64.exe', '/download/windows', 'ProfileVault-Windows-x64.exe', 159, 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.', 'active', 'system'),
