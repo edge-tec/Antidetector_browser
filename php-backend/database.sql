@@ -24,8 +24,19 @@ CREATE TABLE IF NOT EXISTS `users` (
   `google_id` VARCHAR(255) DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `last_login_at` DATETIME DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Safe Migrations for existing tables
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `permissions` TEXT DEFAULT NULL;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `auth_version` INT NOT NULL DEFAULT 1;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `email_verified` TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `email_verified_at` DATETIME DEFAULT NULL;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_token_hash` VARCHAR(64) DEFAULT NULL;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_token_expires_at` DATETIME DEFAULT NULL;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_created_at` DATETIME DEFAULT NULL;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `verification_attempts` INT DEFAULT 0;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `account_status` VARCHAR(50) NOT NULL DEFAULT 'pending';
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME DEFAULT NULL;
 
 -- Initial Admin Account Seed (admin@profilevault.local / Password: admin)
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `permissions`, `auth_version`, `email_verified`, `email_verified_at`, `account_status`, `created_at`)
