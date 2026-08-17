@@ -1141,6 +1141,7 @@ header('Content-Type: text/html; charset=utf-8');
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('releases', this)">🚀 App Downloads Config</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('support', this)">💬 Admin Support Inbox</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('notifications', this)">🔔 Broadcast Notifications</button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabGoogleOauth" onclick="switchAdminTab('google-oauth', this)">🔑 Google OAuth Config</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('seo', this)">🔍 SEO & Meta Manager</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('landing', this)">🎨 Landing CMS & Pricing</button>
@@ -1628,6 +1629,70 @@ header('Content-Type: text/html; charset=utf-8');
                                 <textarea id="notifMsg" rows="3" placeholder="Enter announcement text to send via email and in-app notifications..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;"></textarea>
                             </div>
                             <button class="btn btn-primary" style="align-self: flex-start;" onclick="sendBroadcastNotification()">Send System Broadcast Notification</button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 8.5: GOOGLE OAUTH CONFIGURATION -->
+                    <div id="tab-google-oauth" class="admin-tab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Google OAuth 2.0 & Social Login Configuration</h3>
+                                <p style="font-size: 13px; color: var(--text-muted);">Manage Google Single Sign-On (SSO) credentials, Client ID, and authentication policies.</p>
+                            </div>
+                            <button class="btn btn-outline" onclick="loadGoogleOAuthConfig()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Config</button>
+                        </div>
+
+                        <div id="googleOauthAdminMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
+
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-bottom: 18px;">
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Status</label>
+                                    <select id="googleOauthEnabled" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                        <option value="true">✅ Enabled (Users can Sign In with Google)</option>
+                                        <option value="false">❌ Disabled (Hide Google Sign In)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google One-Tap Prompt</label>
+                                    <select id="googleOauthOneTap" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                        <option value="true">⚡ Enabled (Show Google One-Tap Prompt)</option>
+                                        <option value="false">Off (Modal button only)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 18px;">
+                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Client ID</label>
+                                <input type="text" id="googleOauthClientId" placeholder="e.g. 1234567890-abcdefg.apps.googleusercontent.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Obtained from Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client IDs.</p>
+                            </div>
+
+                            <div style="margin-bottom: 24px;">
+                                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Google OAuth Client Secret (Optional)</label>
+                                <input type="password" id="googleOauthClientSecret" placeholder="••••••••••••••••••••••••••••" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                            </div>
+
+                            <button class="btn btn-primary" id="btnSaveGoogleOauth" onclick="saveGoogleOAuthConfig()" style="padding: 10px 24px; font-weight: 700;">💾 Save Google OAuth Configuration</button>
+                        </div>
+
+                        <!-- Google Cloud Setup Help Card -->
+                        <div style="background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 20px;">
+                            <h4 style="color: #818CF8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                <span>📋 Google Cloud Console Setup Helper</span>
+                            </h4>
+                            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">When configuring your OAuth 2.0 Web Application in <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #2DD4BF;">Google Cloud Console</a>, use these exact URLs:</p>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; font-size: 12px;">
+                                <div style="background: var(--bg-card); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <span style="color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 700;">Authorized JavaScript origins:</span>
+                                    <code style="color: #2DD4BF; word-break: break-all;"><?php echo APP_URL; ?></code>
+                                </div>
+                                <div style="background: var(--bg-card); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <span style="color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 700;">Authorized redirect URIs:</span>
+                                    <code style="color: #2DD4BF; word-break: break-all;"><?php echo APP_URL; ?>/api/auth/google</code>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -2456,6 +2521,108 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'profile-audit') loadProfileAuditTable();
             if (tabName === 'seo') loadSeoPagesTable();
             if (tabName === 'releases') loadAppReleasesTable();
+            if (tabName === 'google-oauth') loadGoogleOAuthConfig();
+        }
+
+        async function loadGoogleOAuthConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const msg = document.getElementById('googleOauthAdminMsg');
+            if (msg) msg.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/admin/get-google-oauth-config', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const cfg = data.data;
+                    const enabledSelect = document.getElementById('googleOauthEnabled');
+                    const oneTapSelect = document.getElementById('googleOauthOneTap');
+                    const clientIdInput = document.getElementById('googleOauthClientId');
+                    const clientSecretInput = document.getElementById('googleOauthClientSecret');
+
+                    if (enabledSelect) enabledSelect.value = cfg.enabled ? 'true' : 'false';
+                    if (oneTapSelect) oneTapSelect.value = cfg.oneTap ? 'true' : 'false';
+                    if (clientIdInput) clientIdInput.value = cfg.clientId || '';
+                    if (clientSecretInput && cfg.clientSecret) clientSecretInput.placeholder = '•••••••••••••••• (Saved)';
+                }
+            } catch(e) {
+                console.warn('[Google OAuth Admin] Failed to fetch config:', e);
+            }
+        }
+
+        async function saveGoogleOAuthConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const enabled = document.getElementById('googleOauthEnabled').value === 'true';
+            const oneTap = document.getElementById('googleOauthOneTap').value === 'true';
+            const clientId = document.getElementById('googleOauthClientId').value.trim();
+            const clientSecret = document.getElementById('googleOauthClientSecret').value.trim();
+            const msg = document.getElementById('googleOauthAdminMsg');
+            const saveBtn = document.getElementById('btnSaveGoogleOauth');
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerText = 'Saving Configuration...';
+            }
+
+            if (msg) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(99,102,241,0.2)';
+                msg.style.color = '#818CF8';
+                msg.innerText = 'Saving Google OAuth 2.0 settings to database...';
+            }
+
+            try {
+                const payload = {
+                    enabled: enabled,
+                    oneTap: oneTap,
+                    clientId: clientId
+                };
+                if (clientSecret) {
+                    payload.clientSecret = clientSecret;
+                }
+
+                const res = await fetch('/api/admin/save-google-oauth-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    if (msg) {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = '✅ ' + (data.message || 'Google OAuth settings saved and applied successfully!');
+                    }
+                    if (clientId) {
+                        window.GOOGLE_CLIENT_ID = clientId;
+                    }
+                } else {
+                    if (msg) {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = '❌ Failed to save: ' + (data.error || 'Unknown error');
+                    }
+                }
+            } catch(e) {
+                if (msg) {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = '❌ Network error saving Google OAuth settings.';
+                }
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = '💾 Save Google OAuth Configuration';
+                }
+            }
         }
 
         async function saveProfileEngineSettings() {

@@ -299,6 +299,34 @@ function requireAdmin(): array {
 }
 
 // ──────────────────────────────────────────────
+// Google OAuth Configuration Helper
+// ──────────────────────────────────────────────
+
+function getGoogleOAuthConfigPhp(): array {
+    $db = Database::getConnection();
+    try {
+        $stmt = $db->prepare("SELECT `key`, `value` FROM settings WHERE `key` LIKE 'google_oauth_%'");
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+        $map = [];
+        foreach ($rows as $r) { $map[$r['key']] = $r['value']; }
+        return [
+            'enabled' => ($map['google_oauth_enabled'] ?? 'true') === 'true',
+            'clientId' => $map['google_oauth_client_id'] ?? '',
+            'clientSecret' => $map['google_oauth_client_secret'] ?? '',
+            'oneTap' => ($map['google_oauth_one_tap'] ?? 'true') === 'true'
+        ];
+    } catch (Throwable $e) {
+        return [
+            'enabled' => true,
+            'clientId' => '',
+            'clientSecret' => '',
+            'oneTap' => true
+        ];
+    }
+}
+
+// ──────────────────────────────────────────────
 // SMTP Email System Helper Functions
 // ──────────────────────────────────────────────
 

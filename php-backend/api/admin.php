@@ -311,6 +311,33 @@ switch ($action) {
         respondJson(['success' => true]);
         break;
 
+    // ── 4.5. Google OAuth Configuration APIs ──
+    case 'get-google-oauth-config':
+        try {
+            $config = getGoogleOAuthConfigPhp();
+            respondJson(['success' => true, 'data' => $config]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'save-google-oauth-config':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $stmt = $db->prepare("REPLACE INTO settings (`key`, `value`) VALUES (?, ?)");
+
+            if (isset($input['enabled'])) $stmt->execute(['google_oauth_enabled', $input['enabled'] ? 'true' : 'false']);
+            if (isset($input['clientId'])) $stmt->execute(['google_oauth_client_id', trim((string)$input['clientId'])]);
+            if (isset($input['clientSecret'])) $stmt->execute(['google_oauth_client_secret', trim((string)$input['clientSecret'])]);
+            if (isset($input['oneTap'])) $stmt->execute(['google_oauth_one_tap', $input['oneTap'] ? 'true' : 'false']);
+
+            logAdminAction($adminUser['id'], $adminUser['email'], 'Updated Google OAuth Configuration');
+            respondJson(['success' => true, 'message' => 'Google OAuth settings saved successfully.']);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
     // ── 5. SMTP Configuration APIs ──
     case 'get-smtp-config':
         try {
