@@ -400,6 +400,12 @@ header('Content-Type: text/html; charset=utf-8');
                     btnReg.style.color = 'var(--text-muted)';
                 }
             }
+
+            if (typeof renderTurnstileWidget === 'function') {
+                if (mode === 'register') renderTurnstileWidget('registerTurnstileContainer');
+                else if (mode === 'forgot') renderTurnstileWidget('forgotPwTurnstileContainer');
+                else renderTurnstileWidget('loginTurnstileContainer');
+            }
         };
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1744,6 +1750,7 @@ header('Content-Type: text/html; charset=utf-8');
                     <div class="form-group" style="margin-bottom: 16px;">
                         <textarea id="contactSenderMessage" rows="4" placeholder="Your Message..." required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13.5px;"></textarea>
                     </div>
+                    <div id="contactTurnstileContainer" style="margin-bottom: 16px; display: flex; justify-content: center; min-height: 0;"></div>
                     <button type="submit" id="btnSendContactMsg" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; padding: 12px;">Send Message</button>
                 </form>
             </div>
@@ -1822,6 +1829,8 @@ header('Content-Type: text/html; charset=utf-8');
                     <input type="password" id="loginPassword" placeholder="••••••••" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
                 </div>
                 
+                <div id="loginTurnstileContainer" style="margin-bottom: 16px; display: flex; justify-content: center; min-height: 0;"></div>
+
                 <button type="submit" id="loginSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 13px; background: #2DD4BF; color: #000; font-weight: 800; border-radius: 8px; font-size: 15px;">Sign In</button>
 
                 <div style="display: flex; align-items: center; gap: 10px; margin: 20px 0;">
@@ -1851,6 +1860,8 @@ header('Content-Type: text/html; charset=utf-8');
                     <input type="email" id="forgotEmail" placeholder="user@example.com" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
                 </div>
                 
+                <div id="forgotPwTurnstileContainer" style="margin-bottom: 16px; display: flex; justify-content: center; min-height: 0;"></div>
+
                 <button type="submit" id="forgotSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 13px; background: #2DD4BF; color: #000; font-weight: 800; border-radius: 8px; font-size: 15px;">Send Reset Link</button>
 
                 <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 20px;">
@@ -1882,6 +1893,8 @@ header('Content-Type: text/html; charset=utf-8');
                     <input type="password" id="regConfirmPassword" placeholder="Re-enter password" required style="width: 100%; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
                 </div>
                 
+                <div id="registerTurnstileContainer" style="margin-bottom: 16px; display: flex; justify-content: center; min-height: 0;"></div>
+
                 <button type="submit" id="registerSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 13px; background: #2DD4BF; color: #000; font-weight: 800; border-radius: 8px; font-size: 15px;">Create Account</button>
 
                 <div style="display: flex; align-items: center; gap: 10px; margin: 20px 0;">
@@ -1971,6 +1984,7 @@ header('Content-Type: text/html; charset=utf-8');
                     </button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('notifications', this)">🔔 Broadcast Notifications</button>
                     <button class="admin-sidebar-btn admin-only-section" id="btnTabGoogleOauth" onclick="switchAdminTab('google-oauth', this)">🔑 Google OAuth Config</button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabCaptcha" onclick="switchAdminTab('captcha', this)">🛡️ Bot Protection (Captcha)</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('seo', this)">🔍 SEO & Meta Manager</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('landing', this)">🎨 Landing CMS & Pricing</button>
@@ -2777,6 +2791,131 @@ header('Content-Type: text/html; charset=utf-8');
                         </div>
                     </div>
 
+                    <!-- TAB: CAPTCHA & BOT PROTECTION -->
+                    <div id="tab-captcha" class="admin-tab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px;">Bot Protection & Captcha Verification</h3>
+                                <p style="font-size: 13px; color: var(--text-muted);">Protect registration, login, password resets, and contact forms using Google reCAPTCHA v3 or Cloudflare Turnstile.</p>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-outline" onclick="loadCaptchaConfig()" style="font-size: 12px; padding: 6px 14px;">🔄 Refresh</button>
+                            </div>
+                        </div>
+
+                        <div id="captchaAdminMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
+
+                        <div class="admin-grid-2col">
+                            <!-- Left: Provider & Credentials Form -->
+                            <div class="admin-card-box">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>🛡️</span> Active Protection Provider
+                                </h4>
+
+                                <div style="margin-bottom: 20px;">
+                                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 8px;">Select Bot Protection Provider</label>
+                                    <select id="captchaProviderSelect" onchange="handleCaptchaProviderChange()" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px; font-weight: 600;">
+                                        <option value="none">⭕ Disabled (No Captcha Verification)</option>
+                                        <option value="turnstile">🛡️ Cloudflare Turnstile (Privacy-friendly & Seamless)</option>
+                                        <option value="recaptcha_v3">🤖 Google reCAPTCHA v3 (Invisible Risk-based Scoring)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Cloudflare Turnstile Block -->
+                                <div id="turnstileConfigSection" style="display: none; background: #0E1017; border: 1px solid #1E2333; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                        <span style="font-size: 18px;">🛡️</span>
+                                        <h5 style="color: #38BDF8; font-size: 14px; margin: 0; font-weight: 700;">Cloudflare Turnstile Settings</h5>
+                                    </div>
+                                    <div style="margin-bottom: 14px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Turnstile Site Key</label>
+                                        <input type="text" id="captchaTurnstileSiteKey" placeholder="e.g. 0x4AAAAAA..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div style="margin-bottom: 14px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Turnstile Secret Key</label>
+                                        <input type="password" id="captchaTurnstileSecretKey" placeholder="••••••••••••••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <button type="button" class="btn btn-outline" style="border-color: #38BDF8; color: #38BDF8; font-size: 12px; padding: 6px 14px;" onclick="testCaptchaConnection('turnstile')">⚡ Test Turnstile Connection</button>
+                                </div>
+
+                                <!-- Google reCAPTCHA v3 Block -->
+                                <div id="recaptchaConfigSection" style="display: none; background: #0E1017; border: 1px solid #1E2333; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                        <span style="font-size: 18px;">🤖</span>
+                                        <h5 style="color: #818CF8; font-size: 14px; margin: 0; font-weight: 700;">Google reCAPTCHA v3 Settings</h5>
+                                    </div>
+                                    <div style="margin-bottom: 14px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">reCAPTCHA v3 Site Key</label>
+                                        <input type="text" id="captchaRecaptchaSiteKey" placeholder="e.g. 6Ld..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div style="margin-bottom: 14px;">
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">reCAPTCHA v3 Secret Key</label>
+                                        <input type="password" id="captchaRecaptchaSecretKey" placeholder="••••••••••••••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div style="margin-bottom: 14px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Minimum Risk Score Threshold (0.1 - 1.0)</label>
+                                            <span id="scoreThresholdValue" style="color: #2DD4BF; font-weight: 800; font-size: 13px;">0.5</span>
+                                        </div>
+                                        <input type="range" id="captchaRecaptchaThreshold" min="0.1" max="0.9" step="0.1" value="0.5" oninput="document.getElementById('scoreThresholdValue').innerText = this.value" style="width: 100%; accent-color: #2DD4BF;">
+                                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Scores: 1.0 is very likely a human, 0.0 is very likely a bot. Recommended: 0.5</p>
+                                    </div>
+                                    <button type="button" class="btn btn-outline" style="border-color: #818CF8; color: #818CF8; font-size: 12px; padding: 6px 14px;" onclick="testCaptchaConnection('recaptcha_v3')">⚡ Test reCAPTCHA Connection</button>
+                                </div>
+
+                                <!-- Protected Areas Toggles -->
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 24px;">
+                                    <h5 style="color: #FFF; font-size: 13px; margin: 0 0 12px 0; font-weight: 700;">Enforce Captcha On Specific Actions:</h5>
+                                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #E2E8F0; cursor: pointer;">
+                                            <input type="checkbox" id="captchaEnableRegister" checked style="accent-color: #2DD4BF; width: 16px; height: 16px;">
+                                            <span>User Registration (Blocks fake bot registrations)</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #E2E8F0; cursor: pointer;">
+                                            <input type="checkbox" id="captchaEnableReset" checked style="accent-color: #2DD4BF; width: 16px; height: 16px;">
+                                            <span>Password Reset Requests (Prevents spam reset emails)</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #E2E8F0; cursor: pointer;">
+                                            <input type="checkbox" id="captchaEnableContact" checked style="accent-color: #2DD4BF; width: 16px; height: 16px;">
+                                            <span>Contact Support Form (Blocks contact spam)</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #E2E8F0; cursor: pointer;">
+                                            <input type="checkbox" id="captchaEnableLogin" style="accent-color: #2DD4BF; width: 16px; height: 16px;">
+                                            <span>User Login Form (Brute force protection)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-primary" id="btnSaveCaptchaConfig" onclick="saveCaptchaConfig()" style="width: 100%; padding: 12px 24px; font-weight: 700; font-size: 14px;">💾 Save Bot Protection Configuration</button>
+                            </div>
+
+                            <!-- Right: Setup Guidance & Comparison -->
+                            <div class="admin-card-box" style="background: #11131C;">
+                                <h4 style="color: #818CF8; font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                                    <span>📖</span> Which Provider Should You Use?
+                                </h4>
+                                
+                                <div style="display: flex; flex-direction: column; gap: 16px; font-size: 13px; line-height: 1.6; color: var(--text-muted);">
+                                    <div style="background: var(--bg-card); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                        <h5 style="color: #38BDF8; margin: 0 0 6px 0; font-size: 14px;">Cloudflare Turnstile (Recommended)</h5>
+                                        <p style="margin: 0 0 8px 0;">Turnstile is a smart CAPTCHA alternative that never forces users to solve visual puzzles. It works seamlessly on all devices and respects user privacy without tracking cookies.</p>
+                                        <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" style="color: #2DD4BF; font-weight: 700; text-decoration: underline; font-size: 12px;">Get Cloudflare Turnstile Keys &rarr;</a>
+                                    </div>
+
+                                    <div style="background: var(--bg-card); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                                        <h5 style="color: #818CF8; margin: 0 0 6px 0; font-size: 14px;">Google reCAPTCHA v3</h5>
+                                        <p style="margin: 0 0 8px 0;">reCAPTCHA v3 runs 100% invisibly in the background, analyzing user interactions and assigning a risk score from 0.0 to 1.0 without interrupting the user experience.</p>
+                                        <a href="https://www.google.com/recaptcha/admin/create" target="_blank" style="color: #2DD4BF; font-weight: 700; text-decoration: underline; font-size: 12px;">Get Google reCAPTCHA v3 Keys &rarr;</a>
+                                    </div>
+
+                                    <div style="background: rgba(45,212,191,0.08); border: 1px solid rgba(45,212,191,0.25); border-radius: 12px; padding: 14px; font-size: 12px; color: #CBD5E1;">
+                                        🛡️ <strong>Real-time Protection:</strong> Once enabled, tokens are generated in milliseconds on the client side and validated directly on the backend before processing registrations or messages.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- TAB 9: EMAIL & SMTP -->
                     <div id="tab-smtp" class="admin-tab-content" style="display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
@@ -3514,6 +3653,12 @@ header('Content-Type: text/html; charset=utf-8');
                 statusBox.innerText = '⏳ Delivering your message to info@antiprofiles.com...';
             }
 
+            // Obtain Captcha Token if enabled
+            let captchaToken = null;
+            if (typeof getCaptchaToken === 'function') {
+                captchaToken = await getCaptchaToken('contact', 'contactTurnstileContainer');
+            }
+
             try {
                 const res = await fetch('/api/support?action=contact-message', {
                     method: 'POST',
@@ -3522,7 +3667,8 @@ header('Content-Type: text/html; charset=utf-8');
                         name: name,
                         email: email,
                         subject: subject,
-                        message: message
+                        message: message,
+                        captcha_token: captchaToken
                     })
                 });
 
@@ -3535,6 +3681,7 @@ header('Content-Type: text/html; charset=utf-8');
                         statusBox.innerText = '✅ ' + (data.message || 'Thank you for your message! Our team has received it at info@antiprofiles.com and will reply shortly.');
                     }
                     document.getElementById('publicContactForm').reset();
+                    if (typeof renderTurnstileWidget === 'function') renderTurnstileWidget('contactTurnstileContainer');
                 } else {
                     if (statusBox) {
                         statusBox.style.display = 'block';
@@ -3615,6 +3762,12 @@ header('Content-Type: text/html; charset=utf-8');
                 return false;
             }
 
+            // Obtain Captcha Token if enabled
+            let captchaToken = null;
+            if (typeof getCaptchaToken === 'function') {
+                captchaToken = await getCaptchaToken('register', 'registerTurnstileContainer');
+            }
+
             // Disable button to prevent double submission
             if (submitBtn) {
                 submitBtn.disabled = true;
@@ -3633,7 +3786,7 @@ header('Content-Type: text/html; charset=utf-8');
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, password })
+                    body: JSON.stringify({ name, email, password, captcha_token: captchaToken })
                 });
 
                 if (!res.ok && res.status >= 500) {
@@ -4415,6 +4568,7 @@ header('Content-Type: text/html; charset=utf-8');
             }
             if (tabName === 'releases') loadAppReleasesTable();
             if (tabName === 'google-oauth') loadGoogleOAuthConfig();
+            if (tabName === 'captcha') loadCaptchaConfig();
             if (tabName === 'smtp') {
                 loadSmtpConfig();
                 loadEmailLogs(1);
@@ -6761,6 +6915,12 @@ header('Content-Type: text/html; charset=utf-8');
                 return false;
             }
 
+            // Obtain Captcha Token if enabled
+            let captchaToken = null;
+            if (typeof getCaptchaToken === 'function') {
+                captchaToken = await getCaptchaToken('login', 'loginTurnstileContainer');
+            }
+
             // Disable button to prevent double submission
             if (submitBtn) {
                 submitBtn.disabled = true;
@@ -6778,7 +6938,7 @@ header('Content-Type: text/html; charset=utf-8');
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password, captcha_token: captchaToken })
                 });
 
                 if (!res.ok && res.status >= 500) {
@@ -6870,6 +7030,12 @@ header('Content-Type: text/html; charset=utf-8');
                 return false;
             }
 
+            // Obtain Captcha Token if enabled
+            let captchaToken = null;
+            if (typeof getCaptchaToken === 'function') {
+                captchaToken = await getCaptchaToken('reset', 'forgotPwTurnstileContainer');
+            }
+
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerText = 'Sending Link...';
@@ -6886,7 +7052,7 @@ header('Content-Type: text/html; charset=utf-8');
                 const res = await fetch('/api/auth/forgot-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email })
+                    body: JSON.stringify({ email: email, captcha_token: captchaToken })
                 });
 
                 const data = await res.json();
@@ -7094,6 +7260,7 @@ header('Content-Type: text/html; charset=utf-8');
 
         // Router & Route Guard on Page Load
         window.addEventListener('DOMContentLoaded', () => {
+            initCaptchaSystem();
             checkUrlEmailVerificationToken();
             const path = window.location.pathname.toLowerCase();
             const token = localStorage.getItem('sessionToken');

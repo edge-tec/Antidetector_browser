@@ -10,6 +10,12 @@ $db = Database::getConnection();
 
 switch ($action) {
 
+    // ── 0. Captcha Public Configuration ──
+    case 'captcha-config':
+        $config = getCaptchaConfigPhp(false);
+        respondJson(['success' => true, 'data' => $config]);
+        break;
+
     // ── 1. User Login ──
     case 'login':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
@@ -18,6 +24,13 @@ switch ($action) {
 
         if (!$email || !$password) {
             respondJson(['success' => false, 'error' => 'Email and password are required.'], 400);
+        }
+
+        // Validate Captcha
+        $captchaToken = $input['captcha_token'] ?? $input['captchaToken'] ?? $_POST['captcha_token'] ?? null;
+        $cRes = verifyCaptchaTokenPhp($captchaToken, 'login');
+        if (!$cRes['success']) {
+            respondJson(['success' => false, 'error' => $cRes['error'] ?? 'Captcha verification failed.'], 400);
         }
 
         $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
@@ -115,6 +128,13 @@ switch ($action) {
 
         if (!$name || !$email || !$password) {
             respondJson(['success' => false, 'error' => 'Name, email, and password are required.'], 400);
+        }
+
+        // Validate Captcha
+        $captchaToken = $input['captcha_token'] ?? $input['captchaToken'] ?? $_POST['captcha_token'] ?? null;
+        $cRes = verifyCaptchaTokenPhp($captchaToken, 'register');
+        if (!$cRes['success']) {
+            respondJson(['success' => false, 'error' => $cRes['error'] ?? 'Captcha verification failed.'], 400);
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -646,6 +666,13 @@ switch ($action) {
     case 'request-password-reset':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $email = trim($input['email'] ?? '');
+
+        // Validate Captcha
+        $captchaToken = $input['captcha_token'] ?? $input['captchaToken'] ?? $_POST['captcha_token'] ?? null;
+        $cRes = verifyCaptchaTokenPhp($captchaToken, 'reset');
+        if (!$cRes['success']) {
+            respondJson(['success' => false, 'error' => $cRes['error'] ?? 'Captcha verification failed.'], 400);
+        }
 
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             respondJson(['success' => false, 'error' => 'Please provide a valid email address.'], 400);

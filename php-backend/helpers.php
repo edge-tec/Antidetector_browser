@@ -705,6 +705,221 @@ function getGoogleOAuthConfigPhp(): array {
 }
 
 // ──────────────────────────────────────────────
+// Google reCAPTCHA v3 & Cloudflare Turnstile Suite
+// ──────────────────────────────────────────────
+
+function getCaptchaConfigPhp(bool $includeSecrets = false): array {
+    $db = Database::getConnection();
+    try {
+        $stmt = $db->prepare("SELECT `key`, `value` FROM settings WHERE `key` LIKE 'captcha_%'");
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+        $map = [];
+        foreach ($rows as $r) { $map[$r['key']] = $r['value']; }
+
+        $provider = $map['captcha_provider'] ?? 'none'; // 'none', 'recaptcha_v3', 'turnstile'
+        $recaptchaSiteKey = $map['captcha_recaptcha_site_key'] ?? '';
+        $recaptchaSecretKey = $map['captcha_recaptcha_secret_key'] ?? '';
+        $recaptchaThreshold = (float)($map['captcha_recaptcha_score_threshold'] ?? 0.5);
+
+        $turnstileSiteKey = $map['captcha_turnstile_site_key'] ?? '';
+        $turnstileSecretKey = $map['captcha_turnstile_secret_key'] ?? '';
+
+        $enableRegister = ($map['captcha_enable_register'] ?? 'true') === 'true';
+        $enableLogin = ($map['captcha_enable_login'] ?? 'false') === 'true';
+        $enableReset = ($map['captcha_enable_reset'] ?? 'true') === 'true';
+        $enableContact = ($map['captcha_enable_contact'] ?? 'true') === 'true';
+
+        $config = [
+            'provider' => $provider,
+            'recaptchaSiteKey' => $recaptchaSiteKey,
+            'recaptchaThreshold' => $recaptchaThreshold,
+            'turnstileSiteKey' => $turnstileSiteKey,
+            'enableRegister' => $enableRegister,
+            'enableLogin' => $enableLogin,
+            'enableReset' => $enableReset,
+            'enableContact' => $enableContact,
+            'hasRecaptchaSecret' => !empty($recaptchaSecretKey),
+            'hasTurnstileSecret' => !empty($turnstileSecretKey),
+        ];
+
+        if ($includeSecrets) {
+            $config['recaptchaSecretKey'] = $recaptchaSecretKey;
+            $config['turnstileSecretKey'] = $turnstileSecretKey;
+        }
+
+        return $config;
+    } catch (Throwable $e) {
+        return [
+            'provider' => 'none',
+            'recaptchaSiteKey' => '',
+            'recaptchaThreshold' => 0.5,
+            'turnstileSiteKey' => '',
+            'enableRegister' => false,
+            'enableLogin' => false,
+            'enableReset' => false,
+            'enableContact' => false,
+            'hasRecaptchaSecret' => false,
+            'hasTurnstileSecret' => false
+        ];
+    }
+}
+
+/**
+ * Verify reCAPTCHA v3 or Cloudflare Turnstile token from client.
+ */
+function verifyCaptchaTokenPhp(?string $token, string $action = 'submit', ?string $remoteIp = null): array {
+    $config = getCaptchaConfigPhp(true);
+    $provider = $config['provider'] ?? 'none';
+
+    if ($provider === 'none') {
+        return ['success' => true, 'skipped' => true, 'provider' => 'none'];
+    }
+
+    // Check if enabled for this route/action
+    $actionKey = strtolower(trim($action));
+    if ($actionKey === 'register' && !$config['enableRegister']) {
+        return ['success' => true, 'skipped' => true];
+    }
+    if ($actionKey === 'login' && !$config['enableLogin']) {
+        return ['success' => true, 'skipped' => true];
+    }
+    if (($actionKey === 'reset' || $actionKey === 'forgot_password') && !$config['enableReset']) {
+        return ['success' => true, 'skipped' => true];
+    }
+    if ($actionKey === 'contact' && !$config['enableContact']) {
+        return ['success' => true, 'skipped' => true];
+    }
+
+    if (empty($token)) {
+        return [
+            'success' => false,
+            'error' => 'Security verification required. Please complete the captcha challenge.'
+        ];
+    }
+
+    $ip = $remoteIp ?: ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '');
+
+    // 1. Google reCAPTCHA v3
+    if ($provider === 'recaptcha_v3') {
+        $secretKey = $config['recaptchaSecretKey'] ?? '';
+        if (empty($secretKey)) {
+            return ['success' => true, 'skipped' => true, 'warning' => 'reCAPTCHA secret not configured'];
+        }
+
+        $postFields = http_build_query([
+            'secret' => $secretKey,
+            'response' => $token,
+            'remoteip' => $ip
+        ]);
+
+        $response = null;
+        if (function_exists('curl_init')) {
+            $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+            if ($raw) {
+                $response = json_decode($raw, true);
+            }
+        }
+
+        if (!$response) {
+            $opts = [
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+                    'content' => $postFields,
+                    'timeout' => 8
+                ]
+            ];
+            $raw = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, stream_context_create($opts));
+            if ($raw) {
+                $response = json_decode($raw, true);
+            }
+        }
+
+        if (!is_array($response)) {
+            return ['success' => false, 'error' => 'Unable to verify reCAPTCHA response from Google. Please try again.'];
+        }
+
+        if (!empty($response['success'])) {
+            $score = (float)($response['score'] ?? 1.0);
+            $minScore = (float)($config['recaptchaThreshold'] ?? 0.5);
+            if ($score >= $minScore) {
+                return ['success' => true, 'score' => $score, 'provider' => 'recaptcha_v3'];
+            } else {
+                return ['success' => false, 'error' => "Bot detection security score too low ({$score}). Please try again."];
+            }
+        } else {
+            $errCodes = implode(', ', $response['error-codes'] ?? ['invalid-token']);
+            return ['success' => false, 'error' => "reCAPTCHA verification failed ({$errCodes})."];
+        }
+    }
+
+    // 2. Cloudflare Turnstile
+    if ($provider === 'turnstile') {
+        $secretKey = $config['turnstileSecretKey'] ?? '';
+        if (empty($secretKey)) {
+            return ['success' => true, 'skipped' => true, 'warning' => 'Turnstile secret not configured'];
+        }
+
+        $postFields = http_build_query([
+            'secret' => $secretKey,
+            'response' => $token,
+            'remoteip' => $ip
+        ]);
+
+        $response = null;
+        if (function_exists('curl_init')) {
+            $ch = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+            if ($raw) {
+                $response = json_decode($raw, true);
+            }
+        }
+
+        if (!$response) {
+            $opts = [
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+                    'content' => $postFields,
+                    'timeout' => 8
+                ]
+            ];
+            $raw = @file_get_contents('https://challenges.cloudflare.com/turnstile/v0/siteverify', false, stream_context_create($opts));
+            if ($raw) {
+                $response = json_decode($raw, true);
+            }
+        }
+
+        if (!is_array($response)) {
+            return ['success' => false, 'error' => 'Unable to verify Turnstile token with Cloudflare. Please try again.'];
+        }
+
+        if (!empty($response['success'])) {
+            return ['success' => true, 'provider' => 'turnstile'];
+        } else {
+            $errCodes = implode(', ', $response['error-codes'] ?? ['invalid-input-response']);
+            return ['success' => false, 'error' => "Cloudflare Turnstile verification failed ({$errCodes})."];
+        }
+    }
+
+    return ['success' => true, 'skipped' => true];
+}
+
+// ──────────────────────────────────────────────
 // Centralized SMTP Email Engine & Audit Logging
 // ──────────────────────────────────────────────
 

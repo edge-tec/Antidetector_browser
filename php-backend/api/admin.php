@@ -794,8 +794,141 @@ switch ($action) {
             if (isset($input['clientSecret'])) $stmt->execute(['google_oauth_client_secret', trim((string)$input['clientSecret'])]);
             if (isset($input['oneTap'])) $stmt->execute(['google_oauth_one_tap', $input['oneTap'] ? 'true' : 'false']);
 
-            logAdminAction($adminUser['id'], $adminUser['email'], 'Updated Google OAuth Configuration');
+            logAdminAction($admin['id'], $admin['email'], 'Updated Google OAuth Configuration');
             respondJson(['success' => true, 'message' => 'Google OAuth settings saved successfully.']);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    // ── 4.6. Captcha & Bot Protection APIs (Google reCAPTCHA v3 & Cloudflare Turnstile) ──
+    case 'get-captcha-config':
+        try {
+            $config = getCaptchaConfigPhp(false);
+            respondJson(['success' => true, 'data' => $config]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'save-captcha-config':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $stmt = $db->prepare("REPLACE INTO settings (`key`, `value`) VALUES (?, ?)");
+
+            if (isset($input['provider'])) {
+                $prov = strtolower(trim((string)$input['provider']));
+                if (!in_array($prov, ['none', 'recaptcha_v3', 'turnstile'])) $prov = 'none';
+                $stmt->execute(['captcha_provider', $prov]);
+            }
+
+            // Google reCAPTCHA v3
+            if (isset($input['recaptchaSiteKey'])) {
+                $stmt->execute(['captcha_recaptcha_site_key', trim((string)$input['recaptchaSiteKey'])]);
+            }
+            if (!empty($input['recaptchaSecretKey']) && trim((string)$input['recaptchaSecretKey']) !== '••••••••') {
+                $stmt->execute(['captcha_recaptcha_secret_key', trim((string)$input['recaptchaSecretKey'])]);
+            }
+            if (isset($input['recaptchaThreshold'])) {
+                $th = max(0.1, min(1.0, (float)$input['recaptchaThreshold']));
+                $stmt->execute(['captcha_recaptcha_score_threshold', (string)$th]);
+            }
+
+            // Cloudflare Turnstile
+            if (isset($input['turnstileSiteKey'])) {
+                $stmt->execute(['captcha_turnstile_site_key', trim((string)$input['turnstileSiteKey'])]);
+            }
+            if (!empty($input['turnstileSecretKey']) && trim((string)$input['turnstileSecretKey']) !== '••••••••') {
+                $stmt->execute(['captcha_turnstile_secret_key', trim((string)$input['turnstileSecretKey'])]);
+            }
+
+            // Protected Routes Toggles
+            if (isset($input['enableRegister'])) $stmt->execute(['captcha_enable_register', $input['enableRegister'] ? 'true' : 'false']);
+            if (isset($input['enableLogin'])) $stmt->execute(['captcha_enable_login', $input['enableLogin'] ? 'true' : 'false']);
+            if (isset($input['enableReset'])) $stmt->execute(['captcha_enable_reset', $input['enableReset'] ? 'true' : 'false']);
+            if (isset($input['enableContact'])) $stmt->execute(['captcha_enable_contact', $input['enableContact'] ? 'true' : 'false']);
+
+            logAdminAction($admin['id'], $admin['email'], 'Updated Captcha & Bot Protection Configuration');
+            respondJson(['success' => true, 'message' => 'Captcha & Bot Protection settings saved successfully.']);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
+    case 'test-captcha-config':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $provider = strtolower(trim((string)($input['provider'] ?? 'turnstile')));
+            
+            if ($provider === 'recaptcha_v3') {
+                $sec = trim((string)($input['secretKey'] ?? ''));
+                if (empty($sec)) {
+                    $c = getCaptchaConfigPhp(true);
+                    $sec = $c['recaptchaSecretKey'] ?? '';
+                }
+                if (empty($sec)) {
+                    respondJson(['success' => false, 'error' => 'reCAPTCHA Secret Key is required to run connection test.'], 400);
+                }
+                
+                // Test siteverify with a dummy token to test API responsiveness
+                $postFields = http_build_query(['secret' => $sec, 'response' => 'test_health_probe']);
+                $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                $raw = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                $data = $raw ? json_decode($raw, true) : null;
+                // If API reachable, Google returns 200 with error codes like invalid-input-response (meaning secret is checked or reached)
+                if ($httpCode === 200 && is_array($data)) {
+                    $errs = $data['error-codes'] ?? [];
+                    if (in_array('invalid-input-secret', $errs)) {
+                        respondJson(['success' => false, 'error' => 'Google rejected Secret Key: invalid-input-secret. Please check your Secret Key.'], 400);
+                    } else {
+                        respondJson(['success' => true, 'message' => 'Google reCAPTCHA v3 API endpoint is live, responsive, and Secret Key format is accepted.']);
+                    }
+                } else {
+                    respondJson(['success' => false, 'error' => 'Failed to reach Google reCAPTCHA server (HTTP ' . $httpCode . ').'], 500);
+                }
+            } elseif ($provider === 'turnstile') {
+                $sec = trim((string)($input['secretKey'] ?? ''));
+                if (empty($sec)) {
+                    $c = getCaptchaConfigPhp(true);
+                    $sec = $c['turnstileSecretKey'] ?? '';
+                }
+                if (empty($sec)) {
+                    respondJson(['success' => false, 'error' => 'Turnstile Secret Key is required to run connection test.'], 400);
+                }
+
+                $postFields = http_build_query(['secret' => $sec, 'response' => 'test_health_probe']);
+                $ch = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                $raw = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                $data = $raw ? json_decode($raw, true) : null;
+                if ($httpCode === 200 && is_array($data)) {
+                    $errs = $data['error-codes'] ?? [];
+                    if (in_array('invalid-input-secret', $errs)) {
+                        respondJson(['success' => false, 'error' => 'Cloudflare rejected Secret Key: invalid-input-secret. Please verify your Turnstile Secret Key.'], 400);
+                    } else {
+                        respondJson(['success' => true, 'message' => 'Cloudflare Turnstile API endpoint is live, responsive, and Secret Key format is accepted.']);
+                    }
+                } else {
+                    respondJson(['success' => false, 'error' => 'Failed to reach Cloudflare Turnstile server (HTTP ' . $httpCode . ').'], 500);
+                }
+            } else {
+                respondJson(['success' => true, 'message' => 'Captcha protection is currently disabled.']);
+            }
         } catch (Throwable $e) {
             respondJson(['success' => false, 'error' => $e->getMessage()], 500);
         }

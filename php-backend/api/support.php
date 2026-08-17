@@ -514,6 +514,13 @@ try {
             $subject = trim($input['subject'] ?? 'Website Inquiry');
             $message = trim($input['message'] ?? $input['messageBody'] ?? '');
 
+            // Validate Captcha
+            $captchaToken = $input['captcha_token'] ?? $input['captchaToken'] ?? $_POST['captcha_token'] ?? null;
+            $cRes = verifyCaptchaTokenPhp($captchaToken, 'contact');
+            if (!$cRes['success']) {
+                respondJson(['success' => false, 'error' => $cRes['error'] ?? 'Captcha verification failed.'], 400);
+            }
+
             if (!$name || !$email || !$message) {
                 respondJson(['success' => false, 'error' => 'Please provide your name, a valid email address, and your message.'], 400);
             }
