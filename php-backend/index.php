@@ -1413,13 +1413,14 @@ header('Content-Type: text/html; charset=utf-8');
                                     <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
                                         <th style="padding: 12px 16px; color: var(--text-muted);">User Account</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Package Plan</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Device Limit</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Expiration Date</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="subsTableBody">
-                                    <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user subscription expiration dates...</td></tr>
+                                    <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user subscription expiration dates...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -3640,6 +3641,8 @@ header('Content-Type: text/html; charset=utf-8');
                     tbody.innerHTML = data.data.map((item, idx) => {
                         const expDate = item.subscription.expires_at ? item.subscription.expires_at.substring(0, 10) : '2026-12-31';
                         const planId = item.subscription.plan_id || 'plan_starter';
+                        const deviceLimit = item.subscription.device_limit || item.subscription.plan.team_limit || 2;
+                        const activeDevices = item.active_devices_count || 0;
                         return `
                         <tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${item.user.name} <br><span style="font-size:12px; color:var(--text-muted);">${item.user.email}</span></td>
@@ -3652,6 +3655,12 @@ header('Content-Type: text/html; charset=utf-8');
                                 </select>
                             </td>
                             <td style="padding: 12px 16px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="number" id="subDeviceLimit_${item.user.id}" value="${deviceLimit}" min="1" max="100" style="width: 60px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; color: #38BDF8; font-weight: 700; font-size: 13px; text-align: center;">
+                                    <span style="font-size: 11px; color: #94A3B8; white-space: nowrap;">(${activeDevices} active)</span>
+                                </div>
+                            </td>
+                            <td style="padding: 12px 16px;">
                                 <select id="subStatus_${item.user.id}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
                                     <option value="active" ${item.subscription.status === 'active' ? 'selected' : ''}>Active</option>
                                     <option value="suspended" ${item.subscription.status === 'suspended' ? 'selected' : ''}>Suspended</option>
@@ -3662,22 +3671,23 @@ header('Content-Type: text/html; charset=utf-8');
                                 <input type="date" id="subExp_${item.user.id}" value="${expDate}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
                             </td>
                             <td style="padding: 12px 16px;">
-                                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="updateUserSubscriptionDateAndPlan('${item.user.id}')">💾 Save Expiration</button>
+                                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="updateUserSubscriptionDateAndPlan('${item.user.id}')">💾 Save Subscription</button>
                             </td>
                         </tr>
                         `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">No subscription records found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#F87171;">No subscription records found.</td></tr>';
                 }
             } catch(err) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Error loading subscriptions.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#F87171;">Error loading subscriptions.</td></tr>';
             }
         }
 
         async function updateUserSubscriptionDateAndPlan(userId) {
             const token = localStorage.getItem('sessionToken');
             const planId = document.getElementById('subPlan_' + userId).value;
+            const deviceLimit = document.getElementById('subDeviceLimit_' + userId)?.value || 2;
             const status = document.getElementById('subStatus_' + userId).value;
             const expDate = document.getElementById('subExp_' + userId).value;
 
@@ -3696,13 +3706,14 @@ header('Content-Type: text/html; charset=utf-8');
                     body: JSON.stringify({
                         userId: userId,
                         plan_id: planId,
+                        device_limit: parseInt(deviceLimit, 10),
                         status: status,
                         expires_at: expDate + ' 23:59:59'
                     })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(`Subscription plan (${planId}) & expiration date successfully updated to ${expDate}!`);
+                    alert(`User subscription (Plan: ${planId}, Device Limit: ${deviceLimit}) and expiration updated successfully!`);
                     loadSubscriptionsTable();
                 } else {
                     alert('Error: ' + (data.error || 'Failed to update subscription.'));

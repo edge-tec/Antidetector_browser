@@ -77,8 +77,53 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
         ];
     }
 
-    // 3. Device Count Limit Check
-    $maxDevicesLimit = (int)($config['max_devices_limit'] ?? 2);
+    // 3. Subscription & Plan Resolution (to determine dynamic device limit)
+    $subStmt = $db->prepare("SELECT * FROM subscriptions WHERE user_id = ?");
+    $subStmt->execute([$userId]);
+    $sub = $subStmt->fetch();
+
+    if (!$sub) {
+        $subId = 'sub_' . $userId;
+        $userRole = strtolower($user['role'] ?? 'user');
+        $defaultPlanId = ($userRole === 'admin' || $userRole === 'super_admin') ? 'plan_pro' : 'plan_starter';
+        $createSub = $db->prepare("
+            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
+            VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 3, 2)
+        ");
+        $createSub->execute([$subId, $userId, $defaultPlanId]);
+
+        $subStmt->execute([$userId]);
+        $sub = $subStmt->fetch();
+    }
+
+    $planStmt = $db->prepare("SELECT * FROM pricing_plans WHERE id = ?");
+    $planStmt->execute([$sub['plan_id']]);
+    $plan = $planStmt->fetch() ?: [
+        'id' => 'plan_starter',
+        'name' => 'Starter',
+        'monthly_price' => 19,
+        'yearly_price' => 15,
+        'profile_limit' => 25,
+        'team_limit' => 2,
+        'api_limit' => 'Basic API'
+    ];
+
+    // 4. Device Count Limit Check (Per-User Subscription Override > Plan Limit > Global Config)
+    $userRole = strtolower($user['role'] ?? 'user');
+    $isAdmin = ($userRole === 'admin' || $userRole === 'super_admin');
+
+    if (!empty($sub['device_limit']) && (int)$sub['device_limit'] > 0) {
+        $maxDevicesLimit = (int)$sub['device_limit'];
+    } elseif (!empty($plan['team_limit']) && (int)$plan['team_limit'] > 0) {
+        $maxDevicesLimit = (int)$plan['team_limit'];
+    } else {
+        $maxDevicesLimit = (int)($config['max_devices_limit'] ?? 2);
+    }
+
+    if ($isAdmin) {
+        $maxDevicesLimit = max($maxDevicesLimit, 50);
+    }
+
     if ($installationId) {
         $instStmt = $db->prepare("SELECT * FROM desktop_installations WHERE installation_id = ?");
         $instStmt->execute([$installationId]);
@@ -89,7 +134,7 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
             $countStmt->execute([$userId]);
             $existingCount = (int)$countStmt->fetch()['count'];
 
-            if ($existingCount >= $maxDevicesLimit && $user['role'] !== 'admin') {
+            if ($existingCount >= $maxDevicesLimit && !$isAdmin) {
                 return [
                     'valid' => false,
                     'account_status' => $user['account_status'],
@@ -131,36 +176,6 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
     $activeCountStmt = $db->prepare("SELECT COUNT(*) as count FROM desktop_installations WHERE user_id = ? AND revoked_at IS NULL");
     $activeCountStmt->execute([$userId]);
     $activeDevicesCount = (int)$activeCountStmt->fetch()['count'];
-
-    // 4. Subscription & Expiration Verification
-    $subStmt = $db->prepare("SELECT * FROM subscriptions WHERE user_id = ?");
-    $subStmt->execute([$userId]);
-    $sub = $subStmt->fetch();
-
-    if (!$sub) {
-        $subId = 'sub_' . $userId;
-        $defaultPlanId = $user['role'] === 'admin' ? 'plan_pro' : 'plan_starter';
-        $createSub = $db->prepare("
-            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
-            VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 3)
-        ");
-        $createSub->execute([$subId, $userId, $defaultPlanId]);
-
-        $subStmt->execute([$userId]);
-        $sub = $subStmt->fetch();
-    }
-
-    $planStmt = $db->prepare("SELECT * FROM pricing_plans WHERE id = ?");
-    $planStmt->execute([$sub['plan_id']]);
-    $plan = $planStmt->fetch() ?: [
-        'id' => 'plan_starter',
-        'name' => 'Starter',
-        'monthly_price' => 19,
-        'yearly_price' => 15,
-        'profile_limit' => 25,
-        'team_limit' => 2,
-        'api_limit' => 'Basic API'
-    ];
 
     $now = time();
     $expiresAtTime = strtotime($sub['expires_at']);

@@ -134,14 +134,18 @@ CREATE TABLE IF NOT EXISTS `subscriptions` (
   `starts_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `expires_at` DATETIME NOT NULL,
   `grace_period_days` INT DEFAULT 3,
+  `device_limit` INT DEFAULT NULL,
   `auto_renew` TINYINT(1) DEFAULT 1,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_sub_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `subscriptions` (`id`, `user_id`, `plan_id`, `status`, `starts_at`, `expires_at`, `grace_period_days`)
-VALUES ('sub_admin-default', 'admin-default', 'plan_pro', 'active', NOW(), DATE_ADD(NOW(), INTERVAL 5 YEAR), 3)
+-- Migration safeguard for existing tables
+ALTER TABLE `subscriptions` ADD COLUMN IF NOT EXISTS `device_limit` INT DEFAULT NULL;
+
+INSERT INTO `subscriptions` (`id`, `user_id`, `plan_id`, `status`, `starts_at`, `expires_at`, `grace_period_days`, `device_limit`)
+VALUES ('sub_admin-default', 'admin-default', 'plan_pro', 'active', NOW(), DATE_ADD(NOW(), INTERVAL 5 YEAR), 3, 10)
 ON DUPLICATE KEY UPDATE `id`=`id`;
 
 -- 4. Desktop Installations Table

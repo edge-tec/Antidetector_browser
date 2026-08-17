@@ -346,7 +346,9 @@ class RealtimeSyncService {
 
       case 'subscription.updated':
       case 'subscription.expired':
-        logger.info('sync', '[SyncEvent] Subscription updated, refreshing license & feature quotas...')
+      case 'device.limit.updated':
+      case 'license.updated':
+        logger.info('sync', '[SyncEvent] Subscription/device limit updated, refreshing license & feature quotas...')
         await this.resyncAuthoritativeState()
         break
 

@@ -108,11 +108,15 @@ function ensureDatabaseTablesExist() {
               `starts_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
               `expires_at` DATETIME NOT NULL,
               `grace_period_days` INT DEFAULT 3,
+              `device_limit` INT DEFAULT NULL,
               `auto_renew` TINYINT(1) DEFAULT 1,
               `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
               `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
+        try {
+            $db->exec("ALTER TABLE `subscriptions` ADD COLUMN IF NOT EXISTS `device_limit` INT DEFAULT NULL;");
+        } catch (Throwable $e) {}
 
         // 4. Desktop Installations Table
         $db->exec("

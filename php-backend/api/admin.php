@@ -364,8 +364,8 @@ switch ($action) {
     case 'get-subscriptions':
         $stmt = $db->prepare("
             SELECT u.id as user_id, u.name, u.email, u.role, u.account_status,
-                   s.id as sub_id, s.plan_id, s.status as sub_status, s.starts_at, s.expires_at, s.grace_period_days,
-                   p.name as plan_name, p.monthly_price, p.yearly_price
+                   s.id as sub_id, s.plan_id, s.status as sub_status, s.starts_at, s.expires_at, s.grace_period_days, s.device_limit as sub_device_limit,
+                   p.name as plan_name, p.monthly_price, p.yearly_price, p.team_limit as plan_team_limit
             FROM users u
             LEFT JOIN subscriptions s ON u.id = s.user_id
             LEFT JOIN pricing_plans p ON s.plan_id = p.id
@@ -380,6 +380,9 @@ switch ($action) {
             $devStmt = $db->prepare("SELECT * FROM desktop_installations WHERE user_id = ? AND revoked_at IS NULL");
             $devStmt->execute([$r['user_id']]);
             $devices = $devStmt->fetchAll();
+            $activeCount = count($devices);
+
+            $deviceLimit = !empty($r['sub_device_limit']) ? (int)$r['sub_device_limit'] : (int)($r['plan_team_limit'] ?? 2);
 
             $data[] = [
                 'user' => [
@@ -397,13 +400,16 @@ switch ($action) {
                     'starts_at' => $r['starts_at'] ?: date('Y-m-d H:i:s'),
                     'expires_at' => $r['expires_at'] ?: date('Y-m-d H:i:s', strtotime('+1 year')),
                     'grace_period_days' => (int)($r['grace_period_days'] ?? 3),
+                    'device_limit' => $deviceLimit,
                     'plan' => [
                         'id' => $r['plan_id'] ?: 'plan_starter',
                         'name' => $r['plan_name'] ?: 'Starter',
                         'monthly_price' => (float)($r['monthly_price'] ?? 19),
-                        'yearly_price' => (float)($r['yearly_price'] ?? 15)
+                        'yearly_price' => (float)($r['yearly_price'] ?? 15),
+                        'team_limit' => (int)($r['plan_team_limit'] ?? 2)
                     ]
                 ],
+                'active_devices_count' => $activeCount,
                 'devices' => $devices
             ];
         }
@@ -424,6 +430,7 @@ switch ($action) {
         $status = $input['status'] ?? null;
         $expiresAt = $input['expires_at'] ?? null;
         $graceDays = isset($input['grace_period_days']) ? (int)$input['grace_period_days'] : null;
+        $deviceLimit = isset($input['device_limit']) ? (int)$input['device_limit'] : (isset($input['deviceLimit']) ? (int)$input['deviceLimit'] : null);
 
         $db->beginTransaction();
         try {
@@ -434,8 +441,8 @@ switch ($action) {
             if (!$sub) {
                 $subId = 'sub_' . $userId;
                 $insSub = $db->prepare("
-                    INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)
+                    INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
                 ");
                 $insSub->execute([
                     $subId,
@@ -443,7 +450,8 @@ switch ($action) {
                     $planId ?: 'plan_starter',
                     $status ?: 'active',
                     $expiresAt ?: date('Y-m-d H:i:s', strtotime('+1 year')),
-                    $graceDays ?? 3
+                    $graceDays ?? 3,
+                    $deviceLimit ?: 2
                 ]);
             } else {
                 $updSub = $db->prepare("
@@ -452,32 +460,42 @@ switch ($action) {
                         status = COALESCE(?, status),
                         expires_at = COALESCE(?, expires_at),
                         grace_period_days = COALESCE(?, grace_period_days),
+                        device_limit = COALESCE(?, device_limit),
                         updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ?
                 ");
-                $updSub->execute([$planId, $status, $expiresAt, $graceDays, $userId]);
+                $updSub->execute([$planId, $status, $expiresAt, $graceDays, $deviceLimit, $userId]);
             }
 
-            // Bump user auth_version for subscription state sync
+            // Bump user auth_version for subscription & device limit state sync
             $db->prepare("UPDATE users SET auth_version = auth_version + 1 WHERE id = ?")->execute([$userId]);
             $verStmt = $db->prepare("SELECT auth_version FROM users WHERE id = ?");
             $verStmt->execute([$userId]);
             $newVer = (int)($verStmt->fetchColumn() ?: 1);
 
-            logAdminAction($admin['id'], $admin['email'], 'SUBSCRIPTION_CHANGED', $userId, "Plan: $planId, Status: $status, Expires: $expiresAt");
+            logAdminAction($admin['id'], $admin['email'], 'SUBSCRIPTION_CHANGED', $userId, "Plan: $planId, Devices: $deviceLimit, Status: $status, Expires: $expiresAt");
 
             publishRealtimeEvent($db, $userId, 'subscription.updated', [
                 'type' => 'subscription.updated',
                 'userId' => $userId,
                 'planId' => $planId,
+                'deviceLimit' => $deviceLimit,
                 'status' => $status,
                 'expiresAt' => $expiresAt,
                 'version' => $newVer,
                 'timestamp' => date('c')
             ], null, $newVer);
 
+            publishRealtimeEvent($db, $userId, 'device.limit.updated', [
+                'type' => 'device.limit.updated',
+                'userId' => $userId,
+                'deviceLimit' => $deviceLimit,
+                'version' => $newVer,
+                'timestamp' => date('c')
+            ], null, $newVer);
+
             $db->commit();
-            respondJson(['success' => true, 'message' => 'User subscription and expiration updated successfully.']);
+            respondJson(['success' => true, 'message' => "User subscription (Plan: $planId, Devices: $deviceLimit) and expiration updated successfully."]);
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             respondJson(['success' => false, 'error' => 'Failed to update subscription: ' . $e->getMessage()], 500);
