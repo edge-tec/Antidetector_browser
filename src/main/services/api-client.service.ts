@@ -221,6 +221,20 @@ export class CentralApiClient {
     })
   }
 
+  public async resendVerification(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    })
+  }
+
+  public async verifyEmail(token: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token })
+    })
+  }
+
   // ── Licensing & Expiry APIs ──
   public async validateLicense(): Promise<{ success: boolean; data?: CentralLicense; error?: string }> {
     const res = await this.request<{ success: boolean; data?: CentralLicense; error?: string }>('/api/license/validate', {

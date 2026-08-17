@@ -136,56 +136,60 @@ switch ($action) {
 
         $userCount = (int)$db->query("SELECT COUNT(*) FROM users")->fetchColumn();
         $lowerEmail = strtolower($email);
-        $role = ($userCount === 0 || $lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false) ? 'admin' : 'user';
+        $isAdmin = ($userCount === 0 || $lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false);
+        $role = $isAdmin ? 'admin' : 'user';
+        $emailVerified = $isAdmin ? 1 : 0;
+        $accountStatus = $isAdmin ? 'active' : 'pending_verification';
 
         $insertStmt = $db->prepare("
             INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ");
-        $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role]);
+        $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $emailVerified, $accountStatus]);
 
         // Automatically provision Free plan subscription for new user
         ensureUserFreeSubscription($db, $userId, $role);
 
-        // Generate JWT session token
-        $sessionToken = createSessionToken($userId);
-        $platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? 'desktop';
-        $deviceName = $_SERVER['HTTP_X_DEVICE_NAME'] ?? $input['deviceName'] ?? 'Web/Desktop Client';
-
-        try {
-            registerUserSession($db, $userId, $sessionToken, $platform, $deviceName, 1);
-        } catch (Throwable $e) {}
-
-        // Resolve Granular RBAC Permissions
-        $permissions = resolveUserPermissions($role, null);
-
-        // Automatically dispatch welcome / verification email
+        // Automatically dispatch verification email via SMTP
         $emailRes = ['sentViaSmtp' => false];
         try {
             $emailRes = sendVerificationEmailPhp($userId, $name, $email);
         } catch (Throwable $e) {}
 
-        recordSecurityEvent('USER_REGISTERED', 'info', $userId, "User registered with email {$email}");
+        recordSecurityEvent('USER_REGISTERED', 'info', $userId, "User registered with email {$email}. Mandatory email verification: " . ($emailVerified ? 'Admin Auto-verified' : 'Pending Verification'));
 
-        respondJson([
-            'success' => true,
-            'sessionToken' => $sessionToken,
-            'emailSent' => (bool)($emailRes['sentViaSmtp'] ?? false),
-            'message' => 'Account created successfully! Welcome to AntiProfiles.',
-            'user' => [
-                'id' => $userId,
-                'name' => $name,
+        if (!$emailVerified) {
+            respondJson([
+                'success' => true,
+                'requiresVerification' => true,
+                'emailVerified' => false,
                 'email' => strtolower($email),
-                'role' => $role,
-                'permissions' => $permissions,
+                'emailSent' => (bool)($emailRes['sentViaSmtp'] ?? false),
+                'message' => 'Registration successful! We have sent a verification link to your email address. Please click the link to verify your account before signing in.',
+                'verificationUrl' => $emailRes['verificationUrl'] ?? null
+            ]);
+        } else {
+            $sessionToken = createSessionToken($userId);
+            $permissions = resolveUserPermissions($role, null);
+            respondJson([
+                'success' => true,
+                'requiresVerification' => false,
                 'emailVerified' => true,
-                'accountStatus' => 'active',
-                'createdAt' => date('c'),
-                'lastLoginAt' => date('c')
-            ],
-            'token' => $emailRes['token'] ?? null,
-            'verificationUrl' => $emailRes['verificationUrl'] ?? null
-        ]);
+                'sessionToken' => $sessionToken,
+                'message' => 'Account created successfully! Welcome to AntiProfiles.',
+                'user' => [
+                    'id' => $userId,
+                    'name' => $name,
+                    'email' => strtolower($email),
+                    'role' => $role,
+                    'permissions' => $permissions,
+                    'emailVerified' => true,
+                    'accountStatus' => 'active',
+                    'createdAt' => date('c'),
+                    'lastLoginAt' => date('c')
+                ]
+            ]);
+        }
         break;
 
     // ── 4. Google OAuth Login / Registration ──

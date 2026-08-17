@@ -1147,7 +1147,7 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'https://';
     $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ($protocol . $host);
-    $verificationUrl = rtrim($baseUrl, '/') . '/verify-email?token=' . $plainToken;
+    $verificationUrl = rtrim($baseUrl, '/') . '/?verify_token=' . $plainToken;
     $deepLinkUrl = 'antiprofiles://verify-email?token=' . $plainToken;
 
     $html = "

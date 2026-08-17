@@ -3560,6 +3560,7 @@ header('Content-Type: text/html; charset=utf-8');
                 msg.style.display = 'block';
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
+                msg.style.border = 'none';
                 msg.innerText = 'Please enter your full name (at least 2 characters).';
                 return false;
             }
@@ -3568,6 +3569,7 @@ header('Content-Type: text/html; charset=utf-8');
                 msg.style.display = 'block';
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
+                msg.style.border = 'none';
                 msg.innerText = 'Please enter a valid email address.';
                 return false;
             }
@@ -3576,6 +3578,7 @@ header('Content-Type: text/html; charset=utf-8');
                 msg.style.display = 'block';
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
+                msg.style.border = 'none';
                 msg.innerText = 'Password must be at least 6 characters long.';
                 return false;
             }
@@ -3584,6 +3587,7 @@ header('Content-Type: text/html; charset=utf-8');
                 msg.style.display = 'block';
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
+                msg.style.border = 'none';
                 msg.innerText = 'Passwords do not match. Please check and try again.';
                 return false;
             }
@@ -3591,7 +3595,7 @@ header('Content-Type: text/html; charset=utf-8');
             // Disable button to prevent double submission
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerText = 'Creating account...';
+                submitBtn.innerText = 'Creating account & sending email...';
                 submitBtn.style.opacity = '0.7';
                 submitBtn.style.cursor = 'not-allowed';
             }
@@ -3599,7 +3603,8 @@ header('Content-Type: text/html; charset=utf-8');
             msg.style.display = 'block';
             msg.style.background = 'rgba(99,102,241,0.2)';
             msg.style.color = '#818CF8';
-            msg.innerText = 'Creating account...';
+            msg.style.border = 'none';
+            msg.innerText = 'Creating account & dispatching verification email...';
 
             try {
                 const res = await fetch('/api/auth/register', {
@@ -3614,33 +3619,56 @@ header('Content-Type: text/html; charset=utf-8');
 
                 const data = await res.json();
                 if (data.success) {
-                    msg.style.background = 'rgba(45,212,191,0.2)';
-                    msg.style.color = '#2DD4BF';
-                    msg.innerText = data.message || 'Account created successfully! Opening dashboard...';
+                    if (data.requiresVerification) {
+                        msg.style.display = 'block';
+                        msg.style.background = 'rgba(45,212,191,0.12)';
+                        msg.style.color = '#2DD4BF';
+                        msg.style.border = '1px solid rgba(45,212,191,0.3)';
+                        msg.style.borderRadius = '12px';
+                        msg.style.padding = '16px';
+                        msg.innerHTML = `
+                            <div style="font-size: 15px; font-weight: 800; margin-bottom: 6px; display:flex; align-items:center; gap:8px;">
+                                <span>✉️</span> <span>Verification Email Sent!</span>
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-main); line-height: 1.5; margin-bottom: 14px;">
+                                We've sent a verification link to <strong>${escapeHtml(email)}</strong>. Please click the link in your email to activate your account.
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${escapeHtml(email)}', this)">🔄 Resend Verification Email</button>
+                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px;" onclick="openModal('login')">Go to Sign In</button>
+                            </div>
+                        `;
+                        if (submitBtn) {
+                            submitBtn.style.display = 'none';
+                        }
+                    } else {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = data.message || 'Account created successfully! Opening dashboard...';
 
-                    if (data.sessionToken) {
-                        localStorage.setItem('sessionToken', data.sessionToken);
+                        if (data.sessionToken) {
+                            localStorage.setItem('sessionToken', data.sessionToken);
+                        }
+                        if (data.user) {
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                        }
+
+                        if (window.history && window.history.pushState) {
+                            window.history.pushState({}, '', '/dashboard');
+                        }
+
+                        window._pvJustLoggedIn = true;
+
+                        setTimeout(() => {
+                            closeModal();
+                            checkSession();
+                        }, 400);
                     }
-                    if (data.user) {
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                    }
-
-                    if (window.history && window.history.pushState) {
-                        window.history.pushState({}, '', '/dashboard');
-                    }
-
-                    // Set grace period flag to prevent immediate /api/auth/me re-validation
-                    window._pvJustLoggedIn = true;
-
-                    setTimeout(() => {
-                        closeModal();
-                        checkSession();
-                    }, 400);
                 } else {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
+                    msg.style.border = 'none';
                     msg.innerText = data.error || 'Registration failed. Please try again.';
-                    // Re-enable button on failure
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.innerText = 'Create Account';
@@ -3651,8 +3679,8 @@ header('Content-Type: text/html; charset=utf-8');
             } catch(err) {
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
+                msg.style.border = 'none';
                 msg.innerText = err.message || 'Unable to connect to authentication server. Please check your connection and try again.';
-                // Re-enable button on error
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerText = 'Create Account';
@@ -3661,6 +3689,53 @@ header('Content-Type: text/html; charset=utf-8');
                 }
             }
             return false;
+        }
+
+        async function resendVerificationEmail(email, btn) {
+            if (!email) {
+                const emailInput = document.getElementById('loginEmail') || document.getElementById('regEmail');
+                email = emailInput ? emailInput.value.trim() : '';
+            }
+            if (!email) {
+                alert('Please enter your email address.');
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Sending email...';
+            }
+
+            try {
+                const res = await fetch('/api/auth/resend-verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ ' + (data.message || 'A new verification link has been dispatched to your email.'));
+                    if (btn) {
+                        btn.innerText = 'Sent! Check Inbox';
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.innerText = '🔄 Resend Verification Email';
+                        }, 60000);
+                    }
+                } else {
+                    alert('⚠️ ' + (data.error || 'Could not send verification email. Please try again.'));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = '🔄 Resend Verification Email';
+                    }
+                }
+            } catch(e) {
+                alert('Network error sending verification email.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '🔄 Resend Verification Email';
+                }
+            }
         }
 
         async function handleGoogleSignIn() {
@@ -6601,18 +6676,32 @@ header('Content-Type: text/html; charset=utf-8');
                         checkSession();
                     }, 300);
                 } else {
-                    msg.style.background = 'rgba(239,68,68,0.2)';
-                    msg.style.color = '#F87171';
-                    if (data.error) {
-                        msg.innerText = data.error;
-                    } else if (res.status === 401) {
-                        msg.innerText = 'Invalid email address or password.';
-                    } else if (res.status === 403) {
-                        msg.innerText = 'Your account has been suspended. Please contact support.';
+                    msg.style.display = 'block';
+                    if (data.requiresVerification || data.emailVerified === false) {
+                        msg.style.background = 'rgba(239,68,68,0.15)';
+                        msg.style.color = '#F87171';
+                        msg.style.border = '1px solid rgba(239,68,68,0.3)';
+                        msg.style.borderRadius = '10px';
+                        msg.style.padding = '14px';
+                        msg.innerHTML = `
+                            <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 4px;">⚠️ Email Verification Required</div>
+                            <div style="font-size: 12.5px; color: #CBD5E1; margin-bottom: 10px;">Please verify your email address before continuing.</div>
+                            <button type="button" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${escapeHtml(email)}', this)">🔄 Resend Verification Email</button>
+                        `;
                     } else {
-                        msg.innerText = 'Login failed. Please check your credentials and try again.';
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.style.border = 'none';
+                        if (data.error) {
+                            msg.innerText = data.error;
+                        } else if (res.status === 401) {
+                            msg.innerText = 'Invalid email address or password.';
+                        } else if (res.status === 403) {
+                            msg.innerText = 'Your account has been suspended. Please contact support.';
+                        } else {
+                            msg.innerText = 'Login failed. Please check your credentials and try again.';
+                        }
                     }
-                    // Re-enable button on failure
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.innerText = 'Sign In';
@@ -6805,8 +6894,76 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        // Auto-verify email token if present in URL
+        async function checkUrlEmailVerificationToken() {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('verify_token') || params.get('token');
+            const isVerifyAction = params.get('action') === 'verify-email' || window.location.pathname.includes('verify-email') || params.has('verify_token');
+
+            if (token && isVerifyAction) {
+                // Clear URL params cleanly without page reload
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+
+                // Show processing indicator
+                openModal('login');
+                const msg = document.getElementById('loginMsg');
+                if (msg) {
+                    msg.style.display = 'block';
+                    msg.style.background = 'rgba(99,102,241,0.2)';
+                    msg.style.color = '#818CF8';
+                    msg.style.border = '1px solid rgba(99,102,241,0.4)';
+                    msg.style.borderRadius = '10px';
+                    msg.style.padding = '14px';
+                    msg.innerText = '⏳ Verifying your email address with central security...';
+                }
+
+                try {
+                    const res = await fetch('/api/auth/verify-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (msg) {
+                            msg.style.background = 'rgba(45,212,191,0.2)';
+                            msg.style.color = '#2DD4BF';
+                            msg.style.border = '1px solid rgba(45,212,191,0.4)';
+                            msg.innerHTML = '🎉 <strong>Email Verified Successfully!</strong> Your account is fully active. You can sign in now.';
+                        }
+                        if (data.sessionToken && data.user) {
+                            localStorage.setItem('sessionToken', data.sessionToken);
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                            window._pvJustLoggedIn = true;
+                            setTimeout(() => {
+                                closeModal();
+                                checkSession();
+                            }, 1200);
+                        }
+                    } else {
+                        if (msg) {
+                            msg.style.background = 'rgba(239,68,68,0.2)';
+                            msg.style.color = '#F87171';
+                            msg.style.border = '1px solid rgba(239,68,68,0.4)';
+                            msg.innerText = '⚠️ ' + (data.error || 'Verification token is invalid or expired.');
+                        }
+                    }
+                } catch(e) {
+                    if (msg) {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.style.border = 'none';
+                        msg.innerText = '⚠️ Connection error during email verification.';
+                    }
+                }
+            }
+        }
+
         // Router & Route Guard on Page Load
         window.addEventListener('DOMContentLoaded', () => {
+            checkUrlEmailVerificationToken();
             const path = window.location.pathname.toLowerCase();
             const token = localStorage.getItem('sessionToken');
             const userStr = localStorage.getItem('user');
