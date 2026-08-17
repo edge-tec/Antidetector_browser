@@ -27,7 +27,7 @@ export interface AuthoritativeUserState {
 
 class RealtimeSyncService {
   private sessionToken: string | null = null
-  private serverUrl: string = 'https://app.edgecash.net'
+  private serverUrl: string = 'https://antiprofiles.com'
   private status: SyncConnectionStatus = 'disconnected'
   private activeRequest: http.ClientRequest | null = null
   private reconnectTimer: NodeJS.Timeout | null = null

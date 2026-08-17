@@ -24,9 +24,9 @@ if (empty($pages)) {
 
 if (empty($pages)) {
     $pages = [
-        ['page_path' => '/', 'title' => 'ProfileVault Anti-Detect Browser', 'description' => 'Isolated browser profiles and fingerprint masking.', 'canonical_url' => 'https://app.edgecash.net/', 'updated_at' => date('Y-m-d')],
-        ['page_path' => '/download', 'title' => 'Download ProfileVault', 'description' => 'Download for Windows, macOS & Linux.', 'canonical_url' => 'https://app.edgecash.net/download', 'updated_at' => date('Y-m-d')],
-        ['page_path' => '/pricing', 'title' => 'Pricing & Plans', 'description' => 'Affordable multi-accounting browser plans.', 'canonical_url' => 'https://app.edgecash.net/pricing', 'updated_at' => date('Y-m-d')]
+        ['page_path' => '/', 'title' => 'ProfileVault Anti-Detect Browser', 'description' => 'Isolated browser profiles and fingerprint masking.', 'canonical_url' => 'https://antiprofiles.com/', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/download', 'title' => 'Download ProfileVault', 'description' => 'Download for Windows, macOS & Linux.', 'canonical_url' => 'https://antiprofiles.com/download', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/pricing', 'title' => 'Pricing & Plans', 'description' => 'Affordable multi-accounting browser plans.', 'canonical_url' => 'https://antiprofiles.com/pricing', 'updated_at' => date('Y-m-d')]
     ];
 }
 

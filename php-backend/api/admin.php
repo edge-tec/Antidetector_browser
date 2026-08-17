@@ -886,17 +886,17 @@ switch ($action) {
 
             $settings = [
                 'global_title' => $map['seo_global_title'] ?? $map['site_name'] ?? 'ProfileVault — Anti-Detect Browser & Profile Isolation',
-                'global_canonical' => $map['seo_global_canonical'] ?? $map['site_url'] ?? 'https://app.edgecash.net',
-                'global_og_image' => $map['seo_global_og_image'] ?? $map['default_og_image'] ?? 'https://app.edgecash.net/og-cover.png',
+                'global_canonical' => $map['seo_global_canonical'] ?? $map['site_url'] ?? 'https://antiprofiles.com',
+                'global_og_image' => $map['seo_global_og_image'] ?? $map['default_og_image'] ?? 'https://antiprofiles.com/og-cover.png',
                 'global_description' => $map['seo_global_description'] ?? $map['site_description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.',
-                'robots_content' => $map['robots_content'] ?? "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://app.edgecash.net/sitemap.xml"
+                'robots_content' => $map['robots_content'] ?? "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://antiprofiles.com/sitemap.xml"
             ];
             respondJson(['success' => true, 'data' => $settings]);
         } catch (Throwable $e) {
             respondJson(['success' => true, 'data' => [
                 'global_title' => 'ProfileVault — Anti-Detect Browser & Profile Isolation',
-                'global_canonical' => 'https://app.edgecash.net',
-                'global_og_image' => 'https://app.edgecash.net/og-cover.png',
+                'global_canonical' => 'https://antiprofiles.com',
+                'global_og_image' => 'https://antiprofiles.com/og-cover.png',
                 'global_description' => 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.'
             ]]);
         }
@@ -928,7 +928,7 @@ switch ($action) {
                         'description' => 'Enterprise Anti-Detect Browser. Manage thousands of isolated browser profiles, proxies, and digital fingerprints securely.',
                         'primary_keyword' => 'anti detect browser',
                         'robots' => 'index, follow',
-                        'canonical_url' => 'https://app.edgecash.net/'
+                        'canonical_url' => 'https://antiprofiles.com/'
                     ],
                     [
                         'id' => 'seo_download',
@@ -937,7 +937,7 @@ switch ($action) {
                         'description' => 'Download official ProfileVault application binaries with built-in proxy isolation and fingerprint spoofing.',
                         'primary_keyword' => 'download antidetect browser',
                         'robots' => 'index, follow',
-                        'canonical_url' => 'https://app.edgecash.net/download'
+                        'canonical_url' => 'https://antiprofiles.com/download'
                     ],
                     [
                         'id' => 'seo_pricing',
@@ -946,7 +946,7 @@ switch ($action) {
                         'description' => 'Affordable multi-accounting browser plans for affiliate marketers, e-commerce, and agencies.',
                         'primary_keyword' => 'antidetect browser price',
                         'robots' => 'index, follow',
-                        'canonical_url' => 'https://app.edgecash.net/pricing'
+                        'canonical_url' => 'https://antiprofiles.com/pricing'
                     ]
                 ];
             }
@@ -988,7 +988,7 @@ switch ($action) {
         $title = trim($input['title'] ?? $input['meta_title'] ?? 'ProfileVault');
         $desc = trim($input['description'] ?? $input['meta_description'] ?? '');
         $robots = trim($input['robots'] ?? 'index, follow');
-        $canonical = trim($input['canonical_url'] ?? ('https://app.edgecash.net' . $path));
+        $canonical = trim($input['canonical_url'] ?? ('https://antiprofiles.com' . $path));
         $keyword = trim($input['primary_keyword'] ?? $input['keyword'] ?? 'antidetect browser');
 
         try {

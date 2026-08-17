@@ -370,7 +370,7 @@ function getSmtpSettingsPhp(): array {
         $port = (int)($map['smtp_port'] ?? getenv('SMTP_PORT') ?: 587);
         $user = $map['smtp_user'] ?? getenv('SMTP_USER') ?: '';
         $pass = $map['smtp_password'] ?? getenv('SMTP_PASSWORD') ?: '';
-        $from = $map['smtp_from_email'] ?? getenv('SMTP_FROM_EMAIL') ?: ($user ?: 'noreply@app.edgecash.net');
+        $from = $map['smtp_from_email'] ?? getenv('SMTP_FROM_EMAIL') ?: ($user ?: 'noreply@antiprofiles.com');
         $fromName = $map['smtp_from_name'] ?? getenv('SMTP_FROM_NAME') ?: 'ProfileVault';
         $secure = ($map['smtp_secure'] ?? (getenv('SMTP_SECURE') ?: 'false')) === 'true';
         $enabled = ($map['smtp_enabled'] ?? (getenv('SMTP_ENABLED') ?: 'true')) === 'true';
@@ -431,7 +431,7 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody, ?ar
 
     $read(); // Initial greeting banner (220)
 
-    $serverHost = $_SERVER['SERVER_NAME'] ?? 'app.edgecash.net';
+    $serverHost = $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com';
     $write("EHLO " . $serverHost);
     $ehloRes = $read();
 
@@ -558,7 +558,7 @@ function testSmtpDiagnosticsPhp(?array $config = null): array {
     $write = function(string $cmd) use ($socket) { fputs($socket, $cmd . "\r\n"); };
 
     $banner = $read();
-    $serverHost = $_SERVER['SERVER_NAME'] ?? 'app.edgecash.net';
+    $serverHost = $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com';
     $write("EHLO " . $serverHost);
     $ehloRes = $read();
 
@@ -640,7 +640,7 @@ function sendVerificationEmailPhp(string $userId, string $userName, string $emai
     $updUser->execute([$tokenHash, $userId]);
 
     // 5. Build authoritative verification URL
-    $host = $_SERVER['HTTP_HOST'] ?? 'app.edgecash.net';
+    $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'https://';
     $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ($protocol . $host);
     $verificationUrl = rtrim($baseUrl, '/') . '/verify-email?token=' . $plainToken;
@@ -731,7 +731,7 @@ function sendAccountVerifiedConfirmationPhp(string $userName, string $email): bo
         </div>
         <p style='color:#94A3B8; font-size:14px; line-height:1.6;'>Your email address (<strong>" . htmlspecialchars($email) . "</strong>) has been verified. Your account is now fully active across Web, Windows, macOS, and Linux.</p>
         <div style='text-align:center; margin:28px 0;'>
-          <a href='https://app.edgecash.net/#login' style='background:#2DD4BF; color:#0F0F17; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Access Control Center</a>
+          <a href='https://antiprofiles.com/#login' style='background:#2DD4BF; color:#0F0F17; font-weight:800; padding:12px 28px; text-decoration:none; border-radius:8px; display:inline-block;'>Access Control Center</a>
         </div>
       </div>
     </body>

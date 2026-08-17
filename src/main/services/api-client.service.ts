@@ -60,7 +60,7 @@ export interface AuthResponse {
 }
 
 export class CentralApiClient {
-  private baseUrl: string = 'https://app.edgecash.net'
+  private baseUrl: string = 'https://antiprofiles.com'
   private token: string | null = null
   private currentUser: CentralUser | null = null
   private currentLicense: CentralLicense | null = null

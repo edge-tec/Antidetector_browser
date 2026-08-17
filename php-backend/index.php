@@ -165,7 +165,7 @@ try {
 }
 
 
-$appBaseUrl = defined('APP_URL') ? APP_URL : 'https://app.edgecash.net';
+$appBaseUrl = defined('APP_URL') ? APP_URL : 'https://antiprofiles.com';
 $pageTitle = $pageSeo['title'] ?? 'ProfileVault — Anti-Detect Browser & Profile Isolation';
 $pageDesc = $pageSeo['description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.';
 $pageCanonical = $pageSeo['canonical_url'] ?? (rtrim($appBaseUrl, '/') . $requestUri);
@@ -239,7 +239,7 @@ header('Content-Type: text/html; charset=utf-8');
     <link rel="shortcut icon" href="/logo.png">
     <meta property="og:title" content="<?php echo htmlspecialchars($ogTitle); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($ogDesc); ?>">
-    <meta property="og:image" content="https://app.edgecash.net/logo.png">
+    <meta property="og:image" content="https://antiprofiles.com/logo.png">
     <meta property="og:url" content="<?php echo htmlspecialchars($pageCanonical); ?>">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json"><?php echo json_encode($schemas, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); ?></script>
@@ -1738,7 +1738,7 @@ header('Content-Type: text/html; charset=utf-8');
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">From Email Address</label>
-                                    <input type="email" id="smtpFromEmail" placeholder="e.g. noreply@edgecash.net" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
+                                    <input type="email" id="smtpFromEmail" placeholder="e.g. noreply@antiprofiles.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; font-size: 13px;">
                                 </div>
                             </div>
 
@@ -1795,11 +1795,11 @@ header('Content-Type: text/html; charset=utf-8');
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Default Canonical Domain</label>
-                                    <input type="text" id="seoGlobalCanonical" value="https://app.edgecash.net" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                    <input type="text" id="seoGlobalCanonical" value="https://antiprofiles.com" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Default OpenGraph Image URL</label>
-                                    <input type="text" id="seoGlobalOgImage" value="https://app.edgecash.net/og-cover.png" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
+                                    <input type="text" id="seoGlobalOgImage" value="https://antiprofiles.com/og-cover.png" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">
                                 </div>
                             </div>
                             <div style="margin-bottom: 14px;">
@@ -3315,7 +3315,7 @@ header('Content-Type: text/html; charset=utf-8');
                         primary_keyword: keyword,
                         robots: robots,
                         description: desc,
-                        canonical_url: 'https://app.edgecash.net' + (path.startsWith('/') ? path : '/' + path)
+                        canonical_url: 'https://antiprofiles.com' + (path.startsWith('/') ? path : '/' + path)
                     })
                 });
 

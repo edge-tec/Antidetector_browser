@@ -29,7 +29,7 @@ if (!$content) {
 if (!empty($content)) {
     echo $content;
 } else {
-    $baseUrl = defined('APP_URL') ? APP_URL : 'https://app.edgecash.net';
+    $baseUrl = defined('APP_URL') ? APP_URL : 'https://antiprofiles.com';
     echo "User-agent: *\n";
     echo "Allow: /\n";
     echo "Disallow: /admin/\n";

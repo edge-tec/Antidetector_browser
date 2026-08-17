@@ -23,10 +23,10 @@ define('CORS_ORIGIN', '*');
 // App Info
 define('APP_NAME', 'ProfileVault');
 define('APP_VERSION', '1.0.0');
-define('APP_URL', 'https://app.edgecash.net');
+define('APP_URL', 'https://antiprofiles.com');
+define('APP_BASE_URL', 'https://antiprofiles.com');
 
 
 // Error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
-
