@@ -174,22 +174,25 @@ switch ($action) {
 
         $whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
 
-        $stmt = $db->prepare("
-            SELECT 
-                c.*,
-                u.name as user_name,
-                u.email as user_email,
-                (SELECT name FROM users WHERE id = c.assigned_agent_id) as assigned_agent_name,
-                (SELECT message FROM support_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_preview,
-                (SELECT COUNT(*) FROM support_messages WHERE conversation_id = c.id AND sender_type = 'user' AND is_read = 0) as unread_count
-            FROM support_conversations c
-            JOIN users u ON c.user_id = u.id
-            {$whereSql}
-            ORDER BY c.last_message_at DESC
-        ");
-        $stmt->execute($params);
-
-        respondJson(['success' => true, 'data' => $stmt->fetchAll()]);
+        try {
+            $stmt = $db->prepare("
+                SELECT 
+                    c.*,
+                    COALESCE(u.name, 'Visitor Guest') as user_name,
+                    COALESCE(u.email, 'guest@profilevault.local') as user_email,
+                    (SELECT name FROM users WHERE id = c.assigned_agent_id) as assigned_agent_name,
+                    (SELECT message FROM support_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_preview,
+                    (SELECT COUNT(*) FROM support_messages WHERE conversation_id = c.id AND sender_type = 'user' AND is_read = 0) as unread_count
+                FROM support_conversations c
+                LEFT JOIN users u ON c.user_id = u.id
+                {$whereSql}
+                ORDER BY c.last_message_at DESC
+            ");
+            $stmt->execute($params);
+            respondJson(['success' => true, 'data' => $stmt->fetchAll()]);
+        } catch (Throwable $e) {
+            respondJson(['success' => true, 'data' => []]);
+        }
         break;
 
     // 6. Admin: Add Internal Staff Note

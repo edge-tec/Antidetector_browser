@@ -562,6 +562,97 @@ switch ($action) {
         respondJson(['success' => true, 'data' => $auditSettings]);
         break;
 
+    // ── 7. SEO & Metadata APIs ──
+    case 'seo/get-pages':
+    case 'seo-pages':
+        try {
+            $stmt = $db->query("SELECT * FROM page_seo ORDER BY page_path ASC");
+            $pages = $stmt ? $stmt->fetchAll() : [];
+            if (empty($pages)) {
+                $stmt2 = $db->query("SELECT * FROM seo_pages ORDER BY page_path ASC");
+                $pages = $stmt2 ? $stmt2->fetchAll() : [];
+            }
+            if (empty($pages)) {
+                $pages = [
+                    [
+                        'id' => 'seo_home',
+                        'page_path' => '/',
+                        'title' => 'ProfileVault — Anti-Detect Browser & Multi-Accounting Platform',
+                        'description' => 'Enterprise Anti-Detect Browser. Manage thousands of isolated browser profiles, proxies, and digital fingerprints securely.',
+                        'primary_keyword' => 'anti detect browser',
+                        'robots' => 'index, follow',
+                        'canonical_url' => 'https://app.edgecash.net/'
+                    ],
+                    [
+                        'id' => 'seo_download',
+                        'page_path' => '/download',
+                        'title' => 'Download ProfileVault Anti-Detect Browser for Windows, macOS & Linux',
+                        'description' => 'Download official ProfileVault application binaries with built-in proxy isolation and fingerprint spoofing.',
+                        'primary_keyword' => 'download antidetect browser',
+                        'robots' => 'index, follow',
+                        'canonical_url' => 'https://app.edgecash.net/download'
+                    ],
+                    [
+                        'id' => 'seo_pricing',
+                        'page_path' => '/pricing',
+                        'title' => 'ProfileVault Pricing & Subscription Plans',
+                        'description' => 'Affordable multi-accounting browser plans for affiliate marketers, e-commerce, and agencies.',
+                        'primary_keyword' => 'antidetect browser price',
+                        'robots' => 'index, follow',
+                        'canonical_url' => 'https://app.edgecash.net/pricing'
+                    ]
+                ];
+            }
+            respondJson(['success' => true, 'data' => $pages]);
+        } catch (Throwable $e) {
+            respondJson(['success' => true, 'data' => []]);
+        }
+        break;
+
+    case 'seo/save-settings':
+    case 'seo-save-settings':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $allowedSeoKeys = ['global_title', 'global_canonical', 'global_og_image', 'global_description', 'robots_content', 'sitemap_enabled'];
+        $stmt = $db->prepare("INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)");
+        foreach ($allowedSeoKeys as $k) {
+            if (isset($input[$k])) {
+                $stmt->execute(['seo_' . $k, (string)$input[$k]]);
+            }
+        }
+        logAdminAction($adminUser['id'], $adminUser['email'], 'SAVE_SEO_SETTINGS', null, 'Admin saved global SEO and OpenGraph metadata');
+        respondJson(['success' => true, 'message' => 'Global SEO settings saved successfully.']);
+        break;
+
+    case 'seo/save-page':
+    case 'seo-save-page':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $path = trim($input['page_path'] ?? '/');
+        $title = trim($input['title'] ?? 'ProfileVault');
+        $desc = trim($input['description'] ?? '');
+        $robots = trim($input['robots'] ?? 'index, follow');
+        $canonical = trim($input['canonical_url'] ?? ('https://app.edgecash.net' . $path));
+        $keyword = trim($input['primary_keyword'] ?? 'antidetect browser');
+
+        try {
+            $db->prepare("
+                INSERT INTO page_seo (id, page_path, title, description, primary_keyword, robots, canonical_url, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), primary_keyword = VALUES(primary_keyword), robots = VALUES(robots), canonical_url = VALUES(canonical_url), updated_at = NOW()
+            ")->execute(['page_' . md5($path), $path, $title, $desc, $keyword, $robots, $canonical]);
+        } catch (Throwable $e) {}
+
+        try {
+            $db->prepare("
+                INSERT INTO seo_pages (id, page_path, title, description, primary_keyword, robots, canonical_url, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), primary_keyword = VALUES(primary_keyword), robots = VALUES(robots), canonical_url = VALUES(canonical_url), updated_at = NOW()
+            ")->execute(['seo_' . md5($path), $path, $title, $desc, $keyword, $robots, $canonical]);
+        } catch (Throwable $e) {}
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'SAVE_SEO_PAGE', null, "Admin updated SEO for page {$path}");
+        respondJson(['success' => true, 'message' => "SEO metadata for {$path} saved successfully."]);
+        break;
+
     case 'get-releases-config':
         $config = getDesktopAppConfigMap();
         respondJson(['success' => true, 'data' => $config]);

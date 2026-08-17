@@ -246,24 +246,26 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
     ];
 }
 
-// REST API Handler for /api/license and /api/license/*
-$user = getAuthenticatedUser();
-if (!$user) {
-    respondJson(['success' => false, 'error' => 'Authentication required. Please sign in.'], 401);
+// REST API Handler for direct requests to /api/license
+if (isset($_SERVER['REQUEST_URI']) && (strpos($_SERVER['REQUEST_URI'], '/api/license') === 0 || basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'license.php')) {
+    $user = getAuthenticatedUser();
+    if (!$user) {
+        respondJson(['success' => false, 'error' => 'Authentication required. Please sign in.'], 401);
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $installationId = $_SERVER['HTTP_X_INSTALLATION_ID'] ?? $input['installationId'] ?? null;
+    $platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? null;
+    $appVersion = $_SERVER['HTTP_X_APP_VERSION'] ?? $input['appVersion'] ?? null;
+
+    $result = validateUserLicenseInternal($user['id'], $installationId, $platform, $appVersion);
+    if (!$result['valid']) {
+        respondJson([
+            'success' => false,
+            'error' => $result['error'] ?? 'Your account has expired or is suspended.',
+            'data' => $result
+        ], 403);
+    }
+
+    respondJson(['success' => true, 'data' => $result]);
 }
-
-$input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$installationId = $_SERVER['HTTP_X_INSTALLATION_ID'] ?? $input['installationId'] ?? null;
-$platform = $_SERVER['HTTP_X_PLATFORM'] ?? $input['platform'] ?? null;
-$appVersion = $_SERVER['HTTP_X_APP_VERSION'] ?? $input['appVersion'] ?? null;
-
-$result = validateUserLicenseInternal($user['id'], $installationId, $platform, $appVersion);
-if (!$result['valid']) {
-    respondJson([
-        'success' => false,
-        'error' => $result['error'] ?? 'Your account has expired or is suspended.',
-        'data' => $result
-    ], 403);
-}
-
-respondJson(['success' => true, 'data' => $result]);
