@@ -791,6 +791,12 @@ function verifyCaptchaTokenPhp(?string $token, string $action = 'submit', ?strin
         return ['success' => true, 'skipped' => true];
     }
 
+    // Check if request is from native Desktop application software (identified via installation headers)
+    $hasDesktopSignature = !empty($_SERVER['HTTP_X_INSTALLATION_ID']) || !empty($_SERVER['HTTP_X_APP_VERSION']) || (isset($_SERVER['HTTP_X_PLATFORM']) && in_array(strtolower($_SERVER['HTTP_X_PLATFORM']), ['darwin', 'win32', 'linux', 'desktop', 'mac', 'windows']));
+    if (empty($token) && $hasDesktopSignature) {
+        return ['success' => true, 'skipped' => true, 'client' => 'desktop_app'];
+    }
+
     if (empty($token)) {
         return [
             'success' => false,
