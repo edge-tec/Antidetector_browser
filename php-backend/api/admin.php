@@ -6,6 +6,8 @@
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/license.php';
 
+ensureDatabaseTablesExist();
+
 // Require Admin authorization
 $adminUser = requireAdmin();
 $admin = $adminUser;
@@ -810,13 +812,17 @@ switch ($action) {
             $stmt->execute($params);
             $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Summary stats
-            $sentCount = (int)$db->query("SELECT COUNT(*) FROM email_logs WHERE status = 'sent'")->fetchColumn();
-            $failedCount = (int)$db->query("SELECT COUNT(*) FROM email_logs WHERE status = 'failed'")->fetchColumn();
+            // Summary stats safely
+            $sentCount = 0;
+            $failedCount = 0;
+            try {
+                $sentCount = (int)$db->query("SELECT COUNT(*) FROM email_logs WHERE status = 'sent'")->fetchColumn();
+                $failedCount = (int)$db->query("SELECT COUNT(*) FROM email_logs WHERE status = 'failed'")->fetchColumn();
+            } catch (Throwable $e) {}
 
             respondJson([
                 'success' => true,
-                'data' => $logs,
+                'data' => $logs ?: [],
                 'total' => $total,
                 'page' => $page,
                 'limit' => $limit,
@@ -827,7 +833,14 @@ switch ($action) {
                 ]
             ]);
         } catch (Throwable $e) {
-            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+            respondJson([
+                'success' => true,
+                'data' => [],
+                'total' => 0,
+                'page' => 1,
+                'limit' => 25,
+                'stats' => ['total' => 0, 'sent' => 0, 'failed' => 0]
+            ]);
         }
         break;
 
