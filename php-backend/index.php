@@ -5454,6 +5454,323 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // CAPTCHA & BOT PROTECTION ENGINE (reCAPTCHA v3 & Cloudflare Turnstile)
+        // ═══════════════════════════════════════════════════════════════════
+        let currentCaptchaConfig = {
+            provider: 'none',
+            recaptchaSiteKey: '',
+            recaptchaThreshold: 0.5,
+            turnstileSiteKey: '',
+            enableRegister: false,
+            enableLogin: false,
+            enableReset: false,
+            enableContact: false
+        };
+        const turnstileWidgetIds = {};
+
+        async function initCaptchaSystem() {
+            try {
+                const res = await fetch('/api/auth/captcha-config');
+                const json = await res.json();
+                if (json && json.success && json.data) {
+                    currentCaptchaConfig = json.data;
+                    const prov = currentCaptchaConfig.provider;
+
+                    if (prov === 'recaptcha_v3' && currentCaptchaConfig.recaptchaSiteKey) {
+                        if (!document.getElementById('recaptcha-v3-sdk')) {
+                            const s = document.createElement('script');
+                            s.id = 'recaptcha-v3-sdk';
+                            s.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(currentCaptchaConfig.recaptchaSiteKey);
+                            s.async = true;
+                            s.defer = true;
+                            document.head.appendChild(s);
+                        }
+                    } else if (prov === 'turnstile' && currentCaptchaConfig.turnstileSiteKey) {
+                        if (!document.getElementById('turnstile-sdk')) {
+                            const s = document.createElement('script');
+                            s.id = 'turnstile-sdk';
+                            s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+                            s.async = true;
+                            s.defer = true;
+                            s.onload = () => { renderAllTurnstileWidgets(); };
+                            document.head.appendChild(s);
+                        } else {
+                            renderAllTurnstileWidgets();
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[AntiProfiles Captcha] Initialization error:', e);
+            }
+        }
+
+        function renderTurnstileWidget(containerId) {
+            if (currentCaptchaConfig.provider !== 'turnstile' || !currentCaptchaConfig.turnstileSiteKey) return;
+            const el = document.getElementById(containerId);
+            if (!el || typeof turnstile === 'undefined') return;
+
+            if (turnstileWidgetIds[containerId] !== undefined) {
+                try {
+                    turnstile.reset(turnstileWidgetIds[containerId]);
+                    return;
+                } catch(e) {}
+            }
+
+            try {
+                el.innerHTML = '';
+                turnstileWidgetIds[containerId] = turnstile.render('#' + containerId, {
+                    sitekey: currentCaptchaConfig.turnstileSiteKey,
+                    theme: 'dark'
+                });
+            } catch(e) {
+                console.warn('[Turnstile] Render error for ' + containerId + ':', e);
+            }
+        }
+
+        function renderAllTurnstileWidgets() {
+            if (currentCaptchaConfig.provider !== 'turnstile') return;
+            if (currentCaptchaConfig.enableRegister) renderTurnstileWidget('registerTurnstileContainer');
+            if (currentCaptchaConfig.enableLogin) renderTurnstileWidget('loginTurnstileContainer');
+            if (currentCaptchaConfig.enableReset) renderTurnstileWidget('forgotPwTurnstileContainer');
+            if (currentCaptchaConfig.enableContact) renderTurnstileWidget('contactTurnstileContainer');
+        }
+
+        async function getCaptchaToken(action = 'submit', containerId = null) {
+            const prov = currentCaptchaConfig.provider;
+            if (!prov || prov === 'none') return null;
+
+            // Route check
+            if (action === 'register' && !currentCaptchaConfig.enableRegister) return null;
+            if (action === 'login' && !currentCaptchaConfig.enableLogin) return null;
+            if (action === 'reset' && !currentCaptchaConfig.enableReset) return null;
+            if (action === 'contact' && !currentCaptchaConfig.enableContact) return null;
+
+            if (prov === 'recaptcha_v3' && currentCaptchaConfig.recaptchaSiteKey) {
+                if (typeof grecaptcha !== 'undefined' && grecaptcha.execute) {
+                    try {
+                        return await new Promise((resolve) => {
+                            grecaptcha.ready(async () => {
+                                try {
+                                    const tok = await grecaptcha.execute(currentCaptchaConfig.recaptchaSiteKey, { action: action });
+                                    resolve(tok);
+                                } catch(err) {
+                                    console.warn('[reCAPTCHA v3] Execute error:', err);
+                                    resolve(null);
+                                }
+                            });
+                        });
+                    } catch (e) {
+                        console.warn('[reCAPTCHA v3] Error:', e);
+                    }
+                }
+            } else if (prov === 'turnstile') {
+                if (typeof turnstile !== 'undefined') {
+                    if (containerId && turnstileWidgetIds[containerId] !== undefined) {
+                        try {
+                            const tok = turnstile.getResponse(turnstileWidgetIds[containerId]);
+                            if (tok) return tok;
+                        } catch(e) {}
+                    }
+                    const inp = document.querySelector('input[name="cf-turnstile-response"]');
+                    if (inp && inp.value) return inp.value;
+                }
+            }
+            return null;
+        }
+
+        // ── Admin Panel Captcha Functions ──
+        function handleCaptchaProviderChange() {
+            const provSelect = document.getElementById('captchaProviderSelect');
+            const prov = provSelect ? provSelect.value : 'none';
+            const turnstileSec = document.getElementById('turnstileConfigSection');
+            const recaptchaSec = document.getElementById('recaptchaConfigSection');
+
+            if (turnstileSec) turnstileSec.style.display = (prov === 'turnstile') ? 'block' : 'none';
+            if (recaptchaSec) recaptchaSec.style.display = (prov === 'recaptcha_v3') ? 'block' : 'none';
+        }
+
+        async function loadCaptchaConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const msg = document.getElementById('captchaAdminMsg');
+            if (msg) msg.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/admin/get-captcha-config', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const cfg = data.data;
+                    const provSelect = document.getElementById('captchaProviderSelect');
+                    if (provSelect) provSelect.value = cfg.provider || 'none';
+
+                    // Cloudflare Turnstile
+                    const tSite = document.getElementById('captchaTurnstileSiteKey');
+                    const tSec = document.getElementById('captchaTurnstileSecretKey');
+                    if (tSite) tSite.value = cfg.turnstileSiteKey || '';
+                    if (tSec && cfg.hasTurnstileSecret) tSec.placeholder = '•••••••••••••••• (Saved)';
+
+                    // Google reCAPTCHA v3
+                    const rSite = document.getElementById('captchaRecaptchaSiteKey');
+                    const rSec = document.getElementById('captchaRecaptchaSecretKey');
+                    const rTh = document.getElementById('captchaRecaptchaThreshold');
+                    const rThVal = document.getElementById('scoreThresholdValue');
+                    if (rSite) rSite.value = cfg.recaptchaSiteKey || '';
+                    if (rSec && cfg.hasRecaptchaSecret) rSec.placeholder = '•••••••••••••••• (Saved)';
+                    if (rTh) {
+                        rTh.value = cfg.recaptchaThreshold || 0.5;
+                        if (rThVal) rThVal.innerText = rTh.value;
+                    }
+
+                    // Toggles
+                    const chkReg = document.getElementById('captchaEnableRegister');
+                    const chkLogin = document.getElementById('captchaEnableLogin');
+                    const chkReset = document.getElementById('captchaEnableReset');
+                    const chkContact = document.getElementById('captchaEnableContact');
+                    if (chkReg) chkReg.checked = !!cfg.enableRegister;
+                    if (chkLogin) chkLogin.checked = !!cfg.enableLogin;
+                    if (chkReset) chkReset.checked = !!cfg.enableReset;
+                    if (chkContact) chkContact.checked = !!cfg.enableContact;
+
+                    handleCaptchaProviderChange();
+                }
+            } catch(e) {
+                console.warn('[Captcha Admin] Failed to load config:', e);
+            }
+        }
+
+        async function saveCaptchaConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                alert('Please login as administrator to save configuration.');
+                return;
+            }
+
+            const provider = document.getElementById('captchaProviderSelect') ? document.getElementById('captchaProviderSelect').value : 'none';
+            const turnstileSiteKey = document.getElementById('captchaTurnstileSiteKey') ? document.getElementById('captchaTurnstileSiteKey').value.trim() : '';
+            const turnstileSecretKey = document.getElementById('captchaTurnstileSecretKey') ? document.getElementById('captchaTurnstileSecretKey').value.trim() : '';
+            const recaptchaSiteKey = document.getElementById('captchaRecaptchaSiteKey') ? document.getElementById('captchaRecaptchaSiteKey').value.trim() : '';
+            const recaptchaSecretKey = document.getElementById('captchaRecaptchaSecretKey') ? document.getElementById('captchaRecaptchaSecretKey').value.trim() : '';
+            const recaptchaThreshold = document.getElementById('captchaRecaptchaThreshold') ? (parseFloat(document.getElementById('captchaRecaptchaThreshold').value) || 0.5) : 0.5;
+
+            const enableRegister = document.getElementById('captchaEnableRegister') ? document.getElementById('captchaEnableRegister').checked : true;
+            const enableLogin = document.getElementById('captchaEnableLogin') ? document.getElementById('captchaEnableLogin').checked : false;
+            const enableReset = document.getElementById('captchaEnableReset') ? document.getElementById('captchaEnableReset').checked : true;
+            const enableContact = document.getElementById('captchaEnableContact') ? document.getElementById('captchaEnableContact').checked : true;
+
+            const msg = document.getElementById('captchaAdminMsg');
+            const saveBtn = document.getElementById('btnSaveCaptchaConfig');
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerText = 'Saving Configuration...';
+            }
+
+            if (msg) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(99,102,241,0.2)';
+                msg.style.color = '#818CF8';
+                msg.innerText = 'Saving Bot Protection & Captcha settings to database...';
+            }
+
+            try {
+                const payload = {
+                    provider: provider,
+                    turnstileSiteKey: turnstileSiteKey,
+                    recaptchaSiteKey: recaptchaSiteKey,
+                    recaptchaThreshold: recaptchaThreshold,
+                    enableRegister: enableRegister,
+                    enableLogin: enableLogin,
+                    enableReset: enableReset,
+                    enableContact: enableContact
+                };
+                if (turnstileSecretKey) payload.turnstileSecretKey = turnstileSecretKey;
+                if (recaptchaSecretKey) payload.recaptchaSecretKey = recaptchaSecretKey;
+
+                const res = await fetch('/api/admin/save-captcha-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (msg) {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = '✅ ' + (data.message || 'Captcha & Bot Protection settings saved successfully!');
+                    }
+                    initCaptchaSystem();
+                } else {
+                    if (msg) {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = '❌ Failed to save: ' + (data.error || 'Unknown error');
+                    }
+                }
+            } catch(e) {
+                if (msg) {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = '❌ Network error saving Captcha settings.';
+                }
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = '💾 Save Bot Protection Configuration';
+                }
+            }
+        }
+
+        async function testCaptchaConnection(provider) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const msg = document.getElementById('captchaAdminMsg');
+            if (msg) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(99,102,241,0.2)';
+                msg.style.color = '#818CF8';
+                msg.innerText = 'Testing connection to ' + (provider === 'recaptcha_v3' ? 'Google reCAPTCHA' : 'Cloudflare Turnstile') + ' server...';
+            }
+
+            try {
+                const sec = (provider === 'recaptcha_v3') ? document.getElementById('captchaRecaptchaSecretKey').value.trim() : document.getElementById('captchaTurnstileSecretKey').value.trim();
+                const res = await fetch('/api/admin/test-captcha-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ provider: provider, secretKey: sec })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (msg) {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = '✅ ' + data.message;
+                    }
+                } else {
+                    if (msg) {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = '❌ Test failed: ' + (data.error || 'Unknown error');
+                    }
+                }
+            } catch (e) {
+                if (msg) {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = '❌ Network connection error during Captcha test.';
+                }
+            }
+        }
+
         async function saveProfileEngineSettings() {
             const token = localStorage.getItem('sessionToken');
             const starter = document.getElementById('profLimitStarter').value;
