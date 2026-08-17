@@ -1468,11 +1468,9 @@ header('Content-Type: text/html; charset=utf-8');
             <div>
                 <h4 style="font-size: 14px; color: #FFF; font-weight: 700; margin-bottom: 14px;">Resources</h4>
                 <ul style="list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-                    <li><a href="/terms" style="color: #2DD4BF; text-decoration: none; font-weight: 600;">Terms & Conditions</a></li>
+                    <li><a href="/terms" style="color: var(--text-muted); text-decoration: none;">Terms & Conditions</a></li>
                     <li><a href="/privacy" style="color: var(--text-muted); text-decoration: none;">Privacy Policy</a></li>
-                    <li><a href="/sitemap.xml" target="_blank" style="color: var(--text-muted); text-decoration: none;">Sitemap XML</a></li>
-                    <li><a href="/llms.txt" target="_blank" style="color: var(--text-muted); text-decoration: none;">LLM Text Spec</a></li>
-                    <li><a href="/api/releases" target="_blank" style="color: var(--text-muted); text-decoration: none;">Releases API</a></li>
+                    <li><a href="#live-support-showcase" style="color: var(--text-muted); text-decoration: none;">24/7 Support</a></li>
                 </ul>
             </div>
             <div>
