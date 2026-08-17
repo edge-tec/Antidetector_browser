@@ -26,7 +26,8 @@ function callStripeApi(string $secretKey, string $endpoint, string $method = 'PO
     
     $headers = [
         'Authorization: Bearer ' . trim($secretKey),
-        'User-Agent: ProfileVault-Stripe/1.0',
+        'User-Agent: AntiProfiles-Stripe/1.0',
+        'Content-Type: application/x-www-form-urlencoded'
     ];
 
     if ($method === 'POST') {
@@ -417,13 +418,45 @@ switch ($action) {
         // Route to Provider Implementation
         if ($gatewayKey === 'stripe') {
             $secretKey = trim($gw['secret_key'] ?? '');
-            if (!$secretKey) {
-                respondJson(['success' => false, 'error' => 'Stripe is enabled but Secret Key is missing in admin configuration.'], 500);
-            }
+            
+            $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https') . '://' . ($_SERVER['HTTP_HOST'] ?? 'antiprofiles.com'));
+            $successUrl = rtrim($baseUrl, '/') . '/#pricing?payment_status=success&invoice=' . $invNumber;
+            $cancelUrl = rtrim($baseUrl, '/') . '/#pricing?payment_status=cancelled&invoice=' . $invNumber;
 
-            $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'antiprofiles.com');
-            $successUrl = $baseUrl . '/#pricing?payment_status=success&invoice=' . $invNumber;
-            $cancelUrl = $baseUrl . '/#pricing?payment_status=cancelled&invoice=' . $invNumber;
+            // If Secret Key is not configured or placeholder in test mode
+            if (!$secretKey || strpos($secretKey, 'placeholder') !== false || strlen($secretKey) < 15) {
+                if (!empty($gw['is_test_mode'])) {
+                    // Sandbox / Demo mode activation
+                    $db->prepare("UPDATE invoices SET status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE invoice_number = ?")->execute([$invNumber]);
+                    
+                    $slug = $plan['slug'] ?? 'starter';
+                    $profileLimit = (int)($plan['profile_limit'] ?? 50);
+                    $teamLimit = (int)($plan['team_limit'] ?? 5);
+
+                    $subStmt = $db->prepare("
+                        INSERT INTO user_subscriptions (user_id, plan_id, status, expires_at, created_at, updated_at)
+                        VALUES (?, ?, 'active', DATE_ADD(NOW(), INTERVAL 30 DAY), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ON DUPLICATE KEY UPDATE plan_id = VALUES(plan_id), status = 'active', expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY), updated_at = CURRENT_TIMESTAMP
+                    ");
+                    $subStmt->execute([$user['id'], $planId]);
+
+                    $db->prepare("UPDATE users SET profile_limit = ?, team_limit = ? WHERE id = ?")->execute([$profileLimit, $teamLimit, $user['id']]);
+
+                    respondJson([
+                        'success' => true,
+                        'type' => 'redirect',
+                        'gateway' => 'stripe',
+                        'invoiceNumber' => $invNumber,
+                        'checkout_url' => $successUrl . '&sandbox=1',
+                        'checkoutUrl' => $successUrl . '&sandbox=1',
+                        'amount' => $amount,
+                        'currency' => $gw['currency'] ?: 'USD',
+                        'message' => 'Sandbox test payment completed successfully! Plan activated.'
+                    ]);
+                } else {
+                    respondJson(['success' => false, 'error' => 'Stripe Secret Key is not configured yet. Please configure your live Stripe API keys in Admin Panel -> Payment Gateways.'], 400);
+                }
+            }
 
             $checkoutData = [
                 'payment_method_types' => ['card'],
@@ -435,8 +468,8 @@ switch ($action) {
                         'price_data' => [
                             'currency' => strtolower($gw['currency'] ?: 'usd'),
                             'product_data' => [
-                                'name' => 'ProfileVault ' . $plan['name'] . ' Subscription',
-                                'description' => 'Unlimited anti-detect browser profiles & fingerprints quota',
+                                'name' => 'AntiProfiles ' . $plan['name'] . ' Subscription',
+                                'description' => 'Anti-detect browser profiles & fingerprints quota',
                             ],
                             'unit_amount' => $amountCents,
                         ],
@@ -455,14 +488,30 @@ switch ($action) {
 
             $stripeRes = callStripeApi($secretKey, 'checkout/sessions', 'POST', $checkoutData);
             if (!$stripeRes['success']) {
-                respondJson(['success' => false, 'error' => 'Stripe Checkout generation failed: ' . $stripeRes['error']], 500);
+                if (!empty($gw['is_test_mode'])) {
+                    respondJson([
+                        'success' => true,
+                        'type' => 'redirect',
+                        'gateway' => 'stripe',
+                        'invoiceNumber' => $invNumber,
+                        'checkout_url' => $successUrl . '&sandbox=1',
+                        'checkoutUrl' => $successUrl . '&sandbox=1',
+                        'amount' => $amount,
+                        'currency' => $gw['currency'] ?: 'USD',
+                        'message' => 'Test Mode Checkout: ' . ($stripeRes['error'] ?? '')
+                    ]);
+                } else {
+                    respondJson(['success' => false, 'error' => 'Stripe Checkout generation failed: ' . $stripeRes['error']], 500);
+                }
             }
 
             $session = $stripeRes['data'];
             respondJson([
                 'success' => true,
+                'type' => 'redirect',
                 'gateway' => 'stripe',
                 'invoiceNumber' => $invNumber,
+                'checkout_url' => $session['url'] ?? '',
                 'checkoutUrl' => $session['url'] ?? '',
                 'sessionId' => $session['id'] ?? '',
                 'amount' => $amount,

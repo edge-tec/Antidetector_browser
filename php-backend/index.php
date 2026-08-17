@@ -6009,10 +6009,12 @@ header('Content-Type: text/html; charset=utf-8');
                 btn.disabled = false;
                 btn.innerText = '🔒 Proceed to Secure Payment';
 
+                const checkoutUrl = data.checkout_url || data.checkoutUrl || (data.data && (data.data.checkout_url || data.data.checkoutUrl));
+
                 if (data.success) {
-                    if (data.type === 'redirect' && data.checkout_url) {
-                        window.location.href = data.checkout_url;
-                    } else if (data.type === 'crypto') {
+                    if (checkoutUrl) {
+                        window.location.href = checkoutUrl;
+                    } else if (data.type === 'crypto' || data.gateway === 'crypto') {
                         // Display Crypto payment deposit details
                         document.getElementById('checkoutGatewaySelectSection').style.display = 'none';
                         document.getElementById('checkoutCryptoInvoiceSection').style.display = 'block';
@@ -6020,15 +6022,17 @@ header('Content-Type: text/html; charset=utf-8');
                         document.getElementById('cryptoAddressInput').value = data.deposit_address || '';
                         document.getElementById('cryptoQrCodeImg').src = data.qr_code_url || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.deposit_address)}`;
 
-                        pollCryptoInvoiceStatus(data.invoice_number);
+                        pollCryptoInvoiceStatus(data.invoice_number || data.invoiceNumber);
+                    } else {
+                        alert(data.message || 'Payment initiated successfully.');
                     }
                 } else {
-                    alert('Checkout failed: ' + (data.error || 'Unknown error'));
+                    alert('⚠️ Payment Checkout Error: ' + (data.error || 'Failed to initialize payment session.'));
                 }
             } catch(e) {
                 btn.disabled = false;
                 btn.innerText = '🔒 Proceed to Secure Payment';
-                alert('Network error creating payment checkout session.');
+                alert('Network error creating payment checkout session. Please try again.');
             }
         }
 
