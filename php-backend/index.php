@@ -277,9 +277,10 @@ header('Content-Type: text/html; charset=utf-8');
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc); ?>">
     <meta name="robots" content="<?php echo htmlspecialchars($pageRobots); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($pageCanonical); ?>">
-    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" href="/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <meta property="og:title" content="<?php echo htmlspecialchars($ogTitle); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($ogDesc); ?>">
     <meta property="og:image" content="https://antiprofiles.com/logo.png">
