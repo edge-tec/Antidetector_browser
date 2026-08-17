@@ -540,6 +540,17 @@ header('Content-Type: text/html; charset=utf-8');
         footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 14px; }
         footer a { color: var(--accent); text-decoration: none; }
 
+        .platform-chip {
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .platform-chip:hover {
+            transform: translateY(-4px);
+            border-color: #2DD4BF !important;
+            box-shadow: 0 10px 25px rgba(45, 212, 191, 0.12);
+            background: rgba(30, 34, 48, 0.95) !important;
+        }
+
         @media(max-width: 900px) {
             .admin-grid-2col {
                 grid-template-columns: 1fr;
@@ -566,9 +577,11 @@ header('Content-Type: text/html; charset=utf-8');
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
+            <li><a href="#ecosystem">Ecosystem</a></li>
             <li><a href="#how-it-works">How It Works</a></li>
             <li><a href="#downloads">Downloads</a></li>
             <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#live-support-showcase">Support</a></li>
             <li><a href="#faq">FAQ</a></li>
             <li><a href="#contact">Contact</a></li>
         </ul>
@@ -659,6 +672,139 @@ header('Content-Type: text/html; charset=utf-8');
                 <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">24/7</h3>
                 <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Expert Support</p>
             </div>
+        </div>
+    </section>
+
+    <!-- 2.5. Platforms & Ecosystem Section (Ideal for managing accounts across all services) -->
+    <section id="ecosystem" class="section container" style="padding-top: 60px; padding-bottom: 60px;">
+        <div class="section-title" style="text-align: center; margin-bottom: 40px;">
+            <h2 style="font-size: 32px; font-weight: 800; color: #FFF; margin-bottom: 12px; letter-spacing: -0.5px;">Ideal for managing accounts across all services</h2>
+            <p style="color: var(--text-muted); font-size: 15px; max-width: 680px; margin: 0 auto; line-height: 1.6;">
+                Run multiple stealth accounts simultaneously without detection, bans, or cross-profile linking across global e-commerce, advertising, and social networks.
+            </p>
+        </div>
+
+        <!-- 16-Service Grid Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 1100px; margin: 0 auto;">
+            
+            <!-- 1. Facebook -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 26px; font-weight: 900; color: #1877F2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; letter-spacing: -1px; margin-bottom: 6px;">facebook</div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Social & Ads</span>
+            </div>
+
+            <!-- 2. Amazon -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 24px; font-weight: 900; color: #FF9900; font-family: sans-serif; letter-spacing: -0.5px; margin-bottom: 6px;">amazon</div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">E-Commerce & Seller</span>
+            </div>
+
+            <!-- 3. eBay -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 26px; font-weight: 900; font-family: sans-serif; margin-bottom: 6px;">
+                    <span style="color: #E53238;">e</span><span style="color: #0064D2;">b</span><span style="color: #F5AF02;">a</span><span style="color: #86B817;">y</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Marketplaces</span>
+            </div>
+
+            <!-- 4. LinkedIn -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 24px; font-weight: 900; color: #0A66C2; font-family: sans-serif; margin-bottom: 6px; display: flex; align-items: center; gap: 2px;">
+                    <span>Linked</span><span style="background: #0A66C2; color: #FFF; font-size: 15px; font-weight: 800; padding: 0 4px; border-radius: 3px;">in</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Outreach & B2B</span>
+            </div>
+
+            <!-- 5. Reddit -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 24px; font-weight: 900; color: #FF4500; font-family: sans-serif; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>reddit</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Community & Growth</span>
+            </div>
+
+            <!-- 6. Instagram -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 24px; font-weight: 800; background: linear-gradient(45deg, #F58529, #DD2A7B, #8134AF, #515BD4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-family: 'Brush Script MT', cursive, sans-serif; margin-bottom: 6px;">Instagram</div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Influencers & Media</span>
+            </div>
+
+            <!-- 7. TikTok -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 24px; font-weight: 900; color: #FFF; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span style="color: #00F2FE;">🎵</span><span>TikTok</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Creators & Ads</span>
+            </div>
+
+            <!-- 8. Discord -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 23px; font-weight: 800; color: #5865F2; font-family: sans-serif; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>🎮 Discord</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Bots & Web3</span>
+            </div>
+
+            <!-- 9. Gmail -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 23px; font-weight: 800; color: #EA4335; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>✉️ Gmail</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Email Outreach</span>
+            </div>
+
+            <!-- 10. Google Ads -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 23px; font-weight: 800; color: #4285F4; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span style="color: #FBBC04;">🔺</span><span>Google Ads</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">PPC Campaigns</span>
+            </div>
+
+            <!-- 11. Etsy -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 26px; font-weight: 900; color: #F16521; font-family: serif; font-style: italic; margin-bottom: 6px;">Etsy</div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Handmade Stores</span>
+            </div>
+
+            <!-- 12. Pinterest -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 24px; font-weight: 800; color: #BD081C; font-family: sans-serif; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+                    <span>📌 Pinterest</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Visual Discovery</span>
+            </div>
+
+            <!-- 13. Meta Business -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 24px; font-weight: 800; color: #0081FB; font-family: sans-serif; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>♾️ Meta</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Business Suite</span>
+            </div>
+
+            <!-- 14. X / Twitter -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 26px; font-weight: 900; color: #FFF; font-family: sans-serif; margin-bottom: 6px;">𝕏</div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Real-Time Media</span>
+            </div>
+
+            <!-- 15. Airbnb -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 23px; font-weight: 800; color: #FF5A5F; font-family: sans-serif; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>🏠 airbnb</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Host Multi-Account</span>
+            </div>
+
+            <!-- 16. YouTube -->
+            <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
+                <div style="font-size: 23px; font-weight: 900; color: #FF0000; font-family: sans-serif; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>▶️ YouTube</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Automation & Channels</span>
+            </div>
+
         </div>
     </section>
 
@@ -932,6 +1078,173 @@ header('Content-Type: text/html; charset=utf-8');
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </section>
+
+    <!-- 7.5. 24/7 Real-Time Support Showcase & Trust Badges Section -->
+    <section id="live-support-showcase" class="section container" style="padding-top: 60px; padding-bottom: 60px;">
+        <div style="background: linear-gradient(135deg, rgba(24, 27, 38, 0.8) 0%, rgba(15, 17, 26, 0.95) 100%); border: 1px solid var(--border); border-radius: 24px; padding: 48px 40px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden;">
+            
+            <!-- Background Glow -->
+            <div style="position: absolute; top: -100px; right: -100px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(45, 212, 191, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 48px; align-items: center; position: relative; z-index: 1;">
+                
+                <!-- Left Column: Support Info & Channels -->
+                <div>
+                    <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 700; margin-bottom: 20px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981;"></span>
+                        24/7 Real-Time Support
+                    </div>
+
+                    <h2 style="font-size: 40px; font-weight: 900; color: #FFF; line-height: 1.15; margin-bottom: 18px; letter-spacing: -1px;">
+                        24/7<br><span style="background: linear-gradient(135deg, #2DD4BF, #60A5FA); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">real-time support</span>
+                    </h2>
+
+                    <p style="color: var(--text-muted); font-size: 15px; line-height: 1.65; margin-bottom: 32px; max-width: 480px;">
+                        ProfileVault has the highest rated client support in software. We're here 24 hours a day, every day of the week, including holidays.
+                    </p>
+
+                    <!-- 4 Support Channels Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 20px;">💬</span>
+                            <span style="color: #FFF; font-size: 14px; font-weight: 600;">Live-chat support</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 20px;">🟢</span>
+                            <span style="color: #FFF; font-size: 14px; font-weight: 600;">WhatsApp support</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 20px;">✉️</span>
+                            <span style="color: #FFF; font-size: 14px; font-weight: 600;">Email support</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 20px;">🌐</span>
+                            <span style="color: #FFF; font-size: 14px; font-weight: 600;">Facebook (Meta) support</span>
+                        </div>
+                    </div>
+
+                    <button onclick="toggleLiveChat()" class="btn btn-primary" style="padding: 14px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; box-shadow: 0 4px 20px rgba(45, 212, 191, 0.35);">
+                        💬 Open Live Support Chat
+                    </button>
+                </div>
+
+                <!-- Right Column: Live Chat Preview Mockup -->
+                <div style="display: flex; justify-content: center;">
+                    <div style="width: 100%; max-width: 360px; background: #0E1017; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 30px rgba(45, 212, 191, 0.15); overflow: hidden; display: flex; flex-direction: column;">
+                        
+                        <!-- Mockup Header -->
+                        <div style="background: #181B26; padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #2DD4BF, #06B6D4); display: flex; align-items: center; justify-content: center; font-size: 18px; color: #000; font-weight: 900;">
+                                    🛡️
+                                </div>
+                                <div>
+                                    <h4 style="font-size: 14px; color: #FFF; margin: 0; font-weight: 700;">ProfileVault Support</h4>
+                                    <span style="font-size: 11px; color: #10B981; font-weight: 600;">● Online • Typical reply &lt; 1 min</span>
+                                </div>
+                            </div>
+                            <span style="font-size: 14px; color: var(--text-muted); cursor: pointer;" onclick="toggleLiveChat()">✕</span>
+                        </div>
+
+                        <!-- Mockup Chat Stream -->
+                        <div style="padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; background: rgba(10, 11, 16, 0.9); min-height: 240px;">
+                            
+                            <!-- Incoming Agent Bubble -->
+                            <div style="align-self: flex-start; max-width: 85%; background: #1F2333; border: 1px solid #2B3046; border-radius: 14px 14px 14px 2px; padding: 12px 14px;">
+                                <span style="font-size: 10px; font-weight: 700; color: #2DD4BF; display: block; margin-bottom: 4px;">Emma (Technical Support)</span>
+                                <p style="font-size: 13px; color: #FFF; margin: 0; line-height: 1.45;">
+                                    Hi there 👋 How can we help you today?
+                                </p>
+                                <span style="font-size: 9px; color: var(--text-muted); display: block; text-align: right; margin-top: 4px;">Just now</span>
+                            </div>
+
+                            <!-- Outgoing User Bubble -->
+                            <div style="align-self: flex-end; max-width: 85%; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; border-radius: 14px 14px 2px 14px; padding: 12px 14px;">
+                                <p style="font-size: 13px; font-weight: 600; margin: 0; line-height: 1.45;">
+                                    Can I run 50 stealth accounts on Facebook & Amazon safely?
+                                </p>
+                                <span style="font-size: 9px; color: rgba(0,0,0,0.6); display: block; text-align: right; margin-top: 4px;">Just now ✓✓</span>
+                            </div>
+
+                            <!-- Incoming Agent Reply -->
+                            <div style="align-self: flex-start; max-width: 85%; background: #1F2333; border: 1px solid #2B3046; border-radius: 14px 14px 14px 2px; padding: 12px 14px;">
+                                <span style="font-size: 10px; font-weight: 700; color: #2DD4BF; display: block; margin-bottom: 4px;">Emma (Technical Support)</span>
+                                <p style="font-size: 13px; color: #FFF; margin: 0; line-height: 1.45;">
+                                    Yes, 100%! Each profile operates with isolated cookies, dedicated proxies & randomized canvas noise. 🚀
+                                </p>
+                                <span style="font-size: 9px; color: var(--text-muted); display: block; text-align: right; margin-top: 4px;">Just now</span>
+                            </div>
+
+                        </div>
+
+                        <!-- Mockup Chat Input Box -->
+                        <div style="padding: 12px 16px; background: #181B26; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center;">
+                            <input type="text" placeholder="Write your question..." readonly onclick="toggleLiveChat()" style="flex: 1; background: #0A0B10; border: 1px solid #272A3B; border-radius: 20px; padding: 8px 14px; color: #FFF; font-size: 12px; cursor: pointer;">
+                            <button type="button" onclick="toggleLiveChat()" style="background: #2DD4BF; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #000; font-size: 12px; cursor: pointer;">
+                                ➤
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Trust & Industry Award Badges Row -->
+            <div style="margin-top: 48px; padding-top: 36px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 24px;">
+                
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">🏆</span>
+                    <div>
+                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">Best Support 2025</div>
+                        <div style="font-size: 10px; color: #2DD4BF;">G2 Top Rated</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">⭐</span>
+                    <div>
+                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">Users Love Us</div>
+                        <div style="font-size: 10px; color: #F59E0B;">4.9 / 5.0 Rating</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">🛡️</span>
+                    <div>
+                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">High Performer</div>
+                        <div style="font-size: 10px; color: #60A5FA;">Spring 2025</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">🔒</span>
+                    <div>
+                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">Easiest To Use</div>
+                        <div style="font-size: 10px; color: #10B981;">Capterra Verified</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">💎</span>
+                    <div>
+                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">Leader Multi-Account</div>
+                        <div style="font-size: 10px; color: #A78BFA;">TrustPilot Top Choice</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">⚡</span>
+                    <div>
+                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">Fastest Implementation</div>
+                        <div style="font-size: 10px; color: #F43F5E;">Enterprise Ready</div>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </section>
 
