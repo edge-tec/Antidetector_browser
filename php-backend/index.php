@@ -158,16 +158,18 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
 }
 
 // ── 2. Serve Static Frontend Web UI, Images & Single Page App Assets ──
+$rendererPath = __DIR__ . '/public';
+
 if ($requestUri !== '/') {
+    $cleanUri = '/' . ltrim($requestUri, '/');
     $candidatePaths = [
-        __DIR__ . $requestUri,
-        __DIR__ . '/public' . $requestUri,
-        __DIR__ . '/..' . $requestUri,
-        __DIR__ . '/../public' . $requestUri,
-        dirname(__DIR__) . $requestUri
+        __DIR__ . $cleanUri,
+        $rendererPath . $cleanUri,
+        dirname(__DIR__) . $cleanUri,
+        dirname(__DIR__) . '/public' . $cleanUri
     ];
     foreach ($candidatePaths as $candidate) {
-        if (file_exists($candidate) && !is_dir($candidate)) {
+        if (@file_exists($candidate) && !@is_dir($candidate)) {
             $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
             $mimes = [
                 'png' => 'image/png',
@@ -180,7 +182,7 @@ if ($requestUri !== '/') {
                 'js' => 'application/javascript',
                 'json' => 'application/json'
             ];
-            $mime = $mimes[$ext] ?? mime_content_type($candidate) ?? 'application/octet-stream';
+            $mime = $mimes[$ext] ?? @mime_content_type($candidate) ?? 'application/octet-stream';
             header('Content-Type: ' . $mime);
             header('Cache-Control: public, max-age=86400');
             readfile($candidate);
@@ -242,8 +244,8 @@ $schemas = [
     ]
 ];
 
-$indexFile = $rendererPath . '/index.html';
-if (file_exists($indexFile)) {
+$indexFile = (!empty($rendererPath) ? $rendererPath . '/index.html' : '');
+if ($indexFile && @file_exists($indexFile)) {
     $html = file_get_contents($indexFile);
 
     $seoTags = "\n    <title>" . htmlspecialchars($pageTitle) . "</title>\n";
