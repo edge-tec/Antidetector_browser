@@ -383,19 +383,25 @@ class RealtimeSyncService {
   /**
    * Schedule automatic reconnection with exponential backoff.
    */
-  private scheduleReconnect(): void {
+  private scheduleReconnect(forceResync = false): void {
     if (this.isShuttingDown || !this.sessionToken) return
 
-    this.setStatus('reconnecting')
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
 
     this.reconnectAttempts++
-    const delay = Math.min(1000 * Math.pow(1.8, this.reconnectAttempts) + Math.random() * 500, 15000)
+    const delay = Math.min(1000 * Math.pow(1.5, Math.min(this.reconnectAttempts, 4)), 8000)
+
+    // Only broadcast 'reconnecting' status if persistent (>2 failed attempts)
+    if (this.reconnectAttempts > 2) {
+      this.setStatus('reconnecting')
+    }
 
     this.reconnectTimer = setTimeout(async () => {
       if (this.isShuttingDown || !this.sessionToken) return
-      logger.info('sync', `[SyncService] Reconnecting (Attempt #${this.reconnectAttempts})...`)
-      await this.resyncAuthoritativeState()
+      logger.info('sync', `[SyncService] Reconnecting SSE stream (Attempt #${this.reconnectAttempts})...`)
+      if (forceResync) {
+        await this.resyncAuthoritativeState()
+      }
       this.connectStream()
     }, delay)
   }

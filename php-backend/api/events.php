@@ -32,7 +32,7 @@ switch ($action) {
 
         // Token Authentication (Header or Query Param for EventSource)
         $token = null;
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
         if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
             $token = $matches[1];
         } elseif (!empty($_GET['token'])) {
@@ -116,7 +116,7 @@ switch ($action) {
 
         // Keep-Alive & Event Polling Loop (SSE Stream)
         $loopCount = 0;
-        $maxLoops = 120; // 2 minutes per connection before graceful reconnection
+        $maxLoops = 1800; // 30 minutes continuous connection
 
         while ($loopCount < $maxLoops) {
             if (connection_aborted()) {
@@ -124,20 +124,22 @@ switch ($action) {
             }
 
             // Check if user status or auth version changed
-            $chkStmt = $db->prepare("SELECT auth_version, account_status FROM users WHERE id = ?");
-            $chkStmt->execute([$userId]);
-            $currentStatus = $chkStmt->fetch();
+            if ($loopCount % 5 === 0) {
+                $chkStmt = $db->prepare("SELECT auth_version, account_status FROM users WHERE id = ?");
+                $chkStmt->execute([$userId]);
+                $currentStatus = $chkStmt->fetch();
 
-            if (!$currentStatus || $currentStatus['account_status'] === 'suspended' || $currentStatus['account_status'] === 'disabled') {
-                echo "event: session.revoked\n";
-                echo "data: " . json_encode([
-                    'type' => 'session.revoked',
-                    'userId' => $userId,
-                    'reason' => 'Account is suspended or disabled by administrator',
-                    'timestamp' => date('c')
-                ]) . "\n\n";
-                flush();
-                break;
+                if (!$currentStatus || $currentStatus['account_status'] === 'suspended' || $currentStatus['account_status'] === 'disabled') {
+                    echo "event: session.revoked\n";
+                    echo "data: " . json_encode([
+                        'type' => 'session.revoked',
+                        'userId' => $userId,
+                        'reason' => 'Account is suspended or disabled by administrator',
+                        'timestamp' => date('c')
+                    ]) . "\n\n";
+                    flush();
+                    break;
+                }
             }
 
             // Poll for newly published events
@@ -159,8 +161,8 @@ switch ($action) {
                 }
             }
 
-            // Heartbeat ping every 10 iterations (~10 seconds)
-            if ($loopCount % 10 === 0) {
+            // Heartbeat ping every 5 seconds to keep FastCGI alive
+            if ($loopCount % 5 === 0) {
                 echo ": ping " . date('c') . "\n\n";
                 flush();
             }

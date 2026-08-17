@@ -1387,13 +1387,19 @@ function AppContent() {
 
     const unsubAuth = window.api?.onAuthStateUpdated?.((_e: any, newState: any) => {
       if (newState) {
-        setSyncStatus((prev) => ({
-          ...prev,
-          authVersion: newState.authVersion,
-          cachedState: newState,
-          lastSyncTime: newState.lastSyncAt || new Date().toISOString()
-        }))
-        showToast('info', `⚡ Real-Time Sync: Authorization updated to role "${newState.role.toUpperCase()}" (v${newState.authVersion})`)
+        setSyncStatus((prev) => {
+          const roleChanged = prev.cachedState && prev.cachedState.role !== newState.role
+          const versionChanged = prev.cachedState && prev.authVersion !== newState.authVersion
+          if (roleChanged || versionChanged) {
+            showToast('info', `⚡ Real-Time Sync: Authorization updated to role "${newState.role.toUpperCase()}" (v${newState.authVersion})`)
+          }
+          return {
+            ...prev,
+            authVersion: newState.authVersion,
+            cachedState: newState,
+            lastSyncTime: newState.lastSyncAt || new Date().toISOString()
+          }
+        })
       }
     })
 
