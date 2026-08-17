@@ -1332,6 +1332,22 @@ function AppContent() {
     return id
   })
 
+  const showToast = useCallback((type: ToastItem['type'], message: string) => {
+    const id = ++toastId
+    setToasts((prev) => [...prev, { id, type, message }])
+    setTimeout(() => setToasts((prev) => prev.map((t) => t.id === id ? { ...t, leaving: true } : t)), 3500)
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3800)
+  }, [])
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.map((t) => t.id === id ? { ...t, leaving: true } : t))
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 300)
+  }, [])
+
+  const showConfirm = useCallback((config: Omit<ConfirmState, 'show'>) => {
+    setConfirmState({ ...config, show: true })
+  }, [])
+
   // Check server-side license validation periodically
   const checkLicense = useCallback(async () => {
     if (!sessionToken || !isAuthenticated) return
@@ -1418,22 +1434,6 @@ function AppContent() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
-
-  const showToast = useCallback((type: ToastItem['type'], message: string) => {
-    const id = ++toastId
-    setToasts((prev) => [...prev, { id, type, message }])
-    setTimeout(() => setToasts((prev) => prev.map((t) => t.id === id ? { ...t, leaving: true } : t)), 3500)
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3800)
-  }, [])
-
-  const dismissToast = useCallback((id: number) => {
-    setToasts((prev) => prev.map((t) => t.id === id ? { ...t, leaving: true } : t))
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 300)
-  }, [])
-
-  const showConfirm = useCallback((config: Omit<ConfirmState, 'show'>) => {
-    setConfirmState({ ...config, show: true })
   }, [])
 
   // 1. Loading state
