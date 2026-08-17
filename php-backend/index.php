@@ -1758,14 +1758,20 @@ header('Content-Type: text/html; charset=utf-8');
 
                     <!-- TAB 10: SEO -->
                     <div id="tab-seo" class="admin-tab-content" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <h3 style="font-size: 18px; color: #FFF;">SEO, Meta Tags & Canonical Manager</h3>
-                            <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">SEO, Meta Tags & Canonical Manager</h3>
+                                <p style="font-size: 13px; color: var(--text-muted);">Manage dynamic indexing, search meta tags, OpenGraph previews, Sitemap, and Robots directives.</p>
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 <a href="/sitemap.xml" target="_blank" class="btn btn-outline" style="font-size: 12px; padding: 6px 12px;">🗺️ View Sitemap.xml</a>
                                 <a href="/robots.txt" target="_blank" class="btn btn-outline" style="font-size: 12px; padding: 6px 12px;">🤖 View Robots.txt</a>
                                 <button class="btn btn-outline" onclick="loadSeoPagesTable()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Pages</button>
+                                <button class="btn btn-primary" onclick="openAddSeoPageModal()" style="font-size: 12px; padding: 6px 14px;">➕ Add SEO Page</button>
                             </div>
                         </div>
+
+                        <div id="seoAdminMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
 
                         <!-- Global SEO Form -->
                         <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
@@ -1788,11 +1794,14 @@ header('Content-Type: text/html; charset=utf-8');
                                 <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Global Meta Description</label>
                                 <textarea id="seoGlobalDesc" rows="2" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;">Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.</textarea>
                             </div>
-                            <button class="btn btn-primary" onclick="saveGlobalSeoSettings()">Save Global SEO Settings</button>
+                            <button class="btn btn-primary" id="btnSaveGlobalSeo" onclick="saveGlobalSeoSettings()">Save Global SEO Settings</button>
                         </div>
 
                         <!-- Page-by-Page SEO Manager -->
-                        <h4 style="margin-bottom: 12px; color: #FFF;">Page-by-Page Meta Tags & Structured Content</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4 style="color: #FFF;">Page-by-Page Meta Tags & Structured Content</h4>
+                            <span style="font-size: 12px; color: var(--text-muted);">Database Single Source of Truth</span>
+                        </div>
                         <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
                             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
                                 <thead>
@@ -1801,13 +1810,53 @@ header('Content-Type: text/html; charset=utf-8');
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Meta Title</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Primary Keyword</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Robots</th>
-                                        <th style="padding: 12px 16px; color: var(--text-muted);">Action</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted); text-align: right;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="seoPagesTableBody">
                                     <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading SEO page entries...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- SEO Page Modal -->
+                    <div id="modalSeoPage" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+                        <div style="background: #1C1C28; border: 1px solid var(--border); border-radius: 14px; max-width: 540px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 id="seoModalTitle" style="font-size: 17px; color: #FFF;">Edit SEO Page Metadata</h3>
+                                <button onclick="closeSeoPageModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Page Path</label>
+                                    <input type="text" id="modalSeoPath" placeholder="/pricing or /download" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px; font-family: monospace;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Meta Title</label>
+                                    <input type="text" id="modalSeoTitle" placeholder="Page Meta Title" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Primary Keyword</label>
+                                    <input type="text" id="modalSeoKeyword" placeholder="e.g. antidetect browser" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Robots Directives</label>
+                                    <select id="modalSeoRobots" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;">
+                                        <option value="index, follow">index, follow (Default / Searchable)</option>
+                                        <option value="noindex, follow">noindex, follow (Hide from SERP, follow links)</option>
+                                        <option value="noindex, nofollow">noindex, nofollow (Private / No indexing)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Meta Description</label>
+                                    <textarea id="modalSeoDesc" rows="3" placeholder="Description for search snippets" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;"></textarea>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                                <button class="btn btn-outline" onclick="closeSeoPageModal()">Cancel</button>
+                                <button class="btn btn-primary" id="btnSaveSeoModal" onclick="submitSeoPageModal()">💾 Save Page SEO</button>
+                            </div>
                         </div>
                     </div>
 
@@ -2565,7 +2614,10 @@ header('Content-Type: text/html; charset=utf-8');
             if (tabName === 'audit') loadAuditLogsTable();
             if (tabName === 'security') loadSecurityTable();
             if (tabName === 'profile-audit') loadProfileAuditTable();
-            if (tabName === 'seo') loadSeoPagesTable();
+            if (tabName === 'seo') {
+                loadGlobalSeoSettings();
+                loadSeoPagesTable();
+            }
             if (tabName === 'releases') loadAppReleasesTable();
             if (tabName === 'google-oauth') loadGoogleOAuthConfig();
             if (tabName === 'support') loadSupportConversations();
@@ -3063,50 +3115,89 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        let seoPagesCache = [];
+
+        async function loadGlobalSeoSettings() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/admin/seo/get-settings', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const cfg = data.data;
+                    const titleInput = document.getElementById('seoGlobalTitle');
+                    const canonicalInput = document.getElementById('seoGlobalCanonical');
+                    const ogImageInput = document.getElementById('seoGlobalOgImage');
+                    const descInput = document.getElementById('seoGlobalDesc');
+
+                    if (titleInput && cfg.global_title) titleInput.value = cfg.global_title;
+                    if (canonicalInput && cfg.global_canonical) canonicalInput.value = cfg.global_canonical;
+                    if (ogImageInput && cfg.global_og_image) ogImageInput.value = cfg.global_og_image;
+                    if (descInput && cfg.global_description) descInput.value = cfg.global_description;
+                }
+            } catch(e) {
+                console.warn('[SEO Settings] Failed to load:', e);
+            }
+        }
+
         async function loadSeoPagesTable() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
             const tbody = document.getElementById('seoPagesTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Loading SEO page configurations...</td></tr>';
+            const msg = document.getElementById('seoAdminMsg');
+            if (msg) msg.style.display = 'none';
+
+            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Loading SEO page configurations from central database...</td></tr>';
             try {
                 const res = await fetch('/api/admin/seo/get-pages', { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    seoPagesCache = data.data;
                     tbody.innerHTML = data.data.map(p => `
                         <tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 12px 16px; font-weight:600; color:#FFF; font-family:monospace;">${p.page_path}</td>
                             <td style="padding: 12px 16px; color:var(--text-main); font-weight:600;">${p.title}</td>
                             <td style="padding: 12px 16px; color:var(--accent);">${p.primary_keyword || 'antidetect browser'}</td>
                             <td style="padding: 12px 16px;"><span style="background:rgba(45,212,191,0.2); color:#2DD4BF; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:700;">${p.robots || 'index, follow'}</span></td>
-                            <td style="padding: 12px 16px;">
-                                <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="editPageSeo('${p.page_path}', '${p.title.replace(/'/g, "\\'")}')">✏️ Edit Meta</button>
+                            <td style="padding: 12px 16px; text-align: right; white-space: nowrap;">
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:12px; margin-right: 6px;" onclick="openEditSeoPageModal('${p.page_path}')">✏️ Edit</button>
+                                ${p.page_path !== '/' ? `<button class="btn btn-outline" style="padding:4px 10px; font-size:12px; color: #F87171; border-color: rgba(239,68,68,0.3);" onclick="deleteSeoPage('${p.page_path}')">🗑️</button>` : ''}
                             </td>
                         </tr>
                     `).join('');
                 } else {
-                    tbody.innerHTML = `
-                        <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding: 12px 16px; font-weight:600; color:#FFF; font-family:monospace;">/</td>
-                            <td style="padding: 12px 16px; color:var(--text-main); font-weight:600;">ProfileVault — Anti-Detect Browser & Profile Isolation</td>
-                            <td style="padding: 12px 16px; color:var(--accent);">anti detect browser</td>
-                            <td style="padding: 12px 16px;"><span style="background:rgba(45,212,191,0.2); color:#2DD4BF; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:700;">index, follow</span></td>
-                            <td style="padding: 12px 16px;">
-                                <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="editPageSeo('/', 'ProfileVault Landing')">✏️ Edit Meta</button>
-                            </td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">No custom SEO pages found in database.</td></tr>';
                 }
             } catch(e) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Error fetching SEO pages.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#F87171;">Error fetching SEO pages. Please refresh or verify server status.</td></tr>';
             }
         }
 
         async function saveGlobalSeoSettings() {
             const token = localStorage.getItem('sessionToken');
-            const title = document.getElementById('seoGlobalTitle').value;
-            const canonical = document.getElementById('seoGlobalCanonical').value;
-            const ogImage = document.getElementById('seoGlobalOgImage').value;
-            const desc = document.getElementById('seoGlobalDesc').value;
+            if (!token) return;
+
+            const title = document.getElementById('seoGlobalTitle').value.trim();
+            const canonical = document.getElementById('seoGlobalCanonical').value.trim();
+            const ogImage = document.getElementById('seoGlobalOgImage').value.trim();
+            const desc = document.getElementById('seoGlobalDesc').value.trim();
+            const saveBtn = document.getElementById('btnSaveGlobalSeo');
+            const msg = document.getElementById('seoAdminMsg');
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerText = 'Saving Settings...';
+            }
+
+            if (msg) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(99,102,241,0.2)';
+                msg.style.color = '#818CF8';
+                msg.innerText = 'Saving global SEO settings to database...';
+            }
 
             try {
                 const res = await fetch('/api/admin/seo/save-settings', {
@@ -3124,22 +3215,81 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('Global SEO & OpenGraph settings updated successfully!');
+                    if (msg) {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = '✅ Global SEO & OpenGraph settings updated successfully in central database!';
+                    }
                 } else {
-                    alert('Saved SEO settings!');
+                    if (msg) {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = '❌ Failed to save SEO settings: ' + (data.error || 'Unknown error');
+                    }
                 }
             } catch(e) {
-                alert('Global SEO settings saved!');
+                if (msg) {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.innerText = '❌ Network error saving SEO settings.';
+                }
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = 'Save Global SEO Settings';
+                }
             }
         }
 
-        async function editPageSeo(path, currentTitle) {
-            const newTitle = prompt(`Enter Meta Title for path (${path}):`, currentTitle);
-            if (!newTitle) return;
-            const newDesc = prompt(`Enter Meta Description for (${path}):`, 'Isolated browser profiles and fingerprint masking.');
-            if (newDesc === null) return;
+        function openAddSeoPageModal() {
+            document.getElementById('seoModalTitle').innerText = 'Add New SEO Page';
+            document.getElementById('modalSeoPath').value = '';
+            document.getElementById('modalSeoPath').disabled = false;
+            document.getElementById('modalSeoTitle').value = '';
+            document.getElementById('modalSeoKeyword').value = '';
+            document.getElementById('modalSeoRobots').value = 'index, follow';
+            document.getElementById('modalSeoDesc').value = '';
+            document.getElementById('modalSeoPage').style.display = 'flex';
+        }
 
+        function openEditSeoPageModal(path) {
+            const page = seoPagesCache.find(p => p.page_path === path) || { page_path: path, title: '', primary_keyword: '', robots: 'index, follow', description: '' };
+            document.getElementById('seoModalTitle').innerText = `Edit SEO Metadata (${path})`;
+            const pathInput = document.getElementById('modalSeoPath');
+            pathInput.value = page.page_path;
+            pathInput.disabled = (path === '/'); // Homepage path cannot be changed
+            document.getElementById('modalSeoTitle').value = page.title || '';
+            document.getElementById('modalSeoKeyword').value = page.primary_keyword || '';
+            document.getElementById('modalSeoRobots').value = page.robots || 'index, follow';
+            document.getElementById('modalSeoDesc').value = page.description || '';
+            document.getElementById('modalSeoPage').style.display = 'flex';
+        }
+
+        function closeSeoPageModal() {
+            document.getElementById('modalSeoPage').style.display = 'none';
+        }
+
+        async function submitSeoPageModal() {
             const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            const path = document.getElementById('modalSeoPath').value.trim();
+            const title = document.getElementById('modalSeoTitle').value.trim();
+            const keyword = document.getElementById('modalSeoKeyword').value.trim();
+            const robots = document.getElementById('modalSeoRobots').value;
+            const desc = document.getElementById('modalSeoDesc').value.trim();
+            const saveBtn = document.getElementById('btnSaveSeoModal');
+
+            if (!path || !title) {
+                alert('Page Path and Meta Title are required.');
+                return;
+            }
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerText = 'Saving...';
+            }
+
             try {
                 const res = await fetch('/api/admin/seo/save-page', {
                     method: 'POST',
@@ -3148,24 +3298,54 @@ header('Content-Type: text/html; charset=utf-8');
                         'Authorization': 'Bearer ' + token
                     },
                     body: JSON.stringify({
-                        page_path: path,
-                        title: newTitle,
-                        description: newDesc,
-                        canonical_url: 'https://app.edgecash.net' + path,
-                        robots: 'index, follow'
+                        page_path: path.startsWith('/') ? path : '/' + path,
+                        title: title,
+                        primary_keyword: keyword,
+                        robots: robots,
+                        description: desc,
+                        canonical_url: 'https://app.edgecash.net' + (path.startsWith('/') ? path : '/' + path)
                     })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    closeSeoPageModal();
+                    loadSeoPagesTable();
+                } else {
+                    alert('Error saving SEO page: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error saving SEO page.');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = '💾 Save Page SEO';
+                }
+            }
+        }
+
+        async function deleteSeoPage(path) {
+            if (!confirm(`Are you sure you want to delete SEO settings for ${path}?`)) return;
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/admin/seo/delete-page', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ page_path: path })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(`Page SEO for ${path} updated!`);
                     loadSeoPagesTable();
                 } else {
-                    alert('Updated Page Meta Tags!');
-                    loadSeoPagesTable();
+                    alert('Failed to delete: ' + (data.error || 'Unknown error'));
                 }
             } catch(e) {
-                alert('Updated Page Meta Tags!');
-                loadSeoPagesTable();
+                alert('Network error deleting SEO page.');
             }
         }
 

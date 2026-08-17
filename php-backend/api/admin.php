@@ -563,15 +563,56 @@ switch ($action) {
         break;
 
     // ── 7. SEO & Metadata APIs ──
+    case 'seo/get-settings':
+    case 'seo-get-settings':
+        try {
+            $stmt = $db->query("SELECT `key`, `value` FROM settings WHERE `key` LIKE 'seo_%'");
+            $rows = $stmt ? $stmt->fetchAll() : [];
+            $map = [];
+            foreach ($rows as $r) { $map[$r['key']] = $r['value']; }
+
+            // Also check seo_settings table if present
+            try {
+                $stmt2 = $db->query("SELECT `key`, `value` FROM seo_settings");
+                $rows2 = $stmt2 ? $stmt2->fetchAll() : [];
+                foreach ($rows2 as $r2) { $map[$r2['key']] = $r2['value']; }
+            } catch (Throwable $e) {}
+
+            $settings = [
+                'global_title' => $map['seo_global_title'] ?? $map['site_name'] ?? 'ProfileVault — Anti-Detect Browser & Profile Isolation',
+                'global_canonical' => $map['seo_global_canonical'] ?? $map['site_url'] ?? 'https://app.edgecash.net',
+                'global_og_image' => $map['seo_global_og_image'] ?? $map['default_og_image'] ?? 'https://app.edgecash.net/og-cover.png',
+                'global_description' => $map['seo_global_description'] ?? $map['site_description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.',
+                'robots_content' => $map['robots_content'] ?? "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://app.edgecash.net/sitemap.xml"
+            ];
+            respondJson(['success' => true, 'data' => $settings]);
+        } catch (Throwable $e) {
+            respondJson(['success' => true, 'data' => [
+                'global_title' => 'ProfileVault — Anti-Detect Browser & Profile Isolation',
+                'global_canonical' => 'https://app.edgecash.net',
+                'global_og_image' => 'https://app.edgecash.net/og-cover.png',
+                'global_description' => 'Manage isolated browser profiles, configure proxies, and automate workflows securely with ProfileVault Software.'
+            ]]);
+        }
+        break;
+
     case 'seo/get-pages':
     case 'seo-pages':
+    case 'seo/pages':
         try {
-            $stmt = $db->query("SELECT * FROM page_seo ORDER BY page_path ASC");
-            $pages = $stmt ? $stmt->fetchAll() : [];
+            $pages = [];
+            try {
+                $stmt = $db->query("SELECT * FROM page_seo ORDER BY page_path ASC");
+                $pages = $stmt ? $stmt->fetchAll() : [];
+            } catch (Throwable $e) {}
+
             if (empty($pages)) {
-                $stmt2 = $db->query("SELECT * FROM seo_pages ORDER BY page_path ASC");
-                $pages = $stmt2 ? $stmt2->fetchAll() : [];
+                try {
+                    $stmt2 = $db->query("SELECT * FROM seo_pages ORDER BY page_path ASC");
+                    $pages = $stmt2 ? $stmt2->fetchAll() : [];
+                } catch (Throwable $e) {}
             }
+
             if (empty($pages)) {
                 $pages = [
                     [
@@ -603,6 +644,17 @@ switch ($action) {
                     ]
                 ];
             }
+
+            // Normalize fields for frontend table
+            foreach ($pages as &$p) {
+                if (!isset($p['page_path']) && isset($p['path'])) $p['page_path'] = $p['path'];
+                if (!isset($p['title']) && isset($p['meta_title'])) $p['title'] = $p['meta_title'];
+                if (!isset($p['description']) && isset($p['meta_description'])) $p['description'] = $p['meta_description'];
+                if (!isset($p['primary_keyword']) && isset($p['keyword'])) $p['primary_keyword'] = $p['keyword'];
+                if (empty($p['robots'])) $p['robots'] = 'index, follow';
+                if (empty($p['primary_keyword'])) $p['primary_keyword'] = 'anti detect browser';
+            }
+
             respondJson(['success' => true, 'data' => $pages]);
         } catch (Throwable $e) {
             respondJson(['success' => true, 'data' => []]);
@@ -626,12 +678,12 @@ switch ($action) {
     case 'seo/save-page':
     case 'seo-save-page':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $path = trim($input['page_path'] ?? '/');
-        $title = trim($input['title'] ?? 'ProfileVault');
-        $desc = trim($input['description'] ?? '');
+        $path = trim($input['page_path'] ?? $input['path'] ?? '/');
+        $title = trim($input['title'] ?? $input['meta_title'] ?? 'ProfileVault');
+        $desc = trim($input['description'] ?? $input['meta_description'] ?? '');
         $robots = trim($input['robots'] ?? 'index, follow');
         $canonical = trim($input['canonical_url'] ?? ('https://app.edgecash.net' . $path));
-        $keyword = trim($input['primary_keyword'] ?? 'antidetect browser');
+        $keyword = trim($input['primary_keyword'] ?? $input['keyword'] ?? 'antidetect browser');
 
         try {
             $db->prepare("
@@ -651,6 +703,25 @@ switch ($action) {
 
         logAdminAction($adminUser['id'], $adminUser['email'], 'SAVE_SEO_PAGE', null, "Admin updated SEO for page {$path}");
         respondJson(['success' => true, 'message' => "SEO metadata for {$path} saved successfully."]);
+        break;
+
+    case 'seo/delete-page':
+    case 'seo-delete-page':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $path = trim($input['page_path'] ?? $input['path'] ?? $_GET['path'] ?? '');
+        if (!$path || $path === '/') {
+            respondJson(['success' => false, 'error' => 'Cannot delete root homepage SEO.'], 400);
+        }
+
+        try {
+            $db->prepare("DELETE FROM page_seo WHERE page_path = ?")->execute([$path]);
+        } catch (Throwable $e) {}
+        try {
+            $db->prepare("DELETE FROM seo_pages WHERE page_path = ?")->execute([$path]);
+        } catch (Throwable $e) {}
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'DELETE_SEO_PAGE', null, "Admin deleted SEO for page {$path}");
+        respondJson(['success' => true, 'message' => "SEO for page {$path} deleted successfully."]);
         break;
 
     case 'get-releases-config':

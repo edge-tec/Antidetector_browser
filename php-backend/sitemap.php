@@ -9,8 +9,26 @@ require_once __DIR__ . '/db.php';
 $pdo = getDbConnection();
 $format = $_GET['format'] ?? 'xml';
 
-$stmt = $pdo->query("SELECT * FROM `page_seo` WHERE `robots` NOT LIKE '%noindex%' ORDER BY `page_path` ASC");
-$pages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$pages = [];
+try {
+    $stmt = $pdo->query("SELECT * FROM `page_seo` WHERE `robots` NOT LIKE '%noindex%' ORDER BY `page_path` ASC");
+    $pages = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+} catch (Throwable $e) {}
+
+if (empty($pages)) {
+    try {
+        $stmt2 = $pdo->query("SELECT * FROM `seo_pages` WHERE `robots` NOT LIKE '%noindex%' ORDER BY `page_path` ASC");
+        $pages = $stmt2 ? $stmt2->fetchAll(PDO::FETCH_ASSOC) : [];
+    } catch (Throwable $e) {}
+}
+
+if (empty($pages)) {
+    $pages = [
+        ['page_path' => '/', 'title' => 'ProfileVault Anti-Detect Browser', 'description' => 'Isolated browser profiles and fingerprint masking.', 'canonical_url' => 'https://app.edgecash.net/', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/download', 'title' => 'Download ProfileVault', 'description' => 'Download for Windows, macOS & Linux.', 'canonical_url' => 'https://app.edgecash.net/download', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/pricing', 'title' => 'Pricing & Plans', 'description' => 'Affordable multi-accounting browser plans.', 'canonical_url' => 'https://app.edgecash.net/pricing', 'updated_at' => date('Y-m-d')]
+    ];
+}
 
 if ($format === 'html') {
     header('Content-Type: text/html; charset=utf-8');

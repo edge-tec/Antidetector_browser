@@ -9,12 +9,25 @@ require_once __DIR__ . '/db.php';
 header('Content-Type: text/plain; charset=utf-8');
 
 $pdo = getDbConnection();
-$stmt = $pdo->prepare("SELECT `value` FROM `seo_settings` WHERE `key` = 'robots_content'");
-$stmt->execute();
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$content = null;
+try {
+    $stmt = $pdo->prepare("SELECT `value` FROM `settings` WHERE `key` = 'seo_robots_content' OR `key` = 'robots_content'");
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && !empty($row['value'])) $content = $row['value'];
+} catch (Throwable $e) {}
 
-if (!empty($row['value'])) {
-    echo $row['value'];
+if (!$content) {
+    try {
+        $stmt = $pdo->prepare("SELECT `value` FROM `seo_settings` WHERE `key` = 'robots_content'");
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && !empty($row['value'])) $content = $row['value'];
+    } catch (Throwable $e) {}
+}
+
+if (!empty($content)) {
+    echo $content;
 } else {
     $baseUrl = defined('APP_URL') ? APP_URL : 'https://app.edgecash.net';
     echo "User-agent: *\n";
