@@ -295,6 +295,85 @@ switch ($action) {
         respondJson(['success' => true, 'message' => 'Logged out successfully.']);
         break;
 
+    // ── 3.6. Resend Email Verification Token & Link ──
+    case 'resend-verification':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $email = trim($input['email'] ?? '');
+        if (!$email) {
+            respondJson(['success' => false, 'error' => 'Email address is required.'], 400);
+        }
+
+        $userStmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
+        $userStmt->execute([$email]);
+        $targetUser = $userStmt->fetch();
+
+        if (!$targetUser) {
+            // Generic success to prevent email enumeration
+            respondJson(['success' => true, 'message' => 'If an account exists, a new confirmation link has been sent.']);
+        }
+
+        if ($targetUser['email_verified']) {
+            respondJson(['success' => false, 'error' => 'Your email address is already verified. Please sign in.'], 400);
+        }
+
+        $emailRes = sendVerificationEmailPhp($targetUser['id'], $targetUser['name'], $targetUser['email']);
+        respondJson([
+            'success' => true,
+            'message' => 'A new confirmation link has been sent to your email address.',
+            'sentViaSmtp' => $emailRes['sentViaSmtp'] ?? false,
+            'token' => $emailRes['token'] ?? null
+        ]);
+        break;
+
+    // ── 3.7. Verify Email Token ──
+    case 'verify-email':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $plainToken = trim($input['token'] ?? $_GET['token'] ?? '');
+        if (!$plainToken) {
+            respondJson(['success' => false, 'error' => 'Verification token is required.'], 400);
+        }
+
+        $tokenHash = hash('sha256', $plainToken);
+        $tokStmt = $db->prepare("SELECT * FROM verification_tokens WHERE token_hash = ? AND used = 0");
+        $tokStmt->execute([$tokenHash]);
+        $tokenRecord = $tokStmt->fetch();
+
+        if (!$tokenRecord) {
+            respondJson(['success' => false, 'error' => 'Invalid or expired confirmation token.'], 400);
+        }
+
+        if (strtotime($tokenRecord['expires_at']) < time()) {
+            respondJson(['success' => false, 'error' => 'Confirmation token has expired. Please request a new link.'], 400);
+        }
+
+        $userId = $tokenRecord['user_id'];
+        $db->prepare("UPDATE verification_tokens SET used = 1 WHERE id = ?")->execute([$tokenRecord['id']]);
+        $db->prepare("UPDATE users SET email_verified = 1, account_status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$userId]);
+
+        $uStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $verifiedUser = $uStmt->fetch();
+
+        if ($verifiedUser) {
+            @sendAccountVerifiedConfirmationPhp($verifiedUser['name'], $verifiedUser['email']);
+        }
+
+        $sessionToken = createSessionToken($userId);
+        respondJson([
+            'success' => true,
+            'sessionToken' => $sessionToken,
+            'user' => $verifiedUser ? [
+                'id' => $verifiedUser['id'],
+                'name' => $verifiedUser['name'],
+                'email' => $verifiedUser['email'],
+                'role' => $verifiedUser['role'],
+                'emailVerified' => true,
+                'accountStatus' => 'active'
+            ] : null,
+            'message' => 'Your email has been verified successfully! You are now fully activated.'
+        ]);
+        break;
+
     // ── 5. User Update Profile (Editable: Name, Phone, Password ONLY) ──
     case 'update-profile':
         $user = getAuthenticatedUser();

@@ -257,12 +257,42 @@ export function setupAuthIPC(): void {
   })
 
   // ── Verify Email Handler ──
+  // ── Verify Email Handler (Central Server First) ──
   ipcMain.handle('auth:verify-email', async (_event, plainToken: string) => {
     try {
       if (!plainToken || typeof plainToken !== 'string') {
         return { success: false, error: 'Invalid verification token.' }
       }
 
+      // 1. Try Central Server
+      try {
+        const centralRes = await centralApi.request('/api/auth/verify-email', {
+          method: 'POST',
+          body: JSON.stringify({ token: plainToken })
+        })
+        if (centralRes && centralRes.success) {
+          if (centralRes.user) {
+            try {
+              const u = centralRes.user
+              const localUser = userRepo.getById(u.id) || userRepo.getByEmail(u.email)
+              if (localUser) {
+                userRepo.update(localUser.id, { emailVerified: true, accountStatus: 'active' })
+              }
+            } catch {}
+          }
+          return {
+            success: true,
+            user: centralRes.user,
+            token: centralRes.sessionToken,
+            message: centralRes.message || 'Your email has been verified successfully!'
+          }
+        }
+        if (centralRes && !centralRes.success && centralRes.error && !centralRes.error.includes('Unable to connect')) {
+          return { success: false, error: centralRes.error }
+        }
+      } catch {}
+
+      // 2. Offline Fallback
       const tokenResult = tokenRepo.findValidToken(plainToken)
       if (!tokenResult) {
         return { success: false, error: 'Verification token not found or invalid.' }
@@ -278,24 +308,17 @@ export function setupAuthIPC(): void {
         return { success: false, error: 'User account not found.' }
       }
 
-      // Mark token used & verify user email
       tokenRepo.markUsed(tokenResult.token.id)
       const displayUser = userRepo.verifyEmail(userId)!
 
-      // Send confirmation email asynchronously
-      emailService.sendAccountVerifiedEmail(displayUser.name, displayUser.email).catch(err => {
-        logger.error('auth', `Background confirmation email failed: ${err.message}`)
-      })
+      emailService.sendAccountVerifiedEmail(displayUser.name, displayUser.email).catch(() => {})
 
-      // Create active session token
       const sessionToken = sessionManager.createSession(displayUser)
-      logger.info('auth', `Email verified successfully for user "${displayUser.email}"`)
-
       return {
         success: true,
         user: displayUser,
         token: sessionToken,
-        message: 'Your email has been verified successfully! A confirmation message has been sent to your inbox.'
+        message: 'Your email has been verified successfully!'
       }
     } catch (err: any) {
       logger.error('auth', `Email verification failed: ${err.message}`)
@@ -303,14 +326,34 @@ export function setupAuthIPC(): void {
     }
   })
 
-  // ── Resend Verification Email Handler ──
+  // ── Resend Verification Email Handler (Central Server First) ──
   ipcMain.handle('auth:resend-verification', async (_event, email: string) => {
     try {
       if (!email) return { success: false, error: 'Email is required.' }
 
-      const user = userRepo.getByEmail(email)
+      const cleanEmail = email.trim().toLowerCase()
+
+      // 1. Try Central Server (Uses server-configured SMTP!)
+      try {
+        const centralRes = await centralApi.request('/api/auth/resend-verification', {
+          method: 'POST',
+          body: JSON.stringify({ email: cleanEmail })
+        })
+        if (centralRes && centralRes.success) {
+          return {
+            success: true,
+            sentViaSmtp: centralRes.sentViaSmtp,
+            message: centralRes.message || 'A new confirmation link has been sent to your email address.'
+          }
+        }
+        if (centralRes && !centralRes.success && centralRes.error && !centralRes.error.includes('Unable to connect')) {
+          return { success: false, error: centralRes.error }
+        }
+      } catch {}
+
+      // 2. Offline / Local Fallback
+      const user = userRepo.getByEmail(cleanEmail)
       if (!user) {
-        // Return generic success to prevent email enumeration
         return { success: true, message: 'If an account exists, a new verification link has been sent.' }
       }
 
@@ -322,6 +365,7 @@ export function setupAuthIPC(): void {
       return {
         success: true,
         verificationUrl: emailResult.verificationUrl,
+        sentViaSmtp: emailResult.sentViaSmtp,
         message: 'A new verification link has been sent to your email.'
       }
     } catch (err: any) {

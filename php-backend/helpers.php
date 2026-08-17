@@ -358,15 +358,119 @@ function sendSmtpMailPhp(string $toEmail, string $subject, string $htmlBody): bo
         return false;
     }
 
-    $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $smtp['user'];
-    $headers = [];
-    $headers[] = 'MIME-Version: 1.0';
-    $headers[] = 'Content-type: text/html; charset=utf-8';
-    $headers[] = 'From: ProfileVault System <' . $from . '>';
-    $headers[] = 'Reply-To: ' . $from;
-    $headers[] = 'X-Mailer: ProfileVault Mailer/1.0';
+    $host = $smtp['host'];
+    $port = (int)($smtp['port'] ?? 587);
+    $user = $smtp['user'];
+    $pass = $smtp['password'];
+    $from = !empty($smtp['fromEmail']) ? $smtp['fromEmail'] : $user;
+    $secure = (bool)($smtp['secure'] ?? false);
 
-    return @mail($toEmail, $subject, $htmlBody, implode("\r\n", $headers));
+    $timeout = 15;
+    $errno = 0;
+    $errstr = '';
+
+    $socketHost = ($secure || $port === 465) ? "ssl://{$host}" : $host;
+    $socket = @fsockopen($socketHost, $port, $errno, $errstr, $timeout);
+
+    if (!$socket) {
+        error_log("[SMTP Error] Could not connect to {$host}:{$port} - {$errstr} ({$errno})");
+        return false;
+    }
+
+    $read = function() use ($socket) {
+        $data = '';
+        while ($str = fgets($socket, 515)) {
+            $data .= $str;
+            if (substr($str, 3, 1) === ' ' || substr($str, 3, 1) === "\r" || substr($str, 3, 1) === "\n") break;
+        }
+        return $data;
+    };
+
+    $write = function(string $cmd) use ($socket) {
+        fputs($socket, $cmd . "\r\n");
+    };
+
+    $read(); // Initial greeting banner (220)
+
+    $serverHost = $_SERVER['SERVER_NAME'] ?? 'app.edgecash.net';
+    $write("EHLO " . $serverHost);
+    $ehloRes = $read();
+
+    // If port 587 and STARTTLS is supported and not already SSL
+    if (!$secure && $port !== 465 && strpos($ehloRes, 'STARTTLS') !== false) {
+        $write("STARTTLS");
+        $tlsRes = $read();
+        if (substr($tlsRes, 0, 3) === '220') {
+            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            $write("EHLO " . $serverHost);
+            $read();
+        }
+    }
+
+    // AUTH LOGIN
+    if (!empty($user) && !empty($pass)) {
+        $write("AUTH LOGIN");
+        $read();
+        $write(base64_encode($user));
+        $read();
+        $write(base64_encode($pass));
+        $authRes = $read();
+        if (substr($authRes, 0, 3) !== '235') {
+            error_log("[SMTP Auth Error] Authentication failed: " . trim($authRes));
+            $write("QUIT");
+            fclose($socket);
+            return false;
+        }
+    }
+
+    // MAIL FROM
+    $write("MAIL FROM: <{$from}>");
+    $mailFromRes = $read();
+    if (substr($mailFromRes, 0, 3) !== '250') {
+        error_log("[SMTP Error] MAIL FROM rejected: " . trim($mailFromRes));
+        $write("QUIT");
+        fclose($socket);
+        return false;
+    }
+
+    // RCPT TO
+    $write("RCPT TO: <{$toEmail}>");
+    $rcptRes = $read();
+    if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
+        error_log("[SMTP Error] RCPT TO rejected: " . trim($rcptRes));
+        $write("QUIT");
+        fclose($socket);
+        return false;
+    }
+
+    // DATA
+    $write("DATA");
+    $dataRes = $read();
+    if (substr($dataRes, 0, 3) !== '354') {
+        $write("QUIT");
+        fclose($socket);
+        return false;
+    }
+
+    // Message payload
+    $headers = [];
+    $headers[] = "From: ProfileVault System <{$from}>";
+    $headers[] = "To: <{$toEmail}>";
+    $headers[] = "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=";
+    $headers[] = "MIME-Version: 1.0";
+    $headers[] = "Content-Type: text/html; charset=UTF-8";
+    $headers[] = "Content-Transfer-Encoding: 8bit";
+    $headers[] = "Date: " . date('r');
+    $headers[] = "Message-ID: <" . md5(uniqid(microtime(true), true)) . "@" . $serverHost . ">";
+
+    $message = implode("\r\n", $headers) . "\r\n\r\n" . $htmlBody . "\r\n.";
+    $write($message);
+    $sentRes = $read();
+
+    $write("QUIT");
+    fclose($socket);
+
+    return substr($sentRes, 0, 3) === '250';
 }
 
 function sendVerificationEmailPhp(string $userId, string $userName, string $email): array {
