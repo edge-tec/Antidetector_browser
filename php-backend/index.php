@@ -3645,6 +3645,7 @@ header('Content-Type: text/html; charset=utf-8');
                             <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${item.user.name} <br><span style="font-size:12px; color:var(--text-muted);">${item.user.email}</span></td>
                             <td style="padding: 12px 16px;">
                                 <select id="subPlan_${item.user.id}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
+                                    <option value="plan_free" ${planId === 'plan_free' ? 'selected' : ''}>Free (3 Profiles)</option>
                                     <option value="plan_starter" ${planId === 'plan_starter' ? 'selected' : ''}>Starter (25 Profiles)</option>
                                     <option value="plan_pro" ${planId === 'plan_pro' ? 'selected' : ''}>Professional (100 Profiles)</option>
                                     <option value="plan_business" ${planId === 'plan_business' ? 'selected' : ''}>Business (500 Profiles)</option>
@@ -3701,14 +3702,14 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(`Subscription & Expiration date for user successfully updated to ${expDate}!`);
+                    alert(`Subscription plan (${planId}) & expiration date successfully updated to ${expDate}!`);
                     loadSubscriptionsTable();
                 } else {
-                    alert('Updated user subscription expiration date!');
+                    alert('Error: ' + (data.error || 'Failed to update subscription.'));
                     loadSubscriptionsTable();
                 }
             } catch(e) {
-                alert('Updated user expiration date!');
+                alert('Network error while updating subscription: ' + e.message);
                 loadSubscriptionsTable();
             }
         }

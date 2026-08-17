@@ -8,6 +8,7 @@ require_once __DIR__ . '/license.php';
 
 // Require Admin authorization
 $adminUser = requireAdmin();
+$admin = $adminUser;
 $db = Database::getConnection();
 $action = $_GET['action'] ?? '';
 

