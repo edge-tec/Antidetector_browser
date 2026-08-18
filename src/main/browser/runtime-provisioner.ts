@@ -41,7 +41,7 @@ export interface RuntimeDetails {
   downloadProgress: number
 }
 
-const CHROMIUM_VERSION = '131.0.6778.85'
+const CHROMIUM_VERSION = '131.0-official'
 const FIREFOX_VERSION = '131.0'
 
 const activeDownloads: Map<BrowserEngine, {
@@ -193,22 +193,14 @@ export function findManagedExecutable(engine: BrowserEngine): string | null {
       return primaryPath
     }
 
-    // Check legacy managed directory for backward compatibility
-    const legacyDir = path.join(getBaseUserDataDir(), 'managed-chromium', CHROMIUM_VERSION)
-    const legacyPath = path.join(legacyDir, executableRelativePath)
-    if (fs.existsSync(legacyPath)) {
-      ensureExecutablePermission(legacyPath)
-      return legacyPath
-    }
-
-    // Search direct subdirectories
+    // Search direct subdirectories for pure Chromium
     try {
       const entries = fs.readdirSync(installDir)
       for (const entry of entries) {
         const sub = path.join(installDir, entry)
         if (fs.statSync(sub).isDirectory()) {
           if (process.platform === 'darwin') {
-            const macApp = path.join(sub, 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing')
+            const macApp = path.join(sub, 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
             if (fs.existsSync(macApp)) {
               ensureExecutablePermission(macApp)
               return macApp
