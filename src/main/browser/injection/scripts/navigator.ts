@@ -17,41 +17,27 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
 (function() {
   'use strict';
 
-  const navOverrides = ${JSON.stringify({
-    userAgent: nav.userAgent,
-    platform: nav.platform,
-    appCodeName: nav.appCodeName,
-    appName: nav.appName,
-    appVersion: nav.appVersion,
-    product: nav.product,
-    productSub: nav.productSub,
-    vendor: nav.vendor,
-    vendorSub: nav.vendorSub,
+  const safeOverrides = ${JSON.stringify({
     hardwareConcurrency: nav.hardwareConcurrency,
     deviceMemory: nav.deviceMemory,
     maxTouchPoints: nav.maxTouchPoints,
-    doNotTrack: nav.doNotTrack,
-    cookieEnabled: nav.cookieEnabled,
-    pdfViewerEnabled: nav.pdfViewerEnabled
+    doNotTrack: nav.doNotTrack
   })};
 
-  for (const [key, value] of Object.entries(navOverrides)) {
-    if (value === undefined) continue;
+  for (const [key, value] of Object.entries(safeOverrides)) {
+    if (value === undefined || value === null) continue;
     try {
       Object.defineProperty(Navigator.prototype, key, {
-        get: function() { return value; },
+        get: function() {
+          if (this !== navigator && !(this instanceof Navigator)) {
+            throw new TypeError('Illegal invocation');
+          }
+          return value;
+        },
         configurable: true,
         enumerable: true
       });
-    } catch(e) {
-      try {
-        Object.defineProperty(navigator, key, {
-          get: function() { return value; },
-          configurable: true,
-          enumerable: true
-        });
-      } catch(e2) {}
-    }
+    } catch(e) {}
   }
 
   // Override navigator.languages (frozen array)
