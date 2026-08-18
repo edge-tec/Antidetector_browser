@@ -265,7 +265,7 @@ function generateRandomUAForOS(osType: string, browserType: 'chrome' | 'firefox'
 }
 
 
-function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
+function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome' | 'firefox' = 'chrome', bVer = '128.0.6613.120'): any {
   const fp = rawFp && typeof rawFp === 'object' ? rawFp : {}
 
   if (targetOs === 'android') {
@@ -275,12 +275,17 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
     return {
       version: fp.version || 2,
       seed: fp.seed || 'default-seed',
+      browser: {
+        name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+        type: bType,
+        version: bVer
+      },
       navigator: {
-        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateAndroidUserAgent(matchedDev),
-        browserVersion: fp.navigator?.browserVersion || '128.0.0.0',
-        chromiumVersion: fp.navigator?.chromiumVersion || '128.0.0.0',
+        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateAndroidUserAgent(matchedDev, bType, bVer),
+        browserVersion: fp.navigator?.browserVersion || bVer,
+        chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
         platform: 'Linux armv8l',
-        vendor: 'Google Inc.',
+        vendor: bType === 'firefox' ? '' : 'Google Inc.',
         deviceBrand: fp.navigator?.deviceBrand || matchedDev.brand,
         deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
         deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.modelCode,
@@ -375,7 +380,6 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
   if (targetOs === 'ios') {
     const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
     const matchedDev = (existingModelCode ? getIosDeviceById(existingModelCode) : null) || IOS_DEVICES[0]
-    const bType = fp.browser?.type || (fp.navigator?.userAgent?.includes('Firefox') || fp.navigator?.userAgent?.includes('FxiOS') ? 'firefox' : 'chrome')
 
     return {
       version: fp.version || 2,
@@ -383,29 +387,29 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
       browser: {
         name: bType === 'firefox' ? 'Firefox' : 'Chrome',
         type: bType,
-        version: bType === 'firefox' ? '128.0' : '128.0.0.0'
+        version: bVer
       },
       navigator: {
-        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateIosUserAgent(matchedDev, bType),
-        browserVersion: fp.navigator?.browserVersion || (bType === 'firefox' ? '128.0' : '128.0.0.0'),
-        chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? '128' : '128.0.0.0'),
+        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateIosUserAgent(matchedDev, bType, bVer),
+        browserVersion: fp.navigator?.browserVersion || bVer,
+        chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
         platform: 'iPhone',
-        vendor: 'Apple Computer, Inc.',
+        vendor: bType === 'firefox' ? '' : 'Apple Computer, Inc.',
         deviceBrand: 'Apple',
         deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
-        deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.modelCode,
-        hardwareConcurrency: fp.navigator?.hardwareConcurrency || matchedDev.cores,
-        deviceMemory: fp.navigator?.deviceMemory || matchedDev.memory,
+        deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.id,
+        hardwareConcurrency: fp.navigator?.hardwareConcurrency || matchedDev.cpuCores,
+        deviceMemory: fp.navigator?.deviceMemory || matchedDev.ramGb,
         maxTouchPoints: 5,
         touchSupport: true,
         doNotTrack: fp.navigator?.doNotTrack || null
       },
       screen: {
-        width: fp.screen?.width || matchedDev.screenWidth,
-        height: fp.screen?.height || matchedDev.screenHeight,
+        width: fp.screen?.width || matchedDev.width,
+        height: fp.screen?.height || matchedDev.height,
         devicePixelRatio: fp.screen?.devicePixelRatio || matchedDev.dpr,
-        viewportWidth: fp.screen?.viewportWidth || matchedDev.screenWidth,
-        viewportHeight: fp.screen?.viewportHeight || Math.floor(matchedDev.screenHeight * 0.9),
+        viewportWidth: fp.screen?.viewportWidth || matchedDev.width,
+        viewportHeight: fp.screen?.viewportHeight || Math.floor(matchedDev.height * 0.9),
         colorDepth: 24,
         pixelDepth: 24,
         orientation: 'portrait-primary',
@@ -485,12 +489,17 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
   return {
     version: fp.version || 2,
     seed: fp.seed || 'default-seed',
+    browser: {
+      name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+      type: bType,
+      version: bVer
+    },
     navigator: {
-      userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateUAForOS(targetOs),
-      browserVersion: fp.navigator?.browserVersion || '128.0.0.0',
-      chromiumVersion: fp.navigator?.chromiumVersion || '128.0.0.0',
+      userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateUAForOS(targetOs, bVer, bType),
+      browserVersion: fp.navigator?.browserVersion || bVer,
+      chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
       platform: fp.navigator?.platform || (targetOs.startsWith('win') ? 'Win32' : targetOs.startsWith('linux') ? 'Linux x86_64' : 'MacIntel'),
-      vendor: fp.navigator?.vendor || 'Google Inc.',
+      vendor: fp.navigator?.vendor !== undefined ? fp.navigator.vendor : (bType === 'firefox' ? '' : 'Google Inc.'),
       hardwareConcurrency: fp.navigator?.hardwareConcurrency || 8,
       deviceMemory: fp.navigator?.deviceMemory || 8,
       maxTouchPoints: fp.navigator?.maxTouchPoints || 0,
@@ -810,14 +819,25 @@ export const ProfileModal: React.FC<Props> = ({
   const [fpToast, setFpToast] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec) => {
-    const newUa = generateAndroidUserAgent(dev)
+  const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion) => {
+    const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
+    const newUa = bType === 'firefox'
+      ? `Mozilla/5.0 (Android ${dev.androidVersion}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
+      : `Mozilla/5.0 (Linux; Android ${dev.androidVersion}; ${dev.modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} Mobile Safari/537.36`
+
     handleFpChange(prev => ({
       ...prev,
+      browser: {
+        name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+        type: bType,
+        version: bVer
+      },
       navigator: {
         ...prev.navigator,
         userAgent: newUa,
-        appVersion: `5.0 (Linux; Android ${dev.androidVersion}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36`,
+        appVersion: bType === 'firefox'
+          ? `5.0 (Android ${dev.androidVersion})`
+          : `5.0 (Linux; Android ${dev.androidVersion}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} Mobile Safari/537.36`,
         platform: 'Linux armv8l',
         deviceBrand: dev.brand,
         deviceModel: dev.modelName,
@@ -825,7 +845,9 @@ export const ProfileModal: React.FC<Props> = ({
         hardwareConcurrency: dev.cores,
         deviceMemory: dev.memory,
         maxTouchPoints: 5,
-        touchSupport: true
+        touchSupport: true,
+        vendor: bType === 'firefox' ? '' : 'Google Inc.',
+        browserVersion: bVer
       },
       screen: {
         ...prev.screen,
@@ -855,7 +877,7 @@ export const ProfileModal: React.FC<Props> = ({
     if (brandDevices.length > 0) {
       const firstDev = brandDevices[0]
       setAndroidModelId(firstDev.id)
-      applyAndroidDeviceToFp(firstDev)
+      applyAndroidDeviceToFp(firstDev, browserType, browserVersion)
     }
   }
 
@@ -863,7 +885,7 @@ export const ProfileModal: React.FC<Props> = ({
     setAndroidModelId(newModelId)
     const dev = getDeviceById(newModelId)
     if (dev) {
-      applyAndroidDeviceToFp(dev)
+      applyAndroidDeviceToFp(dev, browserType, browserVersion)
     }
   }
 
@@ -1236,7 +1258,7 @@ export const ProfileModal: React.FC<Props> = ({
       if (dev) {
         setAndroidBrand(dev.brand)
         setAndroidModelId(dev.id)
-        applyAndroidDeviceToFp(dev)
+        applyAndroidDeviceToFp(dev, browserType, browserVersion)
         setFpToast(true)
         setTimeout(() => setFpToast(false), 2200)
         return
@@ -1245,7 +1267,7 @@ export const ProfileModal: React.FC<Props> = ({
       const dev = IOS_DEVICES[Math.floor(Math.random() * IOS_DEVICES.length)]
       if (dev) {
         setIosModelId(dev.id)
-        applyIosDeviceToFp(dev, browserType)
+        applyIosDeviceToFp(dev, browserType, browserVersion)
         setFpToast(true)
         setTimeout(() => setFpToast(false), 2200)
         return
@@ -1254,9 +1276,9 @@ export const ProfileModal: React.FC<Props> = ({
     try {
       const randomSeed = Math.random().toString(36).substring(2) + Date.now().toString(36)
       if ((window as any).api?.generateFingerprint) {
-        const res = await (window as any).api.generateFingerprint({ osType: targetOs, seed: randomSeed })
+        const res = await (window as any).api.generateFingerprint({ osType: targetOs, browserType, browserVersion, seed: randomSeed })
         if (res?.success && res?.data) {
-          setFp(ensureFpStructure(res.data, targetOs))
+          setFp(ensureFpStructure(res.data, targetOs, browserType, browserVersion))
           setFpToast(true)
           setTimeout(() => setFpToast(false), 2200)
           return
@@ -1266,7 +1288,7 @@ export const ProfileModal: React.FC<Props> = ({
       console.error('Failed to generate fingerprint:', err)
     }
     // Fallback if API fails
-    setFp(ensureFpStructure(null, targetOs))
+    setFp(ensureFpStructure(null, targetOs, browserType, browserVersion))
     setFpToast(true)
     setTimeout(() => setFpToast(false), 2200)
   }
@@ -1277,13 +1299,13 @@ export const ProfileModal: React.FC<Props> = ({
       const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
       setAndroidBrand(dev.brand)
       setAndroidModelId(dev.id)
-      applyAndroidDeviceToFp(dev)
+      applyAndroidDeviceToFp(dev, browserType, browserVersion)
       setFpToast(true)
       setTimeout(() => setFpToast(false), 2200)
     } else if (newOs === 'ios') {
       const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
       setIosModelId(dev.id)
-      applyIosDeviceToFp(dev, browserType)
+      applyIosDeviceToFp(dev, browserType, browserVersion)
       setFpToast(true)
       setTimeout(() => setFpToast(false), 2200)
     } else {
@@ -1294,7 +1316,7 @@ export const ProfileModal: React.FC<Props> = ({
   }
 
   const handleFpChange = (updater: (prev: any) => any) => {
-    setFp((prev: any) => ensureFpStructure(updater(prev), osType))
+    setFp((prev: any) => ensureFpStructure(updater(prev), osType, browserType, browserVersion))
   }
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -3170,7 +3192,7 @@ export const ProfileModal: React.FC<Props> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              const generated = generateRandomUAForOS(osType)
+                              const generated = generateRandomUAForOS(osType, browserType)
                               handleUserAgentChange(generated.ua)
                             }}
                             style={{
@@ -3189,7 +3211,7 @@ export const ProfileModal: React.FC<Props> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              const defaultUA = generateUAForOS(osType)
+                              const defaultUA = generateUAForOS(osType, browserVersion, browserType)
                               handleUserAgentChange(defaultUA)
                             }}
                             style={{
@@ -3201,7 +3223,7 @@ export const ProfileModal: React.FC<Props> = ({
                               fontSize: '11px',
                               cursor: 'pointer'
                             }}
-                            title="Reset User-Agent to default for current OS"
+                            title="Reset User-Agent to default for current OS and browser engine"
                           >
                             ↺ Reset Default
                           </button>
@@ -3288,7 +3310,7 @@ export const ProfileModal: React.FC<Props> = ({
                           Platform: {safeFp.navigator.platform || 'Auto'}
                         </span>
                         <span style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', padding: '2px 8px', borderRadius: '4px' }}>
-                          Chromium: {safeFp.navigator.browserVersion || '128.0.0.0'}
+                          {browserType === 'firefox' ? 'Firefox' : 'Chromium'}: {browserVersion || safeFp.navigator.browserVersion || (browserType === 'firefox' ? '129.0' : '128.0.0.0')}
                         </span>
                         <span style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', padding: '2px 8px', borderRadius: '4px' }}>
                           {safeFp.navigator.userAgent?.includes('Mobile') ? '📱 Mobile Browser' : '🖥️ Desktop Browser'}
@@ -3298,26 +3320,17 @@ export const ProfileModal: React.FC<Props> = ({
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Chromium Version</label>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>
+                          {browserType === 'firefox' ? 'Firefox Version' : 'Chromium Version'}
+                        </label>
                         <select
-                          value={safeFp.navigator.browserVersion || '124.0.0.0'}
-                          onChange={e => {
-                            const ver = e.target.value
-                            const newUA = generateUAForOS(osType, ver)
-                            handleFpChange(prev => ({
-                              ...prev,
-                              navigator: { ...prev.navigator, browserVersion: ver, chromiumVersion: ver.split('.')[0], userAgent: newUA }
-                            }))
-                          }}
+                          value={browserVersion}
+                          onChange={e => handleBrowserVersionChange(e.target.value)}
                           style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
                         >
-                          <option value="126.0.0.0">Chrome 126</option>
-                          <option value="125.0.0.0">Chrome 125</option>
-                          <option value="124.0.0.0">Chrome 124</option>
-                          <option value="123.0.0.0">Chrome 123</option>
-                          <option value="122.0.0.0">Chrome 122</option>
-                          <option value="121.0.0.0">Chrome 121</option>
-                          <option value="120.0.0.0">Chrome 120</option>
+                          {availableVersions.map(v => (
+                            <option key={v.version} value={v.version}>{v.label}</option>
+                          ))}
                         </select>
                       </div>
 

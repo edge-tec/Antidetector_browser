@@ -775,6 +775,10 @@ export function getDeviceById(idOrCode: string): AndroidDeviceSpec | undefined {
   return ANDROID_DEVICES.find(d => d.id === idOrCode || d.modelCode === idOrCode || d.modelName === idOrCode)
 }
 
-export function generateAndroidUserAgent(device: AndroidDeviceSpec, chromeVersion = '128.0.0.0'): string {
-  return `Mozilla/5.0 (Linux; Android ${device.androidVersion}; ${device.modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Mobile Safari/537.36`
+export function generateAndroidUserAgent(device: AndroidDeviceSpec, browser: 'chrome' | 'firefox' = 'chrome', version = '128.0.0.0'): string {
+  if (browser === 'firefox') {
+    const ffVer = version.includes('.') ? version : `${version}.0`
+    return `Mozilla/5.0 (Android ${device.androidVersion}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
+  }
+  return `Mozilla/5.0 (Linux; Android ${device.androidVersion}; ${device.modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Mobile Safari/537.36`
 }

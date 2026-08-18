@@ -69,7 +69,11 @@ export class ProfileRepository {
     // Generate fingerprint if not supplied
     let fingerprint = input.fingerprint
     if (!fingerprint || Object.keys(fingerprint).length === 0) {
-      fingerprint = generateFingerprint({ osType })
+      fingerprint = generateFingerprint({
+        osType,
+        browserType: (input.browserType as any) || (fingerprint?.browser?.type as any) || 'chrome',
+        browserVersion: input.browserVersion || fingerprint?.browser?.version
+      })
     }
 
     const consistencyResult = validateConsistency(fingerprint, osType)
@@ -242,7 +246,11 @@ export class ProfileRepository {
     if (!original) return null
 
     // Generate a fresh fingerprint with a new seed for the duplicate to maintain uniqueness
-    const newFp = generateFingerprint({ osType: original.osType as any })
+    const newFp = generateFingerprint({
+      osType: original.osType as any,
+      browserType: (original as any).browserType || (original.fingerprint?.browser?.type as any) || 'chrome',
+      browserVersion: original.browserVersion || original.fingerprint?.browser?.version
+    })
 
     return this.create({
       name: `${original.name} (Copy)`,

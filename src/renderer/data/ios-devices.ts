@@ -362,10 +362,12 @@ export function getIosDeviceById(idOrCode: string): IosDeviceSpec | undefined {
   )
 }
 
-export function generateIosUserAgent(dev: IosDeviceSpec, browser: 'chrome' | 'firefox' = 'chrome'): string {
+export function generateIosUserAgent(dev: IosDeviceSpec, browser: 'chrome' | 'firefox' = 'chrome', version?: string): string {
   const v = dev.iosVersion.replace('.', '_')
   if (browser === 'firefox') {
-    return `Mozilla/5.0 (iPhone; CPU iPhone OS ${v} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/128.0 Mobile/15E148 Safari/605.1.15`
+    const ffVer = version ? (version.includes('.') ? version : `${version}.0`) : '129.0'
+    return `Mozilla/5.0 (iPhone; CPU iPhone OS ${v} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
   }
-  return `Mozilla/5.0 (iPhone; CPU iPhone OS ${v} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.114 Mobile/15E148 Safari/604.1`
+  const cVer = version || '128.0.6613.120'
+  return `Mozilla/5.0 (iPhone; CPU iPhone OS ${v} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/${cVer} Mobile/15E148 Safari/604.1`
 }

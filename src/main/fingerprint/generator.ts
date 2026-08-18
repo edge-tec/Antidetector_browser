@@ -146,6 +146,8 @@ const WEBGL_EXTENSIONS = [
 
 export interface GenerateOptions {
   osType: OSType
+  browserType?: 'chrome' | 'firefox'
+  browserVersion?: string
   seed?: string               // If provided, produces deterministic results
   country?: string            // ISO country code, e.g. "US"
   proxyTimezone?: string      // Auto-detected timezone from proxy
@@ -165,13 +167,13 @@ export interface GenerateOptions {
  *   8. Permissions → default states
  */
 export function generateFingerprint(options: GenerateOptions): Fingerprint {
-  const { osType, country } = options
+  const { osType, country, browserType = 'chrome', browserVersion } = options
   const seed = options.seed || crypto.randomBytes(16).toString('hex')
   const rng = new SeededRandom(seed)
   const family = getOSFamily(osType)
 
-  // ── Step 1: Navigator (OS-aware) ──
-  const navigator = generateNavigator(osType, family, rng)
+  // ── Step 1: Navigator (OS & Browser Engine aware) ──
+  const navigator = generateNavigator(osType, family, rng, browserType, browserVersion)
 
   // ── Step 2: Screen (OS-aware, consistent with DPR) ──
   const screen = generateScreen(osType, family, rng)
@@ -216,7 +218,12 @@ export function generateFingerprint(options: GenerateOptions): Fingerprint {
   const permissions = generatePermissions()
 
   // ── Step 16: Browser Config ──
-  const browser = generateBrowserConfig()
+  const browser: BrowserConfig = {
+    ...generateBrowserConfig(),
+    type: browserType,
+    name: browserType === 'firefox' ? 'Firefox' : 'Chrome',
+    version: navigator.browserVersion
+  }
 
   return {
     version: 2,
@@ -245,27 +252,89 @@ export function generateFingerprint(options: GenerateOptions): Fingerprint {
 // Step 1: Navigator Generation
 // ═══════════════════════════════════════════
 
-function generateNavigator(osType: OSType, family: OSFamily, rng: SeededRandom): NavigatorFingerprint {
-  const uaData = (userAgentsData as any)[osType] || (userAgentsData as any)['windows-10']
-  const selectedUA = rng.pick(uaData)
-
-  const cpuArch = OS_CPU_ARCHITECTURES[family]
-  const cores = rng.pick(OS_CPU_RANGES[family])
-  const memory = rng.pick(OS_MEMORY_RANGES[family])
-
+function generateNavigator(
+  osType: OSType,
+  family: OSFamily,
+  rng: SeededRandom,
+  browserType: 'chrome' | 'firefox' = 'chrome',
+  customBrowserVersion?: string
+): NavigatorFingerprint {
   const isMobile = family === 'android' || family === 'ios'
   const isAndroid = family === 'android'
   const isIos = family === 'ios'
   const isMac = family === 'macos'
 
+  const cpuArch = OS_CPU_ARCHITECTURES[family]
+  const cores = rng.pick(OS_CPU_RANGES[family])
+  const memory = rng.pick(OS_MEMORY_RANGES[family])
+
+  if (browserType === 'firefox') {
+    const rawVer = customBrowserVersion || '129.0'
+    const ffVer = rawVer.includes('.') ? rawVer : `${rawVer}.0`
+
+    let userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+    let appVersion = `5.0 (Windows)`
+
+    if (osType === 'windows-10' || osType === 'windows-11') {
+      userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+      appVersion = `5.0 (Windows)`
+    } else if (osType === 'macos-intel' || osType === 'macos-arm') {
+      userAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+      appVersion = `5.0 (Macintosh)`
+    } else if (osType === 'linux') {
+      userAgent = `Mozilla/5.0 (X11; Linux x86_64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+      appVersion = `5.0 (X11)`
+    } else if (osType === 'ios') {
+      userAgent = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
+      appVersion = `5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
+    } else if (osType === 'android') {
+      userAgent = `Mozilla/5.0 (Android 14; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
+      appVersion = `5.0 (Android 14)`
+    }
+
+    return {
+      userAgent,
+      browserVersion: ffVer,
+      chromiumVersion: ffVer.split('.')[0],
+      platform: OS_PLATFORM_MAP[osType] || (isIos ? 'iPhone' : 'Win32'),
+      appCodeName: 'Mozilla',
+      appName: 'Netscape',
+      appVersion,
+      product: 'Gecko',
+      productSub: '20100101',
+      vendor: isIos ? 'Apple Computer, Inc.' : '',
+      vendorSub: '',
+      hardwareConcurrency: cores,
+      deviceMemory: memory,
+      cpuArchitecture: cpuArch.arch,
+      platformArchitecture: cpuArch.platformArch,
+      maxTouchPoints: isMobile ? 5 : 0,
+      touchSupport: isMobile,
+      doNotTrack: rng.next() > 0.8 ? '1' : null,
+      cookieEnabled: true,
+      pdfViewerEnabled: !isMobile,
+      javaEnabled: false,
+      webdriver: false,
+      localStorageEnabled: true,
+      sessionStorageEnabled: true,
+      indexedDBEnabled: true,
+      webSQLEnabled: false
+    }
+  }
+
+  // Default: Chrome
+  const uaData = (userAgentsData as any)[osType] || (userAgentsData as any)['windows-10']
+  const selectedUA = rng.pick(uaData)
+  const bVer = customBrowserVersion || selectedUA.version
+
   return {
-    userAgent: selectedUA.ua,
-    browserVersion: selectedUA.version,
+    userAgent: customBrowserVersion ? selectedUA.ua.replace(/Chrome\/[\d\.]+/g, `Chrome/${customBrowserVersion}`) : selectedUA.ua,
+    browserVersion: bVer,
     chromiumVersion: selectedUA.chromium,
     platform: OS_PLATFORM_MAP[osType] || (isIos ? 'iPhone' : 'Win32'),
     appCodeName: 'Mozilla',
     appName: 'Netscape',
-    appVersion: OS_APP_VERSION_PREFIX[osType] + ` AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${selectedUA.version} ${isMobile ? 'Mobile ' : ''}Safari/537.36`,
+    appVersion: OS_APP_VERSION_PREFIX[osType] + ` AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} ${isMobile ? 'Mobile ' : ''}Safari/537.36`,
     product: 'Gecko',
     productSub: '20030107',
     vendor: isIos ? 'Apple Computer, Inc.' : 'Google Inc.',
