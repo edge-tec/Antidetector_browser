@@ -629,6 +629,10 @@ export function deleteProfileDataDir(profileId: string): void {
   if (fs.existsSync(dir)) {
     fs.rmSync(dir, { recursive: true, force: true })
   }
+  const ffDir = getFirefoxProfileDataDir(profileId)
+  if (fs.existsSync(ffDir)) {
+    fs.rmSync(ffDir, { recursive: true, force: true })
+  }
 }
 
 /**

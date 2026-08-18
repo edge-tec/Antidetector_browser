@@ -31,27 +31,44 @@ function setupFirefoxProfilePrefs(
   proxy: Proxy | null
 ): void {
   const resolvedDir = path.resolve(userDataDir)
-  if (!fs.existsSync(resolvedDir)) {
-    fs.mkdirSync(resolvedDir, { recursive: true })
+  try {
+    if (!fs.existsSync(resolvedDir)) {
+      fs.mkdirSync(resolvedDir, { recursive: true, mode: 0o700 })
+    }
+    fs.accessSync(resolvedDir, fs.constants.R_OK | fs.constants.W_OK)
+  } catch (dirErr: any) {
+    logger.warn('browser', `[FirefoxProfile] Repairing inaccessible profile directory: ${resolvedDir}`)
+    try {
+      fs.mkdirSync(resolvedDir, { recursive: true, mode: 0o700 })
+    } catch {}
   }
 
-  // Remove stale lock files and corrupt caches from previous crashes or ungraceful terminations
-  const lockFiles = ['.parentlock', 'parent.lock', 'lock', '.parentlock.link', 'parent.lock.link']
+  // Unconditionally remove all stale lock files and broken Unix symlinks
+  const lockFiles = ['.parentlock', 'parent.lock', 'lock', '.parentlock.link', 'parent.lock.link', 'lock.link']
   for (const file of lockFiles) {
     const lockPath = path.join(resolvedDir, file)
-    if (fs.existsSync(lockPath)) {
+    try {
+      fs.rmSync(lockPath, { force: true, recursive: true })
       try {
         fs.unlinkSync(lockPath)
-        logger.info('browser', `[FirefoxProfile] Removed stale lock file: ${lockPath}`)
-      } catch (err: any) {
-        logger.warn('browser', `[FirefoxProfile] Could not remove lock file ${lockPath}: ${err.message}`)
-      }
+      } catch {}
+      logger.info('browser', `[FirefoxProfile] Cleaned lock file/symlink: ${lockPath}`)
+    } catch (err: any) {
+      // Ignore if already gone
     }
   }
 
   const cacheDir = path.join(resolvedDir, 'startupCache')
-  if (fs.existsSync(cacheDir)) {
-    try { fs.rmSync(cacheDir, { recursive: true, force: true }) } catch {}
+  try {
+    fs.rmSync(cacheDir, { recursive: true, force: true })
+  } catch {}
+
+  // Ensure times.json exists for valid profile initialization
+  const timesJsonPath = path.join(resolvedDir, 'times.json')
+  if (!fs.existsSync(timesJsonPath)) {
+    try {
+      fs.writeFileSync(timesJsonPath, JSON.stringify({ created: Date.now(), firstUse: Date.now() }, null, 2), 'utf8')
+    } catch {}
   }
 
   const prefs: string[] = [
@@ -142,9 +159,9 @@ export async function launchFirefox(
   const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
 
-  // Use single-dash -profile and -no-remote as required by Mozilla Firefox CLI
+  // Use standard --profile and -no-remote as required by Mozilla Firefox CLI
   const args: string[] = [
-    '-profile', userDataDir,
+    '--profile', userDataDir,
     '-no-remote',
     '-new-instance'
   ]
@@ -153,11 +170,15 @@ export async function launchFirefox(
     args.push(...startUrls)
   }
 
-  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with -profile ${userDataDir} at: ${firefoxPath}`)
+  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with --profile ${userDataDir} at: ${firefoxPath}`)
 
   const child: ChildProcess = spawn(firefoxPath, args, {
     detached: true,
-    stdio: 'ignore'
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      MOZ_NO_REMOTE: '1'
+    }
   })
 
   child.unref()
