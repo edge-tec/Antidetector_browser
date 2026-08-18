@@ -157,12 +157,22 @@ class ProfileManager {
 
   /**
    * Duplicate a profile (config only, not browser data).
-   */
   duplicateProfile(profileId: string, userId?: string): Profile | null {
     const original = profileRepo.getById(profileId)
     if (!original) return null
+
+    const userProfiles = profileRepo.getAll(userId || original.userId)
+    const existingNames = new Set(userProfiles.map(p => (p.name || '').trim().toLowerCase()))
+
+    let candidateName = `${original.name} (Copy)`
+    let copyNum = 2
+    while (existingNames.has(candidateName.toLowerCase())) {
+      candidateName = `${original.name} (Copy ${copyNum})`
+      copyNum++
+    }
+
     const newProfile = profileRepo.create({
-      name: `${original.name} (Copy)`,
+      name: candidateName,
       groupId: original.groupId,
       notes: original.notes,
       color: original.color,

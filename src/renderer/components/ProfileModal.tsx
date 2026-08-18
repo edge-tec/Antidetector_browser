@@ -16,6 +16,33 @@ interface Props {
   initialProfile?: any
   proxies: any[]
   groups: any[]
+  existingProfiles?: any[]
+}
+
+export function getNextProfileName(existingProfiles?: { name?: string }[]): string {
+  if (!existingProfiles || existingProfiles.length === 0) {
+    return 'profile 1'
+  }
+  
+  const usedNumbers = new Set<number>()
+  for (const p of existingProfiles) {
+    if (p && p.name) {
+      const match = p.name.trim().match(/^profile\s+(\d+)$/i)
+      if (match) {
+        const num = parseInt(match[1], 10)
+        if (!isNaN(num) && num > 0) {
+          usedNumbers.add(num)
+        }
+      }
+    }
+  }
+
+  let nextNum = 1
+  while (usedNumbers.has(nextNum)) {
+    nextNum++
+  }
+
+  return `profile ${nextNum}`
 }
 
 type TabType =
@@ -437,10 +464,11 @@ export const ProfileModal: React.FC<Props> = ({
   onSave,
   initialProfile,
   proxies,
-  groups
+  groups,
+  existingProfiles
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
-  const [name, setName] = useState('profile 1')
+  const [name, setName] = useState(() => getNextProfileName(existingProfiles))
   const [folder, setFolder] = useState('')
   const [osType, setOsType] = useState('macos-arm')
   const [processorGen, setProcessorGen] = useState('M4')
@@ -685,8 +713,9 @@ export const ProfileModal: React.FC<Props> = ({
 
   useEffect(() => {
     if (isOpen) {
+      const nextName = getNextProfileName(existingProfiles)
       if (initialProfile) {
-        setName(initialProfile.name || 'profile 1')
+        setName(initialProfile.name || nextName)
         setFolder(initialProfile.folder || '')
         const targetOs = initialProfile.osType || 'macos-intel'
         setOsType(targetOs)
@@ -754,7 +783,7 @@ export const ProfileModal: React.FC<Props> = ({
           setCookies([])
         }
       } else {
-        setName('profile 1')
+        setName(nextName)
         setFolder('')
         setOsType('macos-arm')
         setGroupId('')
@@ -772,7 +801,7 @@ export const ProfileModal: React.FC<Props> = ({
       }
       setActiveTab('overview')
     }
-  }, [isOpen, initialProfile])
+  }, [isOpen, initialProfile, existingProfiles])
 
   const handleGenerateNew = async (targetOs: string) => {
     if (targetOs === 'android') {
@@ -3162,7 +3191,7 @@ export const ProfileModal: React.FC<Props> = ({
             </h4>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div><strong style={{ color: '#94A3B8' }}>Profile Name:</strong> {name || 'profile 1'}</div>
+              <div><strong style={{ color: '#94A3B8' }}>Profile Name:</strong> {name || getNextProfileName(existingProfiles)}</div>
               <div><strong style={{ color: '#94A3B8' }}>Proxy:</strong> {activeProxyName}</div>
               <div><strong style={{ color: '#94A3B8' }}>Browser:</strong> chrome (mobile)</div>
               <div><strong style={{ color: '#94A3B8' }}>OS:</strong> {osType.startsWith('macos') ? 'mac' : osType.startsWith('win') ? 'win' : osType}</div>

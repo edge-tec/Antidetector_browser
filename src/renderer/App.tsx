@@ -663,6 +663,7 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           initialProfile={editProfile}
           proxies={proxies}
           groups={groups}
+          existingProfiles={profiles}
         />
       </ErrorBoundary>
 
