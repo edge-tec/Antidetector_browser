@@ -346,12 +346,21 @@ export interface LogRow {
 
 // Mappers
 export function userFromRow(row: UserRow): User {
+  let role: UserRole = 'user'
+  if (typeof row.role === 'string') {
+    role = row.role as UserRole
+  } else if (row.role && typeof row.role === 'object') {
+    role = ((row.role as any).name || (row.role as any).role || (row.role as any).slug || (row.role as any).value || 'user') as UserRole
+  } else if (typeof row.role === 'number') {
+    role = (row.role === 1 ? 'admin' : 'user') as UserRole
+  }
+
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     passwordHash: row.password_hash,
-    role: row.role as UserRole,
+    role,
     emailVerified: row.email_verified === 1,
     accountStatus: row.account_status as AccountStatus,
     googleId: row.google_id,

@@ -6,7 +6,7 @@ import { ipcMain } from 'electron'
 import { profileRepo } from '../database/repositories/profile.repo'
 import { profileManager } from '../browser/profile-manager'
 import { validateProfileName, validateId } from '../security/validators'
-import { authorizeUser } from '../security/session'
+import { authorizeUser, normalizeUserRole } from '../security/session'
 import { centralApi } from '../services/api-client.service'
 import { logger } from '../logging/logger'
 
@@ -17,7 +17,7 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) {
         return { success: false, error: auth.error || 'Authentication required' }
       }
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       const filterUserId = isAdmin ? undefined : auth.user.id
 
@@ -78,7 +78,7 @@ export function registerProfileHandlers(): void {
       const profile = profileRepo.getById(id)
       if (!profile) return { success: false, error: 'Profile not found' }
 
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
@@ -152,7 +152,7 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
       validateId(id)
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
@@ -180,7 +180,7 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
       validateId(id)
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
@@ -206,7 +206,7 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
       validateId(id)
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
@@ -226,7 +226,7 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
       validateId(id)
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
@@ -258,7 +258,7 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
 
       validateId(id)
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }

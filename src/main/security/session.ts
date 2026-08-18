@@ -168,6 +168,26 @@ class SessionManager {
 export const sessionManager = new SessionManager()
 
 /**
+ * Safely normalizes user.role from any representation (string, object, array, number)
+ * into a lowercase role string ('admin', 'user', 'super_admin', etc.).
+ */
+export function normalizeUserRole(rawRole: any): string {
+  if (!rawRole) return 'user'
+  if (typeof rawRole === 'string') return rawRole.trim().toLowerCase()
+  if (Array.isArray(rawRole)) return rawRole.length > 0 ? normalizeUserRole(rawRole[0]) : 'user'
+  if (typeof rawRole === 'object') {
+    if (typeof rawRole.name === 'string') return rawRole.name.trim().toLowerCase()
+    if (typeof rawRole.role === 'string') return rawRole.role.trim().toLowerCase()
+    if (typeof rawRole.slug === 'string') return rawRole.slug.trim().toLowerCase()
+    if (typeof rawRole.value === 'string') return rawRole.value.trim().toLowerCase()
+    if (typeof rawRole.title === 'string') return rawRole.title.trim().toLowerCase()
+    if (typeof rawRole.type === 'string') return rawRole.type.trim().toLowerCase()
+  }
+  if (typeof rawRole === 'number') return rawRole === 1 ? 'admin' : 'user'
+  return 'user'
+}
+
+/**
  * Server-side authorization check:
  * Returns authenticated user if active & verified (or allows pending for verify-only actions).
  */
@@ -181,7 +201,8 @@ export function authorizeUser(token: string | undefined | null, options?: { allo
     return { user: null, error: 'Your account has been suspended. Please contact support.' }
   }
 
-  const role = (user.role || '').toLowerCase()
+  const role = normalizeUserRole(user.role)
+  user.role = role as any
   const isAdmin = (role === 'admin' || role === 'super_admin')
   if (options?.requireAdmin && !isAdmin) {
     return { user: null, error: 'Access denied. Administrator permissions required.' }

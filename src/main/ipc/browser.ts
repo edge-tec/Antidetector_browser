@@ -9,7 +9,7 @@ import { profileRepo } from '../database/repositories/profile.repo'
 import { validateId } from '../security/validators'
 import { logger } from '../logging/logger'
 
-import { authorizeUser } from '../security/session'
+import { authorizeUser, normalizeUserRole } from '../security/session'
 
 export function registerBrowserHandlers(): void {
   ipcMain.handle('browser:start', async (event, sessionTokenOrId: string, maybeId?: string) => {
@@ -27,7 +27,7 @@ export function registerBrowserHandlers(): void {
       }
 
       validateId(id)
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         logger.warn('browser', `[PROFILE_ACCESS_DENIED] User "${auth.user.email}" (${auth.user.id}) denied access to profile "${id}"`)
@@ -82,7 +82,7 @@ export function registerBrowserHandlers(): void {
       }
 
       validateId(id)
-      const role = (auth.user.role || '').toLowerCase()
+      const role = normalizeUserRole(auth.user.role)
       const isAdmin = (role === 'admin' || role === 'super_admin')
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
