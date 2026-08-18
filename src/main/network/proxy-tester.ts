@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// AntiProfiles — Proxy Connection Tester
+// AntiProfiles — Proxy Connection Tester & Geo Profiler
 // ──────────────────────────────────────────────
 
 import http from 'http'
@@ -8,17 +8,32 @@ import { URL } from 'url'
 import { Proxy } from '../database/models'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { decryptPassword } from '../security/encryption'
+import { lookupGeoIP, GeoLocationResult } from './geo-lookup'
 import { logger } from '../logging/logger'
 
 export interface ProxyTestResult {
   success: boolean
   latency: number
   ip?: string
+  proxyName?: string
+  proxyType?: string
+  country?: string
+  countryName?: string
+  city?: string
+  region?: string
+  regionName?: string
+  zip?: string
+  latitude?: number
+  longitude?: number
+  isp?: string
+  org?: string
+  timezone?: string
+  flag?: string
   error?: string
 }
 
 /**
- * Test a proxy connection by making a request through it.
+ * Test a proxy connection by making a request through it and resolving complete geo details.
  */
 export async function testProxyConnection(proxyId: string): Promise<ProxyTestResult> {
   const proxy = proxyRepo.getById(proxyId)
@@ -27,8 +42,7 @@ export async function testProxyConnection(proxyId: string): Promise<ProxyTestRes
   }
 
   if (proxy.type === 'direct') {
-    // For "direct" connections, just test internet connectivity
-    return testDirectConnection()
+    return testDirectConnection(proxy.name)
   }
 
   if (!proxy.host || proxy.port === 0) {
@@ -40,29 +54,89 @@ export async function testProxyConnection(proxyId: string): Promise<ProxyTestRes
   const startTime = Date.now()
 
   try {
-    const result = await makeProxyRequest(proxy)
+    const rawResult = await makeProxyRequest(proxy)
     const latency = Date.now() - startTime
 
-    proxyRepo.updateTestStatus(proxyId, 'success')
-    logger.info('proxy', `Proxy test succeeded for "${proxy.name}" (${latency}ms)`)
+    // Fetch complete geo-information for the proxy IP
+    const resolvedIp = (rawResult.ip && rawResult.ip !== 'connected' && !rawResult.ip.includes('SOCKS5'))
+      ? rawResult.ip
+      : proxy.host
+    const geo = await lookupGeoIP(resolvedIp)
 
-    return { success: true, latency, ip: result.ip }
+    proxyRepo.updateTestStatus(proxyId, 'success')
+    if (geo) {
+      proxyRepo.update(proxyId, {
+        country: geo.country,
+        region: geo.region,
+        city: geo.city,
+        isp: geo.isp,
+        asn: geo.asn
+      } as any)
+    }
+
+    logger.info('proxy', `Proxy test succeeded for "${proxy.name}" (${latency}ms) — IP: ${resolvedIp}`)
+
+    return {
+      success: true,
+      latency,
+      ip: resolvedIp,
+      proxyName: proxy.name,
+      proxyType: (proxy.type || 'http').toUpperCase(),
+      country: geo?.country || 'N/A',
+      countryName: geo?.countryName || 'N/A',
+      city: geo?.city || 'N/A',
+      region: geo?.region || 'N/A',
+      regionName: geo?.regionName || 'N/A',
+      zip: geo?.zip || 'N/A',
+      latitude: geo?.latitude !== undefined ? geo.latitude : undefined,
+      longitude: geo?.longitude !== undefined ? geo.longitude : undefined,
+      isp: geo?.isp || geo?.org || 'N/A',
+      org: geo?.org || 'N/A',
+      timezone: geo?.timezone || 'N/A',
+      flag: geo?.flag || '🌐'
+    }
   } catch (err: any) {
     const latency = Date.now() - startTime
 
     proxyRepo.updateTestStatus(proxyId, 'failed')
     logger.warn('proxy', `Proxy test failed for "${proxy.name}": ${err.message}`)
 
-    return { success: false, latency, error: err.message }
+    return {
+      success: false,
+      latency,
+      proxyName: proxy.name,
+      proxyType: (proxy.type || 'http').toUpperCase(),
+      error: err.message
+    }
   }
 }
 
-async function testDirectConnection(): Promise<ProxyTestResult> {
+async function testDirectConnection(proxyName = 'Direct Connection'): Promise<ProxyTestResult> {
   const startTime = Date.now()
   try {
     const response = await fetch('https://httpbin.org/ip', { signal: AbortSignal.timeout(10000) })
     const data = await response.json() as { origin: string }
-    return { success: true, latency: Date.now() - startTime, ip: data.origin }
+    const ip = data.origin || '127.0.0.1'
+    const geo = await lookupGeoIP(ip)
+    return {
+      success: true,
+      latency: Date.now() - startTime,
+      ip,
+      proxyName,
+      proxyType: 'DIRECT',
+      country: geo?.country || 'N/A',
+      countryName: geo?.countryName || 'N/A',
+      city: geo?.city || 'N/A',
+      region: geo?.region || 'N/A',
+      regionName: geo?.regionName || 'N/A',
+      zip: geo?.zip || 'N/A',
+      latitude: geo?.latitude,
+      longitude: geo?.longitude,
+      isp: geo?.isp || 'N/A',
+      org: geo?.org || 'N/A',
+      timezone: geo?.timezone || 'N/A',
+      flag: geo?.flag || '🌐'
+    }
   } catch (err: any) {
     return { success: false, latency: Date.now() - startTime, error: err.message }
   }
@@ -113,15 +187,12 @@ function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: str
 
       req.on('connect', (res, socket) => {
         if (res.statusCode === 200) {
-          // Connection established through proxy
-          const tlsOptions = {
+          const tls = require('tls')
+          const tlsSocket = tls.connect({
             socket,
             host: 'httpbin.org',
             servername: 'httpbin.org'
-          }
-
-          const tls = require('tls')
-          const tlsSocket = tls.connect(tlsOptions, () => {
+          }, () => {
             const httpReq = `GET /ip HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n`
             tlsSocket.write(httpReq)
           })
@@ -132,9 +203,9 @@ function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: str
             try {
               const body = data.split('\r\n\r\n').pop() || ''
               const json = JSON.parse(body)
-              resolve({ ip: json.origin || 'unknown' })
+              resolve({ ip: json.origin || proxy.host })
             } catch {
-              resolve({ ip: 'connected' })
+              resolve({ ip: proxy.host })
             }
             socket.destroy()
           })
@@ -152,7 +223,7 @@ function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: str
       req.on('timeout', () => { req.destroy(); reject(new Error('Connection timed out')) })
       req.end()
     } else {
-      // SOCKS5 (or SOCKS4 fallback) connection
+      // SOCKS5 connection with full IP resolution over tunnel
       const net = require('net')
       const socket = net.connect({ host: proxy.host, port: proxy.port, timeout })
 
@@ -182,7 +253,6 @@ function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: str
             socksStage = 1
             socket.write(authReq)
           } else if (method === 0x00) {
-            // SOCKS5 greeting ok, send CONNECT request to target
             sendSocks5ConnectReq(socket, 'httpbin.org', 80)
             socksStage = 2
           } else {
@@ -191,7 +261,6 @@ function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: str
           }
         } else if (socksStage === 1) {
           if (data[1] === 0x00) {
-            // Auth success, send CONNECT request
             sendSocks5ConnectReq(socket, 'httpbin.org', 80)
             socksStage = 2
           } else {
@@ -199,10 +268,26 @@ function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: str
             reject(new Error('SOCKS5 proxy authentication failed (Invalid credentials)'))
           }
         } else if (socksStage === 2) {
-          socket.destroy()
           if (data[1] === 0x00) {
-            resolve({ ip: 'connected (SOCKS5)' })
+            // Send HTTP GET request over SOCKS5 tunnel to read actual public IP
+            socksStage = 3
+            let httpResp = ''
+            socket.on('data', (chunk: Buffer) => {
+              httpResp += chunk.toString('utf8')
+              if (httpResp.includes('\r\n\r\n')) {
+                try {
+                  const body = httpResp.split('\r\n\r\n').pop() || ''
+                  const json = JSON.parse(body)
+                  resolve({ ip: json.origin || proxy.host })
+                } catch {
+                  resolve({ ip: proxy.host })
+                }
+                socket.destroy()
+              }
+            })
+            socket.write('GET /ip HTTP/1.1\r\nHost: httpbin.org\r\nUser-Agent: curl/7.68.0\r\nConnection: close\r\n\r\n')
           } else {
+            socket.destroy()
             reject(new Error(`SOCKS5 CONNECT failed with status code 0x${data[1].toString(16)}`))
           }
         }
@@ -241,10 +326,11 @@ export async function testRawProxyConnection(input: {
   port: number
   username?: string
   password?: string
+  name?: string
 }): Promise<ProxyTestResult> {
   const proxy: Proxy = {
     id: 'temp',
-    name: 'Temp Test Proxy',
+    name: input.name || 'Custom Proxy',
     type: (input.type as any) || 'socks5',
     host: input.host,
     port: input.port,
@@ -258,10 +344,38 @@ export async function testRawProxyConnection(input: {
   try {
     const result = await makeProxyRequest(proxy, input.password || '')
     const latency = Date.now() - startTime
-    return { success: true, latency, ip: result.ip }
+    const resolvedIp = (result.ip && result.ip !== 'connected' && !result.ip.includes('SOCKS5'))
+      ? result.ip
+      : input.host
+    const geo = await lookupGeoIP(resolvedIp)
+
+    return {
+      success: true,
+      latency,
+      ip: resolvedIp,
+      proxyName: input.name || 'Custom Proxy',
+      proxyType: (input.type || 'socks5').toUpperCase(),
+      country: geo?.country || 'N/A',
+      countryName: geo?.countryName || 'N/A',
+      city: geo?.city || 'N/A',
+      region: geo?.region || 'N/A',
+      regionName: geo?.regionName || 'N/A',
+      zip: geo?.zip || 'N/A',
+      latitude: geo?.latitude !== undefined ? geo.latitude : undefined,
+      longitude: geo?.longitude !== undefined ? geo.longitude : undefined,
+      isp: geo?.isp || geo?.org || 'N/A',
+      org: geo?.org || 'N/A',
+      timezone: geo?.timezone || 'N/A',
+      flag: geo?.flag || '🌐'
+    }
   } catch (err: any) {
     const latency = Date.now() - startTime
-    return { success: false, latency, error: err.message }
+    return {
+      success: false,
+      latency,
+      proxyName: input.name || 'Custom Proxy',
+      proxyType: (input.type || 'socks5').toUpperCase(),
+      error: err.message
+    }
   }
 }
-

@@ -74,6 +74,27 @@ export interface ProxyDisplay {
   createdAt: string
 }
 
+export interface ProxyTestResult {
+  success: boolean
+  latency: number
+  ip?: string
+  proxyName?: string
+  proxyType?: string
+  country?: string
+  countryName?: string
+  city?: string
+  region?: string
+  regionName?: string
+  zip?: string
+  latitude?: number
+  longitude?: number
+  isp?: string
+  org?: string
+  timezone?: string
+  flag?: string
+  error?: string
+}
+
 export interface Group {
   id: string
   name: string
@@ -198,7 +219,8 @@ declare global {
       createProxy: (input: any) => Promise<IpcResult<ProxyDisplay>>
       updateProxy: (id: string, input: any) => Promise<IpcResult<ProxyDisplay>>
       deleteProxy: (id: string) => Promise<IpcResult>
-      testProxy: (id: string) => Promise<IpcResult<{ success: boolean; latency: number; ip?: string; error?: string }>>
+      testProxy: (id: string) => Promise<IpcResult<ProxyTestResult>>
+      testCustomProxy: (input: any) => Promise<IpcResult<ProxyTestResult>>
       getGroups: () => Promise<IpcResult<Group[]>>
       createGroup: (input: any) => Promise<IpcResult<Group>>
       updateGroup: (id: string, input: any) => Promise<IpcResult<Group>>

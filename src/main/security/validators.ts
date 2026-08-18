@@ -5,16 +5,24 @@
 import path from 'path'
 
 /**
+ * Validate a non-empty string.
+ */
+export function validateNonEmpty(val: unknown, label = 'Field'): string {
+  if (typeof val !== 'string' || val.trim().length === 0) {
+    throw new Error(`${label} is required and must not be empty.`)
+  }
+  return val.trim()
+}
+
+/**
  * Validate a profile name.
  */
 export function validateProfileName(name: unknown): string {
-  if (typeof name !== 'string' || name.trim().length === 0) {
-    throw new Error('Profile name is required and must be a non-empty string.')
-  }
-  if (name.length > 200) {
+  const trimmed = validateNonEmpty(name, 'Profile name')
+  if (trimmed.length > 200) {
     throw new Error('Profile name must not exceed 200 characters.')
   }
-  return name.trim()
+  return trimmed
 }
 
 /**

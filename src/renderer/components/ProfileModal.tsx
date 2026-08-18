@@ -14,6 +14,8 @@ import {
   IosDeviceSpec
 } from '../data/ios-devices'
 import { parseCookies, CookieItem } from '../utils/cookie-parser'
+import { ProxyInfoCard } from './ProxyInfoCard'
+import { ProxyTestResult } from '../types'
 
 interface Props {
   isOpen: boolean
@@ -698,15 +700,7 @@ export const ProfileModal: React.FC<Props> = ({
   const [customProxyPass, setCustomProxyPass] = useState('')
   const [changeIpUrl, setChangeIpUrl] = useState('')
   const [proxyPasteInput, setProxyPasteInput] = useState('')
-  const [proxyTestState, setProxyTestState] = useState<{
-    testing: boolean
-    success?: boolean
-    latency?: number
-    ip?: string
-    countryName?: string
-    flag?: string
-    error?: string
-  } | null>(null)
+  const [proxyTestState, setProxyTestState] = useState<(ProxyTestResult & { testing: boolean }) | null>(null)
 
   // Timezone state
   const [autoTimezone, setAutoTimezone] = useState(true)
@@ -2014,6 +2008,45 @@ export const ProfileModal: React.FC<Props> = ({
                           <option key={p.id} value={p.id}>{p.name} ({p.type}://{p.host}:{p.port})</option>
                         ))}
                       </select>
+
+                      {selectedProxyId && (
+                        <div style={{ marginTop: '10px' }}>
+                          <ProxyInfoCard
+                            info={proxyTestState && !proxyTestState.testing ? proxyTestState : null}
+                            loading={proxyTestState?.testing || false}
+                            testButtonLabel="Check Proxy"
+                            showTestButton={true}
+                            onTest={async () => {
+                              if (!selectedProxyId) return
+                              setProxyTestState({ testing: true, success: false, latency: 0 })
+                              try {
+                                const res = await window.api.testProxy(selectedProxyId)
+                                if (res?.success && res?.data?.success) {
+                                  setProxyTestState({
+                                    testing: false,
+                                    ...res.data
+                                  })
+                                } else {
+                                  const errMsg = res?.error || res?.data?.error || 'Proxy connection failed'
+                                  setProxyTestState({
+                                    testing: false,
+                                    success: false,
+                                    latency: 0,
+                                    error: errMsg
+                                  })
+                                }
+                              } catch (err: any) {
+                                setProxyTestState({
+                                  testing: false,
+                                  success: false,
+                                  latency: 0,
+                                  error: err?.message || 'Proxy test failed'
+                                })
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2110,93 +2143,53 @@ export const ProfileModal: React.FC<Props> = ({
                         />
                       </div>
 
-                      {/* Proxy Connection Check Button & Result Badge */}
-                      <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        <button
-                          type="button"
-                          disabled={!customProxyHost || proxyTestState?.testing}
-                          onClick={async () => {
-                            if (!customProxyHost) return
-                            setProxyTestState({ testing: true })
-                            try {
-                              let res: any = null
-                              if ((window as any).api?.testCustomProxy) {
-                                res = await (window as any).api.testCustomProxy({
-                                  type: customProxyType,
-                                  host: customProxyHost,
-                                  port: Number(customProxyPort) || 80,
-                                  username: customProxyUser,
-                                  password: customProxyPass
-                                })
-                              }
-                              if (res?.success && res?.data?.success) {
-                                setProxyTestState({
-                                  testing: false,
-                                  success: true,
-                                  latency: res.data.latency || 120,
-                                  ip: res.data.ip || customProxyHost,
-                                  countryName: res.data.countryName || res.data.country || 'Location Verified',
-                                  flag: res.data.flag || '🌐'
-                                })
-                              } else {
-                                const errMsg = res?.error || res?.data?.error || 'Proxy connection failed'
-                                setProxyTestState({
-                                  testing: false,
-                                  success: false,
-                                  error: errMsg
-                                })
-                              }
-                            } catch (err: any) {
+                      {/* Proxy Connection Check & Result Info Card */}
+                      <ProxyInfoCard
+                        info={proxyTestState && !proxyTestState.testing ? proxyTestState : null}
+                        loading={proxyTestState?.testing || false}
+                        testButtonLabel="Check Proxy"
+                        showTestButton={true}
+                        onTest={async () => {
+                          if (!customProxyHost) return
+                          setProxyTestState({ testing: true, success: false, latency: 0 })
+                          try {
+                            let res: any = null
+                            if ((window as any).api?.testCustomProxy) {
+                              res = await (window as any).api.testCustomProxy({
+                                type: customProxyType,
+                                host: customProxyHost,
+                                port: Number(customProxyPort) || 80,
+                                username: customProxyUser,
+                                password: customProxyPass,
+                                name: customProxyHost
+                              })
+                            }
+                            if (res?.success && res?.data?.success) {
+                              setProxyTestState({
+                                testing: false,
+                                ...res.data
+                              })
+                            } else {
+                              const errMsg = res?.error || res?.data?.error || 'Proxy connection failed'
                               setProxyTestState({
                                 testing: false,
                                 success: false,
-                                error: err?.message || 'Proxy test request failed'
+                                latency: 0,
+                                proxyType: customProxyType?.toUpperCase(),
+                                error: errMsg
                               })
                             }
-                          }}
-                          style={{
-                            padding: '10px 20px',
-                            borderRadius: '8px',
-                            backgroundColor: proxyTestState?.testing ? '#2C2C3E' : '#2DD4BF15',
-                            color: proxyTestState?.testing ? '#94A3B8' : '#2DD4BF',
-                            border: proxyTestState?.testing ? '1px solid #2C2C3E' : '1px solid #2DD4BF',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            cursor: (!customProxyHost || proxyTestState?.testing) ? 'not-allowed' : 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}
-                        >
-                          {proxyTestState?.testing ? '🔄 Testing Connection...' : '⚡ Check Proxy Connection'}
-                        </button>
-
-                        {/* Test Status Badge */}
-                        {proxyTestState && !proxyTestState.testing && (
-                          <div style={{
-                            padding: '8px 14px',
-                            borderRadius: '8px',
-                            backgroundColor: proxyTestState.success ? '#10B98120' : '#EF444420',
-                            border: proxyTestState.success ? '1px solid #10B98140' : '1px solid #EF444440',
-                            color: proxyTestState.success ? '#10B981' : '#EF4444',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}>
-                            {proxyTestState.success ? (
-                              <>
-                                <span>✓ Active ({proxyTestState.latency}ms)</span>
-                                <span>—</span>
-                                <span>{proxyTestState.flag} {proxyTestState.countryName} ({proxyTestState.ip})</span>
-                              </>
-                            ) : (
-                              <span>❌ Connection Failed: {proxyTestState.error || 'Timed out'}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                          } catch (err: any) {
+                            setProxyTestState({
+                              testing: false,
+                              success: false,
+                              latency: 0,
+                              proxyType: customProxyType?.toUpperCase(),
+                              error: err?.message || 'Proxy test request failed'
+                            })
+                          }
+                        }}
+                      />
 
                     </div>
                   )}

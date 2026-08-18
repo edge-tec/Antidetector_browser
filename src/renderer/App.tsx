@@ -20,6 +20,8 @@ import { SupportChatWidget } from './components/SupportChatWidget'
 import { BrowserSetupModal } from './components/BrowserSetupModal'
 import { SoftwareUpdateModal, UpdateInfoPayload } from './components/SoftwareUpdateModal'
 import { ReferralDashboard } from './pages/ReferralDashboard'
+import { ProxyInfoCard } from './components/ProxyInfoCard'
+import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
 
 // ═══════════════════════════════════════════
@@ -810,6 +812,7 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
   const [proxies, setProxies] = useState<ProxyDisplay[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
+  const [testResults, setTestResults] = useState<Record<string, ProxyTestResult>>({})
   const [form, setForm] = useState({ name: '', type: 'http' as string, host: '', port: 8080, username: '', password: '' })
 
   const load = useCallback(async () => {
@@ -830,8 +833,9 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
     setTesting(id)
     const r = await window.api.testProxy(id)
     if (r.success && r.data) {
+      setTestResults(prev => ({ ...prev, [id]: r.data }))
       if (r.data.success) showToast('success', `Proxy connected (${r.data.latency}ms)${r.data.ip ? ` — IP: ${r.data.ip}` : ''}`)
-      else showToast('error', `Proxy test failed: ${r.data.error}`)
+      else showToast('error', `Proxy test failed: ${r.data.error || 'Timed out'}`)
     } else {
       showToast('error', 'Failed to test proxy')
     }
@@ -851,7 +855,7 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
       <div className="page-header">
         <div>
           <h1 className="page-title">Proxies</h1>
-          <p className="page-subtitle">Manage proxy configurations</p>
+          <p className="page-subtitle">Manage proxy configurations & verify live geographic data</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
           <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.plus}</span> Add Proxy
@@ -867,25 +871,59 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {proxies.map((px) => (
-            <div key={px.id} className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600 }}>{px.name}</div>
-                <div className="text-sm text-secondary" style={{ marginTop: 2 }}>{px.type}://{px.host}:{px.port}{px.username ? ` (auth: ${px.username})` : ''}</div>
+          {proxies.map((px) => {
+            const hasResult = !!testResults[px.id]
+            const info = testResults[px.id] || (px.country || px.city ? {
+              success: px.testStatus === 'success',
+              latency: 0,
+              ip: px.host,
+              proxyName: px.name,
+              proxyType: px.type.toUpperCase(),
+              country: px.country,
+              countryName: px.country,
+              city: px.city,
+              region: px.region,
+              regionName: px.region,
+              isp: px.isp,
+              zip: 'N/A'
+            } : null)
+
+            return (
+              <div key={px.id} className="card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{px.name}</span>
+                      {px.country && <span style={{ fontSize: '12px', color: '#94A3B8' }}>• {px.country} {px.city ? `/ ${px.city}` : ''}</span>}
+                    </div>
+                    <div className="text-sm text-secondary" style={{ marginTop: 2 }}>
+                      {px.type}://{px.host}:{px.port}{px.username ? ` (auth: ${px.username})` : ''}
+                    </div>
+                  </div>
+                  {statusBadge(px.testStatus)}
+                  <button className="btn btn-sm btn-secondary" onClick={() => handleTest(px.id)} disabled={testing === px.id}>
+                    {testing === px.id ? <div className="loading-spinner" style={{ width: 14, height: 14 }} /> : 'Check Proxy'}
+                  </button>
+                  <button className="btn btn-sm btn-ghost" onClick={() => confirm({
+                    title: 'Delete Proxy', message: `Delete "${px.name}"? Profiles using this proxy will switch to direct connection.`,
+                    confirmLabel: 'Delete', danger: true,
+                    onConfirm: async () => { await window.api.deleteProxy(px.id); showToast('success', 'Proxy deleted'); load() }
+                  })}>
+                    <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.trash}</span>
+                  </button>
+                </div>
+
+                {/* Rich Geo Details Card */}
+                {info && (
+                  <ProxyInfoCard
+                    info={info}
+                    loading={testing === px.id}
+                    showTestButton={false}
+                  />
+                )}
               </div>
-              {statusBadge(px.testStatus)}
-              <button className="btn btn-sm btn-secondary" onClick={() => handleTest(px.id)} disabled={testing === px.id}>
-                {testing === px.id ? <div className="loading-spinner" style={{ width: 14, height: 14 }} /> : 'Test'}
-              </button>
-              <button className="btn btn-sm btn-ghost" onClick={() => confirm({
-                title: 'Delete Proxy', message: `Delete "${px.name}"? Profiles using this proxy will switch to direct connection.`,
-                confirmLabel: 'Delete', danger: true,
-                onConfirm: async () => { await window.api.deleteProxy(px.id); showToast('success', 'Proxy deleted'); load() }
-              })}>
-                <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.trash}</span>
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

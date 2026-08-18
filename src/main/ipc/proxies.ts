@@ -1,19 +1,21 @@
 // ──────────────────────────────────────────────
-// AntiProfiles — IPC Proxy Handlers
+// AntiProfiles — Proxies IPC Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { testProxyConnection, testRawProxyConnection } from '../network/proxy-tester'
-import { lookupGeoIP } from '../network/geo-lookup'
-import { validateId, validateProxyHost, validatePort } from '../security/validators'
+import { lookupGeoIP, getCountryFlag } from '../network/geo-lookup'
+import { validateId, validateNonEmpty, validatePort } from '../security/validators'
 import { logger } from '../logging/logger'
 
 export function registerProxyHandlers(): void {
   ipcMain.handle('proxies:getAll', async () => {
     try {
-      return { success: true, data: proxyRepo.getAll() }
+      const proxies = proxyRepo.getAll()
+      return { success: true, data: proxies }
     } catch (err: any) {
+      logger.error('proxy', `Failed to get proxies: ${err.message}`)
       return { success: false, error: err.message }
     }
   })
@@ -21,8 +23,10 @@ export function registerProxyHandlers(): void {
   ipcMain.handle('proxies:getById', async (_event, id: string) => {
     try {
       validateId(id)
-      const proxy = proxyRepo.getDisplayById(id)
-      if (!proxy) return { success: false, error: 'Proxy not found' }
+      const proxy = proxyRepo.getById(id)
+      if (!proxy) {
+        return { success: false, error: 'Proxy not found' }
+      }
       return { success: true, data: proxy }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -31,36 +35,37 @@ export function registerProxyHandlers(): void {
 
   ipcMain.handle('proxies:create', async (_event, input: any) => {
     try {
-      if (!input.name) throw new Error('Proxy name is required')
-      if (input.host) validateProxyHost(input.host)
-      if (input.port) validatePort(input.port)
-
-      let country = input.country
-      let region = input.region
-      let city = input.city
-      let isp = input.isp
-      let asn = input.asn
-
-      if (input.host && (!country || !city)) {
-        const geo = await lookupGeoIP(input.host)
-        if (geo) {
-          country = country || geo.country
-          region = region || geo.region
-          city = city || geo.city
-          isp = isp || geo.isp
-          asn = asn || geo.asn
-        }
+      validateNonEmpty(input.name, 'Proxy name')
+      if (input.type !== 'direct') {
+        validateNonEmpty(input.host, 'Host')
+        validatePort(input.port)
       }
 
       const proxy = proxyRepo.create({
-        ...input,
-        country,
-        region,
-        city,
-        isp,
-        asn
+        name: input.name.trim(),
+        type: input.type || 'http',
+        host: input.host?.trim() || '',
+        port: input.port || 0,
+        username: input.username?.trim() || undefined,
+        password: input.password || undefined
       })
-      logger.info('proxy', `Created proxy "${proxy.name}" (${country || 'unknown'})`)
+
+      // Attempt async geo-lookup on create
+      if (proxy.host && proxy.type !== 'direct') {
+        lookupGeoIP(proxy.host).then(geo => {
+          if (geo) {
+            proxyRepo.update(proxy.id, {
+              country: geo.country,
+              region: geo.region,
+              city: geo.city,
+              isp: geo.isp,
+              asn: geo.asn
+            } as any)
+          }
+        }).catch(() => {})
+      }
+
+      logger.info('proxy', `Created proxy "${proxy.name}" (${proxy.type}://${proxy.host}:${proxy.port})`)
       return { success: true, data: proxy }
     } catch (err: any) {
       logger.error('proxy', `Failed to create proxy: ${err.message}`)
@@ -71,25 +76,27 @@ export function registerProxyHandlers(): void {
   ipcMain.handle('proxies:update', async (_event, id: string, input: any) => {
     try {
       validateId(id)
-      if (input.host) validateProxyHost(input.host)
-      if (input.port) validatePort(input.port)
-
-      const updateData = { ...input }
-
-      if (input.host && (!input.country || !input.city)) {
-        const geo = await lookupGeoIP(input.host)
-        if (geo) {
-          updateData.country = input.country || geo.country
-          updateData.region = input.region || geo.region
-          updateData.city = input.city || geo.city
-          updateData.isp = input.isp || geo.isp
-          updateData.asn = input.asn || geo.asn
-        }
+      const existing = proxyRepo.getById(id)
+      if (!existing) {
+        return { success: false, error: 'Proxy not found' }
       }
 
-      const proxy = proxyRepo.update(id, updateData)
-      if (!proxy) return { success: false, error: 'Proxy not found' }
-      return { success: true, data: proxy }
+      if (input.name !== undefined) validateNonEmpty(input.name, 'Proxy name')
+      if (input.port !== undefined && input.type !== 'direct') validatePort(input.port)
+
+      const updated = proxyRepo.update(id, {
+        name: input.name?.trim(),
+        type: input.type,
+        host: input.host?.trim(),
+        port: input.port,
+        username: input.username !== undefined ? (input.username?.trim() || null) : undefined,
+        password: input.password !== undefined ? (input.password || undefined) : undefined,
+        country: input.country,
+        city: input.city
+      })
+
+      logger.info('proxy', `Updated proxy ${id}`)
+      return { success: true, data: updated }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
@@ -110,21 +117,6 @@ export function registerProxyHandlers(): void {
     try {
       validateId(id)
       const result = await testProxyConnection(id)
-      const proxy = proxyRepo.getById(id)
-      if (proxy && proxy.host) {
-        // Attempt geo-lookup asynchronously
-        lookupGeoIP(proxy.host).then(geo => {
-          if (geo) {
-            proxyRepo.update(id, {
-              country: geo.country,
-              region: geo.region,
-              city: geo.city,
-              isp: geo.isp,
-              asn: geo.asn
-            } as any)
-          }
-        })
-      }
       return { success: true, data: result }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -142,57 +134,25 @@ export function registerProxyHandlers(): void {
 
   ipcMain.handle('proxies:testCustom', async (_event, input: any) => {
     try {
-      const { type, host, port, username, password } = input || {}
+      const { type, host, port, username, password, name } = input || {}
       if (!host) throw new Error('Proxy host is required')
 
-      const rawResult = await testRawProxyConnection({
+      const result = await testRawProxyConnection({
         type: type || 'socks5',
         host,
         port: Number(port) || 80,
         username,
-        password
+        password,
+        name
       })
 
-      const geo = await lookupGeoIP(host)
-      const flag = getCountryFlag(geo?.country)
-
-      if (!rawResult.success) {
-        return {
-          success: false,
-          error: rawResult.error || 'Connection failed',
-          data: {
-            success: false,
-            latency: rawResult.latency || 0,
-            ip: host,
-            flag
-          }
-        }
-      }
-
       return {
-        success: true,
-        data: {
-          success: true,
-          latency: rawResult.latency || 120,
-          ip: rawResult.ip || host,
-          country: geo?.country || 'US',
-          countryName: geo?.countryName || geo?.country || 'United States',
-          city: geo?.city || 'New York',
-          isp: geo?.isp || 'Residential Network',
-          flag
-        }
+        success: result.success,
+        error: result.error,
+        data: result
       }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
   })
-}
-
-function getCountryFlag(countryCode: string | undefined | null): string {
-  if (!countryCode || countryCode.length !== 2) return '🌐'
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
 }
