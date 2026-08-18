@@ -382,8 +382,23 @@ export function userToDisplay(user: User, profileCount?: number): UserDisplay {
 export function profileFromRow(row: ProfileRow): Profile {
   let fingerprint: any = {}
   try {
-    fingerprint = row.fingerprint ? JSON.parse(row.fingerprint) : {}
+    fingerprint = row.fingerprint ? (typeof row.fingerprint === 'string' ? JSON.parse(row.fingerprint) : row.fingerprint) : {}
   } catch { fingerprint = {} }
+
+  let osType = row.os_type || 'windows-10'
+  if (typeof osType === 'string' && (osType.startsWith('{') || osType.length > 50)) {
+    try {
+      const parsed = JSON.parse(osType)
+      if (parsed && typeof parsed === 'object') {
+        if (!fingerprint || Object.keys(fingerprint).length === 0) {
+          fingerprint = parsed
+        }
+        osType = parsed.os || parsed.osType || (parsed.navigator?.userAgent?.includes('Mac') ? 'macos-intel' : 'windows-10')
+      }
+    } catch {
+      osType = 'windows-10'
+    }
+  }
 
   return {
     id: row.id,
@@ -413,7 +428,7 @@ export function profileFromRow(row: ProfileRow): Profile {
     lastUsedAt: row.last_used_at,
     pid: row.pid,
     // v2 fields
-    osType: row.os_type || 'windows-10',
+    osType,
     fingerprint,
     folder: row.folder || '',
     profileLocked: (row.profile_locked || 0) === 1,

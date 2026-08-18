@@ -83,7 +83,7 @@ export const FingerprintPreview: React.FC<Props> = ({ osType, fingerprint, proxy
         </span>
       )}
       <span style={{ padding: '2px 6px', borderRadius: '4px', background: '#2A2A3C', color: '#A5B4FC' }}>
-        💻 {osLabels[osType] || osType}
+        💻 {osLabels[osType] || (typeof osType === 'string' && !osType.startsWith('{') && osType.length <= 20 ? osType : 'Win 10')}
       </span>
       <span style={{ padding: '2px 6px', borderRadius: '4px', background: '#2A2A3C', color: '#93C5FD' }}>
         🖥 {screen.width || 1920}x{screen.height || 1080} @{screen.devicePixelRatio || 1}x
