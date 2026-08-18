@@ -136,26 +136,38 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
         exit();
     }
 
-    // Admin APIs (/api/admin/*)
-    if (strpos($requestUri, '/api/admin/') === 0) {
+    // Admin APIs (/api/admin, /api/admin/*)
+    if (strpos($requestUri, '/api/admin') === 0) {
         $action = str_replace('/api/admin/', '', $requestUri);
-        $_GET['action'] = $action;
+        $action = str_replace('/api/admin', '', $action);
+        $action = trim($action, '/');
+        if (!empty($action)) {
+            $_GET['action'] = $action;
+        }
         require_once __DIR__ . '/api/admin.php';
         exit();
     }
 
-    // Payment Gateway & Webhook APIs (/api/payments/*)
-    if (strpos($requestUri, '/api/payments/') === 0) {
+    // Payment Gateway & Webhook APIs (/api/payments, /api/payments/*)
+    if (strpos($requestUri, '/api/payments') === 0) {
         $action = str_replace('/api/payments/', '', $requestUri);
-        $_GET['action'] = $action;
+        $action = str_replace('/api/payments', '', $action);
+        $action = trim($action, '/');
+        if (!empty($action)) {
+            $_GET['action'] = $action;
+        }
         require_once __DIR__ . '/api/payments.php';
         exit();
     }
 
-    // Support APIs (/api/support/*)
-    if (strpos($requestUri, '/api/support/') === 0) {
+    // Support APIs (/api/support, /api/support/*)
+    if (strpos($requestUri, '/api/support') === 0) {
         $action = str_replace('/api/support/', '', $requestUri);
-        $_GET['action'] = $action;
+        $action = str_replace('/api/support', '', $action);
+        $action = trim($action, '/');
+        if (!empty($action)) {
+            $_GET['action'] = $action;
+        }
         require_once __DIR__ . '/api/support.php';
         exit();
     }
@@ -164,7 +176,8 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
     if (strpos($requestUri, '/api/profiles') === 0) {
         $action = str_replace('/api/profiles/', '', $requestUri);
         $action = str_replace('/api/profiles', '', $action);
-        if ($action) $_GET['action'] = trim($action, '/');
+        $action = trim($action, '/');
+        if ($action) $_GET['action'] = $action;
         if (empty($_GET['action'])) $_GET['action'] = ($_SERVER['REQUEST_METHOD'] === 'POST' ? 'create' : 'list');
         require_once __DIR__ . '/api/profiles.php';
         exit();

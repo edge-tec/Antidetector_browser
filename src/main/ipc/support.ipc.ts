@@ -73,18 +73,34 @@ export function setupSupportIPC(): void {
   // 2. Get Single Conversation Details (Central Server First)
   safeHandle('support:get-conversation', async (_, token: string, conversationId: string) => {
     if (token) centralApi.setSessionToken(token)
+    const user = getAuthUserFromToken(token)
+    const isAdmin = user.role === 'admin'
+
     try {
-      const centralRes = await centralApi.getConversation(conversationId)
-      if (centralRes.success && centralRes.data) {
-        return { success: true, data: centralRes.data }
+      if (isAdmin) {
+        const centralRes = await centralApi.adminGetSupportConversation(conversationId)
+        if (centralRes.success && (centralRes.conversation || centralRes.data)) {
+          const convData = centralRes.conversation || centralRes.data
+          return {
+            success: true,
+            data: {
+              ...convData,
+              messages: centralRes.messages || convData.messages || [],
+              internal_notes: centralRes.internal_notes || convData.internal_notes || []
+            }
+          }
+        }
+      } else {
+        const centralRes = await centralApi.getConversation(conversationId)
+        if (centralRes.success && centralRes.data) {
+          return { success: true, data: centralRes.data }
+        }
       }
     } catch (err: any) {
       console.warn('[SupportIPC] Central getConversation warning:', err.message)
     }
 
-    const user = getAuthUserFromToken(token)
     try {
-      const isAdmin = user.role === 'admin'
       const conv = supportService.getConversation(conversationId, user.id, isAdmin)
       return { success: true, data: conv }
     } catch (err: any) {
@@ -107,6 +123,9 @@ export function setupSupportIPC(): void {
         } catch {}
         return { success: true, data: centralRes.data, conversation_id: centralRes.conversation_id }
       }
+      if (centralRes.error) {
+        return { success: false, error: centralRes.error }
+      }
     } catch (err: any) {
       console.warn('[SupportIPC] Central createTicket warning:', err.message)
     }
@@ -126,29 +145,37 @@ export function setupSupportIPC(): void {
     }
   })
 
-  // 4. Send Support Message (Central Server First)
+  // 4. Send Support Message (Central Server First with Role Dispatch)
   safeHandle('support:send-message', async (_, token: string, conversationId: string, message: string, attachment?: any) => {
     if (token) centralApi.setSessionToken(token)
+    const user = getAuthUserFromToken(token)
+    const isAdmin = user.role === 'admin'
+
     try {
-      const centralRes = await centralApi.sendMessage(conversationId, message, attachment)
-      if (centralRes.success) {
+      let centralRes: any = null
+      if (isAdmin) {
+        centralRes = await centralApi.adminSendSupportReply(conversationId, message)
+      } else {
+        centralRes = await centralApi.sendMessage(conversationId, message, attachment)
+      }
+
+      if (centralRes && centralRes.success) {
         try {
-          const user = getAuthUserFromToken(token)
-          const senderType = user.role === 'admin' ? 'agent' : 'user'
+          const senderType = isAdmin ? 'agent' : 'user'
           supportService.sendMessage(conversationId, user.id, senderType, message, attachment)
         } catch {}
         return { success: true, data: centralRes.data, message_id: centralRes.message_id }
       }
-      if (centralRes.error) {
+      if (centralRes && centralRes.error) {
         console.warn('[SupportIPC] Central sendMessage returned error:', centralRes.error)
+        return { success: false, error: centralRes.error }
       }
     } catch (err: any) {
       console.warn('[SupportIPC] Central sendMessage exception:', err.message)
     }
 
-    const user = getAuthUserFromToken(token)
     try {
-      const senderType = user.role === 'admin' ? 'agent' : 'user'
+      const senderType = isAdmin ? 'agent' : 'user'
       const msg = supportService.sendMessage(conversationId, user.id, senderType, message, attachment)
       return { success: true, data: msg }
     } catch (err: any) {
@@ -176,7 +203,6 @@ export function setupSupportIPC(): void {
   // 6. Broadcast Typing Event (Ephemeral, non-DB)
   safeHandle('support:typing', async (_, token: string, conversationId: string, isTyping: boolean) => {
     const user = getAuthUserFromToken(token)
-
     const senderType = user.role === 'admin' ? 'agent' : 'user'
     const windows = BrowserWindow.getAllWindows()
     windows.forEach((win) => {
@@ -193,10 +219,28 @@ export function setupSupportIPC(): void {
     return { success: true }
   })
 
-  // 7. Admin: Get All Conversations
+  // 7. Admin: Get All Conversations (Central Server First)
   safeHandle('support:admin-get-conversations', async (_, token: string, options: any) => {
+    if (token) centralApi.setSessionToken(token)
     const user = getAuthUserFromToken(token)
     if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+
+    try {
+      const centralRes = await centralApi.adminGetSupportConversations(options || {})
+      if (centralRes.success && Array.isArray(centralRes.data)) {
+        const unreadTotal = centralRes.data.reduce((sum: number, c: any) => sum + parseInt(c.unread_count || 0, 10), 0)
+        return {
+          success: true,
+          data: {
+            conversations: centralRes.data,
+            unreadTotal
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central adminGetSupportConversations warning:', err.message)
+    }
+
     try {
       const result = supportService.adminGetConversations(options || {})
       return { success: true, data: result }
@@ -207,8 +251,18 @@ export function setupSupportIPC(): void {
 
   // 8. Admin: Update Conversation Status
   safeHandle('support:admin-update-status', async (_, token: string, conversationId: string, status: string) => {
+    if (token) centralApi.setSessionToken(token)
     const user = getAuthUserFromToken(token)
     if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+
+    try {
+      if (status === 'closed') {
+        await centralApi.adminCloseSupportConversation(conversationId)
+      }
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central adminCloseSupportConversation warning:', err.message)
+    }
+
     try {
       const ok = supportService.updateStatus(conversationId, status)
       return { success: ok }
@@ -231,8 +285,19 @@ export function setupSupportIPC(): void {
 
   // 10. Admin: Add Internal Staff Note
   safeHandle('support:admin-add-internal-note', async (_, token: string, conversationId: string, note: string) => {
+    if (token) centralApi.setSessionToken(token)
     const user = getAuthUserFromToken(token)
     if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+
+    try {
+      const centralRes = await centralApi.adminAddInternalNote(conversationId, note)
+      if (centralRes.success) {
+        return { success: true, data: centralRes.data }
+      }
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central adminAddInternalNote warning:', err.message)
+    }
+
     try {
       const noteObj = supportService.addInternalNote(conversationId, user.id, user.name, note)
       return { success: true, data: noteObj }
@@ -243,8 +308,19 @@ export function setupSupportIPC(): void {
 
   // 11. Admin: Get Support Settings
   safeHandle('support:admin-get-settings', async (_, token: string) => {
+    if (token) centralApi.setSessionToken(token)
     const user = getAuthUserFromToken(token)
     if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+
+    try {
+      const centralRes = await centralApi.adminGetSupportSettings()
+      if (centralRes.success && centralRes.data) {
+        return { success: true, data: centralRes.data }
+      }
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central adminGetSupportSettings warning:', err.message)
+    }
+
     try {
       const settings = supportService.getSettings()
       return { success: true, data: settings }
@@ -255,8 +331,19 @@ export function setupSupportIPC(): void {
 
   // 12. Admin: Save Support Settings
   safeHandle('support:admin-save-settings', async (_, token: string, settings: Record<string, string>) => {
+    if (token) centralApi.setSessionToken(token)
     const user = getAuthUserFromToken(token)
     if (user.role !== 'admin') return { success: false, error: 'Admin access required.' }
+
+    try {
+      const centralRes = await centralApi.adminSaveSupportSettings(settings)
+      if (centralRes.success) {
+        return { success: true }
+      }
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central adminSaveSupportSettings warning:', err.message)
+    }
+
     try {
       const ok = supportService.saveSettings(settings)
       return { success: ok }

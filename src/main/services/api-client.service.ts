@@ -321,6 +321,53 @@ export class CentralApiClient {
     })
   }
 
+  // ── Central Admin Support APIs ──
+  public async adminGetSupportConversations(options: { status?: string; search?: string } = {}): Promise<{ success: boolean; data?: any[]; unreadTotal?: number; error?: string }> {
+    let url = '/api/support?action=admin-conversations'
+    if (options.status && options.status !== 'all') url += `&status=${encodeURIComponent(options.status)}`
+    if (options.search) url += `&search=${encodeURIComponent(options.search)}`
+    return await this.request(url, { method: 'GET' })
+  }
+
+  public async adminGetSupportConversation(conversationId: string): Promise<{ success: boolean; conversation?: any; messages?: any[]; internal_notes?: any[]; error?: string }> {
+    return await this.request(`/api/support?action=admin-thread&conversation_id=${encodeURIComponent(conversationId)}`, { method: 'GET' })
+  }
+
+  public async adminSendSupportReply(conversationId: string, message: string): Promise<{ success: boolean; message_id?: string; data?: any; error?: string }> {
+    return await this.request('/api/support?action=admin-reply', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        message
+      })
+    })
+  }
+
+  public async adminCloseSupportConversation(conversationId: string): Promise<{ success: boolean; error?: string }> {
+    return await this.request('/api/support?action=admin-close', {
+      method: 'POST',
+      body: JSON.stringify({ conversation_id: conversationId })
+    })
+  }
+
+  public async adminAddInternalNote(conversationId: string, note: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    return await this.request('/api/support?action=admin-add-internal-note', {
+      method: 'POST',
+      body: JSON.stringify({ conversation_id: conversationId, note })
+    })
+  }
+
+  public async adminGetSupportSettings(): Promise<{ success: boolean; data?: Record<string, string>; error?: string }> {
+    return await this.request('/api/support?action=get-settings', { method: 'GET' })
+  }
+
+  public async adminSaveSupportSettings(settings: Record<string, string>): Promise<{ success: boolean; error?: string }> {
+    return await this.request('/api/support?action=admin-save-settings', {
+      method: 'POST',
+      body: JSON.stringify({ settings })
+    })
+  }
+
   // ── Central Profiles Management APIs ──
   public async getProfiles(search?: string, groupId?: string, status?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
     let url = '/api/profiles?action=list'
