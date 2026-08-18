@@ -1016,6 +1016,33 @@ body {
   border-color: transparent;
 }
 
+/* ── Google reCAPTCHA v3 Policy-Compliant Badge Hide ── */
+.grecaptcha-badge {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.recaptcha-legal-notice {
+  font-size: 11.5px;
+  color: var(--color-text-tertiary, #64748B);
+  line-height: 1.5;
+  text-align: center;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.recaptcha-legal-notice a {
+  color: var(--color-text-secondary, #94A3B8);
+  text-decoration: underline;
+  transition: color var(--transition-fast, 0.15s ease);
+}
+
+.recaptcha-legal-notice a:hover {
+  color: var(--color-accent, #2DD4BF);
+}
+
 /* ── Modal ── */
 .modal-backdrop {
   position: fixed;

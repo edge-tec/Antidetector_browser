@@ -201,6 +201,28 @@ if (!empty($token)) {
         .footer-link a:hover {
             text-decoration: underline;
         }
+        /* Google reCAPTCHA v3 Policy-Compliant Badge Hide & Attribution */
+        .grecaptcha-badge {
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .recaptcha-legal-notice {
+            font-size: 11px;
+            color: #64748B;
+            line-height: 1.5;
+            text-align: center;
+            margin-top: 14px;
+            display: block;
+        }
+        .recaptcha-legal-notice a {
+            color: #94A3B8;
+            text-decoration: underline;
+            transition: color 0.15s ease;
+        }
+        .recaptcha-legal-notice a:hover {
+            color: var(--primary);
+        }
     </style>
 </head>
 <body>
@@ -227,6 +249,9 @@ if (!empty($token)) {
                         <input type="email" id="reqEmail" placeholder="yourname@domain.com" required>
                     </div>
                     <button type="submit" id="btnReqSubmit" class="btn-submit">Send Password Reset Link</button>
+                    <p class="recaptcha-legal-notice">
+                        This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> apply.
+                    </p>
                 </form>
             <?php elseif (!$initialValid): ?>
                 <!-- Invalid or expired token -->
@@ -268,6 +293,9 @@ if (!empty($token)) {
                         </div>
 
                         <button type="submit" id="btnResetSubmit" class="btn-submit">Update Password</button>
+                        <p class="recaptcha-legal-notice">
+                            This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> apply.
+                        </p>
                     </form>
                 </div>
 
