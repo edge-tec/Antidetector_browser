@@ -68,13 +68,33 @@ const api = {
 
   // ── Profiles ──
   getProfiles: (sessionTokenOrSearch?: string, maybeSearch?: string, groupId?: string, status?: string) => {
-    let token = sessionTokenOrSearch || getSavedToken()
+    let token = getSavedToken()
     let search = maybeSearch
-    if (sessionTokenOrSearch && !maybeSearch && !sessionTokenOrSearch.includes('.') && sessionTokenOrSearch.length < 30) {
-      search = sessionTokenOrSearch
-      token = getSavedToken()
+    const gid = groupId
+    const stat = status
+
+    if (sessionTokenOrSearch !== undefined && maybeSearch !== undefined) {
+      token = sessionTokenOrSearch || getSavedToken()
+      search = maybeSearch
+    } else if (sessionTokenOrSearch !== undefined) {
+      const saved = getSavedToken()
+      if (
+        sessionTokenOrSearch === saved ||
+        sessionTokenOrSearch.includes('.') ||
+        sessionTokenOrSearch.length >= 30 ||
+        sessionTokenOrSearch.startsWith('mock-') ||
+        sessionTokenOrSearch.startsWith('impersonate_') ||
+        sessionTokenOrSearch.startsWith('usr_') ||
+        sessionTokenOrSearch === 'admin-default'
+      ) {
+        token = sessionTokenOrSearch
+        search = undefined
+      } else {
+        search = sessionTokenOrSearch
+        token = saved
+      }
     }
-    return ipcRenderer.invoke('profiles:getAll', token, search, groupId, status)
+    return ipcRenderer.invoke('profiles:getAll', token, search, gid, stat)
   },
   getProfile: (sessionTokenOrId: string, maybeId?: string) => {
     const id = maybeId || sessionTokenOrId
