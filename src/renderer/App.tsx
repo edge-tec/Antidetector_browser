@@ -1177,13 +1177,37 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
             <select
               className="form-input"
               value={engineType}
-              onChange={(e) => setEngineType(e.target.value)}
+              onChange={async (e) => {
+                const newEng = e.target.value
+                setEngineType(newEng)
+                // If matching discovered browser exists, set it
+                const match = discoveredBrowsers.find(b => {
+                  const lower = b.name.toLowerCase()
+                  if (newEng === 'Mozilla Firefox') return lower.includes('firefox')
+                  if (newEng === 'Google Chrome') return lower.includes('chrome') && !lower.includes('edge') && !lower.includes('brave')
+                  if (newEng === 'Microsoft Edge') return lower.includes('edge')
+                  if (newEng === 'Brave') return lower.includes('brave')
+                  if (newEng === 'Chromium') return lower.includes('chromium')
+                  return false
+                })
+                if (match) {
+                  if (newEng === 'Mozilla Firefox') {
+                    await window.api.setFirefoxPath(match.path)
+                  } else {
+                    await window.api.setChromiumPath(match.path)
+                  }
+                  setChromiumPath(match.path)
+                  runTest(match.path)
+                  runDiagnostics()
+                }
+              }}
               style={{ width: '100%' }}
             >
               <option value="Google Chrome">Google Chrome (Default / Recommended)</option>
               <option value="Chromium">Chromium</option>
               <option value="Microsoft Edge">Microsoft Edge (Chromium Engine)</option>
               <option value="Brave">Brave Browser</option>
+              <option value="Mozilla Firefox">Mozilla Firefox (Gecko Engine)</option>
               <option value="Custom">Custom Binary</option>
             </select>
           </div>
@@ -1196,12 +1220,16 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
               <input
                 type="text"
                 className="form-input"
-                placeholder="Click Auto-Detect or Browse for chrome.exe"
+                placeholder={engineType === 'Mozilla Firefox' ? 'e.g. /Applications/Firefox.app/Contents/MacOS/firefox' : 'Click Auto-Detect or Browse for executable'}
                 value={chromiumPath || ''}
                 onChange={async (e) => {
                   setChromiumPath(e.target.value)
                   if (e.target.value) {
-                    await window.api.setChromiumPath(e.target.value)
+                    if (e.target.value.toLowerCase().includes('firefox') || engineType === 'Mozilla Firefox') {
+                      await window.api.setFirefoxPath(e.target.value)
+                    } else {
+                      await window.api.setChromiumPath(e.target.value)
+                    }
                     runTest(e.target.value)
                   }
                 }}
@@ -1215,7 +1243,7 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-primary btn-sm" disabled={isDetecting} onClick={handleAutoDetect}>
-              {isDetecting ? '🔍 Scanning...' : '🔍 Auto-Detect Chrome'}
+              {isDetecting ? '🔍 Scanning...' : '🔍 Auto-Detect Browsers'}
             </button>
             <button className="btn btn-secondary btn-sm" disabled={isTesting || !chromiumPath} onClick={() => runTest()}>
               {isTesting ? 'Testing...' : '⚡ Test Browser'}
@@ -1231,44 +1259,59 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
           {discoveredBrowsers.length > 0 && (
             <div style={{ background: 'var(--color-bg-tertiary)', borderRadius: 8, padding: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>
-                Discovered Browsers
+                Discovered Browsers on System
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {discoveredBrowsers.map((b, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: chromiumPath === b.path ? 'rgba(45,212,191,0.1)' : 'var(--color-bg-secondary)',
-                      border: chromiumPath === b.path ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      borderRadius: 6,
-                      padding: '8px 12px'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>
-                        {b.name} <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 400 }}>v{b.version}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'monospace', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {b.path}
-                      </div>
-                    </div>
-                    <button
-                      className={`btn btn-sm ${chromiumPath === b.path ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={async () => {
-                        await window.api.setChromiumPath(b.path)
-                        setChromiumPath(b.path)
-                        showToast('success', `Selected ${b.name}`)
-                        runTest(b.path)
-                        runDiagnostics()
+                {discoveredBrowsers.map((b, i) => {
+                  const isFirefox = b.name.toLowerCase().includes('firefox') || b.engine.toLowerCase().includes('gecko')
+                  const isCur = (chromiumPath || '').toLowerCase() === b.path.toLowerCase()
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: isCur ? 'rgba(45,212,191,0.1)' : 'var(--color-bg-secondary)',
+                        border: isCur ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        borderRadius: 6,
+                        padding: '8px 12px'
                       }}
                     >
-                      {chromiumPath === b.path ? '✓ In Use' : 'Use'}
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{isFirefox ? '🦊' : b.name.toLowerCase().includes('edge') ? '🌊' : b.name.toLowerCase().includes('brave') ? '🦁' : '🌐'}</span>
+                          <span>{b.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 400 }}>v{b.version}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'monospace', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                          {b.path}
+                        </div>
+                      </div>
+                      <button
+                        className={`btn btn-sm ${isCur ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={async () => {
+                          if (isFirefox) {
+                            await window.api.setFirefoxPath(b.path)
+                            setEngineType('Mozilla Firefox')
+                          } else {
+                            await window.api.setChromiumPath(b.path)
+                            if (b.name.toLowerCase().includes('edge')) setEngineType('Microsoft Edge')
+                            else if (b.name.toLowerCase().includes('brave')) setEngineType('Brave')
+                            else if (b.name.toLowerCase().includes('chromium')) setEngineType('Chromium')
+                            else setEngineType('Google Chrome')
+                          }
+                          setChromiumPath(b.path)
+                          showToast('success', `Selected ${b.name}`)
+                          runTest(b.path)
+                          runDiagnostics()
+                        }}
+                      >
+                        {isCur ? '✓ In Use' : 'Use'}
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
