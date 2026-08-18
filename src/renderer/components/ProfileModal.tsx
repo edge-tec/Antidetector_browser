@@ -665,6 +665,12 @@ export const ProfileModal: React.FC<Props> = ({
   const [folder, setFolder] = useState('')
   const [osType, setOsType] = useState('macos-arm')
   const [browserType, setBrowserType] = useState<'chrome' | 'firefox'>('chrome')
+  const [browserVersion, setBrowserVersion] = useState<string>('128.0.6613.120')
+
+  const availableBrowserVersions = useMemo(() => {
+    return browserType === 'firefox' ? FIREFOX_VERSIONS_CATALOG : CHROME_VERSIONS_CATALOG
+  }, [browserType])
+
   const [processorGen, setProcessorGen] = useState('M4')
   const [androidBrand, setAndroidBrand] = useState('Samsung')
   const [androidModelId, setAndroidModelId] = useState('samsung-s24-ultra')
