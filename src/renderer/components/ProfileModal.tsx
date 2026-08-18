@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import {
+  ANDROID_DEVICES,
+  ANDROID_BRANDS,
+  getDevicesByBrand,
+  getDeviceById,
+  generateAndroidUserAgent,
+  AndroidDeviceSpec
+} from '../data/android-devices'
 
 interface Props {
   isOpen: boolean
@@ -140,6 +148,108 @@ function generateRandomUAForOS(osType: string): { ua: string; version: string; c
 
 function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
   const fp = rawFp && typeof rawFp === 'object' ? rawFp : {}
+
+  if (targetOs === 'android') {
+    const isAlreadyAndroid = fp.navigator?.userAgent?.includes('Android')
+    const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
+    const matchedDev = (existingModelCode ? getDeviceById(existingModelCode) : null) || ANDROID_DEVICES[0]
+
+    return {
+      version: fp.version || 2,
+      seed: fp.seed || 'default-seed',
+      navigator: {
+        userAgent: isAlreadyAndroid && fp.navigator?.userAgent ? fp.navigator.userAgent : generateAndroidUserAgent(matchedDev),
+        browserVersion: fp.navigator?.browserVersion || '128.0.0.0',
+        chromiumVersion: fp.navigator?.chromiumVersion || '128.0.0.0',
+        platform: 'Linux armv8l',
+        vendor: 'Google Inc.',
+        deviceBrand: fp.navigator?.deviceBrand || matchedDev.brand,
+        deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
+        deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.modelCode,
+        hardwareConcurrency: fp.navigator?.hardwareConcurrency || matchedDev.cores,
+        deviceMemory: fp.navigator?.deviceMemory || matchedDev.memory,
+        maxTouchPoints: fp.navigator?.maxTouchPoints || 5,
+        touchSupport: true,
+        doNotTrack: fp.navigator?.doNotTrack || null
+      },
+      screen: {
+        width: fp.screen?.width || matchedDev.screenWidth,
+        height: fp.screen?.height || matchedDev.screenHeight,
+        devicePixelRatio: fp.screen?.devicePixelRatio || matchedDev.dpr,
+        viewportWidth: fp.screen?.viewportWidth || matchedDev.screenWidth,
+        viewportHeight: fp.screen?.viewportHeight || Math.floor(matchedDev.screenHeight * 0.9),
+        colorDepth: 24,
+        pixelDepth: 24,
+        orientation: 'portrait-primary',
+        orientationAngle: 0
+      },
+      locale: {
+        language: fp.locale?.language || 'en-US',
+        languages: fp.locale?.languages || ['en-US', 'en']
+      },
+      timezone: {
+        mode: fp.timezone?.mode || 'auto',
+        timezone: fp.timezone?.timezone || 'America/New_York'
+      },
+      geolocation: {
+        mode: fp.geolocation?.mode || 'ip-based',
+        latitude: fp.geolocation?.latitude || 40.7128,
+        longitude: fp.geolocation?.longitude || -74.006,
+        accuracy: fp.geolocation?.accuracy || 50
+      },
+      webrtc: {
+        mode: fp.webrtc?.mode || 'real',
+        ipPolicy: fp.webrtc?.ipPolicy || 'default_public_interface_only'
+      },
+      canvas: {
+        mode: fp.canvas?.mode || 'off',
+        noiseSeed: fp.canvas?.noiseSeed || 12345
+      },
+      webgl: {
+        enabled: fp.webgl?.enabled !== false,
+        gpuVendor: fp.webgl?.gpuVendor || matchedDev.gpuVendor,
+        gpuRenderer: fp.webgl?.gpuRenderer || matchedDev.gpuRenderer,
+        unmaskedVendor: fp.webgl?.unmaskedVendor || matchedDev.gpuVendor,
+        unmaskedRenderer: fp.webgl?.unmaskedRenderer || matchedDev.gpuRenderer,
+        imageMode: fp.webgl?.imageMode || 'off',
+        metadataMode: fp.webgl?.metadataMode || 'mask'
+      },
+      audio: {
+        mode: fp.audio?.mode || 'noise',
+        noiseSeed: fp.audio?.noiseSeed || 54321
+      },
+      clientRects: {
+        mode: fp.clientRects?.mode || 'off',
+        noiseSeed: fp.clientRects?.noiseSeed || 9999
+      },
+      fonts: {
+        enableMasking: fp.fonts?.enableMasking !== false,
+        fontList: fp.fonts?.fontList || ['Roboto', 'Noto Sans', 'Droid Sans']
+      },
+      mediaDevices: {
+        videoInputs: fp.mediaDevices?.videoInputs ?? 2,
+        audioInputs: fp.mediaDevices?.audioInputs ?? 1,
+        audioOutputs: fp.mediaDevices?.audioOutputs ?? 1
+      },
+      battery: {
+        enabled: fp.battery?.enabled || true,
+        charging: fp.battery?.charging ?? false,
+        level: fp.battery?.level ?? 0.85
+      },
+      networkInfo: {
+        effectiveType: fp.networkInfo?.effectiveType || '4g',
+        downlink: fp.networkInfo?.downlink || 15,
+        rtt: fp.networkInfo?.rtt || 50
+      },
+      permissions: fp.permissions || {
+        camera: 'prompt',
+        microphone: 'prompt',
+        geolocation: 'prompt',
+        notifications: 'prompt',
+        clipboard: 'prompt'
+      }
+    }
+  }
 
   return {
     version: fp.version || 2,
@@ -321,10 +431,16 @@ export const ProfileModal: React.FC<Props> = ({
   const [folder, setFolder] = useState('')
   const [osType, setOsType] = useState('macos-arm')
   const [processorGen, setProcessorGen] = useState('M4')
+  const [androidBrand, setAndroidBrand] = useState('Samsung')
+  const [androidModelId, setAndroidModelId] = useState('samsung-s24-ultra')
   const [groupId, setGroupId] = useState('')
   const [notes, setNotes] = useState('')
   const [startUrl, setStartUrl] = useState('')
   const [tagsStr, setTagsStr] = useState('')
+
+  const selectedAndroidDevice = useMemo(() => {
+    return getDeviceById(androidModelId) || ANDROID_DEVICES[0]
+  }, [androidModelId])
 
   // Proxy state
   const [proxyTab, setProxyTab] = useState<'saved' | 'custom' | 'none'>('none')
@@ -374,6 +490,63 @@ export const ProfileModal: React.FC<Props> = ({
   const [fpToast, setFpToast] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec) => {
+    const newUa = generateAndroidUserAgent(dev)
+    handleFpChange(prev => ({
+      ...prev,
+      navigator: {
+        ...prev.navigator,
+        userAgent: newUa,
+        appVersion: `5.0 (Linux; Android ${dev.androidVersion}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36`,
+        platform: 'Linux armv8l',
+        deviceBrand: dev.brand,
+        deviceModel: dev.modelName,
+        deviceModelCode: dev.modelCode,
+        hardwareConcurrency: dev.cores,
+        deviceMemory: dev.memory,
+        maxTouchPoints: 5,
+        touchSupport: true
+      },
+      screen: {
+        ...prev.screen,
+        width: dev.screenWidth,
+        height: dev.screenHeight,
+        availWidth: dev.screenWidth,
+        availHeight: dev.screenHeight,
+        devicePixelRatio: dev.dpr,
+        viewportWidth: dev.screenWidth,
+        viewportHeight: Math.floor(dev.screenHeight * 0.9),
+        orientation: 'portrait-primary',
+        orientationAngle: 0
+      },
+      webgl: {
+        ...prev.webgl,
+        gpuVendor: dev.gpuVendor,
+        gpuRenderer: dev.gpuRenderer,
+        unmaskedVendor: dev.gpuVendor,
+        unmaskedRenderer: dev.gpuRenderer
+      }
+    }))
+  }
+
+  const handleAndroidBrandChange = (newBrand: string) => {
+    setAndroidBrand(newBrand)
+    const brandDevices = getDevicesByBrand(newBrand)
+    if (brandDevices.length > 0) {
+      const firstDev = brandDevices[0]
+      setAndroidModelId(firstDev.id)
+      applyAndroidDeviceToFp(firstDev)
+    }
+  }
+
+  const handleAndroidModelChange = (newModelId: string) => {
+    setAndroidModelId(newModelId)
+    const dev = getDeviceById(newModelId)
+    if (dev) {
+      applyAndroidDeviceToFp(dev)
+    }
+  }
+
   useEffect(() => {
     if (isOpen) {
       if (initialProfile) {
@@ -384,6 +557,13 @@ export const ProfileModal: React.FC<Props> = ({
         setGroupId(initialProfile.groupId || '')
         setNotes(initialProfile.notes || '')
         setTagsStr((initialProfile.tags || []).join(', '))
+
+        if (targetOs === 'android') {
+          const rawCode = initialProfile.fingerprint?.navigator?.deviceModelCode || initialProfile.fingerprint?.navigator?.deviceModel || ''
+          const matched = (rawCode ? getDeviceById(rawCode) : null) || ANDROID_DEVICES[0]
+          setAndroidBrand(matched.brand)
+          setAndroidModelId(matched.id)
+        }
 
         if (initialProfile.proxyId) {
           setSelectedProxyId(initialProfile.proxyId)
@@ -451,6 +631,18 @@ export const ProfileModal: React.FC<Props> = ({
   }, [isOpen, initialProfile])
 
   const handleGenerateNew = async (targetOs: string) => {
+    if (targetOs === 'android') {
+      const brandDevices = getDevicesByBrand(androidBrand)
+      const dev = (brandDevices.length > 1 ? brandDevices[Math.floor(Math.random() * brandDevices.length)] : null) || ANDROID_DEVICES[Math.floor(Math.random() * ANDROID_DEVICES.length)]
+      if (dev) {
+        setAndroidBrand(dev.brand)
+        setAndroidModelId(dev.id)
+        applyAndroidDeviceToFp(dev)
+        setFpToast(true)
+        setTimeout(() => setFpToast(false), 2200)
+        return
+      }
+    }
     try {
       const randomSeed = Math.random().toString(36).substring(2) + Date.now().toString(36)
       if ((window as any).api?.generateFingerprint) {
@@ -473,9 +665,18 @@ export const ProfileModal: React.FC<Props> = ({
 
   const handleOsChange = (newOs: string) => {
     setOsType(newOs)
-    const options = PROCESSOR_OPTIONS[newOs] || ['Default Processor']
-    setProcessorGen(options[0])
-    handleGenerateNew(newOs)
+    if (newOs === 'android') {
+      const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
+      setAndroidBrand(dev.brand)
+      setAndroidModelId(dev.id)
+      applyAndroidDeviceToFp(dev)
+      setFpToast(true)
+      setTimeout(() => setFpToast(false), 2200)
+    } else {
+      const options = PROCESSOR_OPTIONS[newOs] || ['Default Processor']
+      setProcessorGen(options[0])
+      handleGenerateNew(newOs)
+    }
   }
 
   const handleFpChange = (updater: (prev: any) => any) => {
@@ -772,36 +973,117 @@ export const ProfileModal: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Processor generation Dropdown */}
-                  <div style={{ maxWidth: '280px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
-                      Processor generation
-                    </label>
-                    <select
-                      value={processorGen}
-                      onChange={e => {
-                        setProcessorGen(e.target.value)
-                        handleFpChange(prev => ({
-                          ...prev,
-                          webgl: { ...prev.webgl, gpuRenderer: e.target.value }
-                        }))
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        backgroundColor: '#14141F',
-                        border: '1px solid #2C2C3E',
-                        color: '#FFF',
-                        fontSize: '14px',
-                        outline: 'none'
-                      }}
-                    >
-                      {(PROCESSOR_OPTIONS[osType] || ['Default Processor']).map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Dynamic Processor or Android Phone Brand/Model Selection */}
+                  {osType === 'android' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        {/* Device Brand Dropdown */}
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                            📱 Device Brand / Manufacturer
+                          </label>
+                          <select
+                            value={androidBrand}
+                            onChange={e => handleAndroidBrandChange(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: '#FFF',
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                          >
+                            {ANDROID_BRANDS.map(b => (
+                              <option key={b} value={b}>{b}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Mobile Model Dropdown */}
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                            🔥 Mobile Model
+                          </label>
+                          <select
+                            value={androidModelId}
+                            onChange={e => handleAndroidModelChange(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: '#FFF',
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                          >
+                            {getDevicesByBrand(androidBrand).map(d => (
+                              <option key={d.id} value={d.id}>{d.modelName}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Realtime Specs Badge Bar */}
+                      {selectedAndroidDevice && (
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 14px',
+                          backgroundColor: '#14141F',
+                          border: '1px solid #2C2C3E',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          color: '#94A3B8'
+                        }}>
+                          <span style={{ background: 'rgba(45,212,191,0.12)', color: '#2DD4BF', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                            {selectedAndroidDevice.brand} • {selectedAndroidDevice.modelCode}
+                          </span>
+                          <span>⚡ <strong>Chipset:</strong> {selectedAndroidDevice.cpu}</span>
+                          <span>🎮 <strong>GPU:</strong> {selectedAndroidDevice.gpuRenderer}</span>
+                          <span>📐 <strong>Display:</strong> {selectedAndroidDevice.screenWidth}x{selectedAndroidDevice.screenHeight} (@{selectedAndroidDevice.dpr}x DPR)</span>
+                          <span>🧠 <strong>RAM:</strong> {selectedAndroidDevice.memory} GB</span>
+                          <span>🤖 <strong>Android {selectedAndroidDevice.androidVersion}</strong></span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ maxWidth: '280px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                        Processor generation
+                      </label>
+                      <select
+                        value={processorGen}
+                        onChange={e => {
+                          setProcessorGen(e.target.value)
+                          handleFpChange(prev => ({
+                            ...prev,
+                            webgl: { ...prev.webgl, gpuRenderer: e.target.value }
+                          }))
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          backgroundColor: '#14141F',
+                          border: '1px solid #2C2C3E',
+                          color: '#FFF',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      >
+                        {(PROCESSOR_OPTIONS[osType] || ['Default Processor']).map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* New Fingerprint Button */}
                   <div>
@@ -2137,12 +2419,17 @@ export const ProfileModal: React.FC<Props> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div><strong style={{ color: '#94A3B8' }}>Profile Name:</strong> {name || 'profile 1'}</div>
               <div><strong style={{ color: '#94A3B8' }}>Proxy:</strong> {activeProxyName}</div>
-              <div><strong style={{ color: '#94A3B8' }}>Browser:</strong> chrome</div>
+              <div><strong style={{ color: '#94A3B8' }}>Browser:</strong> chrome (mobile)</div>
               <div><strong style={{ color: '#94A3B8' }}>OS:</strong> {osType.startsWith('macos') ? 'mac' : osType.startsWith('win') ? 'win' : osType}</div>
+              {osType === 'android' && (
+                <div><strong style={{ color: '#94A3B8' }}>Device:</strong> <span style={{ color: '#2DD4BF', fontWeight: 600 }}>{safeFp.navigator.deviceModel || safeFp.navigator.deviceBrand || selectedAndroidDevice?.modelName || 'Samsung Galaxy S24 Ultra'}</span></div>
+              )}
               <div><strong style={{ color: '#94A3B8' }}>User-Agent:</strong> {safeFp.navigator.userAgent ? `${safeFp.navigator.userAgent.substring(0, 22)}...` : 'Mozilla/...'}</div>
-              <div><strong style={{ color: '#94A3B8' }}>Resolution:</strong> {safeFp.screen.width}x{safeFp.screen.height}</div>
+              <div><strong style={{ color: '#94A3B8' }}>Resolution:</strong> {safeFp.screen.width}x{safeFp.screen.height} (@{safeFp.screen.devicePixelRatio || 1}x)</div>
               <div><strong style={{ color: '#94A3B8' }}>Languages:</strong> {safeFp.locale.language}</div>
               <div><strong style={{ color: '#94A3B8' }}>Platform:</strong> {safeFp.navigator.platform}</div>
+              <div><strong style={{ color: '#94A3B8' }}>Hardware:</strong> {safeFp.navigator.hardwareConcurrency} Cores / {safeFp.navigator.deviceMemory} GB RAM</div>
+              <div><strong style={{ color: '#94A3B8' }}>GPU:</strong> {safeFp.webgl.unmaskedRenderer ? `${safeFp.webgl.unmaskedRenderer.substring(0, 22)}...` : 'GPU'}</div>
               <div><strong style={{ color: '#94A3B8' }}>Timezone:</strong> {autoTimezone ? 'based on ip' : selectedTimezone}</div>
               <div><strong style={{ color: '#94A3B8' }}>Geolocation:</strong> {autoGeo ? 'based on ip' : geoMode}</div>
               <div><strong style={{ color: '#94A3B8' }}>WebRTC:</strong> {webrtcSetting === 'off' ? 'off' : 'based on ip'}</div>
@@ -2151,6 +2438,7 @@ export const ProfileModal: React.FC<Props> = ({
               <div><strong style={{ color: '#94A3B8' }}>WebGL Metadata:</strong> mask</div>
               <div><strong style={{ color: '#94A3B8' }}>WebGL Image:</strong> off</div>
               <div><strong style={{ color: '#94A3B8' }}>Audio Context:</strong> {safeFp.audio.mode}</div>
+              <div><strong style={{ color: '#94A3B8' }}>Touch Support:</strong> {safeFp.navigator.maxTouchPoints > 0 ? `Yes (${safeFp.navigator.maxTouchPoints} points)` : 'None'}</div>
               <div><strong style={{ color: '#94A3B8' }}>Fonts:</strong> {safeFp.fonts.fontList?.length || 221}</div>
               <div><strong style={{ color: '#94A3B8' }}>Media devices:</strong> ({safeFp.mediaDevices.videoInputs}|{safeFp.mediaDevices.audioInputs}|{safeFp.mediaDevices.audioOutputs})</div>
               <div><strong style={{ color: '#94A3B8' }}>Local Storage:</strong> true</div>

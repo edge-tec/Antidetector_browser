@@ -102,7 +102,18 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
         maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
       })
 
-      // 2. Override HTTP User Agent & Client Hints header via CDP Network Domain
+      // 2. Extract device model for Client Hints (sec-ch-ua-model)
+      let model = (fingerprint.navigator as any)?.deviceModelCode || (fingerprint.navigator as any)?.deviceModel || ''
+      if (!model) {
+        const uaMatch = fingerprint.navigator?.userAgent?.match(/Android[^;]+;\s*([^)]+)\)/i)
+        if (uaMatch && uaMatch[1]) {
+          model = uaMatch[1].trim()
+        } else {
+          model = 'SM-S928B'
+        }
+      }
+
+      // 3. Override HTTP User Agent & Client Hints header via CDP Network Domain
       const brandVersion = fingerprint.navigator?.browserVersion ? fingerprint.navigator.browserVersion.split('.')[0] : '128'
       await client.send('Network.setUserAgentOverride', {
         userAgent: fingerprint.navigator.userAgent,
@@ -114,12 +125,13 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
             { brand: 'Google Chrome', version: brandVersion },
             { brand: 'Not-A.Brand', version: '99' }
           ],
-          fullVersion: fingerprint.navigator.browserVersion,
+          fullVersion: fingerprint.navigator.browserVersion || '128.0.0.0',
           platform: 'Android',
           platformVersion: '14.0.0',
           architecture: 'arm',
-          model: 'Pixel 8',
-          mobile: true
+          model: model,
+          mobile: true,
+          bitness: '64'
         }
       })
     }
