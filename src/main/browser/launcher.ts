@@ -142,7 +142,12 @@ function setupFirefoxProfilePrefs(
   }
 
   const userJsPath = path.join(resolvedDir, 'user.js')
-  fs.writeFileSync(userJsPath, prefs.join('\n') + '\n', 'utf8')
+  const prefsJsPath = path.join(resolvedDir, 'prefs.js')
+  const content = prefs.join('\n') + '\n'
+  fs.writeFileSync(userJsPath, content, 'utf8')
+  if (!fs.existsSync(prefsJsPath)) {
+    fs.writeFileSync(prefsJsPath, content, 'utf8')
+  }
   logger.info('browser', `[FirefoxProfile] Wrote Firefox profile configuration to: ${userJsPath}`)
 }
 
@@ -267,6 +272,8 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--no-default-browser-check',
     '--start-maximized',
     '--window-position=0,0',
+    '--password-store=basic',
+    '--use-mock-keychain',
     `--lang=${lang}`
   ]
 
