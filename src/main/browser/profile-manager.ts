@@ -9,36 +9,45 @@ import { profileRepo } from '../database/repositories/profile.repo'
 import { Profile, ProfileCreateInput } from '../database/models'
 import { launchBrowser } from './launcher'
 import { processTracker } from './process-tracker'
-import { findChromiumPath, ensureProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
+import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
 import { logger } from '../logging/logger'
 import { getDatabase } from '../database/connection'
 
 class ProfileManager {
   private chromiumPath: string | null = null
+  private firefoxPath: string | null = null
 
   /**
-   * Initialize the profile manager (find Chromium).
+   * Initialize the profile manager (find Chromium & Firefox).
    */
   async initialize(): Promise<void> {
     const db = getDatabase()
-    const customPath = db.prepare("SELECT value FROM settings WHERE key = 'chromiumPath'").get() as { value: string } | undefined
+    const customChrome = db.prepare("SELECT value FROM settings WHERE key = 'chromiumPath'").get() as { value: string } | undefined
+    const customFf = db.prepare("SELECT value FROM settings WHERE key = 'firefoxPath'").get() as { value: string } | undefined
 
-    this.chromiumPath = await findChromiumPath(customPath?.value)
+    this.chromiumPath = await findChromiumPath(customChrome?.value)
+    this.firefoxPath = await findFirefoxPath(customFf?.value)
 
-    if (this.chromiumPath && !customPath?.value) {
+    if (this.chromiumPath && !customChrome?.value) {
       try {
         db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('chromiumPath', ?)").run(this.chromiumPath)
+      } catch {}
+    }
+
+    if (this.firefoxPath && !customFf?.value) {
+      try {
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('firefoxPath', ?)").run(this.firefoxPath)
       } catch {}
     }
 
     // Clean up any orphaned running statuses from crashes
     processTracker.cleanupOrphans()
 
-    logger.info('browser', `Profile manager initialized. Chromium: ${this.chromiumPath || 'not found'}`)
+    logger.info('browser', `Profile manager initialized. Chromium: ${this.chromiumPath || 'not found'} | Firefox: ${this.firefoxPath || 'not found'}`)
   }
 
   /**
-   * Start a profile's browser.
+   * Start a profile's browser (Chromium or Firefox depending on profile configuration).
    */
   async startProfile(profileId: string): Promise<{ pid: number; wsEndpoint: string }> {
     const profile = profileRepo.getById(profileId)
@@ -50,19 +59,41 @@ class ProfileManager {
       throw new Error(`Profile "${profile.name}" is already running.`)
     }
 
-    // Check existing path or auto-detect
-    if (!this.chromiumPath || !fs.existsSync(this.chromiumPath)) {
+    // Determine configured browser engine & type
+    let rawFp: any = null
+    try {
+      rawFp = typeof profile.fingerprint === 'string' ? JSON.parse(profile.fingerprint) : profile.fingerprint
+    } catch {}
+
+    const browserType: 'chrome' | 'firefox' =
+      (profile as any).browserType ||
+      rawFp?.browser?.type ||
+      (rawFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+
+    let executablePath: string | null = null
+
+    if (browserType === 'firefox') {
+      const db = getDatabase()
+      const customFfRow = db.prepare("SELECT value FROM settings WHERE key = 'firefoxPath'").get() as { value: string } | undefined
+      this.firefoxPath = await findFirefoxPath(customFfRow?.value)
+
+      if (!this.firefoxPath || !fs.existsSync(this.firefoxPath)) {
+        throw new Error(
+          'Mozilla Firefox executable was not found on your system. Please install Mozilla Firefox on your computer, or configure the Firefox executable path in Settings -> Browser Engine.'
+        )
+      }
+      executablePath = this.firefoxPath
+    } else {
       const db = getDatabase()
       const customPathRow = db.prepare("SELECT value FROM settings WHERE key = 'chromiumPath'").get() as { value: string } | undefined
       this.chromiumPath = await findChromiumPath(customPathRow?.value)
 
-      if (this.chromiumPath) {
-        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('chromiumPath', ?)").run(this.chromiumPath)
-      } else {
+      if (!this.chromiumPath || !fs.existsSync(this.chromiumPath)) {
         throw new Error(
-          'Chrome/Chromium executable not found. Please install Google Chrome, or click Settings -> Browser Engine to Auto-Detect or Browse.'
+          'Google Chrome / Chromium executable was not found on your system. Please install Google Chrome, or click Settings -> Browser Engine to Auto-Detect or Browse.'
         )
       }
+      executablePath = this.chromiumPath
     }
 
     // Ensure profile data directory is accessible and created
@@ -74,10 +105,10 @@ class ProfileManager {
 
     // Update status to launching
     profileRepo.setStatus(profileId, 'launching')
-    logger.info('browser', `[BrowserLaunch] Launching profile "${profile.name}" (${profileId}) with browser: ${this.chromiumPath}`)
+    logger.info('browser', `[BrowserLaunch] Launching profile "${profile.name}" (${profileId}) with ${browserType.toUpperCase()} at: ${executablePath}`)
 
     try {
-      const result = await launchBrowser(profile, this.chromiumPath)
+      const result = await launchBrowser(profile, executablePath, browserType)
 
       // Track the process
       processTracker.track(profileId, profile.name, result.browser, result.pid, result.wsEndpoint)
@@ -288,6 +319,26 @@ class ProfileManager {
     const db = getDatabase()
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('chromiumPath', ?)").run(customPath)
     logger.info('browser', `Chromium path updated to: ${customPath || '(auto-detect)'}`)
+  }
+
+  /**
+   * Get Firefox path.
+   */
+  getFirefoxPath(): string | null {
+    return this.firefoxPath
+  }
+
+  /**
+   * Set a custom Firefox path.
+   */
+  async setFirefoxPath(customPath: string): Promise<void> {
+    if (customPath && !fs.existsSync(customPath)) {
+      throw new Error(`Firefox binary not found at: ${customPath}`)
+    }
+    this.firefoxPath = customPath || null
+    const db = getDatabase()
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('firefoxPath', ?)").run(customPath)
+    logger.info('browser', `Firefox path updated to: ${customPath || '(auto-detect)'}`)
   }
 
   /**

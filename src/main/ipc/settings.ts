@@ -5,7 +5,7 @@
 import { ipcMain, app, shell, dialog } from 'electron'
 import { getDatabase } from '../database/connection'
 import { profileManager } from '../browser/profile-manager'
-import { findChromiumPath, detectAllBrowsers, testBrowserExecutable, runBrowserDiagnostics } from '../browser/chromium-resolver'
+import { findChromiumPath, findFirefoxPath, detectAllBrowsers, testBrowserExecutable, runBrowserDiagnostics } from '../browser/chromium-resolver'
 import { startApiServer, stopApiServer, isApiRunning, getApiToken } from '../automation/server'
 import { rotateApiToken } from '../security/api-auth'
 import { logger } from '../logging/logger'
@@ -49,14 +49,31 @@ export function registerSettingsHandlers(): void {
     }
   })
 
+  ipcMain.handle('settings:firefoxPath', async () => {
+    return { success: true, data: profileManager.getFirefoxPath() }
+  })
+
+  ipcMain.handle('settings:setFirefoxPath', async (_event, path: string) => {
+    try {
+      await profileManager.setFirefoxPath(path)
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
   ipcMain.handle('settings:autoDetectBrowser', async () => {
     try {
-      const detected = await findChromiumPath()
+      const detectedChrome = await findChromiumPath()
+      const detectedFirefox = await findFirefoxPath()
       const all = await detectAllBrowsers()
-      if (detected) {
-        await profileManager.setChromiumPath(detected)
+      if (detectedChrome) {
+        await profileManager.setChromiumPath(detectedChrome)
       }
-      return { success: true, data: { detectedPath: detected, allBrowsers: all } }
+      if (detectedFirefox) {
+        await profileManager.setFirefoxPath(detectedFirefox)
+      }
+      return { success: true, data: { detectedPath: detectedChrome, detectedFirefox, allBrowsers: all } }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

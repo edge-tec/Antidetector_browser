@@ -2,6 +2,7 @@
 // AntiProfiles v2 — Browser Launcher (Puppeteer + Fingerprint Injection)
 // ──────────────────────────────────────────────────────────────────
 
+import { spawn, ChildProcess } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import puppeteer, { Browser } from 'puppeteer-core'
@@ -15,9 +16,184 @@ import { startProxyBridge } from '../network/proxy-bridge'
 import { logger } from '../logging/logger'
 
 export interface LaunchResult {
-  browser: Browser
+  browser: Browser | any
   pid: number
   wsEndpoint: string
+}
+
+/**
+ * Generate Firefox profile preferences (user.js) for anti-detect fingerprint isolation.
+ */
+function setupFirefoxProfilePrefs(
+  userDataDir: string,
+  profile: Profile,
+  fingerprint: Fingerprint,
+  proxy: Proxy | null
+): void {
+  if (!fs.existsSync(userDataDir)) {
+    fs.mkdirSync(userDataDir, { recursive: true })
+  }
+
+  const prefs: string[] = [
+    '// AntiProfiles Generated Firefox Preferences',
+    'user_pref("browser.shell.checkDefaultBrowser", false);',
+    'user_pref("browser.startup.homepage_override.mstone", "ignore");',
+    'user_pref("browser.startup.page", 1);',
+    'user_pref("browser.tabs.warnOnClose", false);',
+    'user_pref("datareporting.healthreport.uploadEnabled", false);',
+    'user_pref("toolkit.telemetry.enabled", false);',
+    'user_pref("app.normandy.enabled", false);',
+    'user_pref("app.shield.optoutstudies.enabled", true);',
+    'user_pref("browser.discovery.enabled", false);',
+    'user_pref("extensions.pocket.enabled", false);',
+    'user_pref("privacy.resistFingerprinting", false);'
+  ]
+
+  // User-Agent & Platform Overrides
+  if (fingerprint?.navigator?.userAgent) {
+    prefs.push(`user_pref("general.useragent.override", ${JSON.stringify(fingerprint.navigator.userAgent)});`)
+  }
+  if (fingerprint?.navigator?.appVersion) {
+    prefs.push(`user_pref("general.appversion.override", ${JSON.stringify(fingerprint.navigator.appVersion)});`)
+  }
+  if (fingerprint?.navigator?.platform) {
+    prefs.push(`user_pref("general.platform.override", ${JSON.stringify(fingerprint.navigator.platform)});`)
+    prefs.push(`user_pref("general.oscpu.override", ${JSON.stringify(fingerprint.navigator.platform)});`)
+  }
+
+  // Languages
+  const langList = fingerprint?.locale?.languages?.join(',') || fingerprint?.locale?.language || 'en-US,en'
+  prefs.push(`user_pref("intl.accept_languages", ${JSON.stringify(langList)});`)
+  prefs.push(`user_pref("general.useragent.locale", ${JSON.stringify(fingerprint?.locale?.language || 'en-US')});`)
+
+  // WebRTC
+  if (fingerprint?.webrtc?.mode === 'disabled' || profile.webrtcMode === 'disabled' || (profile.webrtcMode as string) === 'off') {
+    prefs.push('user_pref("media.peerconnection.enabled", false);')
+  } else {
+    prefs.push('user_pref("media.peerconnection.enabled", true);')
+    if (fingerprint?.webrtc?.ipPolicy === 'disable_non_proxied_udp') {
+      prefs.push('user_pref("media.peerconnection.ice.proxy_only", true);')
+    }
+  }
+
+  // Screen / DevicePixelRatio
+  if (fingerprint?.screen?.devicePixelRatio) {
+    prefs.push(`user_pref("layout.css.devPixelsPerPx", "${fingerprint.screen.devicePixelRatio}");`)
+  }
+
+  // Hardware Acceleration
+  if (profile.hwAcceleration === false) {
+    prefs.push('user_pref("layers.acceleration.disabled", true);')
+    prefs.push('user_pref("gfx.direct2d.disabled", true);')
+  }
+
+  // Proxy Configuration
+  if (proxy && proxy.type !== 'direct' && proxy.host) {
+    prefs.push('user_pref("network.proxy.type", 1);')
+    if (proxy.type.startsWith('socks')) {
+      prefs.push(`user_pref("network.proxy.socks", ${JSON.stringify(proxy.host)});`)
+      prefs.push(`user_pref("network.proxy.socks_port", ${proxy.port});`)
+      prefs.push(`user_pref("network.proxy.socks_version", ${proxy.type === 'socks4' ? 4 : 5});`)
+      prefs.push('user_pref("network.proxy.socks_remote_dns", true);')
+    } else {
+      prefs.push(`user_pref("network.proxy.http", ${JSON.stringify(proxy.host)});`)
+      prefs.push(`user_pref("network.proxy.http_port", ${proxy.port});`)
+      prefs.push(`user_pref("network.proxy.ssl", ${JSON.stringify(proxy.host)});`)
+      prefs.push(`user_pref("network.proxy.ssl_port", ${proxy.port});`)
+    }
+  }
+
+  const userJsPath = path.join(userDataDir, 'user.js')
+  fs.writeFileSync(userJsPath, prefs.join('\n') + '\n', 'utf8')
+  logger.info('browser', `[FirefoxProfile] Wrote Firefox profile configuration to: ${userJsPath}`)
+}
+
+/**
+ * Launch Mozilla Firefox with isolated profile & parameters.
+ */
+export async function launchFirefox(
+  profile: Profile,
+  firefoxPath: string,
+  fingerprint: Fingerprint,
+  launchProxy: Proxy | null,
+  startUrls: string[]
+): Promise<LaunchResult> {
+  const userDataDir = ensureProfileDataDir(profile.id)
+  setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
+
+  const args: string[] = [
+    '--profile', userDataDir,
+    '-no-remote',
+    '-new-instance'
+  ]
+
+  if (startUrls.length > 0) {
+    args.push(...startUrls)
+  }
+
+  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) at: ${firefoxPath}`)
+
+  // 1. Try launching with Puppeteer Firefox driver
+  try {
+    const browser = await puppeteer.launch({
+      browser: 'firefox',
+      executablePath: firefoxPath,
+      userDataDir,
+      headless: false,
+      defaultViewport: null,
+      args: ['-no-remote', '-new-instance'],
+      ignoreDefaultArgs: ['--enable-automation'],
+      handleSIGINT: false,
+      handleSIGTERM: false,
+      handleSIGHUP: false
+    })
+
+    const wsEndpoint = browser.wsEndpoint()
+    const pid = browser.process()?.pid || 0
+
+    if (startUrls.length > 0) {
+      try {
+        const pages = await browser.pages()
+        if (pages[0] && startUrls[0]) {
+          await pages[0].goto(startUrls[0], { waitUntil: 'domcontentloaded' })
+        }
+      } catch {}
+    }
+
+    logger.info('browser', `[FirefoxLaunch] Firefox launched via Puppeteer for "${profile.name}" (PID: ${pid})`)
+    return { browser, pid, wsEndpoint }
+  } catch (err: any) {
+    logger.warn('browser', `[FirefoxLaunch] Puppeteer Firefox bridge fallback to direct process spawn: ${err.message}`)
+
+    // 2. Direct Process Spawn fallback
+    const child: ChildProcess = spawn(firefoxPath, args, {
+      detached: true,
+      stdio: 'ignore'
+    })
+
+    child.unref()
+    const pid = child.pid || 0
+
+    const mockBrowser: any = {
+      connected: true,
+      process: () => child,
+      wsEndpoint: () => '',
+      pages: async () => [],
+      close: async () => {
+        try {
+          if (child.pid) process.kill(child.pid, 'SIGTERM')
+        } catch {}
+      },
+      on: (event: string, cb: any) => {
+        if (event === 'disconnected') {
+          child.on('exit', cb)
+        }
+      }
+    }
+
+    logger.info('browser', `[FirefoxLaunch] Firefox launched directly for "${profile.name}" (PID: ${pid})`)
+    return { browser: mockBrowser, pid, wsEndpoint: '' }
+  }
 }
 
 /**
@@ -176,11 +352,12 @@ function normalizeFingerprint(raw: any, osType: string): Fingerprint {
 }
 
 /**
- * Launch a Chromium browser instance with full fingerprint injection.
+ * Launch a browser instance (Chromium or Firefox) with full fingerprint configuration.
  */
 export async function launchBrowser(
   profile: Profile,
-  chromiumPath: string
+  executablePath: string,
+  browserType: 'chrome' | 'firefox' = 'chrome'
 ): Promise<LaunchResult> {
   const userDataDir = ensureProfileDataDir(profile.id)
 
@@ -197,10 +374,12 @@ export async function launchBrowser(
     fingerprint = createDefaultFingerprint({ osType: (profile.osType as any) || 'windows-10' })
   }
 
-  // Auto-setup Bookmarks in Chromium Profile directory
-  if (fingerprint?.browser?.bookmarks && Array.isArray(fingerprint.browser.bookmarks)) {
-    setupProfileBookmarks(userDataDir, fingerprint.browser.bookmarks)
-  }
+  // Determine browser type from profile / fingerprint if not specified
+  const effectiveBrowserType: 'chrome' | 'firefox' =
+    browserType ||
+    (profile as any).browserType ||
+    fingerprint?.browser?.type ||
+    (fingerprint?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
 
   // Resolve proxy
   let proxy: Proxy | null = null
@@ -233,8 +412,6 @@ export async function launchBrowser(
     }
   }
 
-  const args = buildLaunchArgs(profile, fingerprint, launchProxy)
-
   // Determine start URLs
   let startUrls: string[] = []
   if (profile.startUrl) {
@@ -246,7 +423,20 @@ export async function launchBrowser(
     }
   }
 
-  logger.info('browser', `Launching browser for profile "${profile.name}"`, JSON.stringify({
+  // ── Dispatch to Firefox Launcher if Firefox is Selected ──
+  if (effectiveBrowserType === 'firefox') {
+    return launchFirefox(profile, executablePath, fingerprint, launchProxy, startUrls)
+  }
+
+  // ── Otherwise Launch Chromium Engine ──
+  // Auto-setup Bookmarks in Chromium Profile directory
+  if (fingerprint?.browser?.bookmarks && Array.isArray(fingerprint.browser.bookmarks)) {
+    setupProfileBookmarks(userDataDir, fingerprint.browser.bookmarks)
+  }
+
+  const args = buildLaunchArgs(profile, fingerprint, launchProxy)
+
+  logger.info('browser', `Launching Chromium for profile "${profile.name}"`, JSON.stringify({
     profileId: profile.id,
     osType: profile.osType || 'windows-10',
     userDataDir,
@@ -257,7 +447,7 @@ export async function launchBrowser(
 
   try {
     const browser = await puppeteer.launch({
-      executablePath: chromiumPath,
+      executablePath: executablePath,
       userDataDir,
       headless: false,
       defaultViewport: null,

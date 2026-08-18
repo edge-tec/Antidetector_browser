@@ -45,6 +45,15 @@ const COMMON_CHROME_PATHS_MAC = [
   path.join(process.env.HOME || '', 'Applications/Chromium.app/Contents/MacOS/Chromium')
 ]
 
+const COMMON_FIREFOX_PATHS_MAC = [
+  '/Applications/Firefox.app/Contents/MacOS/firefox',
+  '/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox',
+  '/Applications/Firefox Nightly.app/Contents/MacOS/firefox',
+  '/Applications/Firefox ESR.app/Contents/MacOS/firefox',
+  path.join(process.env.HOME || '', 'Applications/Firefox.app/Contents/MacOS/firefox'),
+  path.join(process.env.HOME || '', 'Applications/Firefox Developer Edition.app/Contents/MacOS/firefox')
+]
+
 const COMMON_CHROME_PATHS_LINUX = [
   '/usr/bin/google-chrome',
   '/usr/bin/google-chrome-stable',
@@ -54,6 +63,16 @@ const COMMON_CHROME_PATHS_LINUX = [
   '/usr/bin/brave-browser',
   '/usr/bin/microsoft-edge-stable',
   '/usr/bin/microsoft-edge'
+]
+
+const COMMON_FIREFOX_PATHS_LINUX = [
+  '/usr/bin/firefox',
+  '/usr/bin/firefox-esr',
+  '/usr/bin/firefox-developer-edition',
+  '/usr/bin/firefox-trunk',
+  '/usr/local/bin/firefox',
+  '/snap/bin/firefox',
+  '/var/lib/flatpak/exports/bin/org.mozilla.firefox'
 ]
 
 function getWindowsCandidatePaths(): string[] {
@@ -94,6 +113,26 @@ function getWindowsCandidatePaths(): string[] {
   return Array.from(new Set(candidates.filter(Boolean)))
 }
 
+function getWindowsFirefoxCandidatePaths(): string[] {
+  const localAppData = process.env.LOCALAPPDATA || ''
+  const programFiles = process.env.PROGRAMFILES || 'C:\\Program Files'
+  const programFilesX86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)'
+  const programW6432 = process.env.ProgramW6432 || ''
+  const systemDrive = process.env.SystemDrive || 'C:'
+
+  const candidates: string[] = []
+
+  if (programFiles) candidates.push(path.join(programFiles, 'Mozilla Firefox', 'firefox.exe'))
+  if (programFilesX86) candidates.push(path.join(programFilesX86, 'Mozilla Firefox', 'firefox.exe'))
+  if (programW6432) candidates.push(path.join(programW6432, 'Mozilla Firefox', 'firefox.exe'))
+  if (localAppData) candidates.push(path.join(localAppData, 'Mozilla Firefox', 'firefox.exe'))
+  if (localAppData) candidates.push(path.join(localAppData, 'Programs', 'Mozilla Firefox', 'firefox.exe'))
+  candidates.push(`${systemDrive}\\Program Files\\Mozilla Firefox\\firefox.exe`)
+  candidates.push(`${systemDrive}\\Program Files (x86)\\Mozilla Firefox\\firefox.exe`)
+
+  return Array.from(new Set(candidates.filter(Boolean)))
+}
+
 function queryWindowsRegistry(regCmd: string): string | null {
   try {
     const output = execSync(regCmd, { encoding: 'utf-8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] })
@@ -107,6 +146,110 @@ function queryWindowsRegistry(regCmd: string): string | null {
     }
   } catch {}
   return null
+}
+
+/**
+ * Find a usable Mozilla Firefox binary on the system (Windows, macOS, Linux).
+ */
+export async function findFirefoxPath(customPath?: string): Promise<string | null> {
+  // 1. Custom path
+  if (customPath && customPath.trim().length > 0) {
+    const cleaned = customPath.trim().replace(/^"|"$/g, '')
+    if (fs.existsSync(cleaned)) {
+      logger.info('browser', `[BrowserDetection] Using custom Firefox path: ${cleaned}`)
+      return cleaned
+    }
+    logger.warn('browser', `[BrowserDetection] Custom Firefox path not found: ${cleaned}`)
+  }
+
+  const isWindows = process.platform === 'win32'
+  const isMac = process.platform === 'darwin'
+
+  // 2. Windows resolution
+  if (isWindows) {
+    logger.info('browser', '[BrowserDetection] Scanning Windows Firefox installation paths...')
+    for (const candidate of getWindowsFirefoxCandidatePaths()) {
+      if (fs.existsSync(candidate)) {
+        logger.info('browser', `[BrowserDetection] Found Firefox executable at: ${candidate}`)
+        return candidate
+      }
+    }
+
+    const regQueries = [
+      'reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\firefox.exe" /ve',
+      'reg query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\firefox.exe" /ve',
+      'reg query "HKLM\\SOFTWARE\\Clients\\StartMenuInternet\\FIREFOX.EXE\\shell\\open\\command" /ve'
+    ]
+
+    for (const q of regQueries) {
+      const regPath = queryWindowsRegistry(q)
+      if (regPath && fs.existsSync(regPath)) {
+        logger.info('browser', `[BrowserDetection] Found Firefox via Registry: ${regPath}`)
+        return regPath
+      }
+    }
+
+    try {
+      const whereResult = execSync('where firefox.exe', { encoding: 'utf-8', timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+      const lines = whereResult.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+      for (const line of lines) {
+        if (fs.existsSync(line)) {
+          logger.info('browser', `[BrowserDetection] Found Firefox via where.exe: ${line}`)
+          return line
+        }
+      }
+    } catch {}
+  }
+
+  // 3. macOS resolution
+  if (isMac) {
+    logger.info('browser', '[BrowserDetection] Scanning macOS Applications for Firefox...')
+    for (const ffPath of COMMON_FIREFOX_PATHS_MAC) {
+      if (fs.existsSync(ffPath)) {
+        logger.info('browser', `[BrowserDetection] Found Firefox at: ${ffPath}`)
+        return ffPath
+      }
+    }
+  }
+
+  // 4. Linux resolution
+  if (!isWindows && !isMac) {
+    logger.info('browser', '[BrowserDetection] Scanning Linux paths for Firefox...')
+    for (const ffPath of COMMON_FIREFOX_PATHS_LINUX) {
+      if (fs.existsSync(ffPath)) {
+        logger.info('browser', `[BrowserDetection] Found Firefox at: ${ffPath}`)
+        return ffPath
+      }
+    }
+  }
+
+  // 5. POSIX which fallback
+  if (!isWindows) {
+    try {
+      const result = execSync('which firefox || which firefox-esr || which firefox-developer-edition', {
+        encoding: 'utf-8',
+        timeout: 5000,
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).trim()
+      if (result && fs.existsSync(result)) {
+        logger.info('browser', `[BrowserDetection] Found Firefox via PATH: ${result}`)
+        return result
+      }
+    } catch {}
+  }
+
+  logger.warn('browser', '[BrowserDetection] No Mozilla Firefox binary found on system.')
+  return null
+}
+
+/**
+ * Find executable matching the requested browser type ('chrome' or 'firefox').
+ */
+export async function findBrowserExecutable(browserType: 'chrome' | 'firefox' = 'chrome', customPath?: string): Promise<string | null> {
+  if (browserType === 'firefox') {
+    return findFirefoxPath(customPath)
+  }
+  return findChromiumPath(customPath)
 }
 
 /**
@@ -213,7 +356,7 @@ export async function findChromiumPath(customPath?: string): Promise<string | nu
 }
 
 /**
- * Detect all installed Chromium-based browsers on the system.
+ * Detect all installed Chromium & Firefox browsers on the system.
  */
 export async function detectAllBrowsers(): Promise<BrowserInfo[]> {
   const found: BrowserInfo[] = []
@@ -228,7 +371,13 @@ export async function detectAllBrowsers(): Promise<BrowserInfo[]> {
     let name = defaultName || 'Chromium'
     let engine = 'Chromium'
 
-    if (lower.includes('chrome')) {
+    if (lower.includes('firefox')) {
+      if (lower.includes('developer')) name = 'Mozilla Firefox Developer Edition'
+      else if (lower.includes('nightly')) name = 'Mozilla Firefox Nightly'
+      else if (lower.includes('esr')) name = 'Mozilla Firefox ESR'
+      else name = 'Mozilla Firefox'
+      engine = 'Gecko / Firefox Quantum'
+    } else if (lower.includes('chrome')) {
       name = lower.includes('canary') || lower.includes('sxs') ? 'Google Chrome Canary' : 'Google Chrome'
       engine = 'Google Chrome'
     } else if (lower.includes('msedge') || lower.includes('edge')) {
@@ -250,17 +399,14 @@ export async function detectAllBrowsers(): Promise<BrowserInfo[]> {
   }
 
   if (process.platform === 'win32') {
-    for (const c of getWindowsCandidatePaths()) {
-      checkAndAdd(c)
-    }
+    for (const c of getWindowsCandidatePaths()) checkAndAdd(c)
+    for (const c of getWindowsFirefoxCandidatePaths()) checkAndAdd(c)
   } else if (process.platform === 'darwin') {
-    for (const c of COMMON_CHROME_PATHS_MAC) {
-      checkAndAdd(c)
-    }
+    for (const c of COMMON_CHROME_PATHS_MAC) checkAndAdd(c)
+    for (const c of COMMON_FIREFOX_PATHS_MAC) checkAndAdd(c)
   } else {
-    for (const c of COMMON_CHROME_PATHS_LINUX) {
-      checkAndAdd(c)
-    }
+    for (const c of COMMON_CHROME_PATHS_LINUX) checkAndAdd(c)
+    for (const c of COMMON_FIREFOX_PATHS_LINUX) checkAndAdd(c)
   }
 
   return found
@@ -322,7 +468,8 @@ export async function testBrowserExecutable(executablePath: string): Promise<Bro
 
     const lower = cleaned.toLowerCase()
     let engine = 'Chromium'
-    if (lower.includes('chrome')) engine = 'Google Chrome'
+    if (lower.includes('firefox')) engine = 'Gecko / Firefox Quantum'
+    else if (lower.includes('chrome')) engine = 'Google Chrome'
     else if (lower.includes('msedge') || lower.includes('edge')) engine = 'Microsoft Edge'
     else if (lower.includes('brave')) engine = 'Brave'
 

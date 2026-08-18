@@ -131,4 +131,29 @@ describe('Browser Profile Settings System End-to-End Audit', () => {
     expect(typeof script).toBe('string')
     expect(script.length).toBeGreaterThan(100)
   })
+
+  it('7. Browser Type & Version: Persists Chrome vs Firefox selection and specific versions', () => {
+    const chromeFp = generateFingerprint({ osType: 'windows-11' })
+    chromeFp.browser = { name: 'Chrome', type: 'chrome', version: '128.0.6613.120' }
+    const chromeProfile = profileRepo.create({
+      name: 'Chrome Profile',
+      browserVersion: '128.0.6613.120',
+      fingerprint: chromeFp
+    }, testUserId)
+
+    expect(chromeProfile.fingerprint.browser.type).toBe('chrome')
+    expect(chromeProfile.fingerprint.browser.version).toBe('128.0.6613.120')
+
+    const firefoxFp = generateFingerprint({ osType: 'macos-arm' })
+    firefoxFp.browser = { name: 'Firefox', type: 'firefox', version: '129.0' }
+    const firefoxProfile = profileRepo.create({
+      name: 'Firefox Profile',
+      browserVersion: '129.0',
+      fingerprint: firefoxFp
+    }, testUserId)
+
+    expect(firefoxProfile.fingerprint.browser.type).toBe('firefox')
+    expect(firefoxProfile.fingerprint.browser.name).toBe('Firefox')
+    expect(firefoxProfile.fingerprint.browser.version).toBe('129.0')
+  })
 })

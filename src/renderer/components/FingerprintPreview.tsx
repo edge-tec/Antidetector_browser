@@ -93,6 +93,7 @@ export const FingerprintPreview: React.FC<Props> = ({ osType, fingerprint, proxy
       )}
       <span style={{ padding: '2px 6px', borderRadius: '4px', background: '#2A2A3C', color: (fingerprint?.browser?.type === 'firefox' || nav?.userAgent?.includes('Firefox') || nav?.userAgent?.includes('FxiOS')) ? '#FB923C' : '#38BDF8', fontWeight: 500 }}>
         {(fingerprint?.browser?.type === 'firefox' || nav?.userAgent?.includes('Firefox') || nav?.userAgent?.includes('FxiOS')) ? '🦊 Firefox' : '🌐 Chrome'}
+        {fingerprint?.browser?.version ? ` v${fingerprint.browser.version.split('.')[0]}` : ''}
       </span>
       <span style={{ padding: '2px 6px', borderRadius: '4px', background: '#2A2A3C', color: '#93C5FD' }}>
         🖥 {screen.width || 1920}x{screen.height || 1080} @{screen.devicePixelRatio || 1}x

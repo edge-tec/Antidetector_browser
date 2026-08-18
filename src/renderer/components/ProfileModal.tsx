@@ -182,23 +182,48 @@ export const POPULAR_UA_PRESETS = [
   { label: '📱 Android 14 — Google Pixel 8 Pro', ua: 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36', os: 'android', platform: 'Linux armv8l', browser: 'chrome' }
 ]
 
-function generateUAForOS(osType: string, version = '124.0.6367.207', browserType: 'chrome' | 'firefox' = 'chrome'): string {
+export const CHROME_VERSIONS_CATALOG = [
+  { version: '128.0.6613.120', major: '128', label: 'Chrome 128.0.6613.120 (Latest Stable)' },
+  { version: '127.0.6533.120', major: '127', label: 'Chrome 127.0.6533.120' },
+  { version: '126.0.6478.126', major: '126', label: 'Chrome 126.0.6478.126' },
+  { version: '125.0.6422.141', major: '125', label: 'Chrome 125.0.6422.141' },
+  { version: '124.0.6367.207', major: '124', label: 'Chrome 124.0.6367.207' },
+  { version: '123.0.6312.122', major: '123', label: 'Chrome 123.0.6312.122' },
+  { version: '122.0.6261.128', major: '122', label: 'Chrome 122.0.6261.128' },
+  { version: '120.0.6099.109', major: '120', label: 'Chrome 120.0.6099.109' }
+]
+
+export const FIREFOX_VERSIONS_CATALOG = [
+  { version: '129.0', major: '129', label: 'Firefox 129.0 (Quantum Stable)' },
+  { version: '128.0', major: '128', label: 'Firefox 128.0 (ESR / Stable)' },
+  { version: '127.0', major: '127', label: 'Firefox 127.0' },
+  { version: '126.0', major: '126', label: 'Firefox 126.0' },
+  { version: '125.0.1', major: '125', label: 'Firefox 125.0.1' },
+  { version: '124.0.2', major: '124', label: 'Firefox 124.0.2' },
+  { version: '123.0', major: '123', label: 'Firefox 123.0' },
+  { version: '120.0', major: '120', label: 'Firefox 120.0' },
+  { version: '115.0', major: '115', label: 'Firefox 115.0 (ESR Legacy)' }
+]
+
+function generateUAForOS(osType: string, version = '128.0.6613.120', browserType: 'chrome' | 'firefox' = 'chrome'): string {
   if (browserType === 'firefox') {
+    const ffVer = version.includes('.') ? version : `${version}.0`
     if (osType === 'windows-10' || osType === 'windows-11') {
-      return `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0`
+      return `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
     }
     if (osType === 'macos-intel' || osType === 'macos-arm') {
-      return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0`
+      return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
     }
     if (osType === 'linux') {
-      return `Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0`
+      return `Mozilla/5.0 (X11; Linux x86_64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
     }
     if (osType === 'ios') {
-      return `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/128.0 Mobile/15E148 Safari/605.1.15`
+      return `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
     }
     if (osType === 'android') {
-      return `Mozilla/5.0 (Android 14; Mobile; rv:128.0) Gecko/128.0 Firefox/128.0`
+      return `Mozilla/5.0 (Android 14; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
     }
+    return `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
   }
 
   if (osType === 'windows-10' || osType === 'windows-11') {
@@ -212,7 +237,7 @@ function generateUAForOS(osType: string, version = '124.0.6367.207', browserType
     return `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`
   }
   if (osType === 'ios') {
-    return `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.114 Mobile/15E148 Safari/604.1`
+    return `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/${version} Mobile/15E148 Safari/604.1`
   }
   if (osType === 'android') {
     return `Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Mobile Safari/537.36`
@@ -222,70 +247,21 @@ function generateUAForOS(osType: string, version = '124.0.6367.207', browserType
 
 function generateRandomUAForOS(osType: string, browserType: 'chrome' | 'firefox' = 'chrome'): { ua: string; version: string; chromium: string } {
   if (browserType === 'firefox') {
-    const v = '128.0'
+    const item = FIREFOX_VERSIONS_CATALOG[Math.floor(Math.random() * FIREFOX_VERSIONS_CATALOG.length)]
     return {
-      ua: generateUAForOS(osType, v, 'firefox'),
-      version: v,
-      chromium: '128'
+      ua: generateUAForOS(osType, item.version, 'firefox'),
+      version: item.version,
+      chromium: item.major
     }
   }
-  const randomVer = CHROME_VERSIONS[Math.floor(Math.random() * CHROME_VERSIONS.length)]
-  const majorVer = randomVer.split('.')[0]
-
-  if (osType === 'windows-10' || osType === 'windows-11') {
-    return {
-      ua: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${randomVer} Safari/537.36`,
-      version: randomVer,
-      chromium: majorVer
-    }
-  }
-  if (osType === 'macos-intel') {
-    const osVers = ['10_15_7', '13_6_7', '14_4_1', '14_5']
-    const randomOS = osVers[Math.floor(Math.random() * osVers.length)]
-    return {
-      ua: `Mozilla/5.0 (Macintosh; Intel Mac OS X ${randomOS}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${randomVer} Safari/537.36`,
-      version: randomVer,
-      chromium: majorVer
-    }
-  }
-  if (osType === 'macos-arm') {
-    const osVers = ['14_4_1', '14_5', '14_3_1', '13_6_7']
-    const randomOS = osVers[Math.floor(Math.random() * osVers.length)]
-    return {
-      ua: `Mozilla/5.0 (Macintosh; Intel Mac OS X ${randomOS}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${randomVer} Safari/537.36`,
-      version: randomVer,
-      chromium: majorVer
-    }
-  }
-  if (osType === 'linux') {
-    return {
-      ua: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${randomVer} Safari/537.36`,
-      version: randomVer,
-      chromium: majorVer
-    }
-  }
-  if (osType === 'ios') {
-    const dev = IOS_DEVICES[Math.floor(Math.random() * IOS_DEVICES.length)]
-    return {
-      ua: generateIosUserAgent(dev, 'chrome'),
-      version: randomVer,
-      chromium: majorVer
-    }
-  }
-  if (osType === 'android') {
-    const dev = ANDROID_DEVICES[Math.floor(Math.random() * ANDROID_DEVICES.length)]
-    return {
-      ua: generateAndroidUserAgent(dev),
-      version: randomVer,
-      chromium: majorVer
-    }
-  }
+  const item = CHROME_VERSIONS_CATALOG[Math.floor(Math.random() * CHROME_VERSIONS_CATALOG.length)]
   return {
-    ua: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${randomVer} Safari/537.36`,
-    version: randomVer,
-    chromium: majorVer
+    ua: generateUAForOS(osType, item.version, 'chrome'),
+    version: item.version,
+    chromium: item.major
   }
 }
+
 
 function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
   const fp = rawFp && typeof rawFp === 'object' ? rawFp : {}
@@ -891,49 +867,114 @@ export const ProfileModal: React.FC<Props> = ({
     }
   }
 
-  const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType) => {
-    const newUa = generateIosUserAgent(dev, bType)
+  const applyBrowserConfig = (
+    bType: 'chrome' | 'firefox',
+    bVersion: string,
+    currentOs: string
+  ) => {
+    if (currentOs === 'ios') {
+      const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
+      const ffVer = bVersion.includes('.') ? bVersion : `${bVersion}.0`
+      const newUa = bType === 'firefox'
+        ? `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
+        : `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/${bVersion} Mobile/15E148 Safari/604.1`
+      
+      handleFpChange(prev => ({
+        ...prev,
+        browser: {
+          name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+          type: bType,
+          version: bVersion
+        },
+        navigator: {
+          ...prev.navigator,
+          userAgent: newUa,
+          vendor: bType === 'firefox' ? '' : 'Apple Computer, Inc.',
+          browserVersion: bVersion
+        }
+      }))
+    } else if (currentOs === 'android') {
+      const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
+      const ffVer = bVersion.includes('.') ? bVersion : `${bVersion}.0`
+      const newUa = bType === 'firefox'
+        ? `Mozilla/5.0 (Android ${dev.androidVersion}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
+        : `Mozilla/5.0 (Linux; Android ${dev.androidVersion}; ${dev.modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVersion} Mobile Safari/537.36`
+
+      handleFpChange(prev => ({
+        ...prev,
+        browser: {
+          name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+          type: bType,
+          version: bVersion
+        },
+        navigator: {
+          ...prev.navigator,
+          userAgent: newUa,
+          vendor: bType === 'firefox' ? '' : 'Google Inc.',
+          browserVersion: bVersion
+        }
+      }))
+    } else {
+      const newUa = generateUAForOS(currentOs, bVersion, bType)
+      handleFpChange(prev => ({
+        ...prev,
+        browser: {
+          name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+          type: bType,
+          version: bVersion
+        },
+        navigator: {
+          ...prev.navigator,
+          userAgent: newUa,
+          vendor: bType === 'firefox' ? '' : (currentOs.startsWith('macos') ? 'Google Inc.' : 'Google Inc.'),
+          browserVersion: bVersion
+        }
+      }))
+    }
+  }
+
+  const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion) => {
+    const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
+    const newUa = bType === 'firefox'
+      ? `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
+      : `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/${bVer} Mobile/15E148 Safari/604.1`
+
     handleFpChange(prev => ({
       ...prev,
       browser: {
         name: bType === 'firefox' ? 'Firefox' : 'Chrome',
         type: bType,
-        version: bType === 'firefox' ? '128.0' : '128.0.0.0'
+        version: bVer
       },
       navigator: {
         ...prev.navigator,
-        userAgent: newUa,
-        appVersion: `5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) ${bType === 'firefox' ? 'FxiOS/128.0' : 'CriOS/128.0.6613.114'} Mobile/15E148 Safari/604.1`,
         platform: 'iPhone',
-        vendor: 'Apple Computer, Inc.',
-        deviceBrand: 'Apple',
+        userAgent: newUa,
         deviceModel: dev.modelName,
-        deviceModelCode: dev.modelCode,
-        hardwareConcurrency: dev.cores,
-        deviceMemory: dev.memory,
+        deviceModelCode: dev.id,
+        deviceBrand: 'Apple',
+        hardwareConcurrency: dev.cpuCores,
+        deviceMemory: dev.ramGb,
         maxTouchPoints: 5,
-        touchSupport: true,
-        browserVersion: bType === 'firefox' ? '128.0' : '128.0.0.0',
-        chromiumVersion: bType === 'firefox' ? '128' : '128.0.0.0'
+        vendor: bType === 'firefox' ? '' : 'Apple Computer, Inc.',
+        browserVersion: bVer
       },
       screen: {
         ...prev.screen,
-        width: dev.screenWidth,
-        height: dev.screenHeight,
-        availWidth: dev.screenWidth,
-        availHeight: dev.screenHeight,
+        width: dev.width,
+        height: dev.height,
+        availWidth: dev.width,
+        availHeight: dev.height,
         devicePixelRatio: dev.dpr,
-        viewportWidth: dev.screenWidth,
-        viewportHeight: Math.floor(dev.screenHeight * 0.9),
-        orientation: 'portrait-primary',
-        orientationAngle: 0
+        colorDepth: 32,
+        pixelDepth: 32
       },
       webgl: {
         ...prev.webgl,
-        gpuVendor: 'Apple Inc.',
-        gpuRenderer: dev.gpuRenderer,
         unmaskedVendor: 'Apple Inc.',
-        unmaskedRenderer: dev.gpuRenderer
+        unmaskedRenderer: dev.gpuRenderer,
+        vendor: 'Apple Inc.',
+        renderer: dev.gpuRenderer
       },
       fonts: {
         ...prev.fonts,
@@ -946,58 +987,20 @@ export const ProfileModal: React.FC<Props> = ({
     setIosModelId(newModelId)
     const dev = getIosDeviceById(newModelId)
     if (dev) {
-      applyIosDeviceToFp(dev, browserType)
+      applyIosDeviceToFp(dev, browserType, browserVersion)
     }
   }
 
   const handleBrowserTypeChange = (newBrowser: 'chrome' | 'firefox') => {
     setBrowserType(newBrowser)
-    if (osType === 'ios') {
-      const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
-      applyIosDeviceToFp(dev, newBrowser)
-    } else if (osType === 'android') {
-      const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
-      const newUa = newBrowser === 'firefox'
-        ? `Mozilla/5.0 (Android ${dev.androidVersion}; Mobile; rv:128.0) Gecko/128.0 Firefox/128.0`
-        : generateAndroidUserAgent(dev)
-      handleFpChange(prev => ({
-        ...prev,
-        browser: {
-          name: newBrowser === 'firefox' ? 'Firefox' : 'Chrome',
-          type: newBrowser,
-          version: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
-        },
-        navigator: {
-          ...prev.navigator,
-          userAgent: newUa,
-          vendor: newBrowser === 'firefox' ? '' : 'Google Inc.',
-          browserVersion: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
-        }
-      }))
-    } else {
-      let newUa = ''
-      if (newBrowser === 'firefox') {
-        if (osType.startsWith('windows')) newUa = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
-        else if (osType === 'linux') newUa = 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'
-        else newUa = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0'
-      } else {
-        newUa = generateUAForOS(osType, '128.0.0.0', 'chrome')
-      }
-      handleFpChange(prev => ({
-        ...prev,
-        browser: {
-          name: newBrowser === 'firefox' ? 'Firefox' : 'Chrome',
-          type: newBrowser,
-          version: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
-        },
-        navigator: {
-          ...prev.navigator,
-          userAgent: newUa,
-          vendor: newBrowser === 'firefox' ? '' : 'Google Inc.',
-          browserVersion: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
-        }
-      }))
-    }
+    const defaultVer = newBrowser === 'firefox' ? '129.0' : '128.0.6613.120'
+    setBrowserVersion(defaultVer)
+    applyBrowserConfig(newBrowser, defaultVer, osType)
+  }
+
+  const handleBrowserVersionChange = (newVersion: string) => {
+    setBrowserVersion(newVersion)
+    applyBrowserConfig(browserType, newVersion, osType)
   }
 
   const handleImportCookieText = (rawText: string, mode: 'replace' | 'append' = 'replace') => {
@@ -1128,6 +1131,8 @@ export const ProfileModal: React.FC<Props> = ({
 
         const initialBrowserType: 'chrome' | 'firefox' = initialProfile.browserType || (initialProfile.fingerprint?.browser?.type) || (initialProfile.fingerprint?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
         setBrowserType(initialBrowserType)
+        const initialBrowserVer: string = initialProfile.browserVersion || initialProfile.fingerprint?.browser?.version || initialProfile.fingerprint?.navigator?.browserVersion || (initialBrowserType === 'firefox' ? '129.0' : '128.0.6613.120')
+        setBrowserVersion(initialBrowserVer)
 
         if (targetOs === 'android') {
           const rawCode = initialProfile.fingerprint?.navigator?.deviceModelCode || initialProfile.fingerprint?.navigator?.deviceModel || ''
@@ -1350,6 +1355,9 @@ export const ProfileModal: React.FC<Props> = ({
       finalFp.browser = finalFp.browser || {}
       finalFp.browser.type = browserType
       finalFp.browser.name = browserType === 'firefox' ? 'Firefox' : 'Chrome'
+      finalFp.browser.version = browserVersion
+      finalFp.navigator = finalFp.navigator || {}
+      finalFp.navigator.browserVersion = browserVersion
       finalFp.browser.extensions = extensions
       finalFp.browser.bookmarks = bookmarks
       finalFp.browser.cookies = cookies
@@ -1362,6 +1370,7 @@ export const ProfileModal: React.FC<Props> = ({
         folder,
         osType,
         browserType,
+        browserVersion,
         groupId: groupId || null,
         proxyId: finalProxyId,
         webrtcMode: webrtcSetting === 'off' ? 'disabled' : 'default',
@@ -1656,6 +1665,33 @@ export const ProfileModal: React.FC<Props> = ({
                         </div>
                       </button>
                     </div>
+                  </div>
+
+                  {/* Browser Version Selection Section */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                      Browser Version
+                    </label>
+                    <select
+                      value={browserVersion}
+                      onChange={e => handleBrowserVersionChange(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        backgroundColor: '#14141F',
+                        border: '1px solid #2C2C3E',
+                        color: '#FFF',
+                        fontSize: '14px',
+                        outline: 'none'
+                      }}
+                    >
+                      {availableBrowserVersions.map(v => (
+                        <option key={v.version} value={v.version}>
+                          {v.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Dynamic Processor or Mobile Device Selection */}
@@ -4126,7 +4162,7 @@ export const ProfileModal: React.FC<Props> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div><strong style={{ color: '#94A3B8' }}>Profile Name:</strong> {name || getNextProfileName(existingProfiles)}</div>
               <div><strong style={{ color: '#94A3B8' }}>Proxy:</strong> {activeProxyName}</div>
-              <div><strong style={{ color: '#94A3B8' }}>Browser:</strong> chrome (mobile)</div>
+              <div><strong style={{ color: '#94A3B8' }}>Browser:</strong> <span style={{ color: browserType === 'firefox' ? '#F97316' : '#2DD4BF', fontWeight: 600 }}>{browserType === 'firefox' ? 'Firefox Quantum' : 'Google Chrome'}</span> ({browserVersion})</div>
               <div><strong style={{ color: '#94A3B8' }}>OS:</strong> {osType.startsWith('macos') ? 'mac' : osType.startsWith('win') ? 'win' : osType}</div>
               {osType === 'android' && (
                 <div><strong style={{ color: '#94A3B8' }}>Device:</strong> <span style={{ color: '#2DD4BF', fontWeight: 600 }}>{safeFp.navigator.deviceModel || safeFp.navigator.deviceBrand || selectedAndroidDevice?.modelName || 'Samsung Galaxy S24 Ultra'}</span></div>
