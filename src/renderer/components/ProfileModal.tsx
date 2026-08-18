@@ -64,13 +64,25 @@ const TIMEZONE_LIST = [
 ]
 
 const CHROME_VERSIONS = [
+  '128.0.6613.120',
+  '127.0.6533.120',
   '126.0.6478.126',
   '125.0.6422.141',
   '124.0.6367.207',
-  '123.0.6312.122',
-  '122.0.6261.128',
-  '121.0.6167.184',
-  '120.0.6099.225'
+  '123.0.6312.122'
+]
+
+export const POPULAR_UA_PRESETS = [
+  { label: '🖥️ Windows 11 — Chrome 128 (x64)', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'windows-11', platform: 'Win32' },
+  { label: '🖥️ Windows 10 — Chrome 128 (x64)', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'windows-10', platform: 'Win32' },
+  { label: '🍏 macOS Sonoma — Chrome 128 (Apple Silicon)', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'macos-arm', platform: 'MacIntel' },
+  { label: '🍏 macOS Sonoma — Chrome 128 (Intel)', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'macos-intel', platform: 'MacIntel' },
+  { label: '🐧 Linux Ubuntu — Chrome 128 (x86_64)', ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'linux', platform: 'Linux x86_64' },
+  { label: '📱 Android 14 — Samsung Galaxy S24 Ultra', ua: 'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36', os: 'android', platform: 'Linux armv8l' },
+  { label: '📱 Android 14 — Google Pixel 8 Pro', ua: 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36', os: 'android', platform: 'Linux armv8l' },
+  { label: '📱 iOS 17.5 — iPhone 15 Pro (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', os: 'macos-arm', platform: 'iPhone' },
+  { label: '🖥️ Windows 11 — Microsoft Edge 128', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0', os: 'windows-11', platform: 'Win32' },
+  { label: '🦊 Windows 11 — Mozilla Firefox 129', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0', os: 'windows-11', platform: 'Win32' }
 ]
 
 function generateUAForOS(osType: string, version = '124.0.6367.207'): string {
@@ -620,6 +632,56 @@ export const ProfileModal: React.FC<Props> = ({
     navigator.clipboard.writeText(val)
     setCopiedCookieIdx(idx)
     setTimeout(() => setCopiedCookieIdx(null), 1500)
+  }
+
+  const handleUserAgentChange = (newUA: string) => {
+    let browserVer = fp?.navigator?.browserVersion || '128.0.0.0'
+    let chromVer = fp?.navigator?.chromiumVersion || '128.0.0.0'
+    let platform = fp?.navigator?.platform || 'Win32'
+
+    const chromeMatch = newUA.match(/Chrome\/([0-9.]+)/)
+    if (chromeMatch && chromeMatch[1]) {
+      browserVer = chromeMatch[1]
+      chromVer = chromeMatch[1].split('.')[0]
+    }
+
+    if (newUA.includes('Macintosh') || newUA.includes('Mac OS X')) {
+      platform = 'MacIntel'
+    } else if (newUA.includes('Windows NT')) {
+      platform = 'Win32'
+    } else if (newUA.includes('Android')) {
+      platform = 'Linux armv8l'
+    } else if (newUA.includes('Linux')) {
+      platform = 'Linux x86_64'
+    } else if (newUA.includes('iPhone') || newUA.includes('iPad')) {
+      platform = 'iPhone'
+    }
+
+    handleFpChange(prev => ({
+      ...prev,
+      navigator: {
+        ...prev.navigator,
+        userAgent: newUA,
+        browserVersion: browserVer,
+        chromiumVersion: chromVer,
+        platform
+      }
+    }))
+  }
+
+  const handlePasteUAClick = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text && text.trim()) {
+        handleUserAgentChange(text.trim())
+      }
+    } catch (err) {
+      console.warn('Clipboard read failed:', err)
+    }
+  }
+
+  const handleSelectUAPreset = (preset: (typeof POPULAR_UA_PRESETS)[0]) => {
+    handleUserAgentChange(preset.ua)
   }
 
   useEffect(() => {
@@ -2063,23 +2125,37 @@ export const ProfileModal: React.FC<Props> = ({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <h4 style={{ margin: 0, fontSize: '14px', color: '#818CF8', borderBottom: '1px solid #2C2C3E', paddingBottom: '6px' }}>Navigator</h4>
 
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <label style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>User-Agent</label>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 500 }}>
+                          Custom User-Agent String
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={handlePasteUAClick}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              backgroundColor: '#14141F',
+                              color: '#CBD5E1',
+                              border: '1px solid #2C2C3E',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Paste User-Agent from clipboard"
+                          >
+                            📋 Paste UA
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
                               const generated = generateRandomUAForOS(osType)
-                              handleFpChange(prev => ({
-                                ...prev,
-                                navigator: {
-                                  ...prev.navigator,
-                                  userAgent: generated.ua,
-                                  browserVersion: generated.version,
-                                  chromiumVersion: generated.chromium
-                                }
-                              }))
+                              handleUserAgentChange(generated.ua)
                             }}
                             style={{
                               padding: '4px 10px',
@@ -2094,24 +2170,113 @@ export const ProfileModal: React.FC<Props> = ({
                           >
                             🎲 Generate New UA
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const defaultUA = generateUAForOS(osType)
+                              handleUserAgentChange(defaultUA)
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              backgroundColor: '#14141F',
+                              color: '#94A3B8',
+                              border: '1px solid #2C2C3E',
+                              fontSize: '11px',
+                              cursor: 'pointer'
+                            }}
+                            title="Reset User-Agent to default for current OS"
+                          >
+                            ↺ Reset Default
+                          </button>
+                          <button
+                            type="button"
+                            onClick={copyUAToClipboard}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: copiedUA ? '#10B981' : '#94A3B8',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                            title="Copy User-Agent"
+                          >
+                            {copiedUA ? '✓ Copied' : '📋 Copy'}
+                          </button>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="text"
-                          value={safeFp.navigator.userAgent}
-                          onChange={e => handleFpChange(prev => ({ ...prev, navigator: { ...prev.navigator, userAgent: e.target.value } }))}
-                          style={{ flex: 1, padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontFamily: 'monospace', fontSize: '12px' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={copyUAToClipboard}
-                          style={{ padding: '10px 14px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#94A3B8', cursor: 'pointer' }}
-                          title="Copy User-Agent"
+                      {/* Presets dropdown */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <select
+                          defaultValue=""
+                          onChange={e => {
+                            const found = POPULAR_UA_PRESETS.find(p => p.label === e.target.value)
+                            if (found) {
+                              handleSelectUAPreset(found)
+                            }
+                            e.target.value = ''
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            backgroundColor: '#14141F',
+                            border: '1px solid #2C2C3E',
+                            color: '#94A3B8',
+                            fontSize: '12px',
+                            outline: 'none'
+                          }}
                         >
-                          {copiedUA ? '✓' : '📋'}
-                        </button>
+                          <option value="" disabled>⚡ Choose a popular User-Agent preset or type/paste your own below...</option>
+                          {POPULAR_UA_PRESETS.map((p, i) => (
+                            <option key={i} value={p.label}>{p.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Multi-line Editable User-Agent Textarea */}
+                      <textarea
+                        rows={3}
+                        value={safeFp.navigator.userAgent}
+                        onChange={e => handleUserAgentChange(e.target.value)}
+                        placeholder="Paste or enter custom User-Agent string here..."
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          backgroundColor: '#14141F',
+                          border: '1px solid #2C2C3E',
+                          color: '#FFF',
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          lineHeight: 1.45,
+                          outline: 'none',
+                          resize: 'vertical'
+                        }}
+                      />
+
+                      {/* Live Detection Info Badge */}
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        fontSize: '11px',
+                        color: '#94A3B8'
+                      }}>
+                        <span style={{ backgroundColor: 'rgba(45,212,191,0.1)', color: '#2DD4BF', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                          Platform: {safeFp.navigator.platform || 'Auto'}
+                        </span>
+                        <span style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', padding: '2px 8px', borderRadius: '4px' }}>
+                          Chromium: {safeFp.navigator.browserVersion || '128.0.0.0'}
+                        </span>
+                        <span style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', padding: '2px 8px', borderRadius: '4px' }}>
+                          {safeFp.navigator.userAgent?.includes('Mobile') ? '📱 Mobile Browser' : '🖥️ Desktop Browser'}
+                        </span>
                       </div>
                     </div>
 
