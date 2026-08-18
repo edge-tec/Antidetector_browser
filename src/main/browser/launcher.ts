@@ -256,12 +256,9 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   const args: string[] = [
     '--no-first-run',
     '--no-default-browser-check',
+    '--disable-blink-features=AutomationControlled',
     '--start-maximized',
     '--window-position=0,0',
-    '--disable-background-networking',
-    '--disable-component-update',
-    '--disable-domain-reliability',
-    '--disable-sync',
     '--disable-features=TranslateUI',
     '--disable-default-apps',
     '--disable-hang-monitor',

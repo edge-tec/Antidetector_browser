@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — Permissions Injection Script Builder
-// Overrides navigator.permissions.query() safely
+// Overrides navigator.permissions.query() while preserving PermissionStatus prototype
 // ──────────────────────────────────────────────────────────────────
 
 import { PermissionsFingerprint, PermissionState } from '../../../fingerprint/types'
@@ -34,24 +34,24 @@ export function buildPermissionsScript(perms: PermissionsFingerprint): string {
   return `
 // ═══ Permissions Override ═══
 (function() {
+  'use strict';
   const PERM_MAP = ${JSON.stringify(permMap)};
 
-  if (navigator.permissions && navigator.permissions.query) {
-    const origQuery = navigator.permissions.query.bind(navigator.permissions);
+  if (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) {
+    const origQuery = navigator.permissions.query;
     navigator.permissions.query = function(desc) {
       const name = desc && desc.name;
-      if (name && PERM_MAP[name]) {
-        return Promise.resolve({
-          state: PERM_MAP[name],
-          status: PERM_MAP[name],
-          name: name,
-          onchange: null,
-          addEventListener: function() {},
-          removeEventListener: function() {},
-          dispatchEvent: function() { return true; }
-        });
-      }
-      return origQuery(desc);
+      return origQuery.apply(this, arguments).then(function(permStatus) {
+        if (name && PERM_MAP[name] && permStatus) {
+          try {
+            Object.defineProperty(permStatus, 'state', {
+              get: function() { return PERM_MAP[name]; },
+              configurable: true
+            });
+          } catch(e) {}
+        }
+        return permStatus;
+      });
     };
   }
 })();`

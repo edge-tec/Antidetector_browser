@@ -54,6 +54,90 @@ export function buildInjectionScript(fingerprint: Fingerprint): string {
 }
 
 /**
+ * Build Client Hints userAgentMetadata aligned with OS platform and browser version.
+ */
+function buildUserAgentMetadata(fingerprint: Fingerprint): any {
+  const nav = fingerprint.navigator || ({} as any)
+  const fullVersion = nav.browserVersion || '131.0.0.0'
+  const brandVersion = fullVersion.split('.')[0] || '131'
+  const osType = (fingerprint as any).osType || ''
+  const platformStr = nav.platform || ''
+  const ua = nav.userAgent || ''
+
+  const isAndroid = ua.includes('Android') || platformStr.includes('Android') || osType === 'android'
+  const isIOS = ua.includes('iPhone') || ua.includes('iPad') || platformStr === 'iPhone' || osType === 'ios'
+  const isMac = !isAndroid && !isIOS && (platformStr.includes('Mac') || ua.includes('Macintosh') || osType.includes('macos'))
+  const isLinux = !isAndroid && !isIOS && !isMac && (platformStr.includes('Linux') || ua.includes('Linux') || osType === 'linux')
+  const isWindows = !isAndroid && !isIOS && !isMac && !isLinux
+
+  let platform = 'Windows'
+  let platformVersion = '15.0.0'
+  let architecture = 'x86'
+  let bitness = '64'
+  let model = ''
+  let mobile = false
+
+  if (isAndroid) {
+    platform = 'Android'
+    platformVersion = '14.0.0'
+    architecture = 'arm'
+    bitness = '64'
+    mobile = true
+    const uaMatch = ua.match(/Android[^;]+;\s*([^)]+)\)/i)
+    model = (nav as any).deviceModelCode || (nav as any).deviceModel || (uaMatch && uaMatch[1] ? uaMatch[1].trim() : 'SM-S928B')
+  } else if (isIOS) {
+    platform = 'iOS'
+    platformVersion = '18.0.0'
+    architecture = 'arm'
+    bitness = '64'
+    mobile = true
+    model = 'iPhone'
+  } else if (isMac) {
+    platform = 'macOS'
+    platformVersion = '14.5.0'
+    architecture = osType === 'macos-arm' || nav.cpuArchitecture === 'arm64' ? 'arm' : 'x86'
+    bitness = '64'
+    model = ''
+    mobile = false
+  } else if (isLinux) {
+    platform = 'Linux'
+    platformVersion = '6.5.0'
+    architecture = 'x86'
+    bitness = '64'
+    model = ''
+    mobile = false
+  } else {
+    // Windows
+    platform = 'Windows'
+    platformVersion = osType === 'windows-11' ? '15.0.0' : '10.0.0'
+    architecture = 'x86'
+    bitness = '64'
+    model = ''
+    mobile = false
+  }
+
+  return {
+    brands: [
+      { brand: 'Chromium', version: brandVersion },
+      { brand: 'Google Chrome', version: brandVersion },
+      { brand: 'Not_A Brand', version: '24' }
+    ],
+    fullVersionList: [
+      { brand: 'Chromium', version: fullVersion },
+      { brand: 'Google Chrome', version: fullVersion },
+      { brand: 'Not_A Brand', version: '24.0.0.0' }
+    ],
+    fullVersion,
+    platform,
+    platformVersion,
+    architecture,
+    model,
+    mobile,
+    bitness
+  }
+}
+
+/**
  * Inject fingerprint overrides into a single page via CDP.
  */
 export async function injectFingerprint(page: Page, fingerprint: Fingerprint): Promise<void> {
@@ -66,11 +150,10 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   const script = buildInjectionScript(fingerprint)
 
   try {
-    // This runs the script before any page JS on every navigation
+    // Run script before any page JS on every frame/navigation
     await page.evaluateOnNewDocument(script)
-    logger.info('browser', 'Fingerprint injected into page')
   } catch (err: any) {
-    logger.warn('browser', `Failed to inject fingerprint: ${err.message}`)
+    logger.warn('browser', `Failed to evaluateOnNewDocument: ${err.message}`)
   }
 
   try {
@@ -80,7 +163,7 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   try {
     const client = await page.target().createCDPSession()
 
-    // Always clear device metrics override so Chromium renders 100% native edge-to-edge
+    // Clear device metrics override so Chromium renders edge-to-edge
     await client.send('Emulation.clearDeviceMetricsOverride')
 
     // Geolocation CDP Override
@@ -96,62 +179,50 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
       }
     }
 
-    if (isAndroid) {
-      // 1. Enable CDP Touch Emulation for Android
+    if (isAndroid || isIOS) {
       await client.send('Emulation.setTouchEmulationEnabled', {
         enabled: true,
         maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
-      })
-
-      // 2. Extract device model for Client Hints (sec-ch-ua-model)
-      let model = (fingerprint.navigator as any)?.deviceModelCode || (fingerprint.navigator as any)?.deviceModel || ''
-      if (!model) {
-        const uaMatch = fingerprint.navigator?.userAgent?.match(/Android[^;]+;\s*([^)]+)\)/i)
-        if (uaMatch && uaMatch[1]) {
-          model = uaMatch[1].trim()
-        } else {
-          model = 'SM-S928B'
-        }
-      }
-
-      // 3. Override HTTP User Agent & Client Hints header via CDP Network Domain
-      const brandVersion = fingerprint.navigator?.browserVersion ? fingerprint.navigator.browserVersion.split('.')[0] : '128'
-      await client.send('Network.setUserAgentOverride', {
-        userAgent: fingerprint.navigator.userAgent,
-        acceptLanguage: (fingerprint.locale?.languages || ['en-US']).join(','),
-        platform: 'Android',
-        userAgentMetadata: {
-          brands: [
-            { brand: 'Chromium', version: brandVersion },
-            { brand: 'Google Chrome', version: brandVersion },
-            { brand: 'Not-A.Brand', version: '99' }
-          ],
-          fullVersion: fingerprint.navigator.browserVersion || '128.0.0.0',
-          platform: 'Android',
-          platformVersion: '14.0.0',
-          architecture: 'arm',
-          model: model,
-          mobile: true,
-          bitness: '64'
-        }
-      })
-    } else if (isIOS) {
-      // 1. Enable CDP Touch Emulation for iOS / iPhone
-      await client.send('Emulation.setTouchEmulationEnabled', {
-        enabled: true,
-        maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
-      })
-
-      // 2. Override HTTP User Agent via CDP Network Domain
-      await client.send('Network.setUserAgentOverride', {
-        userAgent: fingerprint.navigator.userAgent,
-        acceptLanguage: (fingerprint.locale?.languages || ['en-US']).join(','),
-        platform: 'iPhone'
       })
     }
+
+    // ── Universal User-Agent & Client Hints Override for ALL Platforms ──
+    const userAgentMetadata = buildUserAgentMetadata(fingerprint)
+    const acceptLanguage = (fingerprint.locale?.languages || ['en-US', 'en']).join(',')
+
+    await client.send('Network.setUserAgentOverride', {
+      userAgent: fingerprint.navigator?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      acceptLanguage,
+      platform: userAgentMetadata.platform,
+      userAgentMetadata
+    })
   } catch (err: any) {
     logger.warn('browser', `Could not apply CDP page emulation: ${err.message}`)
   }
+
+  // ── Passive Verification Page Diagnostic Recording ──
+  try {
+    page.on('response', (response) => {
+      try {
+        const url = response.url()
+        const status = response.status()
+        if (
+          url.includes('google.com/sorry/') ||
+          url.includes('challenges.cloudflare.com') ||
+          url.includes('geo.captcha-delivery.com') ||
+          url.includes('arkoselabs.com') ||
+          url.includes('recaptcha/enterprise')
+        ) {
+          logger.info('diagnostics', `[VerificationPageEncountered] Status: ${status} on URL: ${url.slice(0, 100)}...`, {
+            userAgent: fingerprint.navigator?.userAgent,
+            platform: fingerprint.navigator?.platform,
+            locale: fingerprint.locale?.language,
+            timezone: fingerprint.timezone?.timezone
+          })
+        }
+      } catch {}
+    })
+  } catch {}
 }
 
 /**

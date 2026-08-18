@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — Media Devices Injection Script Builder
-// Overrides navigator.mediaDevices.enumerateDevices() safely
+// Overrides navigator.mediaDevices.enumerateDevices() preserving MediaDeviceInfo prototype
 // ──────────────────────────────────────────────────────────────────
 
 import { MediaDevicesFingerprint } from '../../../fingerprint/types'
@@ -54,39 +54,42 @@ export function buildMediaDevicesScript(md: MediaDevicesFingerprint): string {
   return `
 // ═══ Media Devices Override ═══
 (function() {
+  'use strict';
   const DEVICES = ${JSON.stringify(devices)};
 
-  if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+  function createDevice(d) {
+    if (typeof MediaDeviceInfo !== 'undefined' && MediaDeviceInfo.prototype) {
+      try {
+        const obj = Object.create(MediaDeviceInfo.prototype);
+        Object.defineProperties(obj, {
+          deviceId: { value: d.deviceId, enumerable: true },
+          groupId: { value: d.groupId, enumerable: true },
+          kind: { value: d.kind, enumerable: true },
+          label: { value: d.label, enumerable: true },
+          toJSON: { value: function() { return d; }, enumerable: true }
+        });
+        return obj;
+      } catch(e) {}
+    }
+    return d;
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
     navigator.mediaDevices.enumerateDevices = function() {
-      return Promise.resolve(DEVICES.map(function(d) {
-        return {
-          kind: d.kind,
-          deviceId: d.deviceId,
-          groupId: d.groupId,
-          label: d.label,
-          toJSON: function() { return d; }
-        };
-      }));
+      return Promise.resolve(DEVICES.map(createDevice));
     };
   }
 
-  // Override MediaDevices.prototype.enumerateDevices as well
   try {
-    Object.defineProperty(MediaDevices.prototype, 'enumerateDevices', {
-      value: function() {
-        return Promise.resolve(DEVICES.map(function(d) {
-          return {
-            kind: d.kind,
-            deviceId: d.deviceId,
-            groupId: d.groupId,
-            label: d.label,
-            toJSON: function() { return d; }
-          };
-        }));
-      },
-      configurable: true,
-      writable: true
-    });
+    if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype) {
+      Object.defineProperty(MediaDevices.prototype, 'enumerateDevices', {
+        value: function() {
+          return Promise.resolve(DEVICES.map(createDevice));
+        },
+        configurable: true,
+        writable: true
+      });
+    }
   } catch(e) {}
 })();`
 }

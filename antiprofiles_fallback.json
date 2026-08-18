@@ -4,10 +4,10 @@
       "id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
       "name": "System Admin",
       "email": "admin@profilevault.local",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
       "messages": [],
       "internal_notes": [
@@ -34,6 +34,14 @@
           "agent_name": "Test Agent",
           "note": "User is running on Windows 11 with proxy auth enabled.",
           "created_at": "2026-08-18 16:55:31"
+        },
+        {
+          "id": "note_1787073291775_un7g",
+          "conversation_id": "msg_1787073291764_rvia",
+          "agent_id": "agent_test_1787073291751",
+          "agent_name": "Test Agent",
+          "note": "User is running on Windows 11 with proxy auth enabled.",
+          "created_at": "2026-08-18 17:14:51"
         }
       ]
     },
@@ -41,127 +49,157 @@
       "id": "65793f7c-4531-4493-8ccf-2a26068c2e1d",
       "name": "John Doe",
       "email": "john_1787049316833@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "f1f106b6-d8fe-4797-900c-ac4ef3b2a015",
       "name": "User 1",
       "email": "u1_1787049316857@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "bf2b8d1c-e57e-4f4f-a41e-73b7994816b3",
       "name": "User 2",
       "email": "u2_1787049316857@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "2cbefe5e-f6b2-4b5e-b26f-bdebe8f07bfb",
       "name": "John Doe",
       "email": "john_1787070802687@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T16:33:22.708Z",
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "444be39d-d321-4c65-8d89-29133e79d695",
       "name": "User 1",
       "email": "u1_1787070802711@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T16:33:22.732Z",
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "3a921bc8-eb9c-47fb-97fe-726681f1597a",
       "name": "User 2",
       "email": "u2_1787070802711@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T16:33:22.753Z",
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "ac5881d6-02c3-4f43-a422-8f322e6b9529",
       "name": "John Doe",
       "email": "john_1787072131942@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T16:55:31.962Z",
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "cdcb1f6d-53f7-4343-b4ff-99a55cd94e02",
       "name": "User 1",
       "email": "u1_1787072131966@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T16:55:31.986Z",
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "11cf2613-6df2-4083-8cc4-cae6431c8af0",
       "name": "User 2",
       "email": "u2_1787072131966@example.com",
-      "password_hash": "a0ba666cb32d425e4d6abf7f15f9c9cf:1da1447436605252b5b14ad251497d7f535675986b84ab21d9ad5840a905f414a6dc0e99f5f4ce98e16325fbf6622bef32b857ec10cbfbcdcbc8cc1ceeb59d15",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T16:55:32.006Z",
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "e8ff63b1-6e76-48f1-8df1-6e1a5353a327",
       "name": "John Doe",
       "email": "john_1787073291994@example.com",
-      "password_hash": "af39fa06cb20bbcdb481f712685808cb:d0c1e82d51c1a78489d7d730f22699f0e7b3cda1d8a9b5ccf40e20b35fbd49ef6fc7aee25aa2cc9137d4b454bc399a1661908bd27ebfcc5ddacbee2c094ec16e",
-      "role": "user",
-      "email_verified": 0,
-      "account_status": "pending",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T17:14:52.016Z",
-      "updated_at": "2026-08-18T17:14:52.021Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "7d853acf-2e3b-4684-8036-ee6039687767",
       "name": "User 1",
       "email": "u1_1787073292022@example.com",
-      "password_hash": "53b1f83216972fe504cbf665318be223:8f47651addee1b8471105ea0e418842584704398cc65c082409117ccc4bf8a0f20cbca5a7fcabaca37b601c7c5262f8bb3e20339dde4d58118d007a51abae2fe",
-      "role": "user",
-      "email_verified": 1,
-      "account_status": "active",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
       "google_id": null,
       "created_at": "2026-08-18T17:14:52.044Z",
-      "updated_at": null
+      "updated_at": "2026-08-18T17:27:38.902Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "f28b52e8-ca48-4c71-b11d-d759f82f3bac",
       "name": "User 2",
       "email": "u2_1787073292022@example.com",
-      "password_hash": "dfec3da91b7f6739ef7888dc5b93a9e2:c7873efc01f2dc6e1a6b3bd4ba57fe88df4d1ee338777283f18c85b594db30336743eda47ee92ea74310946be077c568dbf0295515e71bca42728690a4d2326d",
+      "password_hash": "e2dc06b0fe6ab4472cbf8b821ddf202b:2e2102c2bce1004d029da25d9d1032c8a3a1874b663e34ce0b6ae5f1dded8156ef10f4615fc3c72cb8b6b75671564953d5bb9f64aa0c20e599006433b64c3d8c",
+      "google_id": null,
+      "created_at": "2026-08-18T17:14:52.065Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "3c095dd4-c63b-4635-a272-853e35b5c7a2",
+      "name": "John Doe",
+      "email": "john_1787074058875@example.com",
+      "password_hash": "a0f65a5e61f9f353a100bf726f61299f:786dba34835400bcdb26f3650c0b456019980aab9dd0b4388d11c99efd4420e0d66e39a92e22dd96504ee883fc28e9f3685cebbabc5927938630d784ac92397d",
+      "role": "user",
+      "email_verified": 0,
+      "account_status": "pending",
+      "google_id": null,
+      "created_at": "2026-08-18T17:27:38.897Z",
+      "updated_at": "2026-08-18T17:27:38.902Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "5a5a66d3-a491-4695-822a-574a2fb6071e",
+      "name": "User 1",
+      "email": "u1_1787074058903@example.com",
+      "password_hash": "e39261808e88151ba1b97548202ff795:99f920814c93cf03c23f1b4ed6b6bbf67c6fa439913d58edd4448ccad2a0452347cb7f1352fa8f09ffa3c5f1da9492fce1bb35bbc89b36733ee7aa192e6530c1",
       "role": "user",
       "email_verified": 1,
       "account_status": "active",
       "google_id": null,
-      "created_at": "2026-08-18T17:14:52.065Z",
+      "created_at": "2026-08-18T17:27:38.925Z",
+      "updated_at": null
+    },
+    {
+      "id": "ceb7d2b4-2d99-48e8-a014-0a5caff3179d",
+      "name": "User 2",
+      "email": "u2_1787074058903@example.com",
+      "password_hash": "fdf328b836baa99b7460eb9c8dbebdae:e13d2ef9244163094009b35d2cd7bb12d8a1882695c6dd655360295bc8d67e68d194b536497486e38e9300efec75264ff061454d405b8c3b666c925a65a6cc00",
+      "role": "user",
+      "email_verified": 1,
+      "account_status": "active",
+      "google_id": null,
+      "created_at": "2026-08-18T17:27:38.946Z",
       "updated_at": null
     }
   ],
@@ -206,6 +244,16 @@
       "last_message_at": "2026-08-18 17:14:51",
       "created_at": "2026-08-18 17:14:51",
       "updated_at": "2026-08-18 17:14:51"
+    },
+    {
+      "id": "conv_1787074058656_ykjd",
+      "user_id": "usr_test_1787074058647",
+      "status": "open",
+      "priority": "high",
+      "subject": "Proxy Network Issue",
+      "last_message_at": "2026-08-18 17:27:38",
+      "created_at": "2026-08-18 17:27:38",
+      "updated_at": "2026-08-18 17:27:38"
     }
   ],
   "support_messages": [
@@ -260,6 +308,19 @@
       "attachment_size": null,
       "attachment_mime": null,
       "created_at": "2026-08-18 17:14:51"
+    },
+    {
+      "id": "msg_1787074058658_2nne",
+      "conversation_id": "conv_1787074058656_ykjd",
+      "sender_id": "usr_test_1787074058647",
+      "sender_type": "user",
+      "message": "Hello, I am having trouble connecting my HTTP proxy.",
+      "message_type": "text",
+      "attachment_path": null,
+      "attachment_name": null,
+      "attachment_size": null,
+      "attachment_mime": null,
+      "created_at": "2026-08-18 17:27:38"
     }
   ],
   "support_internal_notes": [
@@ -294,6 +355,14 @@
       "agent_name": "Test Agent",
       "note": "User is running on Windows 11 with proxy auth enabled.",
       "created_at": "2026-08-18 17:14:51"
+    },
+    {
+      "id": "note_1787074058667_zsb2",
+      "conversation_id": "msg_1787074058658_2nne",
+      "agent_id": "agent_test_1787074058647",
+      "agent_name": "Test Agent",
+      "note": "User is running on Windows 11 with proxy auth enabled.",
+      "created_at": "2026-08-18 17:27:38"
     }
   ],
   "profiles": [
@@ -1548,6 +1617,45 @@
       "google_services": 0,
       "system_extensions": 0,
       "custom_dns": ""
+    },
+    {
+      "id": "ee0084bf-042f-48c1-8b25-df7bd9319daf",
+      "user_id": "5a5a66d3-a491-4695-822a-574a2fb6071e",
+      "name": "User 1 Profile",
+      "group_id": null,
+      "notes": "",
+      "color": "#6366F1",
+      "icon": "globe",
+      "browser_version": "126.0.0.0",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "language": "en-US",
+      "timezone": "America/Los_Angeles",
+      "screen_width": 1920,
+      "screen_height": 1200,
+      "webrtc_mode": "real",
+      "canvas_mode": "noise",
+      "webgl_mode": "default",
+      "hw_concurrency": 4,
+      "device_memory": 32,
+      "hw_acceleration": 1,
+      "proxy_id": null,
+      "tags": "[]",
+      "status": "stopped",
+      "created_at": "2026-08-18T17:27:38.947Z",
+      "updated_at": "2026-08-18T17:27:38.947Z",
+      "os_type": "windows-10",
+      "fingerprint": "{\"version\":2,\"generatedAt\":\"2026-08-18T17:27:38.955Z\",\"seed\":\"fb8ab62b8dfbef35b67fe454db5ccc21\",\"navigator\":{\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36\",\"browserVersion\":\"126.0.0.0\",\"chromiumVersion\":\"126\",\"platform\":\"Win32\",\"appCodeName\":\"Mozilla\",\"appName\":\"Netscape\",\"appVersion\":\"5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36\",\"product\":\"Gecko\",\"productSub\":\"20030107\",\"vendor\":\"Google Inc.\",\"vendorSub\":\"\",\"hardwareConcurrency\":4,\"deviceMemory\":32,\"cpuArchitecture\":\"x86_64\",\"platformArchitecture\":\"64-bit\",\"maxTouchPoints\":0,\"touchSupport\":false,\"doNotTrack\":null,\"cookieEnabled\":true,\"pdfViewerEnabled\":true,\"javaEnabled\":false,\"webdriver\":false,\"localStorageEnabled\":true,\"sessionStorageEnabled\":true,\"indexedDBEnabled\":true,\"webSQLEnabled\":false},\"screen\":{\"width\":1920,\"height\":1200,\"availWidth\":1920,\"availHeight\":1160,\"colorDepth\":24,\"pixelDepth\":24,\"devicePixelRatio\":1,\"orientation\":\"landscape-primary\",\"orientationAngle\":0,\"viewportWidth\":1920,\"viewportHeight\":1129,\"outerWidth\":1920,\"outerHeight\":1240,\"screenX\":0,\"screenY\":0,\"isMultiMonitor\":false,\"isPrimaryDisplay\":true},\"locale\":{\"language\":\"en-US\",\"languages\":[\"en-US\",\"en\"],\"country\":\"US\",\"region\":\"\",\"currency\":\"USD\",\"numberFormat\":\"en-US\",\"dateFormat\":\"M/d/yyyy\",\"firstDayOfWeek\":0,\"measurementSystem\":\"imperial\",\"hourCycle\":\"12h\"},\"timezone\":{\"mode\":\"manual\",\"timezone\":\"America/Los_Angeles\",\"utcOffset\":-420,\"hasDST\":true,\"dstOffset\":60},\"geolocation\":{\"mode\":\"custom\",\"latitude\":40.746,\"longitude\":-74.0018,\"accuracy\":20,\"altitude\":null,\"altitudeAccuracy\":null,\"heading\":null,\"speed\":null,\"permissionState\":\"prompt\"},\"webrtc\":{\"mode\":\"real\",\"ipPolicy\":\"default_public_interface_only\",\"localIP\":\"\",\"publicIP\":\"\"},\"canvas\":{\"mode\":\"noise\",\"noiseSeed\":321884},\"webgl\":{\"enabled\":true,\"version\":\"WebGL 2.0\",\"vendor\":\"WebKit\",\"renderer\":\"WebKit WebGL\",\"unmaskedVendor\":\"Google Inc. (AMD)\",\"unmaskedRenderer\":\"ANGLE (AMD, AMD Radeon RX 6800 XT Direct3D11 vs_5_0 ps_5_0, D3D11)\",\"maxTextureSize\":16384,\"maxViewportDims\":[16384,16384],\"maxRenderbufferSize\":16384,\"shadingLanguageVersion\":\"WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)\",\"extensions\":[\"EXT_shader_texture_lod\",\"WEBGL_draw_buffers\",\"WEBGL_multi_draw\",\"OES_fbo_render_mipmap\",\"WEBGL_compressed_texture_s3tc\",\"OES_texture_half_float_linear\",\"EXT_disjoint_timer_query\",\"WEBGL_debug_renderer_info\",\"WEBGL_lose_context\",\"WEBGL_debug_shaders\",\"OES_texture_float\",\"OES_texture_float_linear\",\"EXT_frag_depth\",\"OES_texture_half_float\",\"KHR_parallel_shader_compile\",\"EXT_texture_compression_rgtc\",\"EXT_color_buffer_half_float\",\"EXT_sRGB\",\"EXT_blend_minmax\",\"WEBGL_compressed_texture_s3tc_srgb\",\"WEBGL_depth_texture\",\"OES_vertex_array_object\",\"WEBGL_color_buffer_float\",\"ANGLE_instanced_arrays\",\"EXT_float_blend\",\"EXT_texture_compression_bptc\",\"OES_element_index_uint\"],\"antialiasing\":true,\"gpuVendor\":\"AMD\",\"gpuRenderer\":\"Radeon RX 6800 XT\",\"driverInfo\":\"\"},\"audio\":{\"mode\":\"noise\",\"noiseSeed\":632165,\"sampleRate\":44100,\"channelCount\":2,\"maxChannelCount\":6,\"numberOfInputs\":1,\"numberOfOutputs\":1,\"channelCountMode\":\"max\",\"channelInterpretation\":\"speakers\"},\"clientRects\":{\"mode\":\"noise\",\"noiseSeed\":787222},\"fonts\":{\"enableMasking\":true,\"mode\":\"automatic\",\"fontList\":[\"Arial\",\"Arial Black\",\"Calibri\",\"Cambria\",\"Cambria Math\",\"Candara\",\"Consolas\",\"Constantia\",\"Gabriola\",\"Impact\",\"Ink Free\",\"Javanese Text\",\"Lucida Console\",\"Lucida Sans Unicode\",\"MS Gothic\",\"MS PGothic\",\"MS UI Gothic\",\"MV Boli\",\"Microsoft Himalaya\",\"Microsoft PhagsPa\",\"Microsoft Sans Serif\",\"Microsoft Tai Le\",\"Microsoft Yi Baiti\",\"Mongolian Baiti\",\"Myanmar Text\",\"Segoe MDL2 Assets\",\"Segoe Print\",\"Segoe Script\",\"Segoe UI\",\"Segoe UI Emoji\",\"Segoe UI Historic\",\"Segoe UI Symbol\",\"Sitka Text\",\"Sylfaen\",\"Symbol\",\"Times New Roman\",\"Webdings\"]},\"mediaDevices\":{\"videoInputs\":1,\"audioInputs\":1,\"audioOutputs\":1,\"cameraLabels\":[\"Integrated Camera\"],\"microphoneLabels\":[\"Microphone Array\"],\"speakerLabels\":[\"Default\"],\"deviceIds\":[\"5d96573a43f9bd4386a969d2764fe525215b1b395c7ac51abf6e352d6442d7bc\",\"679b026d261d3a3489e1d420647fa13d2136c3b74badbb31071c411b9742de2f\",\"c441cdd5753baf6bb060315a22aea1d19675d882806af609f7afdfd697d9e673\"]},\"battery\":{\"enabled\":false,\"charging\":true,\"level\":1,\"chargingTime\":0,\"dischargingTime\":null},\"networkInfo\":{\"effectiveType\":\"4g\",\"downlink\":100,\"rtt\":50,\"saveData\":false,\"type\":\"wifi\"},\"permissions\":{\"camera\":\"prompt\",\"microphone\":\"prompt\",\"geolocation\":\"prompt\",\"notifications\":\"prompt\",\"clipboard\":\"prompt\",\"midi\":\"prompt\",\"sensors\":\"prompt\",\"usb\":\"prompt\",\"bluetooth\":\"prompt\",\"backgroundSync\":\"prompt\",\"persistentStorage\":\"prompt\"},\"browser\":{\"saveHistory\":true,\"clearHistoryOnDelete\":true,\"savePasswords\":false,\"googleServicesEnabled\":false,\"safeBrowsing\":false,\"spellCheck\":true,\"backgroundServices\":false,\"systemExtensionsEnabled\":false,\"startUrlMode\":\"new-tab\",\"startUrls\":[],\"customLaunchArgs\":[],\"dnsMode\":\"system\",\"primaryDns\":\"\",\"secondaryDns\":\"\"}}",
+      "folder": "",
+      "profile_locked": 0,
+      "consistency_score": 100,
+      "fingerprint_seed": "fb8ab62b8dfbef35b67fe454db5ccc21",
+      "start_url": "",
+      "launch_args": "[]",
+      "save_history": 1,
+      "save_passwords": 0,
+      "google_services": 0,
+      "system_extensions": 0,
+      "custom_dns": ""
     }
   ],
   "email_verification_tokens": [
@@ -1612,10 +1720,54 @@
       "user_id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
       "token_hash": "a7fa30079abbee1aff746b126cb4ecb1264f4c1b9030ec3037e3e2505f514232",
       "expires_at": "2026-08-19T17:14:52.121Z",
-      "created_at": "2026-08-18T17:14:52.122Z"
+      "created_at": "2026-08-18T17:14:52.122Z",
+      "used_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "2cffc08d-8354-420e-b398-3eb98c33a0f5",
+      "user_id": "3c095dd4-c63b-4635-a272-853e35b5c7a2",
+      "token_hash": "481210899827464075634bf23cc9502dd359e995c135177962564ed56cfca8dc",
+      "expires_at": "2026-08-19T17:27:38.899Z",
+      "created_at": "2026-08-18T17:27:38.900Z",
+      "used_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "16eba2a5-2b35-4353-9967-c1ebf2827481",
+      "user_id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
+      "token_hash": "6dedbbc37f500a88d0bc8c27d124e2e999899aadb96d27a9ccc18baae63d2d54",
+      "expires_at": "2026-08-19T17:27:38.987Z",
+      "created_at": "2026-08-18T17:27:38.988Z"
     }
   ],
   "settings": [
+    {
+      "key": "smtp_host",
+      "value": "smtp.example.com"
+    },
+    {
+      "key": "smtp_port",
+      "value": "587"
+    },
+    {
+      "key": "smtp_user",
+      "value": "user@example.com"
+    },
+    {
+      "key": "smtp_password",
+      "value": "secretpassword"
+    },
+    {
+      "key": "smtp_from_email",
+      "value": "noreply@example.com"
+    },
+    {
+      "key": "smtp_secure",
+      "value": "false"
+    },
+    {
+      "key": "smtp_enabled",
+      "value": "true"
+    },
     {
       "key": "smtp_host",
       "value": "smtp.example.com"

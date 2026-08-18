@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — ClientRects Injection Script Builder
-// Adds deterministic noise to getBoundingClientRect / getClientRects safely
+// Adds deterministic noise to getBoundingClientRect safely without breaking DOMRectList
 // ──────────────────────────────────────────────────────────────────
 
 import { ClientRectsFingerprint } from '../../../fingerprint/types'
@@ -16,6 +16,7 @@ export function buildClientRectsScript(cr: ClientRectsFingerprint): string {
   return `
 // ═══ ClientRects Noise (Seed: ${safeSeed}) ═══
 (function() {
+  'use strict';
   const SEED = ${safeSeed};
 
   function mulberry32(seed) {
@@ -30,7 +31,8 @@ export function buildClientRectsScript(cr: ClientRectsFingerprint): string {
   const rng = mulberry32(SEED);
 
   function addRectNoise(rect) {
-    const noise = (rng() - 0.5) * 0.01; // Very subtle noise
+    if (!rect) return rect;
+    const noise = (rng() - 0.5) * 0.001;
     return new DOMRect(
       rect.x + noise,
       rect.y + noise,
@@ -39,46 +41,14 @@ export function buildClientRectsScript(cr: ClientRectsFingerprint): string {
     );
   }
 
-  // Override getBoundingClientRect
-  const origGetBCR = Element.prototype.getBoundingClientRect;
-  Element.prototype.getBoundingClientRect = function() {
-    const rect = origGetBCR.call(this);
-    if (!this || this.tagName === 'HTML' || this.tagName === 'BODY' || this === document.documentElement || this === document.body) {
-      return rect;
-    }
-    return addRectNoise(rect);
-  };
-
-  // Override getClientRects
-  const origGetCR = Element.prototype.getClientRects;
-  Element.prototype.getClientRects = function() {
-    const rects = origGetCR.call(this);
-    const result = [];
-    for (let i = 0; i < rects.length; i++) {
-      result.push(addRectNoise(rects[i]));
-    }
-    // Return a DOMRectList-like object
-    Object.defineProperty(result, 'item', { value: function(i) { return result[i]; } });
-    return result;
-  };
-
-  // Override Range.getBoundingClientRect and getClientRects
-  if (window.Range) {
-    const origRangeBCR = Range.prototype.getBoundingClientRect;
-    Range.prototype.getBoundingClientRect = function() {
-      const rect = origRangeBCR.call(this);
-      return addRectNoise(rect);
-    };
-
-    const origRangeCR = Range.prototype.getClientRects;
-    Range.prototype.getClientRects = function() {
-      const rects = origRangeCR.call(this);
-      const result = [];
-      for (let i = 0; i < rects.length; i++) {
-        result.push(addRectNoise(rects[i]));
+  if (typeof Element !== 'undefined' && Element.prototype.getBoundingClientRect) {
+    const origGetBCR = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function() {
+      const rect = origGetBCR.call(this);
+      if (!this || this.tagName === 'HTML' || this.tagName === 'BODY' || this === document.documentElement || this === document.body) {
+        return rect;
       }
-      Object.defineProperty(result, 'item', { value: function(i) { return result[i]; } });
-      return result;
+      return addRectNoise(rect);
     };
   }
 })();`

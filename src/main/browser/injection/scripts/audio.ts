@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — AudioContext Injection Script Builder
-// Adds deterministic noise to AudioContext fingerprinting methods safely
+// Safely adds deterministic noise while preserving class prototypes
 // ──────────────────────────────────────────────────────────────────
 
 import { AudioFingerprint } from '../../../fingerprint/types'
@@ -8,17 +8,9 @@ import { AudioFingerprint } from '../../../fingerprint/types'
 export function buildAudioScript(audio: AudioFingerprint): string {
   const safeMode = audio?.mode || 'noise'
   const safeSeed = audio?.noiseSeed || 54321
-  const safeSampleRate = audio?.sampleRate || 44100
 
   if (safeMode === 'off') {
-    return `
-// ═══ AudioContext Disabled ═══
-(function() {
-  window.AudioContext = undefined;
-  window.webkitAudioContext = undefined;
-  window.OfflineAudioContext = undefined;
-  window.webkitOfflineAudioContext = undefined;
-})();`
+    return '// AudioContext: OFF (no override)'
   }
 
   if (safeMode === 'default') {
@@ -28,8 +20,8 @@ export function buildAudioScript(audio: AudioFingerprint): string {
   return `
 // ═══ AudioContext Noise (Seed: ${safeSeed}) ═══
 (function() {
+  'use strict';
   const SEED = ${safeSeed};
-  const SAMPLE_RATE = ${safeSampleRate};
 
   function mulberry32(seed) {
     return function() {
@@ -42,49 +34,43 @@ export function buildAudioScript(audio: AudioFingerprint): string {
 
   const rng = mulberry32(SEED);
 
-  // Override AudioContext.sampleRate
-  if (window.AudioContext) {
-    const OrigAudioContext = window.AudioContext;
-    window.AudioContext = function() {
-      const ctx = new OrigAudioContext(...arguments);
-      try {
-        Object.defineProperty(ctx, 'sampleRate', {
-          get: () => SAMPLE_RATE,
-          configurable: true
-        });
-      } catch(e) {}
-      return ctx;
-    };
-    window.AudioContext.prototype = OrigAudioContext.prototype;
-  }
-
-  // Override AnalyserNode frequency data
-  if (window.AnalyserNode) {
+  // Override AnalyserNode frequency data safely
+  if (typeof AnalyserNode !== 'undefined' && AnalyserNode.prototype) {
     const origGetFloat = AnalyserNode.prototype.getFloatFrequencyData;
-    AnalyserNode.prototype.getFloatFrequencyData = function(array) {
-      origGetFloat.call(this, array);
-      for (let i = 0; i < array.length; i += 10) {
-        array[i] += (rng() - 0.5) * 0.001;
-      }
-    };
+    if (origGetFloat) {
+      AnalyserNode.prototype.getFloatFrequencyData = function(array) {
+        origGetFloat.call(this, array);
+        if (array && array.length > 0) {
+          for (let i = 0; i < array.length; i += 10) {
+            array[i] += (rng() - 0.5) * 0.001;
+          }
+        }
+      };
+    }
 
     const origGetByte = AnalyserNode.prototype.getByteFrequencyData;
-    AnalyserNode.prototype.getByteFrequencyData = function(array) {
-      origGetByte.call(this, array);
-      for (let i = 0; i < array.length; i += 10) {
-        const noise = Math.floor(rng() * 3) - 1;
-        array[i] = Math.max(0, Math.min(255, array[i] + noise));
-      }
-    };
+    if (origGetByte) {
+      AnalyserNode.prototype.getByteFrequencyData = function(array) {
+        origGetByte.call(this, array);
+        if (array && array.length > 0) {
+          for (let i = 0; i < array.length; i += 10) {
+            const noise = Math.floor(rng() * 3) - 1;
+            array[i] = Math.max(0, Math.min(255, array[i] + noise));
+          }
+        }
+      };
+    }
   }
 
-  // Override AudioBuffer.getChannelData
-  if (window.AudioBuffer) {
+  // Override AudioBuffer.getChannelData safely
+  if (typeof AudioBuffer !== 'undefined' && AudioBuffer.prototype && AudioBuffer.prototype.getChannelData) {
     const origGetChannelData = AudioBuffer.prototype.getChannelData;
     AudioBuffer.prototype.getChannelData = function(channel) {
       const data = origGetChannelData.call(this, channel);
-      for (let i = 0; i < data.length; i += 100) {
-        data[i] += (rng() - 0.5) * 0.0001;
+      if (data && data.length > 0) {
+        for (let i = 0; i < data.length; i += 100) {
+          data[i] += (rng() - 0.5) * 0.0001;
+        }
       }
       return data;
     };
