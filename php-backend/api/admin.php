@@ -1847,9 +1847,16 @@ switch ($action) {
         break;
 
     case 'publish-app-release':
+        @ini_set('upload_max_filesize', '1024M');
+        @ini_set('post_max_size', '1024M');
+        @ini_set('memory_limit', '1024M');
+        @ini_set('max_execution_time', '1800');
+        @ini_set('max_input_time', '1800');
+        @set_time_limit(1800);
+
         $platform = trim($_POST['platform'] ?? 'windows-x64');
         $version = trim($_POST['version'] ?? '1.0.0');
-        $releaseName = trim($_POST['release_name'] ?? "ProfileVault v{$version} Release");
+        $releaseName = trim($_POST['release_name'] ?? "AntiProfiles v{$version} Release");
         $releaseNotes = trim($_POST['release_notes'] ?? '');
         $status = trim($_POST['status'] ?? 'active');
         $directUrl = trim($_POST['download_url'] ?? '');
@@ -1859,6 +1866,29 @@ switch ($action) {
         $originalFilename = null;
         $fileSize = 0;
 
+        if (isset($_FILES['file']) && $_FILES['file']['error'] !== UPLOAD_ERR_OK && $_FILES['file']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $errCode = $_FILES['file']['error'];
+            $errMsg = 'File upload failed with error code: ' . $errCode;
+            switch ($errCode) {
+                case UPLOAD_ERR_INI_SIZE:
+                    $errMsg = 'The uploaded binary exceeds the upload_max_filesize directive in PHP config. Please increase upload_max_filesize and post_max_size in aaPanel PHP settings.';
+                    break;
+                case UPLOAD_ERR_FORM_SIZE:
+                    $errMsg = 'The uploaded binary exceeds the MAX_FILE_SIZE directive.';
+                    break;
+                case UPLOAD_ERR_PARTIAL:
+                    $errMsg = 'The file was only partially uploaded. Connection was interrupted.';
+                    break;
+                case UPLOAD_ERR_NO_TMP_DIR:
+                    $errMsg = 'Missing temporary folder on server.';
+                    break;
+                case UPLOAD_ERR_CANT_WRITE:
+                    $errMsg = 'Failed to write file to server disk. Check disk space and folder permissions.';
+                    break;
+            }
+            respondJson(['success' => false, 'error' => $errMsg], 400);
+        }
+
         if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
             $releasesDir = __DIR__ . '/../releases';
             if (!is_dir($releasesDir)) {
@@ -1867,7 +1897,7 @@ switch ($action) {
 
             $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
             $cleanVersion = preg_replace('/[^a-zA-Z0-9\._-]/', '', $version);
-            $targetFilename = "ProfileVault-{$platform}-v{$cleanVersion}.{$ext}";
+            $targetFilename = "AntiProfiles-{$platform}-v{$cleanVersion}.{$ext}";
             $targetPath = $releasesDir . '/' . $targetFilename;
 
             if (move_uploaded_file($_FILES['file']['tmp_name'], $targetPath)) {

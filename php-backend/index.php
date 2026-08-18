@@ -7223,10 +7223,13 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        async function handlePublishRelease(e) {
+        function handlePublishRelease(e) {
             e.preventDefault();
-            const token = localStorage.getItem('sessionToken');
-            if (!token) return;
+            const token = getAdminSessionToken();
+            if (!token) {
+                alert('Session expired. Please sign in as administrator.');
+                return;
+            }
 
             const platform = document.getElementById('relPlatform').value;
             const version = document.getElementById('relVersion').value.trim();
@@ -7235,6 +7238,7 @@ header('Content-Type: text/html; charset=utf-8');
             const directUrl = document.getElementById('relDirectUrl').value.trim();
             const notes = document.getElementById('relNotes').value.trim();
             const fileInput = document.getElementById('relFile');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
 
             if (!version || !releaseName) {
                 alert('Please enter version number and release name.');
@@ -7248,8 +7252,10 @@ header('Content-Type: text/html; charset=utf-8');
             formData.append('status', status);
             formData.append('download_url', directUrl);
             formData.append('release_notes', notes);
+            formData.append('token', token);
 
-            if (fileInput.files.length > 0) {
+            const hasFile = fileInput.files.length > 0;
+            if (hasFile) {
                 formData.append('file', fileInput.files[0]);
             }
 
@@ -7257,38 +7263,82 @@ header('Content-Type: text/html; charset=utf-8');
             msg.style.display = 'block';
             msg.style.background = 'rgba(99,102,241,0.2)';
             msg.style.color = '#818CF8';
-            msg.innerText = 'Publishing application release... Please wait...';
+            msg.innerText = hasFile ? '⏳ Preparing upload... 0%' : 'Publishing application release... Please wait...';
 
-            try {
-                const res = await fetch('/api/admin/publish-app-release', {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token },
-                    body: formData
-                });
-                const data = await res.json();
-                if (data.success) {
-                    msg.style.background = 'rgba(45,212,191,0.2)';
-                    msg.style.color = '#2DD4BF';
-                    msg.innerText = data.message;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+                submitBtn.innerText = '⏳ Uploading / Publishing...';
+            }
 
-                    document.getElementById('relVersion').value = '';
-                    document.getElementById('relName').value = '';
-                    document.getElementById('relDirectUrl').value = '';
-                    document.getElementById('relNotes').value = '';
-                    fileInput.value = '';
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/admin/publish-app-release?token=' + encodeURIComponent(token), true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
 
-                    loadAppReleasesTable();
-                    loadUserPortalData();
-                } else {
+            if (hasFile) {
+                xhr.upload.onprogress = function(event) {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        const uploadedMB = (event.loaded / (1024 * 1024)).toFixed(1);
+                        const totalMB = (event.total / (1024 * 1024)).toFixed(1);
+                        msg.innerText = `⏳ Uploading binary: ${percent}% (${uploadedMB} MB / ${totalMB} MB)... Please keep this tab open.`;
+                    }
+                };
+            }
+
+            xhr.onload = function() {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerText = '🚀 Publish Release & Update User Downloads';
+                }
+
+                if (xhr.status === 413) {
+                    msg.style.background = 'rgba(239,68,68,0.25)';
+                    msg.style.color = '#F87171';
+                    msg.innerHTML = '⚠️ <strong>Upload Rejected by Server (413 Payload Too Large):</strong><br>The installer file exceeds Nginx/PHP upload limits. Increase <code>client_max_body_size 1024m;</code> in aaPanel Nginx site configuration, or provide an External Direct Download URL.';
+                    return;
+                }
+
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data && data.success) {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = '✓ ' + (data.message || 'Release published successfully!');
+
+                        document.getElementById('relVersion').value = '';
+                        document.getElementById('relName').value = '';
+                        document.getElementById('relDirectUrl').value = '';
+                        document.getElementById('relNotes').value = '';
+                        fileInput.value = '';
+
+                        loadAppReleasesTable();
+                        loadUserPortalData();
+                    } else {
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = '⚠️ ' + (data?.error || 'Failed to publish release.');
+                    }
+                } catch(e) {
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
-                    msg.innerText = data.error || 'Failed to publish release.';
+                    msg.innerText = '⚠️ Server response error (' + xhr.status + '). Please check server logs.';
                 }
-            } catch(e) {
+            };
+
+            xhr.onerror = function() {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerText = '🚀 Publish Release & Update User Downloads';
+                }
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
-                msg.innerText = 'Network error publishing release.';
-            }
+                msg.innerHTML = '⚠️ <strong>Network error during file upload:</strong> Connection was interrupted or terminated by web server proxy. Increase <code>client_max_body_size 1024m;</code> in Nginx configuration.';
+            };
+
+            xhr.send(formData);
         }
 
         async function activateAppRelease(releaseId) {
