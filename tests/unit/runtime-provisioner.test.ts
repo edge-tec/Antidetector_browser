@@ -43,7 +43,7 @@ describe('Native Runtime Provisioner & Download Manager', () => {
     const chromeInfo = getChromiumArtifactInfo()
     const firefoxInfo = getFirefoxArtifactInfo()
 
-    expect(chromeInfo.downloadUrl).toContain('storage.googleapis.com/chrome-for-testing-public')
+    expect(chromeInfo.downloadUrl).toContain('commondatastorage.googleapis.com/chromium-browser-snapshots')
     expect(chromeInfo.fileName).toContain('.zip')
 
     expect(firefoxInfo.downloadUrl).toContain('ftp.mozilla.org/pub/firefox/releases')

@@ -129,22 +129,27 @@ export function getChromiumArtifactInfo(): { downloadUrl: string; fileName: stri
   const p = process.platform
   const isArm = process.arch === 'arm64'
 
-  let platformKey = 'linux64'
-  let fileName = `chrome-linux64.zip`
-  let executableRelativePath = path.join('chrome-linux64', 'chrome')
-
   if (p === 'darwin') {
-    platformKey = isArm ? 'mac-arm64' : 'mac-x64'
-    fileName = `chrome-${platformKey}.zip`
-    executableRelativePath = path.join(`chrome-${platformKey}`, 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing')
-  } else if (p === 'win32') {
-    const is64 = process.arch === 'x64' || isArm
-    platformKey = is64 ? 'win64' : 'win32'
-    fileName = `chrome-${platformKey}.zip`
-    executableRelativePath = path.join(`chrome-${platformKey}`, 'chrome.exe')
+    const bucket = isArm ? 'Mac_Arm' : 'Mac'
+    const fileName = 'chrome-mac.zip'
+    const downloadUrl = `https://commondatastorage.googleapis.com/chromium-browser-snapshots/${bucket}/1681655/${fileName}`
+    const executableRelativePath = path.join('chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
+    return { downloadUrl, fileName, executableRelativePath }
   }
 
-  const downloadUrl = `https://storage.googleapis.com/chrome-for-testing-public/${CHROMIUM_VERSION}/${platformKey}/${fileName}`
+  if (p === 'win32') {
+    const is64 = process.arch === 'x64' || isArm
+    const bucket = is64 ? 'Win_x64' : 'Win'
+    const fileName = is64 ? 'chrome-win.zip' : 'chrome-win32.zip'
+    const downloadUrl = `https://commondatastorage.googleapis.com/chromium-browser-snapshots/${bucket}/1681542/${fileName}`
+    const executableRelativePath = path.join(is64 ? 'chrome-win' : 'chrome-win32', 'chrome.exe')
+    return { downloadUrl, fileName, executableRelativePath }
+  }
+
+  // Linux (x64)
+  const fileName = 'chrome-linux.zip'
+  const downloadUrl = `https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/1681646/${fileName}`
+  const executableRelativePath = path.join('chrome-linux', 'chrome')
   return { downloadUrl, fileName, executableRelativePath }
 }
 
