@@ -114,14 +114,45 @@ function setupFirefoxProfilePrefs(
     }
   }
 
+  // CPU Threads (Hardware Concurrency)
+  if (fingerprint?.navigator?.hardwareConcurrency) {
+    prefs.push(`user_pref("dom.maxHardwareConcurrency", ${fingerprint.navigator.hardwareConcurrency});`)
+  }
+
+  // Device Memory
+  if (fingerprint?.navigator?.deviceMemory) {
+    prefs.push('user_pref("dom.deviceMemory.enabled", true);')
+  }
+
+  // Do Not Track
+  if (fingerprint?.navigator?.doNotTrack) {
+    prefs.push(`user_pref("privacy.donottrackheader.enabled", ${fingerprint.navigator.doNotTrack === '1'});`)
+  }
+
+  // WebGL Vendor & Renderer Spoofing
+  if (fingerprint?.webgl?.unmaskedRenderer) {
+    prefs.push(`user_pref("webgl.renderer-string-override", ${JSON.stringify(fingerprint.webgl.unmaskedRenderer)});`)
+  }
+  if (fingerprint?.webgl?.unmaskedVendor) {
+    prefs.push(`user_pref("webgl.vendor-string-override", ${JSON.stringify(fingerprint.webgl.unmaskedVendor)});`)
+  }
+
+  // Geolocation Spoofing
+  if (fingerprint?.geolocation && fingerprint.geolocation.mode !== 'disabled') {
+    const lat = fingerprint.geolocation.latitude || 40.7128
+    const lng = fingerprint.geolocation.longitude || -74.006
+    prefs.push('user_pref("geo.enabled", true);')
+    prefs.push(`user_pref("geo.provider.network.url", "data:application/json,{\\"location\\":{\\"lat\\":${lat},\\"lng\\":${lng}},\\"accuracy\\":50}");`)
+  }
+
   // Keep Firefox UI & font scaling user-friendly, sleek, compact, and responsive
   prefs.push('user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);')
   prefs.push('user_pref("layout.css.devPixelsPerPx", "-1.0");')
   prefs.push('user_pref("browser.compactmode.show", true);')
   prefs.push('user_pref("browser.uidensity", 1);')
   prefs.push('user_pref("font.size.systemFontScale", 100);')
-  prefs.push('user_pref("browser.window.width", 1200);')
-  prefs.push('user_pref("browser.window.height", 780);')
+  prefs.push(`user_pref("browser.window.width", ${fingerprint?.screen?.width || 1200});`)
+  prefs.push(`user_pref("browser.window.height", ${fingerprint?.screen?.height || 780});`)
   prefs.push('user_pref("browser.toolbars.bookmarks.visibility", "never");')
   prefs.push('user_pref("browser.tabs.tabmanager.enabled", false);')
   prefs.push('user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);')
@@ -283,6 +314,22 @@ export async function launchFirefox(
     args.push(...startUrls)
   }
 
+  const tz = fingerprint?.timezone?.timezone
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    MOZ_NO_REMOTE: '1',
+    ...(tz ? { TZ: tz } : {})
+  }
+
+  // Custom launch args (allowlisted)
+  if (fingerprint?.browser?.customLaunchArgs && Array.isArray(fingerprint.browser.customLaunchArgs)) {
+    for (const arg of fingerprint.browser.customLaunchArgs) {
+      if (arg.startsWith('-') && !args.includes(arg)) {
+        args.push(arg)
+      }
+    }
+  }
+
   logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with -profile ${userDataDir} at: ${firefoxPath}`)
 
   let child: ChildProcess
@@ -290,7 +337,7 @@ export async function launchFirefox(
 
   if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
     const appPath = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
-    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir, '-width', '1200', '-height', '780']
+    const openArgs = ['-n', '-a', appPath, '--args', ...args]
     if (startUrls.length > 0) {
       openArgs.push(...startUrls)
     }
@@ -299,10 +346,7 @@ export async function launchFirefox(
     child = spawn('open', openArgs, {
       detached: true,
       stdio: 'ignore',
-      env: {
-        ...process.env,
-        MOZ_NO_REMOTE: '1'
-      }
+      env
     })
     child.unref()
     pid = child.pid || 0
@@ -310,10 +354,7 @@ export async function launchFirefox(
     child = spawn(firefoxPath, args, {
       detached: true,
       stdio: 'ignore',
-      env: {
-        ...process.env,
-        MOZ_NO_REMOTE: '1'
-      }
+      env
     })
     child.unref()
     pid = child.pid || 0
