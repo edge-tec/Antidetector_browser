@@ -80,11 +80,11 @@ export const ReferralDashboard: React.FC = () => {
   }
 
   const loadSummary = async () => {
-    if (!currentUser?.id) return
     setLoading(true)
     try {
+      const uid = currentUser?.id || 'usr_default'
       if ((window as any).api?.affiliateGetUserSummary) {
-        const res = await (window as any).api.affiliateGetUserSummary(currentUser.id)
+        const res = await (window as any).api.affiliateGetUserSummary(uid)
         if (res.success && res.data) {
           setSummary(res.data)
         }
@@ -95,6 +95,11 @@ export const ReferralDashboard: React.FC = () => {
       setLoading(false)
     }
   }
+
+  const fallbackCode = currentUser?.id ? `REF_${currentUser.id.slice(0, 4).toUpperCase()}` : 'REF_MEMBER'
+  const fallbackLink = `https://antiprofiles.com/register?ref=${fallbackCode}`
+  const activeReferralCode = summary?.referralCode || fallbackCode
+  const activeReferralLink = summary?.referralLink || fallbackLink
 
   useEffect(() => {
     loadSummary()
@@ -298,11 +303,11 @@ export const ReferralDashboard: React.FC = () => {
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 readOnly
-                value={summary?.referralLink || 'Loading link...'}
+                value={activeReferralLink}
                 style={{ flex: 1, padding: '10px 12px', borderRadius: '6px', backgroundColor: '#10101A', border: '1px solid #2C2C3E', color: '#2DD4BF', fontSize: '12px', fontFamily: 'monospace' }}
               />
               <button
-                onClick={() => summary && copyToClipboard(summary.referralLink, true)}
+                onClick={() => copyToClipboard(activeReferralLink, true)}
                 style={{ padding: '0 16px', borderRadius: '6px', backgroundColor: copiedLink ? '#10B981' : '#2DD4BF', color: '#0F172A', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 {copiedLink ? '✓ Copied' : '📋 Copy Link'}
@@ -317,11 +322,11 @@ export const ReferralDashboard: React.FC = () => {
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 readOnly
-                value={summary?.referralCode || '...'}
+                value={activeReferralCode}
                 style={{ flex: 1, padding: '10px 12px', borderRadius: '6px', backgroundColor: '#10101A', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', fontWeight: 700, letterSpacing: '1px' }}
               />
               <button
-                onClick={() => summary && copyToClipboard(summary.referralCode, false)}
+                onClick={() => copyToClipboard(activeReferralCode, false)}
                 style={{ padding: '0 16px', borderRadius: '6px', backgroundColor: copiedCode ? '#10B981' : '#334155', color: '#FFF', fontWeight: 600, fontSize: '12px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 {copiedCode ? '✓ Copied' : 'Copy Code'}

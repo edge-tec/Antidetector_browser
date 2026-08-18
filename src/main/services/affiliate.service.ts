@@ -127,16 +127,28 @@ export class AffiliateService {
   public getOrCreateReferralCode(userId: string): { referralCode: string; referralLink: string } {
     const db = getDatabase()
     const user = db.prepare('SELECT id, referral_code FROM users WHERE id = ?').get(userId) as { id: string; referral_code?: string } | undefined
-    if (!user) throw new Error('User not found')
 
-    let code = user.referral_code
+    let code = user?.referral_code
     if (!code) {
-      code = 'REF_' + userId.slice(0, 4).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase()
-      db.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(code, userId)
+      const prefix = userId && userId.length >= 4 ? userId.slice(0, 4).toUpperCase() : 'USER'
+      code = 'REF_' + prefix + '_' + Math.random().toString(36).substring(2, 6).toUpperCase()
+
+      if (user) {
+        db.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(code, userId)
+      } else {
+        // Upsert user into users table so foreign keys and referral lookups work seamlessly
+        try {
+          db.prepare(`
+            INSERT INTO users (id, email, name, role, email_verified, referral_code, created_at, updated_at)
+            VALUES (?, ?, ?, 'user', 1, ?, datetime('now'), datetime('now'))
+          `).run(userId, `${userId}@antiprofiles.local`, `User ${userId.slice(0, 6)}`, code)
+        } catch {}
+      }
     }
 
     const settings = this.getSettings()
-    const link = `${settings.system_domain.replace(/\/$/, '')}/register?ref=${code}`
+    const domain = (settings?.system_domain || 'https://antiprofiles.com').replace(/\/$/, '')
+    const link = `${domain}/register?ref=${code}`
 
     return { referralCode: code, referralLink: link }
   }

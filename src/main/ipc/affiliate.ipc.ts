@@ -23,8 +23,13 @@ export function registerAffiliateHandlers(): void {
   // ── 1. User: Get Affiliate Summary & Balances ──
   ipcMain.handle('affiliate:getUserSummary', async (_event, userId: string) => {
     try {
-      if (!userId) return { success: false, error: 'User ID is required.' }
-      const summary = affiliateService.getUserAffiliateSummary(userId)
+      let targetUserId = (userId && typeof userId === 'string') ? userId.trim() : ''
+      if (!targetUserId) {
+        const db = getDatabase()
+        const user = db.prepare('SELECT id FROM users ORDER BY created_at ASC LIMIT 1').get() as { id: string } | undefined
+        targetUserId = user?.id || 'usr_default'
+      }
+      const summary = affiliateService.getUserAffiliateSummary(targetUserId)
       return { success: true, data: summary }
     } catch (err: any) {
       return { success: false, error: err.message }
