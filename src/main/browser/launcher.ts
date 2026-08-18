@@ -114,14 +114,17 @@ function setupFirefoxProfilePrefs(
     }
   }
 
-  // Keep Firefox UI & font scaling at normal 100% responsive default
+  // Keep Firefox UI & font scaling user-friendly, sleek, and responsive
   prefs.push('user_pref("layout.css.devPixelsPerPx", "-1.0");')
-  prefs.push('user_pref("browser.uidensity", 0);')
+  prefs.push('user_pref("browser.compactmode.show", true);')
+  prefs.push('user_pref("browser.uidensity", 1);')
   prefs.push('user_pref("font.size.systemFontScale", 100);')
-  prefs.push('user_pref("browser.window.width", 1280);')
-  prefs.push('user_pref("browser.window.height", 800);')
+  prefs.push('user_pref("browser.window.width", 1366);')
+  prefs.push('user_pref("browser.window.height", 850);')
+  prefs.push('user_pref("browser.tabs.tabmanager.enabled", false);')
   prefs.push('user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);')
   prefs.push('user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);')
+  prefs.push('user_pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);')
 
   // Hardware Acceleration
   if (profile.hwAcceleration === false) {
@@ -158,10 +161,10 @@ function setupFirefoxProfilePrefs(
   const xulstoreConfig = {
     'chrome://browser/content/browser.xhtml': {
       'main-window': {
-        width: '1280',
-        height: '800',
+        width: '1366',
+        height: '850',
         sizemode: 'normal',
-        screenX: '100',
+        screenX: '120',
         screenY: '60'
       }
     }
@@ -186,15 +189,15 @@ export async function launchFirefox(
   const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
 
-  // Use standard -no-remote, -profile, and compact window dimensions
+  // Use standard -no-remote, -profile, and responsive user-friendly dimensions
   const args: string[] = [
     '-no-remote',
     '-profile',
     userDataDir,
     '-width',
-    '1280',
+    '1366',
     '-height',
-    '800'
+    '850'
   ]
 
   if (startUrls.length > 0) {
@@ -208,7 +211,7 @@ export async function launchFirefox(
 
   if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
     const appPath = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
-    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir, '-width', '1280', '-height', '800']
+    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir, '-width', '1366', '-height', '850']
     if (startUrls.length > 0) {
       openArgs.push(...startUrls)
     }
