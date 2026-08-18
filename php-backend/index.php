@@ -5244,6 +5244,30 @@ header('Content-Type: text/html; charset=utf-8');
             }).join('');
         }
 
+        function appendAdminBubble(senderType, senderName, messageText, timeStr) {
+            const stream = document.getElementById('adminMsgStream');
+            if (!stream) return;
+            // Remove 'No messages yet' placeholder if present
+            const placeholder = stream.querySelector('div');
+            if (placeholder && placeholder.innerText.includes('No messages in this conversation yet')) {
+                placeholder.remove();
+            }
+            const isAgent = senderType === 'agent';
+            const safeMsg = (messageText || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = isAgent ? 'chat-bubble-agent' : 'chat-bubble-user';
+            bubbleDiv.style.cssText = isAgent ? 'align-self:flex-end; background:#181B26; color:#FFF; border:1px solid #2DD4BF;' : 'align-self:flex-start; background:var(--bg-input); color:#FFF; border:1px solid var(--border);';
+            bubbleDiv.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:12px;">
+                    <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#818CF8'};">${senderName || (isAgent ? 'Staff Agent' : 'Customer')}</span>
+                    <span style="font-size: 10px; color: var(--text-muted);">${timeStr || 'Just now'}</span>
+                </div>
+                <p style="font-size: 13px; margin: 0; line-height: 1.45; word-break: break-word;">${safeMsg}</p>
+            `;
+            stream.appendChild(bubbleDiv);
+            stream.scrollTop = stream.scrollHeight;
+        }
+
         async function openAdminSupportThread(convId, keepScroll = false) {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
@@ -5267,7 +5291,25 @@ header('Content-Type: text/html; charset=utf-8');
                 if (data && data.success && data.conversation) {
                     const c = data.conversation;
                     const msgs = data.messages || [];
-                    const notes = data.internal_notes || [];
+
+                    // If keepScroll is true and stream already exists, simply update stream content without recreating the whole panel
+                    const existingStream = document.getElementById('adminMsgStream');
+                    if (keepScroll && existingStream) {
+                        existingStream.innerHTML = msgs.length === 0 ? '<div style="text-align:center; color:var(--text-muted); padding:30px;">No messages in this conversation yet.</div>' : msgs.map(m => {
+                            const isAgent = m.sender_type === 'agent';
+                            return `
+                                <div class="${isAgent ? 'chat-bubble-agent' : 'chat-bubble-user'}" style="${isAgent ? 'align-self:flex-end; background:#181B26; color:#FFF; border:1px solid #2DD4BF;' : 'align-self:flex-start; background:var(--bg-input); color:#FFF; border:1px solid var(--border);'}">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:12px;">
+                                        <span style="font-size: 11px; font-weight: 700; color: ${isAgent ? '#2DD4BF' : '#818CF8'};">${isAgent ? (m.sender_name || 'Staff Agent') : (m.sender_name || 'Customer')}</span>
+                                        <span style="font-size: 10px; color: var(--text-muted);">${m.created_at || 'Just now'}</span>
+                                    </div>
+                                    <p style="font-size: 13px; margin: 0; line-height: 1.45; word-break: break-word;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                                </div>
+                            `;
+                        }).join('');
+                        existingStream.scrollTop = existingStream.scrollHeight;
+                        return;
+                    }
 
                     panel.innerHTML = `
                         <!-- Thread Header -->
@@ -5325,6 +5367,13 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
+        // Live Auto-Refresh active thread every 3 seconds
+        setInterval(() => {
+            if (_activeSupportConvId && document.getElementById('adminMsgStream')) {
+                openAdminSupportThread(_activeSupportConvId, true);
+            }
+        }, 3000);
+
         async function sendAdminSupportReply(e, convId) {
             if (e && e.preventDefault) e.preventDefault();
             const token = localStorage.getItem('sessionToken');
@@ -5339,6 +5388,10 @@ header('Content-Type: text/html; charset=utf-8');
 
             input.value = '';
 
+            // Instant live optimistic append
+            const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            appendAdminBubble('agent', 'admin', text, nowTime);
+
             try {
                 const res = await fetch('/api/support?action=admin-reply', {
                     method: 'POST',
@@ -5347,21 +5400,13 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data && data.success) {
-                    try {
-                        await openAdminSupportThread(convId, true);
-                        loadSupportConversations();
-                    } catch(innerErr) {
-                        console.log('Conversation refresh completed');
-                    }
+                    loadSupportConversations();
                 } else {
                     alert('Failed to send reply: ' + ((data && data.error) ? data.error : 'Unknown error'));
                     if (input) input.value = text;
                 }
             } catch(e) {
                 console.error('Support reply error:', e);
-                if (!e.message || !e.message.toLowerCase().includes('pattern')) {
-                    alert('Error sending reply: ' + (e.message || 'Please check connection'));
-                }
             }
         }
 
