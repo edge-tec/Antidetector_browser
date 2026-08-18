@@ -244,12 +244,8 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   const args: string[] = [
     '--no-first-run',
     '--no-default-browser-check',
-    '--disable-blink-features=AutomationControlled',
     '--start-maximized',
     '--window-position=0,0',
-    '--disable-features=TranslateUI',
-    '--disable-default-apps',
-    '--disable-hang-monitor',
     `--lang=${lang}`
   ]
 
@@ -437,7 +433,7 @@ export async function launchBrowser(
       headless: false,
       defaultViewport: null,
       args,
-      ignoreDefaultArgs: ['--enable-automation'],
+      ignoreDefaultArgs: true,
       handleSIGINT: false,
       handleSIGTERM: false,
       handleSIGHUP: false
