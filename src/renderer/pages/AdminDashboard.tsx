@@ -8,6 +8,7 @@ import { UserDisplay, Profile } from '../types'
 import { AdminSupportManager } from '../components/AdminSupportManager'
 import { AdminSeoManager } from '../components/AdminSeoManager'
 import { AdminSoftwareVersionManager } from '../components/AdminSoftwareVersionManager'
+import { AdminAffiliateManager } from '../components/AdminAffiliateManager'
 
 interface SmtpFormState {
   host: string
@@ -127,7 +128,7 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
 
 export const AdminDashboard: React.FC = () => {
   const { sessionToken, currentUser, impersonateUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'audit'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>('users')
   const [users, setUsers] = useState<UserDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
@@ -665,6 +666,23 @@ export const AdminDashboard: React.FC = () => {
               }}
             >
               🔍 SEO Management
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('affiliates')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: activeTab === 'affiliates' ? '#1C1C28' : 'transparent',
+                color: activeTab === 'affiliates' ? '#2DD4BF' : '#94A3B8',
+                fontWeight: activeTab === 'affiliates' ? 600 : 400,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              🤝 Affiliates & Referrals
             </button>
           </div>
 
@@ -1358,6 +1376,13 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'seo' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             <AdminSeoManager sessionToken={sessionToken || ''} />
+          </div>
+        )}
+
+        {/* Affiliate Management Tab View */}
+        {activeTab === 'affiliates' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <AdminAffiliateManager />
           </div>
         )}
       </div>

@@ -350,6 +350,19 @@ class RealtimeSyncService {
       case 'license.updated':
       case 'payment.completed':
         logger.info('sync', `[SyncEvent] Subscription/Payment update (${eventType}), refreshing license & feature quotas...`)
+        if (eventType === 'payment.completed' && parsedPayload) {
+          try {
+            const { affiliateService } = require('./affiliate.service')
+            affiliateService.processPaymentCommission({
+              userId: parsedPayload.user_id || parsedPayload.userId,
+              amount: parseFloat(parsedPayload.amount || '0'),
+              paymentId: parsedPayload.payment_id || parsedPayload.transaction_id || parsedPayload.id,
+              planName: parsedPayload.plan_name || parsedPayload.plan_id
+            })
+          } catch (e: any) {
+            logger.warn('sync', `Failed to process affiliate commission on payment: ${e.message}`)
+          }
+        }
         await this.resyncAuthoritativeState()
         this.broadcastToAllWindows('payment:completed', parsedPayload)
         this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })

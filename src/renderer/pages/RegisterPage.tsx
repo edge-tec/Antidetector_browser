@@ -17,6 +17,16 @@ export const RegisterPage: React.FC<Props> = ({ onNavigateLogin, onRegistrationS
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [refCode, setRefCode] = useState(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const ref = urlParams.get('ref') || urlParams.get('r') || localStorage.getItem('antiprofiles_referral_code') || ''
+      if (ref) localStorage.setItem('antiprofiles_referral_code', ref)
+      return ref
+    } catch {
+      return ''
+    }
+  })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +46,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigateLogin, onRegistrationS
 
     setLoading(true)
     try {
-      const res = await register(name, email, password, confirmPassword)
+      const res = await register(name, email, password, confirmPassword, refCode || undefined)
       if (res.success) {
         onRegistrationSuccess(email, res.verificationUrl)
       } else {
@@ -201,6 +211,30 @@ export const RegisterPage: React.FC<Props> = ({ onNavigateLogin, onRegistrationS
                 border: '1px solid #2C2C3E',
                 color: '#FFF',
                 fontSize: '14px',
+                outline: 'none'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 500 }}>
+              <span>Referral Code</span>
+              <span style={{ color: '#64748B' }}>Optional</span>
+            </label>
+            <input
+              type="text"
+              value={refCode}
+              onChange={e => setRefCode(e.target.value.toUpperCase())}
+              placeholder="e.g. REF_ABCD12"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                backgroundColor: '#14141F',
+                border: refCode ? '1px solid #2DD4BF80' : '1px solid #2C2C3E',
+                color: '#2DD4BF',
+                fontSize: '13px',
+                fontWeight: 600,
                 outline: 'none'
               }}
             />

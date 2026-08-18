@@ -19,7 +19,7 @@ interface AuthContextType {
   isVerified: boolean
   isAdmin: boolean
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string; requiresVerification?: boolean; verificationUrl?: string; user?: UserDisplay; token?: string }>
-  register: (name: string, email: string, pass: string, confirm: string) => Promise<{ success: boolean; error?: string; verificationUrl?: string }>
+  register: (name: string, email: string, pass: string, confirm: string, refCode?: string) => Promise<{ success: boolean; error?: string; verificationUrl?: string }>
   googleLogin: (payload?: any) => Promise<{ success: boolean; error?: string }>
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>
   resendVerification: (email: string) => Promise<{ success: boolean; error?: string; verificationUrl?: string }>
@@ -184,8 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res
   }
 
-  const register = async (name: string, email: string, pass: string, confirm: string) => {
-    return await callIpc('auth:register', { name, email, password: pass, confirmPassword: confirm })
+  const register = async (name: string, email: string, pass: string, confirm: string, refCode?: string) => {
+    return await callIpc('auth:register', { name, email, password: pass, confirmPassword: confirm, ref: refCode })
   }
 
   const googleLogin = async (payload?: any) => {

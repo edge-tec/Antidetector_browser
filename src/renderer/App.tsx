@@ -19,6 +19,7 @@ import { LandingPage } from './pages/LandingPage'
 import { SupportChatWidget } from './components/SupportChatWidget'
 import { BrowserSetupModal } from './components/BrowserSetupModal'
 import { SoftwareUpdateModal, UpdateInfoPayload } from './components/SoftwareUpdateModal'
+import { ReferralDashboard } from './pages/ReferralDashboard'
 import logoImg from './assets/logo.png'
 
 // ═══════════════════════════════════════════
@@ -27,6 +28,7 @@ import logoImg from './assets/logo.png'
 
 const Icons = {
   dashboard: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+  gift: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>,
   profiles: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
   groups: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>,
   proxies: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
@@ -2023,6 +2025,7 @@ function AppContent() {
     { page: 'automation', icon: Icons.automation, label: 'Automation', section: 'TOOLS' },
     { page: 'settings', icon: Icons.settings, label: 'Settings' },
     { page: 'logs', icon: Icons.logs, label: 'Logs' },
+    { page: 'affiliate', icon: Icons.gift, label: 'Affiliates & Referrals', section: 'EARN' },
     { page: 'support', icon: Icons.chat, label: 'Live Support', section: 'HELP & SUPPORT' },
   ]
 
@@ -2307,6 +2310,7 @@ function AppContent() {
               {currentPage === 'automation' && <AutomationPage showToast={showToast} />}
               {currentPage === 'settings' && <SettingsPage theme={theme} setTheme={setTheme} showToast={showToast} />}
               {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
+              {currentPage === 'affiliate' && <ReferralDashboard />}
               {currentPage === 'support' && <SupportPage showToast={showToast} />}
             </>
           )}

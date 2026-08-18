@@ -18,8 +18,9 @@ export function setupAuthIPC(): void {
   // ── Register Handler (Central Server First) ──
   ipcMain.handle('auth:register', async (_event, input: any) => {
     try {
-      const { name, email, password, confirmPassword, captchaToken, captcha_token } = input || {}
+      const { name, email, password, confirmPassword, captchaToken, captcha_token, ref, refCode, referralCode, referral_code } = input || {}
       const cTok = captchaToken || captcha_token || ''
+      const referral = ref || refCode || referralCode || referral_code || ''
 
       if (!name || typeof name !== 'string' || name.trim().length < 2) {
         return { success: false, error: 'Name must be at least 2 characters long.' }
@@ -80,6 +81,14 @@ export function setupAuthIPC(): void {
         const localToken = centralRes.sessionToken || sessionManager.createSession(displayUser as any)
         sessionManager.registerSession(localToken, displayUser as any)
         
+        // Record referral attribution if provided
+        if (referral) {
+          try {
+            const { affiliateService } = require('../services/affiliate.service')
+            affiliateService.recordReferralAttribution(u.id, referral)
+          } catch {}
+        }
+
         // Start real-time synchronization with Central Server
         try {
           syncService.startSync(localToken)
@@ -111,6 +120,14 @@ export function setupAuthIPC(): void {
         emailVerified: true,
         accountStatus: 'active'
       })
+
+      // Record referral attribution in local SQLite
+      if (referral) {
+        try {
+          const { affiliateService } = require('../services/affiliate.service')
+          affiliateService.recordReferralAttribution(user.id, referral)
+        } catch {}
+      }
 
       const displayUser = userRepo.getDisplayById(user.id)!
       const token = sessionManager.createSession(displayUser)

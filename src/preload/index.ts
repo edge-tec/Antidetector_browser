@@ -315,6 +315,35 @@ const api = {
   onDownloadProgress: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('updater:download-progress', callback)
     return () => ipcRenderer.removeListener('updater:download-progress', callback)
+  },
+
+  // ── Referral & Affiliate Commission System ──
+  affiliateGetUserSummary: (userId: string) => ipcRenderer.invoke('affiliate:getUserSummary', userId),
+  affiliateRequestWithdrawal: (userId: string, amount: number, method: string, payoutDetails: any) =>
+    ipcRenderer.invoke('affiliate:requestWithdrawal', userId, amount, method, payoutDetails),
+  affiliateRecordAttribution: (userId: string, refCode: string) =>
+    ipcRenderer.invoke('affiliate:recordAttribution', userId, refCode),
+  affiliateGetAdminOverview: (token?: string) =>
+    ipcRenderer.invoke('affiliate:getAdminOverview', token),
+  affiliateAdminSaveSettings: (token: string, settings: any) =>
+    ipcRenderer.invoke('affiliate:adminSaveSettings', token, settings),
+  affiliateAdminUpdateWithdrawal: (token: string, withdrawalId: string, status: any, adminNotes?: string, txRef?: string) =>
+    ipcRenderer.invoke('affiliate:adminUpdateWithdrawal', token, withdrawalId, status, adminNotes, txRef),
+  affiliateAdminReverseCommission: (token: string, commissionId: string, reason: string) =>
+    ipcRenderer.invoke('affiliate:adminReverseCommission', token, commissionId, reason),
+  affiliateAdminAdjustBalance: (token: string, userId: string, amount: number, reason: string) =>
+    ipcRenderer.invoke('affiliate:adminAdjustBalance', token, userId, amount, reason),
+  onAffiliateCommissionEarned: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('ui:affiliate-commission-earned', callback)
+    return () => ipcRenderer.removeListener('ui:affiliate-commission-earned', callback)
+  },
+  onAffiliateNewReferral: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('ui:affiliate-new-referral', callback)
+    return () => ipcRenderer.removeListener('ui:affiliate-new-referral', callback)
+  },
+  onAffiliateWithdrawalUpdated: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('ui:affiliate-withdrawal-updated', callback)
+    return () => ipcRenderer.removeListener('ui:affiliate-withdrawal-updated', callback)
   }
 }
 

@@ -106,7 +106,7 @@ export interface IpcResult<T = any> {
   error?: string
 }
 
-export type Page = 'dashboard' | 'profiles' | 'groups' | 'proxies' | 'automation' | 'settings' | 'logs' | 'support'
+export type Page = 'dashboard' | 'profiles' | 'groups' | 'proxies' | 'automation' | 'settings' | 'logs' | 'support' | 'affiliate'
 
 export type ConversationStatus = 'open' | 'pending' | 'waiting_user' | 'waiting_support' | 'closed'
 export type ConversationPriority = 'low' | 'normal' | 'high' | 'urgent'
