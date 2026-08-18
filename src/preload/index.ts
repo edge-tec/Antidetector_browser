@@ -238,6 +238,10 @@ const api = {
     ipcRenderer.invoke('support:admin-save-settings', token, settings),
 
   // ── Events (Main → Renderer) ──
+  onProvisioningProgress: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('runtime:provisioning-progress', callback)
+    return () => ipcRenderer.removeListener('runtime:provisioning-progress', callback)
+  },
   onProfileStatusChanged: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('profile:statusChanged', callback)
     return () => ipcRenderer.removeListener('profile:statusChanged', callback)

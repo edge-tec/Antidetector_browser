@@ -21,6 +21,7 @@ import { BrowserSetupModal } from './components/BrowserSetupModal'
 import { SoftwareUpdateModal, UpdateInfoPayload } from './components/SoftwareUpdateModal'
 import { ReferralDashboard } from './pages/ReferralDashboard'
 import { BrowserRuntimeManager } from './components/BrowserRuntimeManager'
+import { RuntimeProvisioningModal, ProvisioningProgressData } from './components/RuntimeProvisioningModal'
 import { ProxyInfoCard } from './components/ProxyInfoCard'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
@@ -388,12 +389,24 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
     setLoading(false)
   }, [sessionToken, search])
 
+  const [provisioningProgress, setProvisioningProgress] = useState<ProvisioningProgressData | null>(null)
+
   useEffect(() => {
     loadProfiles()
     window.api.getProxies().then((r) => { if (r.success && r.data) setProxies(r.data) })
     window.api.getGroups().then((r) => { if (r.success && r.data) setGroups(r.data) })
     const unsub = window.api.onProfileStatusChanged((_e, _data) => loadProfiles())
-    return unsub
+    const unsubProg = (window.api as any).onProvisioningProgress ? (window.api as any).onProvisioningProgress((_e: any, data: any) => {
+      setProvisioningProgress(data)
+      if (data?.step === 'ready') {
+        setTimeout(() => setProvisioningProgress(null), 1200)
+      }
+    }) : undefined
+
+    return () => {
+      if (unsub) unsub()
+      if (unsubProg) unsubProg()
+    }
   }, [loadProfiles])
 
   const handleStartProfile = async (p: Profile) => {
@@ -706,6 +719,11 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           showToast={showToast}
         />
       </ErrorBoundary>
+
+      <RuntimeProvisioningModal
+        data={provisioningProgress}
+        onClose={() => setProvisioningProgress(null)}
+      />
     </div>
   )
 }

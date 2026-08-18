@@ -10,6 +10,7 @@ import { Profile, ProfileCreateInput } from '../database/models'
 import { launchBrowser } from './launcher'
 import { processTracker } from './process-tracker'
 import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
+import { ensureBrowserRuntime } from './runtime-provisioner'
 import { logger } from '../logging/logger'
 import { getDatabase } from '../database/connection'
 
@@ -70,42 +71,14 @@ class ProfileManager {
       rawFp?.browser?.type ||
       (rawFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
 
-    let executablePath: string | null = null
+    const targetEngine: 'chromium' | 'firefox' = browserType === 'firefox' ? 'firefox' : 'chromium'
 
-    if (browserType === 'firefox') {
-      const db = getDatabase()
-      const customFfRow = db.prepare("SELECT value FROM settings WHERE key = 'firefoxPath'").get() as { value: string } | undefined
-      this.firefoxPath = await findFirefoxPath(customFfRow?.value)
+    // ── Auto-Provision & Verify AntiProfiles-Managed Browser Runtime ──
+    logger.info('browser', `[BrowserLaunch] Ensuring standalone managed ${targetEngine.toUpperCase()} runtime for profile "${profile.name}" (${profileId})...`)
+    const executablePath = await ensureBrowserRuntime(targetEngine, profileId)
 
-      if (!this.firefoxPath || !fs.existsSync(this.firefoxPath)) {
-        logger.info('browser', '[BrowserLaunch] Standalone Managed Firefox runtime not found. Initiating automatic standalone download...')
-        try {
-          const { downloadAndInstallManagedFirefox } = await import('./firefox-downloader')
-          this.firefoxPath = await downloadAndInstallManagedFirefox()
-        } catch (downErr: any) {
-          throw new Error(
-            `Independent Firefox runtime was not found and automatic installation failed: ${downErr.message}.`
-          )
-        }
-      }
-      executablePath = this.firefoxPath
-    } else {
-      const db = getDatabase()
-      const customPathRow = db.prepare("SELECT value FROM settings WHERE key = 'chromiumPath'").get() as { value: string } | undefined
-      this.chromiumPath = await findChromiumPath(customPathRow?.value)
-
-      if (!this.chromiumPath || !fs.existsSync(this.chromiumPath)) {
-        logger.info('browser', '[BrowserLaunch] Managed Chromium runtime not found. Initiating automatic standalone download...')
-        try {
-          const { downloadAndInstallManagedChromium } = await import('./chromium-downloader')
-          this.chromiumPath = await downloadAndInstallManagedChromium()
-        } catch (downErr: any) {
-          throw new Error(
-            `Independent Chromium runtime was not found and automatic installation failed: ${downErr.message}.`
-          )
-        }
-      }
-      executablePath = this.chromiumPath
+    if (!executablePath || !fs.existsSync(executablePath)) {
+      throw new Error(`Failed to locate verified ${targetEngine.toUpperCase()} executable after provisioning.`)
     }
 
     // Ensure profile data directory is accessible and created
