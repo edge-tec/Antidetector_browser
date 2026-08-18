@@ -57,7 +57,9 @@ export function setupSupportIPC(): void {
       if (centralRes.success && centralRes.data) {
         return { success: true, data: centralRes.data }
       }
-    } catch {}
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central getUserConversations warning:', err.message)
+    }
 
     const user = getAuthUserFromToken(token)
     try {
@@ -76,7 +78,9 @@ export function setupSupportIPC(): void {
       if (centralRes.success && centralRes.data) {
         return { success: true, data: centralRes.data }
       }
-    } catch {}
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central getConversation warning:', err.message)
+    }
 
     const user = getAuthUserFromToken(token)
     try {
@@ -92,11 +96,20 @@ export function setupSupportIPC(): void {
   safeHandle('support:create-conversation', async (_, token: string, input: { subject: string; initialMessage: string; priority?: string; attachment?: any; guestName?: string; guestEmail?: string }) => {
     if (token) centralApi.setSessionToken(token)
     try {
-      const centralRes = await centralApi.createTicket(input.subject, input.initialMessage, input.priority)
+      const centralRes = await centralApi.createTicket(input.subject, input.initialMessage, input.priority, {
+        guest_name: input.guestName,
+        guest_email: input.guestEmail
+      })
       if (centralRes.success) {
+        try {
+          const user = getAuthUserFromToken(token, { name: input?.guestName, email: input?.guestEmail })
+          supportService.createConversation(user.id, input.subject, input.initialMessage, input.priority || 'normal', input.attachment)
+        } catch {}
         return { success: true, data: centralRes.data, conversation_id: centralRes.conversation_id }
       }
-    } catch {}
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central createTicket warning:', err.message)
+    }
 
     const user = getAuthUserFromToken(token, { name: input?.guestName, email: input?.guestEmail })
     try {
@@ -117,11 +130,21 @@ export function setupSupportIPC(): void {
   safeHandle('support:send-message', async (_, token: string, conversationId: string, message: string, attachment?: any) => {
     if (token) centralApi.setSessionToken(token)
     try {
-      const centralRes = await centralApi.sendMessage(conversationId, message)
+      const centralRes = await centralApi.sendMessage(conversationId, message, attachment)
       if (centralRes.success) {
-        return { success: true, message_id: centralRes.message_id }
+        try {
+          const user = getAuthUserFromToken(token)
+          const senderType = user.role === 'admin' ? 'agent' : 'user'
+          supportService.sendMessage(conversationId, user.id, senderType, message, attachment)
+        } catch {}
+        return { success: true, data: centralRes.data, message_id: centralRes.message_id }
       }
-    } catch {}
+      if (centralRes.error) {
+        console.warn('[SupportIPC] Central sendMessage returned error:', centralRes.error)
+      }
+    } catch (err: any) {
+      console.warn('[SupportIPC] Central sendMessage exception:', err.message)
+    }
 
     const user = getAuthUserFromToken(token)
     try {
@@ -135,6 +158,11 @@ export function setupSupportIPC(): void {
 
   // 5. Mark Messages as Read
   safeHandle('support:mark-read', async (_, token: string, conversationId: string) => {
+    if (token) centralApi.setSessionToken(token)
+    try {
+      await centralApi.markSupportRead(conversationId)
+    } catch {}
+
     const user = getAuthUserFromToken(token)
     try {
       const readerType = user.role === 'admin' ? 'agent' : 'user'

@@ -288,17 +288,36 @@ export class CentralApiClient {
 
   // ── Live Support APIs ──
   public async getUserConversations(): Promise<{ success: boolean; data?: any[]; error?: string }> {
-    return await this.request('/api/support/user-conversations', { method: 'GET' })
+    return await this.request('/api/support?action=user-conversations', { method: 'GET' })
   }
 
   public async getConversation(conversationId: string): Promise<{ success: boolean; data?: any; error?: string }> {
-    return await this.request(`/api/support/conversation?id=${encodeURIComponent(conversationId)}`, { method: 'GET' })
+    return await this.request(`/api/support?action=conversation&id=${encodeURIComponent(conversationId)}`, { method: 'GET' })
   }
 
-  public async createTicket(subject: string, message: string, priority: string = 'normal'): Promise<{ success: boolean; data?: any; conversation_id?: string; error?: string }> {
-    return await this.request('/api/support/create-conversation', {
+  public async createTicket(subject: string, message: string, priority: string = 'normal', guestInfo?: any): Promise<{ success: boolean; data?: any; conversation_id?: string; error?: string }> {
+    return await this.request('/api/support?action=create-conversation', {
       method: 'POST',
-      body: JSON.stringify({ subject, message, priority })
+      body: JSON.stringify({ subject, message, priority, ...(guestInfo || {}) })
+    })
+  }
+
+  public async sendMessage(conversationId: string, message: string, attachment?: any, clientMessageId?: string): Promise<{ success: boolean; message_id?: string; data?: any; error?: string }> {
+    return await this.request('/api/support?action=send-message', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        message,
+        attachment,
+        client_message_id: clientMessageId || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+      })
+    })
+  }
+
+  public async markSupportRead(conversationId: string): Promise<{ success: boolean; error?: string }> {
+    return await this.request('/api/support?action=mark-read', {
+      method: 'POST',
+      body: JSON.stringify({ conversation_id: conversationId })
     })
   }
 

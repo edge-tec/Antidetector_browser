@@ -39,7 +39,190 @@ try {
             }
             break;
 
-        // ── 2. Get Active Live Chat Thread (Visitor / User) ──
+        // ── 2. Get User Conversations List (Desktop App & Web) ──
+        case 'user-conversations':
+        case 'get-user-conversations':
+            $userId = $user['id'] ?? null;
+            $visitorToken = trim($_GET['visitor_token'] ?? $input['visitor_token'] ?? '');
+
+            if (!$userId && !$visitorToken) {
+                respondJson(['success' => true, 'data' => []]);
+            }
+
+            $where = [];
+            $params = [];
+            if ($userId) {
+                $where[] = "c.user_id = ?";
+                $params[] = $userId;
+            } elseif ($visitorToken) {
+                $where[] = "c.visitor_token = ?";
+                $params[] = $visitorToken;
+            }
+
+            $whereSql = implode(' AND ', $where);
+            $stmt = $db->prepare("
+                SELECT 
+                    c.*,
+                    (SELECT message FROM support_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_preview,
+                    (SELECT created_at FROM support_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_msg_time,
+                    (SELECT COUNT(*) FROM support_messages WHERE conversation_id = c.id AND sender_type = 'agent' AND is_read = 0) as unread_count
+                FROM support_conversations c
+                WHERE {$whereSql}
+                ORDER BY COALESCE(c.last_message_at, c.created_at) DESC
+            ");
+            $stmt->execute($params);
+            $convs = $stmt->fetchAll();
+            respondJson(['success' => true, 'data' => $convs]);
+            break;
+
+        // ── 2.1 Get Single Conversation Thread ──
+        case 'conversation':
+        case 'get-conversation':
+            $convId = trim($_GET['id'] ?? $_GET['conversation_id'] ?? $input['id'] ?? $input['conversation_id'] ?? '');
+            $visitorToken = trim($_GET['visitor_token'] ?? $input['visitor_token'] ?? '');
+            $userId = $user['id'] ?? null;
+
+            if (!$convId && !$visitorToken && !$userId) {
+                respondJson(['success' => false, 'error' => 'Conversation ID required.'], 400);
+            }
+
+            $conv = null;
+            if ($convId) {
+                $stmt = $db->prepare("SELECT * FROM support_conversations WHERE id = ?");
+                $stmt->execute([$convId]);
+                $conv = $stmt->fetch();
+            }
+
+            if (!$conv && $userId) {
+                $stmt = $db->prepare("SELECT * FROM support_conversations WHERE user_id = ? ORDER BY COALESCE(last_message_at, created_at) DESC LIMIT 1");
+                $stmt->execute([$userId]);
+                $conv = $stmt->fetch();
+            }
+
+            if (!$conv && $visitorToken) {
+                $stmt = $db->prepare("SELECT * FROM support_conversations WHERE visitor_token = ? ORDER BY COALESCE(last_message_at, created_at) DESC LIMIT 1");
+                $stmt->execute([$visitorToken]);
+                $conv = $stmt->fetch();
+            }
+
+            if (!$conv) {
+                respondJson(['success' => true, 'data' => null, 'messages' => []]);
+            }
+
+            // Mark agent messages as read
+            try {
+                $db->prepare("UPDATE support_messages SET is_read = 1, read_at = NOW() WHERE conversation_id = ? AND sender_type = 'agent' AND is_read = 0")->execute([$conv['id']]);
+            } catch (Throwable $e) {}
+
+            $msgStmt = $db->prepare("
+                SELECT id, conversation_id, client_message_id, sender_id, sender_name, sender_type, message, message_type, status, is_read, created_at 
+                FROM support_messages 
+                WHERE conversation_id = ? 
+                ORDER BY created_at ASC
+            ");
+            $msgStmt->execute([$conv['id']]);
+            $messages = $msgStmt->fetchAll();
+
+            $conv['messages'] = $messages;
+            respondJson([
+                'success' => true,
+                'data' => $conv,
+                'messages' => $messages
+            ]);
+            break;
+
+        // ── 2.2 Create New Support Conversation / Ticket ──
+        case 'create-conversation':
+        case 'create-ticket':
+            $subject = trim($input['subject'] ?? 'Live Chat Support');
+            $messageText = trim($input['initialMessage'] ?? $input['message'] ?? '');
+            $priority = trim($input['priority'] ?? 'normal');
+            $guestName = trim($input['guest_name'] ?? $input['guestName'] ?? $user['name'] ?? 'Visitor Guest');
+            $guestEmail = trim($input['guest_email'] ?? $input['guestEmail'] ?? $user['email'] ?? '');
+            $visitorToken = trim($input['visitor_token'] ?? $_GET['visitor_token'] ?? '');
+            $userId = $user['id'] ?? null;
+            $channel = $input['channel'] ?? ($user ? 'desktop' : 'widget');
+
+            if (!$messageText) {
+                respondJson(['success' => false, 'error' => 'Initial message cannot be empty.'], 400);
+            }
+
+            if (!$userId && !$visitorToken) {
+                $visitorToken = 'vis_' . bin2hex(random_bytes(12));
+            }
+
+            $convId = 'conv_' . bin2hex(random_bytes(8));
+            $msgId = 'msg_' . bin2hex(random_bytes(8));
+
+            $db->beginTransaction();
+
+            $insConv = $db->prepare("
+                INSERT INTO support_conversations (id, user_id, visitor_token, guest_name, guest_email, channel, status, priority, subject, last_message_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, NOW(), NOW())
+            ");
+            $insConv->execute([
+                $convId,
+                $userId,
+                $visitorToken,
+                $guestName,
+                $guestEmail,
+                $channel,
+                $priority,
+                $subject
+            ]);
+
+            $insMsg = $db->prepare("
+                INSERT INTO support_messages (id, conversation_id, sender_id, sender_name, sender_type, message, message_type, status, is_read, created_at)
+                VALUES (?, ?, ?, ?, 'user', ?, 'text', 'sent', 0, NOW())
+            ");
+            $insMsg->execute([
+                $msgId,
+                $convId,
+                $userId ?: $visitorToken,
+                $guestName,
+                $messageText
+            ]);
+
+            $db->commit();
+
+            // Broadcast real-time SSE event for admin inbox
+            publishEvent('support.message.created', [
+                'conversation_id' => $convId,
+                'message_id' => $msgId,
+                'sender_name' => $guestName,
+                'sender_email' => $guestEmail,
+                'sender_type' => 'user',
+                'channel' => $channel,
+                'subject' => $subject,
+                'message' => $messageText,
+                'created_at' => date('c')
+            ]);
+
+            respondJson([
+                'success' => true,
+                'conversation_id' => $convId,
+                'message_id' => $msgId,
+                'data' => [
+                    'id' => $convId,
+                    'subject' => $subject,
+                    'status' => 'open',
+                    'priority' => $priority,
+                    'created_at' => date('c'),
+                    'messages' => [
+                        [
+                            'id' => $msgId,
+                            'conversation_id' => $convId,
+                            'sender_name' => $guestName,
+                            'sender_type' => 'user',
+                            'message' => $messageText,
+                            'created_at' => date('c')
+                        ]
+                    ]
+                ]
+            ]);
+            break;
+
+        // ── 2.3 Get Active Live Chat Thread (Visitor / User) ──
         case 'active-thread':
         case 'get-active-thread':
             $visitorToken = trim($_GET['visitor_token'] ?? $input['visitor_token'] ?? '');
@@ -83,6 +266,7 @@ try {
             $msgStmt->execute([$conv['id']]);
             $messages = $msgStmt->fetchAll();
 
+            $conv['messages'] = $messages;
             respondJson([
                 'success' => true,
                 'data' => $conv,
@@ -93,9 +277,10 @@ try {
         // ── 3. Send Message (Guest Visitor or Authenticated User) ──
         case 'send':
         case 'send-message':
+            $targetConvId = trim($input['conversation_id'] ?? $input['conversationId'] ?? $_GET['conversation_id'] ?? '');
             $visitorToken = trim($input['visitor_token'] ?? $_GET['visitor_token'] ?? '');
             $messageText = trim($input['message'] ?? $input['initialMessage'] ?? '');
-            $clientMsgId = trim($input['client_message_id'] ?? '');
+            $clientMsgId = trim($input['client_message_id'] ?? $input['clientMessageId'] ?? '');
             $guestName = trim($input['name'] ?? $input['guest_name'] ?? '');
             $guestEmail = trim($input['email'] ?? $input['guest_email'] ?? '');
             $channel = $input['channel'] ?? ($user ? 'desktop' : 'widget');
@@ -116,9 +301,15 @@ try {
 
             $db->beginTransaction();
 
-            // Find existing open conversation
+            // 1. Find specified or active conversation
             $conv = null;
-            if ($userId) {
+            if ($targetConvId) {
+                $stmt = $db->prepare("SELECT * FROM support_conversations WHERE id = ? FOR UPDATE");
+                $stmt->execute([$targetConvId]);
+                $conv = $stmt->fetch();
+            }
+
+            if (!$conv && $userId) {
                 $stmt = $db->prepare("SELECT * FROM support_conversations WHERE user_id = ? AND status != 'closed' ORDER BY COALESCE(last_message_at, created_at) DESC LIMIT 1 FOR UPDATE");
                 $stmt->execute([$userId]);
                 $conv = $stmt->fetch();
@@ -133,7 +324,7 @@ try {
             $isNewConversation = false;
             if (!$conv) {
                 $isNewConversation = true;
-                $convId = 'conv_' . bin2hex(random_bytes(8));
+                $convId = $targetConvId ?: ('conv_' . bin2hex(random_bytes(8)));
 
                 $insertConv = $db->prepare("
                     INSERT INTO support_conversations (id, user_id, visitor_token, guest_name, guest_email, channel, status, priority, subject, last_message_at, created_at)
@@ -256,8 +447,30 @@ try {
                 'message_id' => $msgId,
                 'client_message_id' => $clientMsgId,
                 'status' => 'sent',
-                'created_at' => date('Y-m-d H:i:s')
+                'created_at' => date('Y-m-d H:i:s'),
+                'data' => [
+                    'id' => $msgId,
+                    'conversation_id' => $convId,
+                    'sender_name' => $senderName,
+                    'sender_type' => 'user',
+                    'message' => $messageText,
+                    'status' => 'sent',
+                    'created_at' => date('c')
+                ]
             ]);
+            break;
+
+        // ── 3.1 Mark Conversation Messages as Read ──
+        case 'mark-read':
+        case 'mark-as-read':
+            $convId = trim($input['conversation_id'] ?? $input['conversationId'] ?? $_GET['conversation_id'] ?? '');
+            if (!$convId) {
+                respondJson(['success' => false, 'error' => 'Conversation ID required.'], 400);
+            }
+            $readerType = ($user && in_array($user['role'], ['admin', 'super_admin'])) ? 'agent' : 'user';
+            $targetSenderType = ($readerType === 'agent') ? 'user' : 'agent';
+            $db->prepare("UPDATE support_messages SET is_read = 1, read_at = NOW() WHERE conversation_id = ? AND sender_type = ? AND is_read = 0")->execute([$convId, $targetSenderType]);
+            respondJson(['success' => true]);
             break;
 
         // ── 4. Get Conversation Messages History ──

@@ -79,8 +79,8 @@ export const SupportChatWidget: React.FC = () => {
   useEffect(() => {
     if (effectiveToken) {
       loadConversations()
-      // Intelligent polling: 10s when widget open, 30s when closed
-      const pollRate = isOpen ? 10000 : 30000
+      // Fast polling: 4s when widget open, 15s when closed
+      const pollRate = isOpen ? 4000 : 15000
       const interval = setInterval(loadConversations, pollRate)
       return () => clearInterval(interval)
     }
@@ -89,7 +89,7 @@ export const SupportChatWidget: React.FC = () => {
   useEffect(() => {
     if (activeConvId && isOpen) {
       loadActiveConversation(activeConvId)
-      const activeInterval = setInterval(() => loadActiveConversation(activeConvId), 8000)
+      const activeInterval = setInterval(() => loadActiveConversation(activeConvId), 3000)
       return () => clearInterval(activeInterval)
     }
   }, [activeConvId, isOpen, loadActiveConversation])
