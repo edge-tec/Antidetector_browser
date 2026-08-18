@@ -177,17 +177,39 @@ export async function launchFirefox(
 
   logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with -profile ${userDataDir} at: ${firefoxPath}`)
 
-  const child: ChildProcess = spawn(firefoxPath, args, {
-    detached: true,
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      MOZ_NO_REMOTE: '1'
-    }
-  })
+  let child: ChildProcess
+  let pid = 0
 
-  child.unref()
-  const pid = child.pid || 0
+  if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
+    const appPath = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
+    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir]
+    if (startUrls.length > 0) {
+      openArgs.push(...startUrls)
+    }
+
+    logger.info('browser', `[FirefoxLaunch] Spawning macOS GUI instance via open: ${openArgs.join(' ')}`)
+    child = spawn('open', openArgs, {
+      detached: true,
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        MOZ_NO_REMOTE: '1'
+      }
+    })
+    child.unref()
+    pid = child.pid || 0
+  } else {
+    child = spawn(firefoxPath, args, {
+      detached: true,
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        MOZ_NO_REMOTE: '1'
+      }
+    })
+    child.unref()
+    pid = child.pid || 0
+  }
 
   const mockBrowser: any = {
     connected: true,
