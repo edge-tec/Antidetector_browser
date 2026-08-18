@@ -114,10 +114,10 @@ function setupFirefoxProfilePrefs(
     }
   }
 
-  // Screen / DevicePixelRatio
-  if (fingerprint?.screen?.devicePixelRatio) {
-    prefs.push(`user_pref("layout.css.devPixelsPerPx", "${fingerprint.screen.devicePixelRatio}");`)
-  }
+  // Keep Firefox UI & font scaling at normal 100% responsive default
+  prefs.push('user_pref("layout.css.devPixelsPerPx", "-1.0");')
+  prefs.push('user_pref("browser.uidensity", 0);')
+  prefs.push('user_pref("font.size.systemFontScale", 100);')
 
   // Hardware Acceleration
   if (profile.hwAcceleration === false) {
