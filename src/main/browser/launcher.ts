@@ -68,7 +68,14 @@ function setupProfileBookmarks(userDataDir: string, bookmarks: Array<{ title: st
  * Build Chromium launch arguments for a profile.
  */
 function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Proxy | null): string[] {
-  const lang = fingerprint?.locale?.language || 'en-US'
+  let lang = fingerprint?.locale?.language || 'en-US'
+  if (fingerprint?.locale?.displayLanguageMode === 'real') {
+    try {
+      lang = Intl.DateTimeFormat().resolvedOptions().locale || 'en-US'
+    } catch {}
+  } else if (fingerprint?.locale?.displayLanguageMode === 'custom' && fingerprint?.locale?.displayLanguage) {
+    lang = fingerprint.locale.displayLanguage
+  }
 
   const args: string[] = [
     '--no-first-run',

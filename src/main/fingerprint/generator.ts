@@ -557,7 +557,7 @@ function generateClientRects(rng: SeededRandom): ClientRectsFingerprint {
 // ═══════════════════════════════════════════
 
 function generateFonts(family: OSFamily, rng: SeededRandom): FontsFingerprint {
-  const allFonts: string[] = (fontListsData as any)[family] || (fontListsData as any)['windows']
+  const allFonts: string[] = (fontListsData as any)[family] || (family === 'ios' ? (fontListsData as any)['macos'] : (fontListsData as any)['windows'])
 
   // Use 60-90% of the OS font list to create variation
   const count = Math.max(rng.int(Math.floor(allFonts.length * 0.6), allFonts.length), 3)
@@ -568,7 +568,8 @@ function generateFonts(family: OSFamily, rng: SeededRandom): FontsFingerprint {
     windows: ['Segoe UI', 'Arial'],
     macos: ['.AppleSystemUIFont', 'Helvetica'],
     linux: ['DejaVu Sans', 'Ubuntu'],
-    android: ['Roboto', 'Droid Sans', 'Noto Sans']
+    android: ['Roboto', 'Droid Sans', 'Noto Sans'],
+    ios: ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
   }
   const primaryMarkers = markers[family] || []
   if (primaryMarkers.length > 0 && !selectedFonts.some(f => primaryMarkers.includes(f))) {

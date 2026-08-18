@@ -116,8 +116,11 @@ export interface ScreenFingerprint {
 // ═══════════════════════════════════════════
 
 export interface LocaleFingerprint {
+  mode?: 'based_on_ip' | 'custom'
   language: string              // navigator.language, e.g. "en-US"
   languages: string[]           // navigator.languages, e.g. ["en-US", "en"]
+  displayLanguageMode?: 'based_on_language' | 'real' | 'custom'
+  displayLanguage?: string      // e.g. "en-US"
   country: string               // ISO 3166-1 alpha-2, e.g. "US"
   region: string                // e.g. "NY" (state/region)
   currency: string              // ISO 4217, e.g. "USD"

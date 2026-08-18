@@ -54,12 +54,73 @@ type TabType =
   | 'overview'
   | 'proxy'
   | 'timezone'
+  | 'language'
   | 'webrtc'
   | 'extensions'
   | 'bookmarks'
   | 'geolocation'
   | 'advanced'
   | 'cookies'
+
+export const WORLD_LANGUAGES: { code: string; name: string; native?: string }[] = [
+  { code: 'en-US', name: 'English (United States)', native: 'English (US)' },
+  { code: 'en-GB', name: 'English (United Kingdom)', native: 'English (UK)' },
+  { code: 'en-CA', name: 'English (Canada)', native: 'English (Canada)' },
+  { code: 'en-AU', name: 'English (Australia)', native: 'English (Australia)' },
+  { code: 'en', name: 'English', native: 'English' },
+  { code: 'es-ES', name: 'Spanish (Spain)', native: 'Español (España)' },
+  { code: 'es-MX', name: 'Spanish (Mexico)', native: 'Español (México)' },
+  { code: 'es', name: 'Spanish', native: 'Español' },
+  { code: 'fr-FR', name: 'French (France)', native: 'Français (France)' },
+  { code: 'fr-CA', name: 'French (Canada)', native: 'Français (Canada)' },
+  { code: 'fr', name: 'French', native: 'Français' },
+  { code: 'de-DE', name: 'German (Germany)', native: 'Deutsch (Deutschland)' },
+  { code: 'de', name: 'German', native: 'Deutsch' },
+  { code: 'it-IT', name: 'Italian (Italy)', native: 'Italiano (Italia)' },
+  { code: 'it', name: 'Italian', native: 'Italiano' },
+  { code: 'pt-BR', name: 'Portuguese (Brazil)', native: 'Português (Brasil)' },
+  { code: 'pt-PT', name: 'Portuguese (Portugal)', native: 'Português (Portugal)' },
+  { code: 'pt', name: 'Portuguese', native: 'Português' },
+  { code: 'ru-RU', name: 'Russian (Russia)', native: 'Русский' },
+  { code: 'ru', name: 'Russian', native: 'Русский' },
+  { code: 'zh-CN', name: 'Chinese (Simplified)', native: '中文 (简体)' },
+  { code: 'zh-TW', name: 'Chinese (Traditional)', native: '中文 (繁體)' },
+  { code: 'ja-JP', name: 'Japanese', native: '日本語' },
+  { code: 'ko-KR', name: 'Korean', native: '한국어' },
+  { code: 'ar-SA', name: 'Arabic (Saudi Arabia)', native: 'العربية' },
+  { code: 'ar', name: 'Arabic', native: 'العربية' },
+  { code: 'bn-BD', name: 'Bengali (Bangladesh)', native: 'বাংলা (বাংলাদেশ)' },
+  { code: 'bn-IN', name: 'Bengali (India)', native: 'বাংলা (ভারত)' },
+  { code: 'hi-IN', name: 'Hindi', native: 'हिन्दी' },
+  { code: 'tr-TR', name: 'Turkish', native: 'Türkçe' },
+  { code: 'nl-NL', name: 'Dutch', native: 'Nederlands' },
+  { code: 'pl-PL', name: 'Polish', native: 'Polski' },
+  { code: 'vi-VN', name: 'Vietnamese', native: 'Tiếng Việt' },
+  { code: 'id-ID', name: 'Indonesian', native: 'Bahasa Indonesia' },
+  { code: 'th-TH', name: 'Thai', native: 'ไทย' },
+  { code: 'uk-UA', name: 'Ukrainian', native: 'Українська' },
+  { code: 'sv-SE', name: 'Swedish', native: 'Svenska' },
+  { code: 'no-NO', name: 'Norwegian', native: 'Norsk' },
+  { code: 'fi-FI', name: 'Finnish', native: 'Suomi' },
+  { code: 'da-DK', name: 'Danish', native: 'Dansk' },
+  { code: 'cs-CZ', name: 'Czech', native: 'Čeština' },
+  { code: 'el-GR', name: 'Greek', native: 'Ελληνικά' },
+  { code: 'ro-RO', name: 'Romanian', native: 'Română' },
+  { code: 'hu-HU', name: 'Hungarian', native: 'Magyar' },
+  { code: 'he-IL', name: 'Hebrew', native: 'עברית' },
+  { code: 'fa-IR', name: 'Persian', native: 'فارسی' }
+]
+
+export function getLanguageLabel(code: string): string {
+  const found = WORLD_LANGUAGES.find(l => l.code.toLowerCase() === code.toLowerCase() || l.code.toLowerCase() === code.split('-')[0].toLowerCase())
+  if (found && found.code.toLowerCase() === code.toLowerCase()) {
+    return found.name
+  }
+  if (found) {
+    return `${found.name} (${code})`
+  }
+  return code
+}
 
 // Pre-defined timezones with UTC offset for timezone search
 const TIMEZONE_LIST = [
@@ -262,8 +323,11 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
         orientationAngle: 0
       },
       locale: {
+        mode: fp.locale?.mode || 'custom',
         language: fp.locale?.language || 'en-US',
-        languages: fp.locale?.languages || ['en-US', 'en']
+        languages: fp.locale?.languages || ['en-US', 'en'],
+        displayLanguageMode: fp.locale?.displayLanguageMode || 'real',
+        displayLanguage: fp.locale?.displayLanguage || 'en-US'
       },
       timezone: {
         mode: fp.timezone?.mode || 'auto',
@@ -369,8 +433,11 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
         orientationAngle: 0
       },
       locale: {
+        mode: fp.locale?.mode || 'custom',
         language: fp.locale?.language || 'en-US',
-        languages: fp.locale?.languages || ['en-US', 'en']
+        languages: fp.locale?.languages || ['en-US', 'en'],
+        displayLanguageMode: fp.locale?.displayLanguageMode || 'real',
+        displayLanguage: fp.locale?.displayLanguage || 'en-US'
       },
       timezone: {
         mode: fp.timezone?.mode || 'auto',
@@ -460,8 +527,11 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
       pixelDepth: fp.screen?.pixelDepth || 24
     },
     locale: {
+      mode: fp.locale?.mode || 'custom',
       language: fp.locale?.language || 'en-US',
-      languages: fp.locale?.languages || ['en-US', 'en']
+      languages: fp.locale?.languages || ['en-US', 'en'],
+      displayLanguageMode: fp.locale?.displayLanguageMode || 'real',
+      displayLanguage: fp.locale?.displayLanguage || 'en-US'
     },
     timezone: {
       mode: fp.timezone?.mode || 'auto',
@@ -669,6 +739,77 @@ export const ProfileModal: React.FC<Props> = ({
 
   // WebRTC state
   const [webrtcSetting, setWebrtcSetting] = useState<'based_on_ip' | 'off'>('based_on_ip')
+
+  // Language & Display Language state
+  const [languageMode, setLanguageMode] = useState<'based_on_ip' | 'custom'>('custom')
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['en-US', 'en'])
+  const [displayLanguageMode, setDisplayLanguageMode] = useState<'based_on_language' | 'real' | 'custom'>('real')
+  const [customDisplayLanguage, setCustomDisplayLanguage] = useState('en-US')
+  const [showAddLanguageModal, setShowAddLanguageModal] = useState(false)
+  const [languageSearch, setLanguageSearch] = useState('')
+  const [openLangMenuIdx, setOpenLangMenuIdx] = useState<number | null>(null)
+
+  const handleAddLanguage = (code: string) => {
+    if (!selectedLanguages.includes(code)) {
+      const nextLangs = [...selectedLanguages, code]
+      setSelectedLanguages(nextLangs)
+      handleFpChange(prev => ({
+        ...prev,
+        locale: {
+          ...prev.locale,
+          language: nextLangs[0] || 'en-US',
+          languages: nextLangs
+        }
+      }))
+    }
+  }
+
+  const handleRemoveLanguage = (idx: number) => {
+    if (selectedLanguages.length <= 1) return
+    const nextLangs = selectedLanguages.filter((_, i) => i !== idx)
+    setSelectedLanguages(nextLangs)
+    handleFpChange(prev => ({
+      ...prev,
+      locale: {
+        ...prev.locale,
+        language: nextLangs[0] || 'en-US',
+        languages: nextLangs
+      }
+    }))
+  }
+
+  const handleMoveLanguage = (idx: number, direction: 'up' | 'down') => {
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= selectedLanguages.length) return
+    const nextLangs = [...selectedLanguages]
+    const temp = nextLangs[idx]
+    nextLangs[idx] = nextLangs[targetIdx]
+    nextLangs[targetIdx] = temp
+    setSelectedLanguages(nextLangs)
+    handleFpChange(prev => ({
+      ...prev,
+      locale: {
+        ...prev.locale,
+        language: nextLangs[0] || 'en-US',
+        languages: nextLangs
+      }
+    }))
+  }
+
+  const handleSetPrimaryLanguage = (idx: number) => {
+    if (idx === 0) return
+    const target = selectedLanguages[idx]
+    const nextLangs = [target, ...selectedLanguages.filter((_, i) => i !== idx)]
+    setSelectedLanguages(nextLangs)
+    handleFpChange(prev => ({
+      ...prev,
+      locale: {
+        ...prev.locale,
+        language: nextLangs[0] || 'en-US',
+        languages: nextLangs
+      }
+    }))
+  }
 
   // Extensions & Bookmarks state
   const [extensions, setExtensions] = useState<{ id: string; name: string }[]>([])
@@ -1022,11 +1163,21 @@ export const ProfileModal: React.FC<Props> = ({
           setGeoMode(loadedFp.geolocation?.mode === 'custom' ? 'allow' : loadedFp.geolocation?.mode === 'block' ? 'block' : 'prompt')
           const fpWrtc = loadedFp.webrtc?.mode || initialProfile.webrtcMode
           setWebrtcSetting(fpWrtc === 'disabled' || fpWrtc === 'off' ? 'off' : 'based_on_ip')
+          const loadedLocale = loadedFp.locale || initialProfile.fingerprint?.locale
+          setLanguageMode(loadedLocale?.mode || 'custom')
+          const langs = loadedLocale?.languages || (loadedLocale?.language ? [loadedLocale.language, 'en'] : ['en-US', 'en'])
+          setSelectedLanguages(langs)
+          setDisplayLanguageMode(loadedLocale?.displayLanguageMode || 'real')
+          setCustomDisplayLanguage(loadedLocale?.displayLanguage || 'en-US')
         } else {
           const rawFp = initialProfile.fingerprint || null
           setFp(ensureFpStructure(rawFp, targetOs))
           const fpWrtc = initialProfile.webrtcMode
           setWebrtcSetting(fpWrtc === 'disabled' || fpWrtc === 'off' ? 'off' : 'based_on_ip')
+          setLanguageMode('custom')
+          setSelectedLanguages(['en-US', 'en'])
+          setDisplayLanguageMode('real')
+          setCustomDisplayLanguage('en-US')
         }
         setStartUrl(initialProfile.startUrl || initialProfile.fingerprint?.browser?.startUrl || '')
         if (initialProfile.extensions && Array.isArray(initialProfile.extensions)) {
@@ -1157,6 +1308,14 @@ export const ProfileModal: React.FC<Props> = ({
       finalFp.geolocation.accuracy = accuracy
       finalFp.webrtc.mode = webrtcSetting === 'off' ? 'disabled' : 'real'
       finalFp.webrtc.ipPolicy = webrtcSetting === 'off' ? 'disable_non_proxied_udp' : 'default_public_interface_only'
+
+      // Update Language & Locale in fingerprint object
+      finalFp.locale = finalFp.locale || {}
+      finalFp.locale.mode = languageMode
+      finalFp.locale.language = selectedLanguages[0] || 'en-US'
+      finalFp.locale.languages = selectedLanguages.length > 0 ? selectedLanguages : ['en-US', 'en']
+      finalFp.locale.displayLanguageMode = displayLanguageMode
+      finalFp.locale.displayLanguage = displayLanguageMode === 'custom' ? customDisplayLanguage : displayLanguageMode === 'real' ? 'en-US' : (selectedLanguages[0] || 'en-US')
 
       // Handle proxy resolution
       let finalProxyId: string | null = null
@@ -1346,6 +1505,7 @@ export const ProfileModal: React.FC<Props> = ({
             { id: 'overview', label: 'Overview' },
             { id: 'proxy', label: 'Proxy' },
             { id: 'timezone', label: 'Timezone' },
+            { id: 'language', label: 'Language' },
             { id: 'webrtc', label: 'WebRTC' },
             { id: 'extensions', label: 'Extensions' },
             { id: 'bookmarks', label: 'Bookmarks' },
@@ -2066,6 +2226,377 @@ export const ProfileModal: React.FC<Props> = ({
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ── TAB: LANGUAGE ── */}
+              {activeTab === 'language' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                  
+                  {/* 1. Language Section */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '28px' }}>
+                    <div style={{ width: '130px', paddingTop: '6px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500, color: '#F1F5F9' }}>
+                        Language
+                      </label>
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {/* Segmented control: Based on IP vs Custom */}
+                      <div style={{
+                        display: 'inline-flex',
+                        backgroundColor: '#14141F',
+                        borderRadius: '8px',
+                        padding: '3px',
+                        border: '1px solid #2C2C3E',
+                        width: 'fit-content'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => setLanguageMode('based_on_ip')}
+                          style={{
+                            padding: '6px 20px',
+                            borderRadius: '6px',
+                            border: languageMode === 'based_on_ip' ? '1px solid #2DD4BF' : '1px solid transparent',
+                            backgroundColor: languageMode === 'based_on_ip' ? '#1C1C28' : 'transparent',
+                            color: languageMode === 'based_on_ip' ? '#2DD4BF' : '#94A3B8',
+                            fontWeight: languageMode === 'based_on_ip' ? 600 : 400,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          Based on IP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLanguageMode('custom')}
+                          style={{
+                            padding: '6px 20px',
+                            borderRadius: '6px',
+                            border: languageMode === 'custom' ? '1px solid #2DD4BF' : '1px solid transparent',
+                            backgroundColor: languageMode === 'custom' ? '#1C1C28' : 'transparent',
+                            color: languageMode === 'custom' ? '#2DD4BF' : '#94A3B8',
+                            fontWeight: languageMode === 'custom' ? 600 : 400,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          Custom
+                        </button>
+                      </div>
+
+                      {/* When Based on IP is active */}
+                      {languageMode === 'based_on_ip' ? (
+                        <div style={{
+                          padding: '16px 20px',
+                          backgroundColor: '#14141F',
+                          border: '1px solid #2C2C3E',
+                          borderRadius: '10px',
+                          color: '#94A3B8',
+                          fontSize: '13px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px'
+                        }}>
+                          <span style={{ fontSize: '18px' }}>🌐</span>
+                          <span>Languages and <code>Accept-Language</code> headers will be automatically configured based on your Proxy / External IP geographical location.</span>
+                        </div>
+                      ) : (
+                        /* When Custom is active: Card with list of languages & + Add Language */
+                        <div style={{
+                          backgroundColor: '#14141F',
+                          border: '1px solid #2C2C3E',
+                          borderRadius: '10px',
+                          padding: '12px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px'
+                        }}>
+                          {selectedLanguages.map((langCode, idx) => {
+                            const langName = getLanguageLabel(langCode)
+                            const isPrimary = idx === 0
+                            const isMenuOpen = openLangMenuIdx === idx
+
+                            return (
+                              <div
+                                key={`${langCode}-${idx}`}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '10px 12px',
+                                  borderBottom: idx === selectedLanguages.length - 1 ? 'none' : '1px solid #222233',
+                                  position: 'relative'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span style={{ fontSize: '14px', color: '#F1F5F9', fontWeight: 500 }}>
+                                    {langName}
+                                  </span>
+                                  {isPrimary && (
+                                    <span style={{ fontSize: '11px', background: 'rgba(45,212,191,0.15)', color: '#2DD4BF', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                      Primary
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: '12px', color: '#64748B' }}>
+                                    ({langCode})
+                                  </span>
+                                </div>
+
+                                {/* 3-dots Menu Button */}
+                                <div style={{ position: 'relative' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenLangMenuIdx(isMenuOpen ? null : idx)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#94A3B8',
+                                      fontSize: '18px',
+                                      cursor: 'pointer',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px'
+                                    }}
+                                    title="Language options"
+                                  >
+                                    ⋮
+                                  </button>
+
+                                  {/* Dropdown Action Menu */}
+                                  {isMenuOpen && (
+                                    <div
+                                      style={{
+                                        position: 'absolute',
+                                        right: 0,
+                                        top: '100%',
+                                        backgroundColor: '#1E1E2D',
+                                        border: '1px solid #2C2C3E',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
+                                        zIndex: 50,
+                                        width: '160px',
+                                        padding: '4px 0'
+                                      }}
+                                    >
+                                      {idx > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleMoveLanguage(idx, 'up')
+                                            setOpenLangMenuIdx(null)
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '8px 14px',
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#CBD5E1',
+                                            fontSize: '12px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ⬆ Move Up
+                                        </button>
+                                      )}
+                                      {idx < selectedLanguages.length - 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleMoveLanguage(idx, 'down')
+                                            setOpenLangMenuIdx(null)
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '8px 14px',
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#CBD5E1',
+                                            fontSize: '12px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ⬇ Move Down
+                                        </button>
+                                      )}
+                                      {!isPrimary && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleSetPrimaryLanguage(idx)
+                                            setOpenLangMenuIdx(null)
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '8px 14px',
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#2DD4BF',
+                                            fontSize: '12px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ⭐ Set as Primary
+                                        </button>
+                                      )}
+                                      {selectedLanguages.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleRemoveLanguage(idx)
+                                            setOpenLangMenuIdx(null)
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '8px 14px',
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#EF4444',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            borderTop: '1px solid #2C2C3E'
+                                          }}
+                                        >
+                                          🗑 Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+
+                          {/* Add Language Button */}
+                          <div style={{ paddingTop: '8px', borderTop: selectedLanguages.length > 0 ? '1px solid #222233' : 'none' }}>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddLanguageModal(true)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                background: 'none',
+                                border: 'none',
+                                color: '#38BDF8',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                padding: '6px 8px',
+                                borderRadius: '6px'
+                              }}
+                            >
+                              <span style={{
+                                width: '18px',
+                                height: '18px',
+                                borderRadius: '50%',
+                                border: '1.5px solid #38BDF8',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                lineHeight: 1
+                              }}>+</span>
+                              Add Language
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Display Language Section */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '28px' }}>
+                    <div style={{ width: '130px', paddingTop: '6px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500, color: '#F1F5F9' }}>
+                        Display language
+                      </label>
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {/* Segmented control: Based on Language vs Real vs Custom */}
+                      <div style={{
+                        display: 'inline-flex',
+                        backgroundColor: '#14141F',
+                        borderRadius: '8px',
+                        padding: '3px',
+                        border: '1px solid #2C2C3E',
+                        width: 'fit-content'
+                      }}>
+                        {[
+                          { id: 'based_on_language', label: 'Based on Language' },
+                          { id: 'real', label: 'Real' },
+                          { id: 'custom', label: 'Custom' }
+                        ].map(m => {
+                          const active = displayLanguageMode === m.id
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setDisplayLanguageMode(m.id as any)}
+                              style={{
+                                padding: '6px 20px',
+                                borderRadius: '6px',
+                                border: active ? '1px solid #2DD4BF' : '1px solid transparent',
+                                backgroundColor: active ? '#1C1C28' : 'transparent',
+                                color: active ? '#2DD4BF' : '#94A3B8',
+                                fontWeight: active ? 600 : 400,
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {m.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Display language helper or custom selector */}
+                      {displayLanguageMode === 'based_on_language' && (
+                        <div style={{ fontSize: '13px', color: '#64748B' }}>
+                          Browser interface UI language will match the primary selected language ({selectedLanguages[0] || 'en-US'}).
+                        </div>
+                      )}
+
+                      {displayLanguageMode === 'real' && (
+                        <div style={{ fontSize: '13px', color: '#64748B' }}>
+                          Browser interface UI language will use your host system's native display language.
+                        </div>
+                      )}
+
+                      {displayLanguageMode === 'custom' && (
+                        <div style={{ maxWidth: '340px' }}>
+                          <select
+                            value={customDisplayLanguage}
+                            onChange={e => setCustomDisplayLanguage(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: '#FFF',
+                              fontSize: '13px'
+                            }}
+                          >
+                            {WORLD_LANGUAGES.map(l => (
+                              <option key={l.code} value={l.code}>
+                                {l.name} ({l.code})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               )}
 
@@ -3602,7 +4133,8 @@ export const ProfileModal: React.FC<Props> = ({
               <div><strong style={{ color: '#94A3B8' }}>Cookies:</strong> <span style={{ color: cookies.length > 0 ? '#2DD4BF' : '#94A3B8', fontWeight: 600 }}>{cookies.length} {cookies.length === 1 ? 'cookie' : 'cookies'}</span></div>
               <div><strong style={{ color: '#94A3B8' }}>User-Agent:</strong> {safeFp.navigator.userAgent ? `${safeFp.navigator.userAgent.substring(0, 22)}...` : 'Mozilla/...'}</div>
               <div><strong style={{ color: '#94A3B8' }}>Resolution:</strong> {safeFp.screen.width}x{safeFp.screen.height} (@{safeFp.screen.devicePixelRatio || 1}x)</div>
-              <div><strong style={{ color: '#94A3B8' }}>Languages:</strong> {safeFp.locale.language}</div>
+              <div><strong style={{ color: '#94A3B8' }}>Languages:</strong> {languageMode === 'based_on_ip' ? 'based on ip' : selectedLanguages.join(', ')}</div>
+              <div><strong style={{ color: '#94A3B8' }}>Display Lang:</strong> {displayLanguageMode === 'real' ? 'real (system)' : displayLanguageMode === 'custom' ? customDisplayLanguage : 'based on language'}</div>
               <div><strong style={{ color: '#94A3B8' }}>Platform:</strong> {safeFp.navigator.platform}</div>
               <div><strong style={{ color: '#94A3B8' }}>Hardware:</strong> {safeFp.navigator.hardwareConcurrency} Cores / {safeFp.navigator.deviceMemory} GB RAM</div>
               <div><strong style={{ color: '#94A3B8' }}>GPU:</strong> {safeFp.webgl.unmaskedRenderer ? `${safeFp.webgl.unmaskedRenderer.substring(0, 22)}...` : 'GPU'}</div>
@@ -3625,6 +4157,103 @@ export const ProfileModal: React.FC<Props> = ({
 
         </div>
       </div>
+
+      {/* ── Modal / Dialog: Add Language Picker ── */}
+      {showAddLanguageModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 11000
+        }}>
+          <div style={{
+            width: '440px',
+            backgroundColor: '#181824',
+            border: '1px solid #2C2C3E',
+            borderRadius: '12px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.6)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0, fontSize: '16px', color: '#FFF', fontWeight: 600 }}>Select Language</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddLanguageModal(false)
+                  setLanguageSearch('')
+                }}
+                style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '18px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <input
+              type="text"
+              value={languageSearch}
+              onChange={e => setLanguageSearch(e.target.value)}
+              placeholder="Search language (e.g. English, French, Spanish, en-GB)..."
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                backgroundColor: '#14141F',
+                border: '1px solid #2C2C3E',
+                color: '#FFF',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            />
+
+            <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {WORLD_LANGUAGES
+                .filter(l => {
+                  const q = languageSearch.toLowerCase().trim()
+                  if (!q) return true
+                  return l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q) || (l.native && l.native.toLowerCase().includes(q))
+                })
+                .map(l => {
+                  const isAlreadyAdded = selectedLanguages.includes(l.code)
+                  return (
+                    <div
+                      key={l.code}
+                      onClick={() => {
+                        if (!isAlreadyAdded) {
+                          handleAddLanguage(l.code)
+                          setShowAddLanguageModal(false)
+                          setLanguageSearch('')
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        borderRadius: '6px',
+                        backgroundColor: isAlreadyAdded ? '#14141F' : 'transparent',
+                        color: isAlreadyAdded ? '#64748B' : '#E2E8F0',
+                        cursor: isAlreadyAdded ? 'default' : 'pointer',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <span>{l.name}</span>
+                      <span style={{ fontSize: '12px', color: isAlreadyAdded ? '#64748B' : '#2DD4BF', fontWeight: 500 }}>
+                        {isAlreadyAdded ? '✓ Added' : l.code}
+                      </span>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
