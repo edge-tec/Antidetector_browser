@@ -1,0 +1,332 @@
+{
+  "users": [
+    {
+      "id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
+      "name": "System Admin",
+      "email": "admin@profilevault.local",
+      "password_hash": "de5768171dba517302108c779290364c:8f9dc4479a970b822ea85275014ce0f3b3ee7c264c5b3c7a82e05087dc1e5b9a19d86a29a62532e05fdc5d92c2344da9b90d1d46d2ae27a4a5bef23fe8616ffc",
+      "google_id": null,
+      "created_at": null,
+      "updated_at": "2026-08-18T16:33:22.710Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
+      "messages": [],
+      "internal_notes": [
+        {
+          "id": "note_1787049316643_7smc",
+          "conversation_id": "msg_1787049316638_ztfo",
+          "agent_id": "agent_test_1787049316628",
+          "agent_name": "Test Agent",
+          "note": "User is running on Windows 11 with proxy auth enabled.",
+          "created_at": "2026-08-18 10:35:16"
+        }
+      ]
+    },
+    {
+      "id": "65793f7c-4531-4493-8ccf-2a26068c2e1d",
+      "name": "John Doe",
+      "email": "john_1787049316833@example.com",
+      "password_hash": "de5768171dba517302108c779290364c:8f9dc4479a970b822ea85275014ce0f3b3ee7c264c5b3c7a82e05087dc1e5b9a19d86a29a62532e05fdc5d92c2344da9b90d1d46d2ae27a4a5bef23fe8616ffc",
+      "google_id": null,
+      "created_at": null,
+      "updated_at": "2026-08-18T16:33:22.710Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "f1f106b6-d8fe-4797-900c-ac4ef3b2a015",
+      "name": "User 1",
+      "email": "u1_1787049316857@example.com",
+      "password_hash": "de5768171dba517302108c779290364c:8f9dc4479a970b822ea85275014ce0f3b3ee7c264c5b3c7a82e05087dc1e5b9a19d86a29a62532e05fdc5d92c2344da9b90d1d46d2ae27a4a5bef23fe8616ffc",
+      "google_id": null,
+      "created_at": null,
+      "updated_at": "2026-08-18T16:33:22.710Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "bf2b8d1c-e57e-4f4f-a41e-73b7994816b3",
+      "name": "User 2",
+      "email": "u2_1787049316857@example.com",
+      "password_hash": "de5768171dba517302108c779290364c:8f9dc4479a970b822ea85275014ce0f3b3ee7c264c5b3c7a82e05087dc1e5b9a19d86a29a62532e05fdc5d92c2344da9b90d1d46d2ae27a4a5bef23fe8616ffc",
+      "google_id": null,
+      "created_at": null,
+      "updated_at": "2026-08-18T16:33:22.710Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "2cbefe5e-f6b2-4b5e-b26f-bdebe8f07bfb",
+      "name": "John Doe",
+      "email": "john_1787070802687@example.com",
+      "password_hash": "2af8d5af527c723c523667e64de77602:9154596a78e51ccd5ad7985cd05a4bc0fd43d6d6cbf6153d795d05aa64fac674258d1a272cd18f1a81fc31a6daf7e391c66c66580d55d00b9ff89f05a3420e06",
+      "role": "user",
+      "email_verified": 0,
+      "account_status": "pending",
+      "google_id": null,
+      "created_at": "2026-08-18T16:33:22.708Z",
+      "updated_at": "2026-08-18T16:33:22.710Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "444be39d-d321-4c65-8d89-29133e79d695",
+      "name": "User 1",
+      "email": "u1_1787070802711@example.com",
+      "password_hash": "a5c632a232f289258fad1e02dc95ee44:547969a7dca1f91fc2678045963757269f5ad23edb2871343ee5031a9cac024e10703cddb60c5d5a5b3f83b4d3ebfa3080afceae3e297050f3a13b6316937752",
+      "role": "user",
+      "email_verified": 1,
+      "account_status": "active",
+      "google_id": null,
+      "created_at": "2026-08-18T16:33:22.732Z",
+      "updated_at": null
+    },
+    {
+      "id": "3a921bc8-eb9c-47fb-97fe-726681f1597a",
+      "name": "User 2",
+      "email": "u2_1787070802711@example.com",
+      "password_hash": "c14d965ebe606783cbb0b3668522c926:5e5a4558a517b2e422004d34bf3895786d33490f095ba35c10c2eca40655d9f5115f9996bf7d838e8675c3a81204746a2d6e63f42e2ee279b66036fc917725cd",
+      "role": "user",
+      "email_verified": 1,
+      "account_status": "active",
+      "google_id": null,
+      "created_at": "2026-08-18T16:33:22.753Z",
+      "updated_at": null
+    }
+  ],
+  "support_settings": [],
+  "support_conversations": [
+    {
+      "id": "conv_1787049316637_7tl9",
+      "user_id": "usr_test_1787049316628",
+      "status": "high",
+      "priority": "Proxy Network Issue",
+      "subject": "2026-08-18 10:35:16",
+      "last_message_at": "2026-08-18 10:35:16",
+      "created_at": "2026-08-18 10:35:16",
+      "updated_at": null
+    },
+    {
+      "id": "conv_1787070802501_4he7",
+      "user_id": "usr_test_1787070802494",
+      "status": "open",
+      "priority": "high",
+      "subject": "Proxy Network Issue",
+      "last_message_at": "2026-08-18 16:33:22",
+      "created_at": "2026-08-18 16:33:22",
+      "updated_at": "2026-08-18 16:33:22"
+    }
+  ],
+  "support_messages": [
+    {
+      "id": "msg_1787049316638_ztfo",
+      "conversation_id": "conv_1787049316637_7tl9",
+      "sender_id": "usr_test_1787049316628",
+      "sender_type": "Hello, I am having trouble connecting my HTTP proxy.",
+      "message": "text",
+      "message_type": null,
+      "attachment_path": null,
+      "attachment_name": null,
+      "attachment_size": null,
+      "attachment_mime": "2026-08-18 10:35:16",
+      "created_at": null
+    },
+    {
+      "id": "msg_1787070802502_0n29",
+      "conversation_id": "conv_1787070802501_4he7",
+      "sender_id": "usr_test_1787070802494",
+      "sender_type": "user",
+      "message": "Hello, I am having trouble connecting my HTTP proxy.",
+      "message_type": "text",
+      "attachment_path": null,
+      "attachment_name": null,
+      "attachment_size": null,
+      "attachment_mime": null,
+      "created_at": "2026-08-18 16:33:22"
+    }
+  ],
+  "support_internal_notes": [
+    {
+      "id": "note_1787049316643_7smc",
+      "conversation_id": "msg_1787049316638_ztfo",
+      "agent_id": "agent_test_1787049316628",
+      "agent_name": "Test Agent",
+      "note": "User is running on Windows 11 with proxy auth enabled.",
+      "created_at": "2026-08-18 10:35:16"
+    },
+    {
+      "id": "note_1787070802512_9ez1",
+      "conversation_id": "msg_1787070802502_0n29",
+      "agent_id": "agent_test_1787070802494",
+      "agent_name": "Test Agent",
+      "note": "User is running on Windows 11 with proxy auth enabled.",
+      "created_at": "2026-08-18 16:33:22"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "1195cdd4-738a-4a64-adb9-7e362b2c73a6",
+      "user_id": "f1f106b6-d8fe-4797-900c-ac4ef3b2a015",
+      "name": "User 1 Profile",
+      "group_id": null,
+      "notes": "",
+      "color": "#6366F1",
+      "icon": "globe",
+      "browser_version": "121.0.0.0",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+      "language": "en-US",
+      "timezone": "Pacific/Honolulu",
+      "screen_width": 1600,
+      "screen_height": 900,
+      "webrtc_mode": "real",
+      "canvas_mode": "noise",
+      "webgl_mode": "default",
+      "hw_concurrency": 24,
+      "device_memory": 4,
+      "hw_acceleration": 1,
+      "proxy_id": null,
+      "tags": "[]",
+      "status": "2026-08-18T10:35:16.897Z",
+      "created_at": "2026-08-18T10:35:16.897Z",
+      "updated_at": "windows-10",
+      "os_type": "{\"version\":2,\"generatedAt\":\"2026-08-18T10:35:16.904Z\",\"seed\":\"31e0ebf08121375b8c13cb7c5785afa6\",\"navigator\":{\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36\",\"browserVersion\":\"121.0.0.0\",\"chromiumVersion\":\"121\",\"platform\":\"Win32\",\"appCodeName\":\"Mozilla\",\"appName\":\"Netscape\",\"appVersion\":\"5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36\",\"product\":\"Gecko\",\"productSub\":\"20030107\",\"vendor\":\"Google Inc.\",\"vendorSub\":\"\",\"hardwareConcurrency\":24,\"deviceMemory\":4,\"cpuArchitecture\":\"x86_64\",\"platformArchitecture\":\"64-bit\",\"maxTouchPoints\":0,\"touchSupport\":false,\"doNotTrack\":\"1\",\"cookieEnabled\":true,\"pdfViewerEnabled\":true,\"javaEnabled\":false,\"webdriver\":false,\"localStorageEnabled\":true,\"sessionStorageEnabled\":true,\"indexedDBEnabled\":true,\"webSQLEnabled\":false},\"screen\":{\"width\":1600,\"height\":900,\"availWidth\":1600,\"availHeight\":860,\"colorDepth\":24,\"pixelDepth\":24,\"devicePixelRatio\":1,\"orientation\":\"landscape-primary\",\"orientationAngle\":0,\"viewportWidth\":1600,\"viewportHeight\":829,\"outerWidth\":1600,\"outerHeight\":940,\"screenX\":0,\"screenY\":0,\"isMultiMonitor\":true,\"isPrimaryDisplay\":true},\"locale\":{\"language\":\"en-US\",\"languages\":[\"en-US\",\"en\"],\"country\":\"US\",\"region\":\"\",\"currency\":\"USD\",\"numberFormat\":\"en-US\",\"dateFormat\":\"M/d/yyyy\",\"firstDayOfWeek\":0,\"measurementSystem\":\"imperial\",\"hourCycle\":\"12h\"},\"timezone\":{\"mode\":\"manual\",\"timezone\":\"Pacific/Honolulu\",\"utcOffset\":-600,\"hasDST\":true,\"dstOffset\":60},\"geolocation\":{\"mode\":\"custom\",\"latitude\":40.7326,\"longitude\":-74.0352,\"accuracy\":100,\"altitude\":null,\"altitudeAccuracy\":null,\"heading\":null,\"speed\":null,\"permissionState\":\"prompt\"},\"webrtc\":{\"mode\":\"real\",\"ipPolicy\":\"default_public_interface_only\",\"localIP\":\"\",\"publicIP\":\"\"},\"canvas\":{\"mode\":\"noise\",\"noiseSeed\":427290},\"webgl\":{\"enabled\":true,\"version\":\"WebGL 2.0\",\"vendor\":\"WebKit\",\"renderer\":\"WebKit WebGL\",\"unmaskedVendor\":\"Google Inc. (NVIDIA)\",\"unmaskedRenderer\":\"ANGLE (NVIDIA, NVIDIA GeForce RTX 4090 Direct3D11 vs_5_0 ps_5_0, D3D11)\",\"maxTextureSize\":32768,\"maxViewportDims\":[32768,32768],\"maxRenderbufferSize\":32768,\"shadingLanguageVersion\":\"WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)\",\"extensions\":[\"EXT_float_blend\",\"EXT_disjoint_timer_query\",\"WEBGL_depth_texture\",\"OES_texture_float\",\"OES_texture_half_float_linear\",\"EXT_texture_compression_bptc\",\"EXT_texture_compression_rgtc\",\"EXT_texture_filter_anisotropic\",\"KHR_parallel_shader_compile\",\"EXT_frag_depth\",\"EXT_shader_texture_lod\",\"WEBGL_compressed_texture_s3tc\",\"WEBGL_draw_buffers\",\"WEBGL_lose_context\",\"OES_fbo_render_mipmap\",\"EXT_color_buffer_half_float\",\"OES_texture_float_linear\",\"EXT_sRGB\",\"OES_element_index_uint\",\"WEBGL_debug_shaders\",\"WEBGL_color_buffer_float\",\"OES_texture_half_float\",\"WEBGL_debug_renderer_info\",\"EXT_blend_minmax\",\"WEBGL_multi_draw\",\"OES_vertex_array_object\",\"WEBGL_compressed_texture_s3tc_srgb\"],\"antialiasing\":true,\"gpuVendor\":\"NVIDIA\",\"gpuRenderer\":\"GeForce RTX 4090\",\"driverInfo\":\"\"},\"audio\":{\"mode\":\"noise\",\"noiseSeed\":367178,\"sampleRate\":44100,\"channelCount\":2,\"maxChannelCount\":2,\"numberOfInputs\":1,\"numberOfOutputs\":1,\"channelCountMode\":\"max\",\"channelInterpretation\":\"speakers\"},\"clientRects\":{\"mode\":\"noise\",\"noiseSeed\":746883},\"fonts\":{\"enableMasking\":true,\"mode\":\"automatic\",\"fontList\":[\"Arial\",\"Arial Black\",\"Calibri\",\"Cambria\",\"Cambria Math\",\"Candara\",\"Comic Sans MS\",\"Consolas\",\"Constantia\",\"Courier New\",\"Ebrima\",\"Franklin Gothic Medium\",\"Gabriola\",\"Georgia\",\"Ink Free\",\"Javanese Text\",\"Leelawadee UI\",\"Lucida Console\",\"Lucida Sans Unicode\",\"MS Gothic\",\"MS PGothic\",\"MS UI Gothic\",\"MV Boli\",\"Malgun Gothic\",\"Microsoft Himalaya\",\"Microsoft JhengHei\",\"Microsoft New Tai Lue\",\"Microsoft PhagsPa\",\"Microsoft Sans Serif\",\"Microsoft Tai Le\",\"Microsoft YaHei\",\"Microsoft Yi Baiti\",\"MingLiU-ExtB\",\"Mongolian Baiti\",\"Myanmar Text\",\"Nirmala UI\",\"Palatino Linotype\",\"Segoe MDL2 Assets\",\"Segoe Print\",\"Segoe Script\",\"Segoe UI\",\"Segoe UI Emoji\",\"Segoe UI Historic\",\"Segoe UI Symbol\",\"SimSun\",\"Sitka Text\",\"Sylfaen\",\"Symbol\",\"Times New Roman\",\"Trebuchet MS\",\"Verdana\",\"Webdings\",\"Wingdings\",\"Yu Gothic\"]},\"mediaDevices\":{\"videoInputs\":1,\"audioInputs\":1,\"audioOutputs\":1,\"cameraLabels\":[\"FaceTime HD Camera\"],\"microphoneLabels\":[\"Internal Microphone\"],\"speakerLabels\":[\"Default\"],\"deviceIds\":[\"21a6cc9e0fca8ad39478e482e4522f0f047311d7c044b3eb2f6c6bea8cf2f5eb\",\"4685119025f44f01317320957e5d26c1e1ba3f419687cf22c352c527769ecc2f\",\"adb93ca9f588c37c47c60e87eaee0f06f639edd70c7c1f95066dff20a8025aae\"]},\"battery\":{\"enabled\":false,\"charging\":true,\"level\":1,\"chargingTime\":0,\"dischargingTime\":null},\"networkInfo\":{\"effectiveType\":\"4g\",\"downlink\":100,\"rtt\":50,\"saveData\":false,\"type\":\"wifi\"},\"permissions\":{\"camera\":\"prompt\",\"microphone\":\"prompt\",\"geolocation\":\"prompt\",\"notifications\":\"prompt\",\"clipboard\":\"prompt\",\"midi\":\"prompt\",\"sensors\":\"prompt\",\"usb\":\"prompt\",\"bluetooth\":\"prompt\",\"backgroundSync\":\"prompt\",\"persistentStorage\":\"prompt\"},\"browser\":{\"saveHistory\":true,\"clearHistoryOnDelete\":true,\"savePasswords\":false,\"googleServicesEnabled\":false,\"safeBrowsing\":false,\"spellCheck\":true,\"backgroundServices\":false,\"systemExtensionsEnabled\":false,\"startUrlMode\":\"new-tab\",\"startUrls\":[],\"customLaunchArgs\":[],\"dnsMode\":\"system\",\"primaryDns\":\"\",\"secondaryDns\":\"\"}}",
+      "fingerprint": "",
+      "folder": 0,
+      "profile_locked": 100,
+      "consistency_score": "31e0ebf08121375b8c13cb7c5785afa6",
+      "fingerprint_seed": "",
+      "start_url": "[]",
+      "launch_args": 1,
+      "save_history": 0,
+      "save_passwords": 0,
+      "google_services": 0,
+      "system_extensions": "",
+      "custom_dns": null
+    },
+    {
+      "id": "7b39fa5d-6b57-4b2e-a77e-6b19235b1e34",
+      "user_id": "444be39d-d321-4c65-8d89-29133e79d695",
+      "name": "User 1 Profile",
+      "group_id": null,
+      "notes": "",
+      "color": "#6366F1",
+      "icon": "globe",
+      "browser_version": "126.0.0.0",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "language": "en-US",
+      "timezone": "America/Anchorage",
+      "screen_width": 1920,
+      "screen_height": 1200,
+      "webrtc_mode": "real",
+      "canvas_mode": "noise",
+      "webgl_mode": "default",
+      "hw_concurrency": 32,
+      "device_memory": 4,
+      "hw_acceleration": 1,
+      "proxy_id": null,
+      "tags": "[]",
+      "status": "stopped",
+      "created_at": "2026-08-18T16:33:22.753Z",
+      "updated_at": "2026-08-18T16:33:22.753Z",
+      "os_type": "windows-10",
+      "fingerprint": "{\"version\":2,\"generatedAt\":\"2026-08-18T16:33:22.761Z\",\"seed\":\"c371d8898757656c8101ee9c4a824beb\",\"navigator\":{\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36\",\"browserVersion\":\"126.0.0.0\",\"chromiumVersion\":\"126\",\"platform\":\"Win32\",\"appCodeName\":\"Mozilla\",\"appName\":\"Netscape\",\"appVersion\":\"5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36\",\"product\":\"Gecko\",\"productSub\":\"20030107\",\"vendor\":\"Google Inc.\",\"vendorSub\":\"\",\"hardwareConcurrency\":32,\"deviceMemory\":4,\"cpuArchitecture\":\"x86_64\",\"platformArchitecture\":\"64-bit\",\"maxTouchPoints\":0,\"touchSupport\":false,\"doNotTrack\":\"1\",\"cookieEnabled\":true,\"pdfViewerEnabled\":true,\"javaEnabled\":false,\"webdriver\":false,\"localStorageEnabled\":true,\"sessionStorageEnabled\":true,\"indexedDBEnabled\":true,\"webSQLEnabled\":false},\"screen\":{\"width\":1920,\"height\":1200,\"availWidth\":1920,\"availHeight\":1160,\"colorDepth\":24,\"pixelDepth\":24,\"devicePixelRatio\":1,\"orientation\":\"landscape-primary\",\"orientationAngle\":0,\"viewportWidth\":1920,\"viewportHeight\":1129,\"outerWidth\":1920,\"outerHeight\":1240,\"screenX\":0,\"screenY\":0,\"isMultiMonitor\":true,\"isPrimaryDisplay\":true},\"locale\":{\"language\":\"en-US\",\"languages\":[\"en-US\",\"en\"],\"country\":\"US\",\"region\":\"\",\"currency\":\"USD\",\"numberFormat\":\"en-US\",\"dateFormat\":\"M/d/yyyy\",\"firstDayOfWeek\":0,\"measurementSystem\":\"imperial\",\"hourCycle\":\"12h\"},\"timezone\":{\"mode\":\"manual\",\"timezone\":\"America/Anchorage\",\"utcOffset\":-480,\"hasDST\":true,\"dstOffset\":60},\"geolocation\":{\"mode\":\"custom\",\"latitude\":25.7727,\"longitude\":-80.197,\"accuracy\":50,\"altitude\":null,\"altitudeAccuracy\":null,\"heading\":null,\"speed\":null,\"permissionState\":\"prompt\"},\"webrtc\":{\"mode\":\"real\",\"ipPolicy\":\"default_public_interface_only\",\"localIP\":\"\",\"publicIP\":\"\"},\"canvas\":{\"mode\":\"noise\",\"noiseSeed\":730514},\"webgl\":{\"enabled\":true,\"version\":\"WebGL 2.0\",\"vendor\":\"WebKit\",\"renderer\":\"WebKit WebGL\",\"unmaskedVendor\":\"Google Inc. (NVIDIA)\",\"unmaskedRenderer\":\"ANGLE (NVIDIA, NVIDIA GeForce GTX 1080 Direct3D11 vs_5_0 ps_5_0, D3D11)\",\"maxTextureSize\":16384,\"maxViewportDims\":[16384,16384],\"maxRenderbufferSize\":16384,\"shadingLanguageVersion\":\"WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)\",\"extensions\":[\"ANGLE_instanced_arrays\",\"WEBGL_compressed_texture_s3tc_srgb\",\"WEBGL_lose_context\",\"KHR_parallel_shader_compile\",\"OES_texture_float_linear\",\"OES_vertex_array_object\",\"OES_standard_derivatives\",\"EXT_blend_minmax\",\"EXT_sRGB\",\"WEBGL_depth_texture\",\"EXT_texture_compression_bptc\",\"WEBGL_debug_shaders\",\"EXT_color_buffer_half_float\",\"WEBGL_compressed_texture_s3tc\",\"OES_element_index_uint\",\"EXT_texture_compression_rgtc\",\"WEBGL_debug_renderer_info\",\"EXT_disjoint_timer_query\",\"OES_texture_half_float\",\"EXT_texture_filter_anisotropic\"],\"antialiasing\":true,\"gpuVendor\":\"NVIDIA\",\"gpuRenderer\":\"GeForce GTX 1080\",\"driverInfo\":\"\"},\"audio\":{\"mode\":\"noise\",\"noiseSeed\":218862,\"sampleRate\":48000,\"channelCount\":2,\"maxChannelCount\":6,\"numberOfInputs\":1,\"numberOfOutputs\":1,\"channelCountMode\":\"max\",\"channelInterpretation\":\"speakers\"},\"clientRects\":{\"mode\":\"noise\",\"noiseSeed\":869913},\"fonts\":{\"enableMasking\":true,\"mode\":\"automatic\",\"fontList\":[\"Arial Black\",\"Calibri\",\"Cambria Math\",\"Candara\",\"Comic Sans MS\",\"Consolas\",\"Constantia\",\"Corbel\",\"Courier New\",\"Ebrima\",\"Franklin Gothic Medium\",\"Gabriola\",\"Gadugi\",\"Georgia\",\"Impact\",\"Javanese Text\",\"Leelawadee UI\",\"Lucida Console\",\"Lucida Sans Unicode\",\"MS Gothic\",\"MS PGothic\",\"MS UI Gothic\",\"Malgun Gothic\",\"Microsoft Himalaya\",\"Microsoft JhengHei\",\"Microsoft New Tai Lue\",\"Microsoft PhagsPa\",\"Microsoft Tai Le\",\"Microsoft Yi Baiti\",\"MingLiU-ExtB\",\"Mongolian Baiti\",\"Nirmala UI\",\"Palatino Linotype\",\"Segoe MDL2 Assets\",\"Segoe Script\",\"Segoe UI\",\"Segoe UI Historic\",\"Segoe UI Symbol\",\"SimSun\",\"Sylfaen\",\"Symbol\",\"Tahoma\",\"Times New Roman\",\"Verdana\",\"Webdings\",\"Wingdings\",\"Yu Gothic\"]},\"mediaDevices\":{\"videoInputs\":1,\"audioInputs\":1,\"audioOutputs\":2,\"cameraLabels\":[\"HD WebCam\"],\"microphoneLabels\":[\"Internal Microphone\"],\"speakerLabels\":[\"Default\",\"External Headphones\"],\"deviceIds\":[\"e5645f8b3ed0ff61627d19d619ce1a7aac65927019c92a9e3c924f3589651aa4\",\"f9e3d27ea4c9a2090873351204f2e260203db3c324c2ab135b99f30754278fe7\",\"b82671860b0a01dbcc1229bc86e09b7c46e600bcce4d2a99f0310093c6888611\",\"c02b1e48318b4146ddeb890e40f34ac20ec5ef2729473de47c5d4e6783366868\"]},\"battery\":{\"enabled\":false,\"charging\":true,\"level\":1,\"chargingTime\":0,\"dischargingTime\":null},\"networkInfo\":{\"effectiveType\":\"4g\",\"downlink\":100,\"rtt\":50,\"saveData\":false,\"type\":\"wifi\"},\"permissions\":{\"camera\":\"prompt\",\"microphone\":\"prompt\",\"geolocation\":\"prompt\",\"notifications\":\"prompt\",\"clipboard\":\"prompt\",\"midi\":\"prompt\",\"sensors\":\"prompt\",\"usb\":\"prompt\",\"bluetooth\":\"prompt\",\"backgroundSync\":\"prompt\",\"persistentStorage\":\"prompt\"},\"browser\":{\"saveHistory\":true,\"clearHistoryOnDelete\":true,\"savePasswords\":false,\"googleServicesEnabled\":false,\"safeBrowsing\":false,\"spellCheck\":true,\"backgroundServices\":false,\"systemExtensionsEnabled\":false,\"startUrlMode\":\"new-tab\",\"startUrls\":[],\"customLaunchArgs\":[],\"dnsMode\":\"system\",\"primaryDns\":\"\",\"secondaryDns\":\"\"}}",
+      "folder": "",
+      "profile_locked": 0,
+      "consistency_score": 100,
+      "fingerprint_seed": "c371d8898757656c8101ee9c4a824beb",
+      "start_url": "",
+      "launch_args": "[]",
+      "save_history": 1,
+      "save_passwords": 0,
+      "google_services": 0,
+      "system_extensions": 0,
+      "custom_dns": ""
+    }
+  ],
+  "email_verification_tokens": [
+    {
+      "id": "b9a94eff-af4a-43f0-b0cf-217bc35bab16",
+      "user_id": "65793f7c-4531-4493-8ccf-2a26068c2e1d",
+      "token_hash": "aa436c80beabbfc42062489aa70df53223d07fb2c2fc52b683dda903c9d42dea",
+      "expires_at": "2026-08-19T10:35:16.854Z",
+      "created_at": null,
+      "used_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "22461181-4795-4ec9-bf53-06211235c381",
+      "user_id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
+      "token_hash": "da2d181e01e1f735c543bb6b80a43eb1122c13853ce318c5d11e2a68735f3c5d",
+      "expires_at": "2026-08-19T10:35:16.932Z",
+      "created_at": null,
+      "used_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "02f386b2-b61b-4525-935b-d8b1c8191dea",
+      "user_id": "2cbefe5e-f6b2-4b5e-b26f-bdebe8f07bfb",
+      "token_hash": "0c0c66c38109796fe4d432a32721b029711e25d89d168ced2d521fed9cb8f3cd",
+      "expires_at": "2026-08-19T16:33:22.709Z",
+      "created_at": "2026-08-18T16:33:22.709Z",
+      "used_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "917b5397-c194-4ce5-9d95-695eb63337f5",
+      "user_id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
+      "token_hash": "3f82c5c8ba3d7d392b4b45f9611862dcd59727a99f5f3ac3de6f977ff33601e7",
+      "expires_at": "2026-08-19T16:33:22.794Z",
+      "created_at": "2026-08-18T16:33:22.794Z"
+    }
+  ],
+  "settings": [
+    {
+      "key": "smtp_host",
+      "value": "smtp.example.com"
+    },
+    {
+      "key": "smtp_port",
+      "value": "587"
+    },
+    {
+      "key": "smtp_user",
+      "value": "user@example.com"
+    },
+    {
+      "key": "smtp_password",
+      "value": "secretpassword"
+    },
+    {
+      "key": "smtp_from_email",
+      "value": "noreply@example.com"
+    },
+    {
+      "key": "smtp_secure",
+      "value": "false"
+    },
+    {
+      "key": "smtp_enabled",
+      "value": "true"
+    },
+    {
+      "key": "smtp_host",
+      "value": "smtp.example.com"
+    },
+    {
+      "key": "smtp_port",
+      "value": "587"
+    },
+    {
+      "key": "smtp_user",
+      "value": "user@example.com"
+    },
+    {
+      "key": "smtp_password",
+      "value": "secretpassword"
+    },
+    {
+      "key": "smtp_from_email",
+      "value": "noreply@example.com"
+    },
+    {
+      "key": "smtp_secure",
+      "value": "false"
+    },
+    {
+      "key": "smtp_enabled",
+      "value": "true"
+    }
+  ]
+}
