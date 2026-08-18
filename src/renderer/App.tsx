@@ -48,6 +48,8 @@ const Icons = {
   check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
   key: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>,
   chat: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+  grid: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+  list: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
 }
 
 // ═══════════════════════════════════════════
@@ -229,27 +231,30 @@ function ProfileCardComponent({ profile, proxies, onStart, onStop, onEdit, onDup
   return (
     <div className="profile-card">
       <div className="profile-card-header">
-        <div className="profile-card-icon" style={{ backgroundColor: `${profile.color}20`, color: profile.color }}>
+        <div className="profile-card-icon" style={{ backgroundColor: `${profile.color}20`, color: profile.color, flexShrink: 0 }}>
           {profile.icon === 'globe' ? '🌐' : profile.icon === 'work' ? '💼' : profile.icon === 'shopping' ? '🛒' : profile.icon === 'social' ? '💬' : '🌐'}
         </div>
-        <div className="profile-card-info" style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="profile-card-name">{profile.name}</span>
-            {profile.consistencyScore > 0 && (
-              <ConsistencyBadge score={profile.consistencyScore} />
-            )}
+        <div className="profile-card-info" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
+            <span className="profile-card-name" title={profile.name}>{profile.name}</span>
           </div>
           <div className="profile-card-meta">
             {profile.lastUsedAt ? `Last used ${new Date(profile.lastUsedAt).toLocaleDateString()}` : 'Never used'}
           </div>
         </div>
-        <div className={`profile-card-status ${profile.status}`}>
+        <div className={`profile-card-status ${profile.status}`} style={{ flexShrink: 0 }}>
           <span className="profile-card-status-dot" />
           {isLaunching ? 'Launching...' : isRunning ? 'Running' : 'Stopped'}
         </div>
       </div>
 
-      <div style={{ margin: '8px 0' }}>
+      {profile.consistencyScore > 0 && (
+        <div style={{ marginTop: 2, marginBottom: 2 }}>
+          <ConsistencyBadge score={profile.consistencyScore} />
+        </div>
+      )}
+
+      <div style={{ margin: '4px 0' }}>
         <FingerprintPreview osType={profile.osType || 'windows-10'} fingerprint={profile.fingerprint} proxy={matchedProxy} />
       </div>
 
@@ -271,9 +276,78 @@ function ProfileCardComponent({ profile, proxies, onStart, onStop, onEdit, onDup
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
           </button>
         )}
-        {onEdit && <button className="btn btn-sm btn-ghost" onClick={onEdit}><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.edit}</span></button>}
-        {onDuplicate && <button className="btn btn-sm btn-ghost" onClick={onDuplicate}><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.copy}</span></button>}
-        {onDelete && <button className="btn btn-sm btn-ghost" onClick={onDelete}><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.trash}</span></button>}
+        {onEdit && <button className="btn btn-sm btn-ghost" onClick={onEdit} title="Edit Profile"><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.edit}</span></button>}
+        {onDuplicate && <button className="btn btn-sm btn-ghost" onClick={onDuplicate} title="Duplicate Profile"><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.copy}</span></button>}
+        {onDelete && <button className="btn btn-sm btn-ghost" onClick={onDelete} title="Delete Profile"><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.trash}</span></button>}
+      </div>
+    </div>
+  )
+}
+
+function ProfileListRowComponent({ profile, proxies, onStart, onStop, onEdit, onDuplicate, onDelete }: {
+  profile: Profile
+  proxies?: ProxyDisplay[]
+  onStart?: () => void
+  onStop?: () => void
+  onEdit?: () => void
+  onDuplicate?: () => void
+  onDelete?: () => void
+}) {
+  const isRunning = profile.status === 'running'
+  const isLaunching = profile.status === 'launching'
+  const matchedProxy = (proxies || []).find(p => p.id === profile.proxyId)
+
+  return (
+    <div className="profile-list-row">
+      <div className="profile-list-cell-name">
+        <div className="profile-card-icon" style={{ backgroundColor: `${profile.color}20`, color: profile.color, width: 34, height: 34, fontSize: 16, flexShrink: 0 }}>
+          {profile.icon === 'globe' ? '🌐' : profile.icon === 'work' ? '💼' : profile.icon === 'shopping' ? '🛒' : profile.icon === 'social' ? '💬' : '🌐'}
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+            <span className="profile-list-name" title={profile.name}>{profile.name}</span>
+            {profile.consistencyScore > 0 && (
+              <ConsistencyBadge score={profile.consistencyScore} />
+            )}
+          </div>
+          <div className="profile-card-meta">
+            {profile.lastUsedAt ? `Last used ${new Date(profile.lastUsedAt).toLocaleDateString()}` : 'Never used'}
+          </div>
+        </div>
+      </div>
+
+      <div className="profile-list-cell-fingerprint">
+        <FingerprintPreview osType={profile.osType || 'windows-10'} fingerprint={profile.fingerprint} proxy={matchedProxy} />
+      </div>
+
+      {profile.tags.length > 0 && (
+        <div className="profile-list-cell-tags">
+          {profile.tags.slice(0, 2).map((tag, i) => (
+            <span key={i} className="badge">{tag}</span>
+          ))}
+        </div>
+      )}
+
+      <div className="profile-list-cell-status">
+        <div className={`profile-card-status ${profile.status}`}>
+          <span className="profile-card-status-dot" />
+          {isLaunching ? 'Launching...' : isRunning ? 'Running' : 'Stopped'}
+        </div>
+      </div>
+
+      <div className="profile-list-cell-actions">
+        {isRunning ? (
+          <button className="btn btn-sm btn-danger" onClick={onStop} disabled={isLaunching}>
+            <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.stop}</span> Stop
+          </button>
+        ) : (
+          <button className="btn btn-sm btn-success" onClick={onStart} disabled={isLaunching}>
+            <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
+          </button>
+        )}
+        {onEdit && <button className="btn btn-sm btn-ghost btn-icon" onClick={onEdit} title="Edit Profile"><span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.edit}</span></button>}
+        {onDuplicate && <button className="btn btn-sm btn-ghost btn-icon" onClick={onDuplicate} title="Duplicate Profile"><span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.copy}</span></button>}
+        {onDelete && <button className="btn btn-sm btn-ghost btn-icon" onClick={onDelete} title="Delete Profile"><span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.trash}</span></button>}
       </div>
     </div>
   )
@@ -290,6 +364,9 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    return (localStorage.getItem('profiles_view_mode') as 'grid' | 'list') || 'grid'
+  })
   const [showCreate, setShowCreate] = useState(false)
   const [showBulk, setShowBulk] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
@@ -451,15 +528,35 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
         </div>
       </div>
 
-      <div style={{ marginBottom: 20, maxWidth: 400, position: 'relative' }}>
-        <span className="topbar-search-icon">{Icons.search}</span>
-        <input
-          className="form-input"
-          placeholder="Search profiles..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ paddingLeft: 32 }}
-        />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 300px', maxWidth: 400, position: 'relative' }}>
+          <span className="topbar-search-icon">{Icons.search}</span>
+          <input
+            className="form-input"
+            placeholder="Search profiles..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ paddingLeft: 32 }}
+          />
+        </div>
+        <div style={{ display: 'inline-flex', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 3, gap: 4 }}>
+          <button
+            className={`btn btn-sm ${viewMode === 'grid' ? 'btn-secondary' : 'btn-ghost'}`}
+            style={{ padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6, borderRadius: 'calc(var(--radius-md) - 2px)', fontWeight: viewMode === 'grid' ? 600 : 400 }}
+            onClick={() => { setViewMode('grid'); localStorage.setItem('profiles_view_mode', 'grid'); }}
+            title="Grid View"
+          >
+            <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.grid}</span> Grid
+          </button>
+          <button
+            className={`btn btn-sm ${viewMode === 'list' ? 'btn-secondary' : 'btn-ghost'}`}
+            style={{ padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6, borderRadius: 'calc(var(--radius-md) - 2px)', fontWeight: viewMode === 'list' ? 600 : 400 }}
+            onClick={() => { setViewMode('list'); localStorage.setItem('profiles_view_mode', 'list'); }}
+            title="List View"
+          >
+            <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.list}</span> List
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -473,10 +570,51 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           </div>
           {!search && <button className="btn btn-primary" onClick={() => { setEditId(null); setEditProfile(null); setShowCreate(true) }}>Create Profile</button>}
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid-profiles">
           {profiles.map((p) => (
             <ProfileCardComponent
+              key={p.id}
+              profile={p}
+              proxies={proxies}
+              onStart={() => handleStartProfile(p)}
+              onStop={async () => {
+                if (!sessionToken) return
+                const r = await window.api.stopProfile(sessionToken, p.id)
+                if (r.success) showToast('success', `Stopped "${p.name}"`)
+                else showToast('error', r.error || 'Failed to stop')
+                loadProfiles()
+              }}
+              onEdit={() => {
+                setEditId(p.id)
+                setEditProfile(p)
+                setShowCreate(true)
+              }}
+              onDuplicate={async () => {
+                if (!sessionToken) return
+                const r = await window.api.duplicateProfile(sessionToken, p.id)
+                if (r.success) { showToast('success', 'Profile duplicated'); loadProfiles() }
+                else showToast('error', r.error || 'Failed to duplicate')
+              }}
+              onDelete={() => confirm({
+                title: 'Delete Profile',
+                message: `Are you sure you want to delete "${p.name}"? This will also remove all browser data for this profile. This action cannot be undone.`,
+                confirmLabel: 'Delete',
+                danger: true,
+                onConfirm: async () => {
+                  if (!sessionToken) return
+                  const r = await window.api.deleteProfile(sessionToken, p.id)
+                  if (r.success) { showToast('success', 'Profile deleted'); loadProfiles() }
+                  else showToast('error', r.error || 'Failed to delete')
+                }
+              })}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="profile-list-container">
+          {profiles.map((p) => (
+            <ProfileListRowComponent
               key={p.id}
               profile={p}
               proxies={proxies}
