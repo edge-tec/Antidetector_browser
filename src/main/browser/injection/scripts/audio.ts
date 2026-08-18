@@ -67,9 +67,10 @@ export function buildAudioScript(audio: AudioFingerprint): string {
     const origGetChannelData = AudioBuffer.prototype.getChannelData;
     AudioBuffer.prototype.getChannelData = function(channel) {
       const data = origGetChannelData.call(this, channel);
-      if (data && data.length > 0) {
+      // Only apply subtle noise on large standard audio buffers (>2048 samples)
+      if (data && data.length > 2048) {
         for (let i = 0; i < data.length; i += 100) {
-          data[i] += (rng() - 0.5) * 0.0001;
+          data[i] += (rng() - 0.5) * 0.00001;
         }
       }
       return data;

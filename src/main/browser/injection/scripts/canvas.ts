@@ -61,7 +61,8 @@ export function buildCanvasScript(canvas: CanvasFingerprint): string {
     const origGetImageData = CanvasRenderingContext2D.prototype.getImageData;
     CanvasRenderingContext2D.prototype.getImageData = function(sx, sy, sw, sh) {
       const imageData = origGetImageData.apply(this, arguments);
-      if (sw > 0 && sh > 0 && imageData && imageData.data) {
+      // Only apply noise on large standard canvases (>32x32) to protect cryptographic attestation canvases
+      if (sw > 32 && sh > 32 && imageData && imageData.data && imageData.data.length > 4096) {
         addNoise(imageData.data);
       }
       return imageData;
