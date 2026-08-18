@@ -114,13 +114,15 @@ function setupFirefoxProfilePrefs(
     }
   }
 
-  // Keep Firefox UI & font scaling user-friendly, sleek, and responsive
+  // Keep Firefox UI & font scaling user-friendly, sleek, compact, and responsive
+  prefs.push('user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);')
   prefs.push('user_pref("layout.css.devPixelsPerPx", "-1.0");')
   prefs.push('user_pref("browser.compactmode.show", true);')
   prefs.push('user_pref("browser.uidensity", 1);')
   prefs.push('user_pref("font.size.systemFontScale", 100);')
-  prefs.push('user_pref("browser.window.width", 1366);')
-  prefs.push('user_pref("browser.window.height", 850);')
+  prefs.push('user_pref("browser.window.width", 1200);')
+  prefs.push('user_pref("browser.window.height", 780);')
+  prefs.push('user_pref("browser.toolbars.bookmarks.visibility", "never");')
   prefs.push('user_pref("browser.tabs.tabmanager.enabled", false);')
   prefs.push('user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);')
   prefs.push('user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);')
@@ -156,16 +158,93 @@ function setupFirefoxProfilePrefs(
     fs.writeFileSync(prefsJsPath, content, 'utf8')
   }
 
+  // Pre-seed chrome/userChrome.css and chrome/userContent.css for sleek modern UI proportions
+  const chromeDir = path.join(resolvedDir, 'chrome')
+  try {
+    if (!fs.existsSync(chromeDir)) {
+      fs.mkdirSync(chromeDir, { recursive: true, mode: 0o700 })
+    }
+    const userChromeCss = `
+/* AntiProfiles Sleek Compact Modern Firefox Desktop UI */
+:root {
+  --tab-min-height: 32px !important;
+  --tab-border-radius: 6px !important;
+  --urlbar-min-height: 30px !important;
+  --toolbarbutton-outer-padding: 2px !important;
+}
+#nav-bar {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+  max-height: 38px !important;
+}
+#urlbar-container {
+  max-height: 32px !important;
+  padding-top: 1px !important;
+  padding-bottom: 1px !important;
+}
+#urlbar {
+  min-height: 30px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+}
+.tabbrowser-tab {
+  min-height: 32px !important;
+  font-size: 12.5px !important;
+}
+.tab-background {
+  border-radius: 6px 6px 0 0 !important;
+  margin-block: 1px !important;
+}
+#PersonalToolbar {
+  max-height: 28px !important;
+}
+#browser {
+  flex-grow: 1 !important;
+}
+`
+    const userContentCss = `
+/* AntiProfiles Responsive Compact New Tab Styling */
+@-moz-document url("about:home"), url("about:newtab") {
+  .logo-and-wordmark {
+    margin-bottom: 16px !important;
+  }
+  .logo {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  .wordmark {
+    font-size: 28px !important;
+  }
+  .search-wrapper {
+    margin-bottom: 24px !important;
+    max-width: 600px !important;
+  }
+  .top-sites-list {
+    gap: 16px !important;
+  }
+  .top-site-outer {
+    padding: 8px !important;
+  }
+  .top-site-inner .tile {
+    width: 56px !important;
+    height: 56px !important;
+  }
+}
+`
+    fs.writeFileSync(path.join(chromeDir, 'userChrome.css'), userChromeCss.trim() + '\n', 'utf8')
+    fs.writeFileSync(path.join(chromeDir, 'userContent.css'), userContentCss.trim() + '\n', 'utf8')
+  } catch {}
+
   // Pre-seed xulstore.json to ensure Firefox opens in a normal, compact centered window
   const xulstorePath = path.join(resolvedDir, 'xulstore.json')
   const xulstoreConfig = {
     'chrome://browser/content/browser.xhtml': {
       'main-window': {
-        width: '1366',
-        height: '850',
+        width: '1200',
+        height: '780',
         sizemode: 'normal',
-        screenX: '120',
-        screenY: '60'
+        screenX: '140',
+        screenY: '70'
       }
     }
   }
@@ -195,9 +274,9 @@ export async function launchFirefox(
     '-profile',
     userDataDir,
     '-width',
-    '1366',
+    '1200',
     '-height',
-    '850'
+    '780'
   ]
 
   if (startUrls.length > 0) {
@@ -211,7 +290,7 @@ export async function launchFirefox(
 
   if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
     const appPath = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
-    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir, '-width', '1366', '-height', '850']
+    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir, '-width', '1200', '-height', '780']
     if (startUrls.length > 0) {
       openArgs.push(...startUrls)
     }
