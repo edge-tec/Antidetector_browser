@@ -20,6 +20,7 @@ import { SupportChatWidget } from './components/SupportChatWidget'
 import { BrowserSetupModal } from './components/BrowserSetupModal'
 import { SoftwareUpdateModal, UpdateInfoPayload } from './components/SoftwareUpdateModal'
 import { ReferralDashboard } from './pages/ReferralDashboard'
+import { BrowserRuntimeManager } from './components/BrowserRuntimeManager'
 import { ProxyInfoCard } from './components/ProxyInfoCard'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
@@ -1204,6 +1205,9 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
           </div>
         </div>
       </div>
+
+      {/* Standalone Browser Runtime Manager */}
+      <BrowserRuntimeManager />
 
       <div className="section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

@@ -186,6 +186,12 @@ const api = {
   testBrowser: (executablePath: string) => ipcRenderer.invoke('settings:testBrowser', executablePath),
   getBrowserDiagnostics: () => ipcRenderer.invoke('settings:browserDiagnostics'),
 
+  // ── Browser Runtime Manager ──
+  getRuntimeStatus: () => ipcRenderer.invoke('runtime:getStatus'),
+  installRuntime: (engine: 'chromium' | 'firefox') => ipcRenderer.invoke('runtime:install', engine),
+  verifyRuntime: (engine: 'chromium' | 'firefox') => ipcRenderer.invoke('runtime:verify', engine),
+  repairRuntime: (engine: 'chromium' | 'firefox') => ipcRenderer.invoke('runtime:repair', engine),
+
   // ── Automation API ──
   getApiToken: () => ipcRenderer.invoke('api:getToken'),
   rotateApiToken: () => ipcRenderer.invoke('api:rotateToken'),

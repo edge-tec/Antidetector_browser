@@ -7,10 +7,74 @@ import { getDatabase } from '../database/connection'
 import { profileManager } from '../browser/profile-manager'
 import { findChromiumPath, findFirefoxPath, detectAllBrowsers, testBrowserExecutable, runBrowserDiagnostics } from '../browser/chromium-resolver'
 import { startApiServer, stopApiServer, isApiRunning, getApiToken } from '../automation/server'
-import { rotateApiToken } from '../security/api-auth'
-import { logger } from '../logging/logger'
+import { getManagedChromiumStatus, downloadAndInstallManagedChromium, getManagedRuntimeDir } from '../browser/chromium-downloader'
+import { getManagedFirefoxStatus, downloadAndInstallManagedFirefox, getManagedFirefoxDir } from '../browser/firefox-downloader'
+import fs from 'fs'
 
 export function registerSettingsHandlers(): void {
+  // ── Browser Runtime Manager IPC Handlers ──
+  ipcMain.handle('runtime:getStatus', async () => {
+    try {
+      const chromium = await getManagedChromiumStatus()
+      const firefox = await getManagedFirefoxStatus()
+      return {
+        success: true,
+        data: {
+          platform: process.platform,
+          arch: process.arch,
+          chromium,
+          firefox
+        }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('runtime:install', async (_event, engine: 'chromium' | 'firefox') => {
+    try {
+      if (engine === 'firefox') {
+        const p = await downloadAndInstallManagedFirefox()
+        return { success: true, data: { engine, executablePath: p } }
+      } else {
+        const p = await downloadAndInstallManagedChromium()
+        return { success: true, data: { engine, executablePath: p } }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('runtime:verify', async (_event, engine: 'chromium' | 'firefox') => {
+    try {
+      const status = engine === 'firefox' ? await getManagedFirefoxStatus() : await getManagedChromiumStatus()
+      if (!status.installed || !status.executablePath) {
+        return { success: false, error: `${engine.toUpperCase()} runtime is not installed.` }
+      }
+      const testRes = await testBrowserExecutable(status.executablePath)
+      return { success: true, data: testRes }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('runtime:repair', async (_event, engine: 'chromium' | 'firefox') => {
+    try {
+      if (engine === 'firefox') {
+        const dir = getManagedFirefoxDir()
+        try { fs.rmSync(dir, { recursive: true, force: true }) } catch {}
+        const p = await downloadAndInstallManagedFirefox()
+        return { success: true, data: { engine, executablePath: p } }
+      } else {
+        const dir = getManagedRuntimeDir()
+        try { fs.rmSync(dir, { recursive: true, force: true }) } catch {}
+        const p = await downloadAndInstallManagedChromium()
+        return { success: true, data: { engine, executablePath: p } }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
   // ── Settings ──
   ipcMain.handle('settings:getAll', async () => {
     try {
