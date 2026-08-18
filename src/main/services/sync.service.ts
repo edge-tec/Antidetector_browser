@@ -378,6 +378,42 @@ class RealtimeSyncService {
         this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
         break
 
+      case 'app.update.published':
+      case 'app.release.published':
+      case 'software.update.available':
+        logger.info('sync', `[SyncEvent] 🚀 Real-Time Software Update Published Event received! Version: ${parsedPayload.version || 'unknown'}`)
+        try {
+          if (parsedPayload && parsedPayload.version) {
+            const { updaterService } = require('./updater.service')
+            updaterService.saveVersion({
+              version: parsedPayload.version,
+              release_title: parsedPayload.release_title || parsedPayload.title || `AntiProfiles v${parsedPayload.version}`,
+              release_notes: parsedPayload.release_notes || parsedPayload.notes || 'Performance enhancements and bug fixes.',
+              status: 'published',
+              min_supported_version: parsedPayload.min_supported_version || '1.0.0',
+              force_update: parsedPayload.force_update ? 1 : 0,
+              win_download_url: parsedPayload.win_download_url,
+              win_file_size: parsedPayload.win_file_size,
+              win_sha256: parsedPayload.win_sha256,
+              mac_intel_download_url: parsedPayload.mac_intel_download_url,
+              mac_intel_file_size: parsedPayload.mac_intel_file_size,
+              mac_intel_sha256: parsedPayload.mac_intel_sha256,
+              mac_arm_download_url: parsedPayload.mac_arm_download_url,
+              mac_arm_file_size: parsedPayload.mac_arm_file_size,
+              mac_arm_sha256: parsedPayload.mac_arm_sha256,
+              linux_download_url: parsedPayload.linux_download_url,
+              linux_file_size: parsedPayload.linux_file_size,
+              linux_sha256: parsedPayload.linux_sha256,
+              published_at: parsedPayload.published_at || new Date().toISOString()
+            }, 'remote_admin')
+          }
+        } catch (e: any) {
+          logger.warn('sync', `Failed to sync remote software release: ${e.message}`)
+        }
+        this.broadcastToAllWindows('ui:software-update-available', parsedPayload)
+        this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
+        break
+
       default:
         // Broadcast generic event to all renderers
         this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })

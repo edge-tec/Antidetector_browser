@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { UserDisplay, Profile } from '../types'
 import { AdminSupportManager } from '../components/AdminSupportManager'
 import { AdminSeoManager } from '../components/AdminSeoManager'
+import { AdminSoftwareVersionManager } from '../components/AdminSoftwareVersionManager'
 
 interface SmtpFormState {
   host: string
@@ -867,80 +868,9 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* 3. Desktop App Releases & Licensing Configuration Tab */}
+        {/* 3. Desktop App Releases & Software Version Management Tab */}
         {activeTab === 'releases' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-            <form onSubmit={handleSaveDesktopConfig} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9', fontWeight: 700 }}>
-                💻 Desktop Application Releases & Licensing Settings
-              </h3>
-              <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
-                Configure Windows and macOS binary download links, version enforcement, and device limits.
-              </p>
-
-              <div style={{ borderTop: '1px solid #2C2C3E', paddingTop: '14px' }}>
-                <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#60A5FA' }}>🪟 Windows (x64) Release</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '10px', marginBottom: '10px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (AntiProfiles-Windows-x64.exe)</label>
-                    <input type="text" value={desktopConfig.win_download_url || ''} onChange={e => setDesktopConfig({ ...desktopConfig, win_download_url: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Version</label>
-                    <input type="text" value={desktopConfig.win_app_version || '1.0.0'} onChange={e => setDesktopConfig({ ...desktopConfig, win_app_version: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid #2C2C3E', paddingTop: '14px' }}>
-                <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#10B981' }}>🍏 macOS Intel (x64) Release</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '10px', marginBottom: '10px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (AntiProfiles-macOS-Intel-x64.dmg)</label>
-                    <input type="text" value={desktopConfig.mac_intel_download_url || desktopConfig.mac_download_url || ''} onChange={e => setDesktopConfig({ ...desktopConfig, mac_intel_download_url: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Version</label>
-                    <input type="text" value={desktopConfig.mac_intel_app_version || desktopConfig.mac_app_version || '1.0.0'} onChange={e => setDesktopConfig({ ...desktopConfig, mac_intel_app_version: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid #2C2C3E', paddingTop: '14px' }}>
-                <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#F59E0B' }}>⚡ macOS Apple Silicon (arm64) Release</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '10px', marginBottom: '10px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Download URL (AntiProfiles-macOS-Apple-Silicon-arm64.dmg)</label>
-                    <input type="text" value={desktopConfig.mac_arm_download_url || desktopConfig.mac_download_url || ''} onChange={e => setDesktopConfig({ ...desktopConfig, mac_arm_download_url: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94A3B8' }}>Version</label>
-                    <input type="text" value={desktopConfig.mac_arm_app_version || desktopConfig.mac_app_version || '1.0.0'} onChange={e => setDesktopConfig({ ...desktopConfig, mac_arm_app_version: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid #2C2C3E', paddingTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94A3B8' }}>Min Supported Version</label>
-                  <input type="text" value={desktopConfig.min_supported_version || '1.0.0'} onChange={e => setDesktopConfig({ ...desktopConfig, min_supported_version: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94A3B8' }}>Max Devices Per Account</label>
-                  <input type="number" value={desktopConfig.max_devices_limit || '2'} onChange={e => setDesktopConfig({ ...desktopConfig, max_devices_limit: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px' }} />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '11px', color: '#94A3B8' }}>Release Notes</label>
-                <textarea rows={3} value={desktopConfig.release_notes || ''} onChange={e => setDesktopConfig({ ...desktopConfig, release_notes: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '12px', resize: 'none' }} />
-              </div>
-
-              <button type="submit" disabled={savingDesktopConfig} style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
-                {savingDesktopConfig ? 'Saving...' : '💾 Save Release & Licensing Settings'}
-              </button>
-            </form>
-          </div>
+          <AdminSoftwareVersionManager />
         )}
 
         {/* 4. Landing CMS Tab */}

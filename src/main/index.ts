@@ -18,6 +18,7 @@ import { setupLandingIPC } from './ipc/landing'
 import { setupSubscriptionIPC } from './ipc/subscription.ipc'
 import { setupSupportIPC } from './ipc/support.ipc'
 import { registerSeoHandlers } from './ipc/seo.ipc'
+import { registerUpdaterHandlers } from './ipc/updater'
 import { logger } from './logging/logger'
 
 let mainWindow: BrowserWindow | null = null
@@ -105,6 +106,7 @@ app.whenReady().then(async () => {
   try { setupSubscriptionIPC() } catch (err: any) { logger.error('system', `Subscription IPC failed: ${err.message}`) }
   try { setupSupportIPC() } catch (err: any) { logger.error('system', `Support IPC failed: ${err.message}`) }
   try { registerSeoHandlers() } catch (err: any) { logger.error('system', `SEO IPC failed: ${err.message}`) }
+  try { registerUpdaterHandlers() } catch (err: any) { logger.error('system', `Updater IPC failed: ${err.message}`) }
   try { registerProfileHandlers() } catch (err: any) { logger.error('system', `Profile IPC failed: ${err.message}`) }
   try { registerBrowserHandlers() } catch (err: any) { logger.error('system', `Browser IPC failed: ${err.message}`) }
   try { registerProxyHandlers() } catch (err: any) { logger.error('system', `Proxy IPC failed: ${err.message}`) }

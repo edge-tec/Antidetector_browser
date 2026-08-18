@@ -18,6 +18,7 @@ import { AdminDashboard } from './pages/AdminDashboard'
 import { LandingPage } from './pages/LandingPage'
 import { SupportChatWidget } from './components/SupportChatWidget'
 import { BrowserSetupModal } from './components/BrowserSetupModal'
+import { SoftwareUpdateModal, UpdateInfoPayload } from './components/SoftwareUpdateModal'
 import logoImg from './assets/logo.png'
 
 // ═══════════════════════════════════════════
@@ -1725,6 +1726,11 @@ function AppContent() {
   const [userDevices, setUserDevices] = useState<any[]>([])
   const [showDevicesModal, setShowDevicesModal] = useState(false)
 
+  // Real-Time Software Update State
+  const [availableUpdate, setAvailableUpdate] = useState<UpdateInfoPayload | null>(null)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [appVersion, setAppVersion] = useState('1.0.0')
+
   // Real-Time Central Synchronization State
   const [syncStatus, setSyncStatus] = useState<{
     status: 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'syncing' | 'error'
@@ -1835,6 +1841,55 @@ function AppContent() {
       unsubPayment?.()
     }
   }, [isAuthenticated, logout, showToast])
+
+  // Real-Time Software Update Checks & Event Listeners
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).api?.getAppVersion) {
+      (window as any).api.getAppVersion().then((r: any) => {
+        if (r?.success && r.data) setAppVersion(r.data)
+      }).catch(() => {})
+    }
+
+    const checkAppUpdate = async () => {
+      try {
+        if ((window as any).api?.updaterCheckLatest) {
+          const res = await (window as any).api.updaterCheckLatest()
+          if (res.success && res.data?.hasUpdate && res.data.latestVersion) {
+            const latest = res.data.latestVersion
+            const info: UpdateInfoPayload = {
+              version: latest.version,
+              releaseTitle: latest.release_title,
+              releaseNotes: latest.release_notes,
+              publishedAt: latest.published_at,
+              forceUpdate: Boolean(res.data.forceUpdate),
+              packageInfo: res.data.packageInfo
+            }
+            setAvailableUpdate(info)
+            const dismissed = sessionStorage.getItem('dismissed_update_' + latest.version)
+            if (!dismissed || res.data.forceUpdate) {
+              setShowUpdateModal(true)
+            }
+          }
+        }
+      } catch {}
+    }
+    checkAppUpdate()
+
+    let unsubUpdate: (() => void) | undefined
+    if ((window as any).api?.onSoftwareUpdateAvailable) {
+      unsubUpdate = (window as any).api.onSoftwareUpdateAvailable((_e: any, data: any) => {
+        if (data && data.version) {
+          setAvailableUpdate(data)
+          setShowUpdateModal(true)
+          showToast('info', `🚀 Real-Time Update: Software release v${data.version} is now available!`)
+        }
+      })
+    }
+
+    return () => {
+      if (unsubUpdate) unsubUpdate()
+    }
+  }, [showToast])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -2062,6 +2117,33 @@ function AppContent() {
           </span>
           <div style={{ flex: 1 }} />
           <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flexShrink: 0 }}>
+            {/* Real-Time Software Update Available Pill */}
+            {availableUpdate && (
+              <button
+                type="button"
+                onClick={() => setShowUpdateModal(true)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #2DD4BF80',
+                  background: 'linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(59, 130, 246, 0.2))',
+                  color: '#2DD4BF',
+                  fontWeight: 700,
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 0 12px rgba(45, 212, 191, 0.25)',
+                  whiteSpace: 'nowrap'
+                }}
+                title="New Software Update Available"
+              >
+                <span>🚀</span>
+                <span>Update to v{availableUpdate.version}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setViewingPublicLanding(true)}
@@ -2407,6 +2489,20 @@ function AppContent() {
       <SupportChatWidget />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <ConfirmDialog state={confirmState} onCancel={() => setConfirmState((s) => ({ ...s, show: false }))} />
+
+      {/* ── Software Update Modal ── */}
+      <SoftwareUpdateModal
+        isOpen={showUpdateModal}
+        updateInfo={availableUpdate}
+        currentVersion={appVersion}
+        onClose={() => setShowUpdateModal(false)}
+        onLater={() => {
+          if (availableUpdate) {
+            sessionStorage.setItem('dismissed_update_' + availableUpdate.version, 'true')
+          }
+          setShowUpdateModal(false)
+        }}
+      />
     </div>
   )
 }

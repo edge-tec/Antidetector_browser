@@ -297,7 +297,25 @@ const api = {
   seoGetLatestAudit: (token?: string) => ipcRenderer.invoke('seo:get-latest-audit', token),
   seoGenerateContentAssistant: (token: string, params: any) => ipcRenderer.invoke('seo:generate-content-assistant', token, params),
   seoGetSitemapXml: () => ipcRenderer.invoke('seo:get-sitemap-xml'),
-  seoGetLlmsTxt: () => ipcRenderer.invoke('seo:get-llms-txt')
+  seoGetLlmsTxt: () => ipcRenderer.invoke('seo:get-llms-txt'),
+
+  // ── Software Release Management & Auto-Updates ──
+  updaterCheckLatest: (currentVer?: string) => ipcRenderer.invoke('updater:checkLatest', currentVer),
+  updaterGetAllVersions: (token?: string) => ipcRenderer.invoke('updater:getAllVersions', token),
+  updaterSaveVersion: (token: string, versionData: any) => ipcRenderer.invoke('updater:saveVersion', token, versionData),
+  updaterPublishVersion: (token: string, versionId: string) => ipcRenderer.invoke('updater:publishVersion', token, versionId),
+  updaterDisableVersion: (token: string, versionId: string) => ipcRenderer.invoke('updater:disableVersion', token, versionId),
+  updaterDeleteVersion: (token: string, versionId: string) => ipcRenderer.invoke('updater:deleteVersion', token, versionId),
+  updaterDownloadUpdate: (url: string, expectedSha256?: string) => ipcRenderer.invoke('updater:downloadUpdate', url, expectedSha256),
+  updaterInstallUpdate: (filePath: string) => ipcRenderer.invoke('updater:installUpdate', filePath),
+  onSoftwareUpdateAvailable: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('ui:software-update-available', callback)
+    return () => ipcRenderer.removeListener('ui:software-update-available', callback)
+  },
+  onDownloadProgress: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('updater:download-progress', callback)
+    return () => ipcRenderer.removeListener('updater:download-progress', callback)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

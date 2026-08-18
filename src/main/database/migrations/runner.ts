@@ -10,6 +10,7 @@ import * as migration004 from './004_landing_cms'
 import * as migration005 from './005_subscriptions_and_licenses'
 import * as migration006 from './006_live_support_system'
 import * as migration007 from './007_seo_aeo_system'
+import * as migration008 from './008_software_version_management'
 
 interface Migration {
   id: number
@@ -24,7 +25,8 @@ const migrations: Migration[] = [
   { id: migration004.id, name: migration004.name, up: migration004.up },
   { id: migration005.id, name: migration005.name, up: migration005.up },
   { id: migration006.id, name: migration006.name, up: migration006.up },
-  { id: migration007.id, name: migration007.name, up: migration007.up }
+  { id: migration007.id, name: migration007.name, up: migration007.up },
+  { id: migration008.id, name: migration008.name, up: migration008.up }
 ]
 
 export function runMigrations(db: Database.Database): void {
