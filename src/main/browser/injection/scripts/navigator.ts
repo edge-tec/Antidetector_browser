@@ -133,20 +133,22 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
     } catch(e) {}
   }
 
-  // ── Standard window.chrome Object for Chrome Profiles ──
+  // ── Standard window.chrome Object for Chrome/Chromium Profiles ──
   try {
-    if (!window.chrome) {
-      window.chrome = {};
-    }
-    if (!window.chrome.app) {
-      window.chrome.app = {
-        isInstalled: false,
-        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
-        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
-        getDetails: function() { return null; },
-        getIsInstalled: function() { return false; },
-        runningState: function() { return 'cannot_run'; }
-      };
+    if (typeof window !== 'undefined') {
+      if (!window.chrome) {
+        window.chrome = {};
+      }
+      if (!window.chrome.app) {
+        window.chrome.app = {
+          isInstalled: false,
+          InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+          RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+          getDetails: function() { return null; },
+          getIsInstalled: function() { return false; },
+          runningState: function() { return 'cannot_run'; }
+        };
+      }
     }
   } catch(e) {}
 })();`
