@@ -73,132 +73,77 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
     });
   } catch(e) {}
 
-  // ── Standard Desktop Plugins & MimeTypes Emulation ──
-  if (!${isMobile ? 'true' : 'false'} && typeof PluginArray !== 'undefined' && typeof MimeTypeArray !== 'undefined') {
+  // ── Preserve Native Desktop Plugins & MimeTypes or Emulate Cleanly ──
+  if (!${isMobile ? 'true' : 'false'} && typeof navigator !== 'undefined' && (!navigator.plugins || navigator.plugins.length === 0)) {
     try {
       const pluginDefs = [
         { name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
         { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
-        { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
-        { name: 'Microsoft Edge PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
-        { name: 'WebKit built-in PDF', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] }
+        { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] }
       ];
 
-      const pluginsObj = Object.create(PluginArray.prototype);
-      const mimeTypesObj = Object.create(MimeTypeArray.prototype);
-      const rawPlugins = [];
-      const rawMimes = [];
+      if (typeof PluginArray !== 'undefined' && typeof MimeTypeArray !== 'undefined') {
+        const pluginsObj = Object.create(PluginArray.prototype);
+        const mimeTypesObj = Object.create(MimeTypeArray.prototype);
+        const rawPlugins = [];
+        const rawMimes = [];
 
-      pluginDefs.forEach(function(p) {
-        const plugin = Object.create(Plugin.prototype);
-        Object.defineProperties(plugin, {
-          name: { value: p.name, enumerable: true },
-          filename: { value: p.filename, enumerable: true },
-          description: { value: p.description, enumerable: true },
-          length: { value: p.mimeTypes.length, enumerable: true }
-        });
-
-        p.mimeTypes.forEach(function(m, mIdx) {
-          const mime = Object.create(MimeType.prototype);
-          Object.defineProperties(mime, {
-            type: { value: m.type, enumerable: true },
-            suffixes: { value: m.suffixes, enumerable: true },
-            description: { value: m.description, enumerable: true },
-            enabledPlugin: { value: plugin, enumerable: true }
+        pluginDefs.forEach(function(p) {
+          const plugin = Object.create(Plugin.prototype);
+          Object.defineProperties(plugin, {
+            name: { value: p.name, enumerable: true },
+            filename: { value: p.filename, enumerable: true },
+            description: { value: p.description, enumerable: true },
+            length: { value: p.mimeTypes.length, enumerable: true }
           });
-          plugin[mIdx] = mime;
-          plugin[m.type] = mime;
-          rawMimes.push(mime);
+
+          p.mimeTypes.forEach(function(m, mIdx) {
+            const mime = Object.create(MimeType.prototype);
+            Object.defineProperties(mime, {
+              type: { value: m.type, enumerable: true },
+              suffixes: { value: m.suffixes, enumerable: true },
+              description: { value: m.description, enumerable: true },
+              enabledPlugin: { value: plugin, enumerable: true }
+            });
+            plugin[mIdx] = mime;
+            plugin[m.type] = mime;
+            rawMimes.push(mime);
+          });
+
+          rawPlugins.push(plugin);
         });
 
-        rawPlugins.push(plugin);
-      });
-
-      rawPlugins.forEach(function(pl, i) {
-        pluginsObj[i] = pl;
-        pluginsObj[pl.name] = pl;
-      });
-
-      rawMimes.forEach(function(m, i) {
-        mimeTypesObj[i] = m;
-        mimeTypesObj[m.type] = m;
-      });
-
-      Object.defineProperty(pluginsObj, 'length', { value: rawPlugins.length, enumerable: false });
-      Object.defineProperty(pluginsObj, 'item', { value: function(i) { return this[i] || null; } });
-      Object.defineProperty(pluginsObj, 'namedItem', { value: function(name) { return this[name] || null; } });
-      Object.defineProperty(pluginsObj, 'refresh', { value: function() {} });
-
-      Object.defineProperty(mimeTypesObj, 'length', { value: rawMimes.length, enumerable: false });
-      Object.defineProperty(mimeTypesObj, 'item', { value: function(i) { return this[i] || null; } });
-      Object.defineProperty(mimeTypesObj, 'namedItem', { value: function(name) { return this[name] || null; } });
-
-      Object.defineProperty(Navigator.prototype, 'plugins', {
-        get: function() { return pluginsObj; },
-        enumerable: true,
-        configurable: true
-      });
-
-      Object.defineProperty(Navigator.prototype, 'mimeTypes', {
-        get: function() { return mimeTypesObj; },
-        enumerable: true,
-        configurable: true
-      });
-    } catch(e) {}
-  }
-
-  // ── Override User-Agent Client Hints API ──
-  if ('userAgentData' in Navigator.prototype || 'userAgentData' in navigator) {
-    try {
-      const brandVer = ${JSON.stringify(brandVersion)};
-      const clientPlat = ${JSON.stringify(clientPlatform)};
-      const isMob = ${isMobile ? 'true' : 'false'};
-
-      const brandsList = [
-        { brand: 'Chromium', version: brandVer },
-        { brand: 'Google Chrome', version: brandVer },
-        { brand: 'Not_A Brand', version: '24' }
-      ];
-
-      const fullList = [
-        { brand: 'Chromium', version: ${JSON.stringify(nav.browserVersion || '131.0.0.0')} },
-        { brand: 'Google Chrome', version: ${JSON.stringify(nav.browserVersion || '131.0.0.0')} },
-        { brand: 'Not_A Brand', version: '24.0.0.0' }
-      ];
-
-      const getHighEntropyValuesFn = function(hints) {
-        return Promise.resolve({
-          brands: brandsList,
-          mobile: isMob,
-          platform: clientPlat,
-          architecture: isMob ? 'arm' : ${JSON.stringify(nav.cpuArchitecture || 'x86')},
-          bitness: ${JSON.stringify(nav.platformArchitecture === '64-bit' ? '64' : '32')},
-          model: isMob ? (${JSON.stringify(nav.platform)} === 'iPhone' ? 'iPhone' : 'SM-S928B') : '',
-          platformVersion: clientPlat === 'Windows' ? '15.0.0' : clientPlat === 'macOS' ? '14.5.0' : '14.0.0',
-          uaFullVersion: ${JSON.stringify(nav.browserVersion || '131.0.0.0')},
-          fullVersionList: fullList
+        rawPlugins.forEach(function(pl, i) {
+          pluginsObj[i] = pl;
+          pluginsObj[pl.name] = pl;
         });
-      };
 
-      const uaDataObj = {
-        brands: brandsList,
-        mobile: isMob,
-        platform: clientPlat,
-        getHighEntropyValues: getHighEntropyValuesFn,
-        toJSON: function() {
-          return {
-            brands: brandsList,
-            mobile: isMob,
-            platform: clientPlat
-          };
-        }
-      };
+        rawMimes.forEach(function(m, i) {
+          mimeTypesObj[i] = m;
+          mimeTypesObj[m.type] = m;
+        });
 
-      Object.defineProperty(Navigator.prototype, 'userAgentData', {
-        get: function() { return uaDataObj; },
-        configurable: true,
-        enumerable: true
-      });
+        Object.defineProperty(pluginsObj, 'length', { value: rawPlugins.length, enumerable: false });
+        Object.defineProperty(pluginsObj, 'item', { value: function(i) { return this[i] || null; } });
+        Object.defineProperty(pluginsObj, 'namedItem', { value: function(name) { return this[name] || null; } });
+        Object.defineProperty(pluginsObj, 'refresh', { value: function() {} });
+
+        Object.defineProperty(mimeTypesObj, 'length', { value: rawMimes.length, enumerable: false });
+        Object.defineProperty(mimeTypesObj, 'item', { value: function(i) { return this[i] || null; } });
+        Object.defineProperty(mimeTypesObj, 'namedItem', { value: function(name) { return this[name] || null; } });
+
+        Object.defineProperty(Navigator.prototype, 'plugins', {
+          get: function() { return pluginsObj; },
+          enumerable: true,
+          configurable: true
+        });
+
+        Object.defineProperty(Navigator.prototype, 'mimeTypes', {
+          get: function() { return mimeTypesObj; },
+          enumerable: true,
+          configurable: true
+        });
+      }
     } catch(e) {}
   }
 

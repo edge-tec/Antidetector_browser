@@ -72,13 +72,12 @@ describe('X (Twitter) & Standards-Compliant Browser Compatibility Tests', () => 
   })
 
   describe('4. Client Hints & Network Information', () => {
-    it('includes authentic userAgentData getHighEntropyValues', () => {
+    it('ensures clean navigator properties and hardware concurrency', () => {
       const fp = generateFingerprint({ osType: 'windows-10' })
       const script = buildInjectionScript(fp)
 
-      expect(script).toContain('getHighEntropyValues')
-      expect(script).toContain('brands')
-      expect(script).toContain('fullVersionList')
+      expect(script).toContain('hardwareConcurrency')
+      expect(script).toContain('deviceMemory')
     })
 
     it('preserves NetworkInformation prototype safely', () => {

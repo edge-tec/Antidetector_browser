@@ -39,7 +39,7 @@ describe('Browser Profile Consistency & Fingerprint Coherence Tests', () => {
       expect(typeof script).toBe('string')
       expect(script).toContain('Navigator.prototype')
       expect(script).toContain('window.chrome')
-      expect(script).toContain('userAgentData')
+      expect(script).toContain('hardwareConcurrency')
       expect(script.startsWith('(function() {')).toBe(true)
       expect(script.endsWith('})();')).toBe(true)
     })
