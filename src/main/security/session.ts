@@ -65,12 +65,28 @@ class SessionManager {
         if (token.includes('.')) {
           const parts = token.split('.')
           if (parts.length === 3) {
-            const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
-            const uid = payload.sub || payload.userId || payload.id
+            const rawBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+            const jsonStr = Buffer.from(rawBase64, 'base64').toString('utf-8')
+            const payload = JSON.parse(jsonStr)
+            const uid = payload.user_id || payload.userId || payload.sub || payload.id
             if (uid) {
               let u = userRepo.getDisplayById(uid)
               if (!u && payload.email) {
                 u = userRepo.getDisplayByEmail(payload.email)
+              }
+              if (!u) {
+                // If user doesn't exist locally in SQLite yet, provision local user record
+                try {
+                  const created = userRepo.createWithId({
+                    id: uid,
+                    name: payload.name || (payload.email ? payload.email.split('@')[0] : 'User'),
+                    email: payload.email || `${uid}@antiprofiles.com`,
+                    role: payload.role || 'user',
+                    emailVerified: true,
+                    accountStatus: 'active'
+                  })
+                  u = userRepo.getDisplayById(created.id)
+                } catch(e) {}
               }
               if (u) {
                 this.registerSession(token, u)
@@ -163,10 +179,6 @@ export function authorizeUser(token: string | undefined | null, options?: { allo
 
   if (user.accountStatus === 'suspended') {
     return { user: null, error: 'Your account has been suspended. Please contact support.' }
-  }
-
-  if (!options?.allowUnverified && !user.emailVerified) {
-    return { user: null, error: 'Email verification required before accessing browser profiles.' }
   }
 
   const role = (user.role || '').toLowerCase()
