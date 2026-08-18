@@ -3328,7 +3328,7 @@ export const ProfileModal: React.FC<Props> = ({
                           onChange={e => handleBrowserVersionChange(e.target.value)}
                           style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
                         >
-                          {availableVersions.map(v => (
+                          {availableBrowserVersions.map(v => (
                             <option key={v.version} value={v.version}>{v.label}</option>
                           ))}
                         </select>
