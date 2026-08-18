@@ -193,20 +193,42 @@ export const SupportChatWidget: React.FC = () => {
     e.preventDefault()
     if (!effectiveToken || !activeConvId || (!chatInput.trim() && !selectedFile)) return
 
+    const userMsgText = chatInput.trim()
+    const filePayload = selectedFile
+
+    // Optimistically add message
+    const tempMsg: SupportMessage = {
+      id: `temp_${Date.now()}`,
+      conversation_id: activeConvId,
+      sender_id: currentUser?.id || effectiveToken,
+      sender_type: 'user',
+      sender_name: currentUser?.name || 'You',
+      message: userMsgText,
+      attachment_name: filePayload?.name,
+      is_read: false,
+      created_at: new Date().toISOString()
+    }
+
+    setActiveConv((prev: any) => prev ? {
+      ...prev,
+      messages: [...(prev.messages || []), tempMsg]
+    } : { id: activeConvId, subject: 'Live Chat', status: 'open', messages: [tempMsg] })
+
+    setChatInput('')
+    setSelectedFile(null)
     setLoading(true)
+
     try {
       if ((window as any).api?.sendSupportMessage) {
-        const res = await (window as any).api.sendSupportMessage(effectiveToken, activeConvId, chatInput.trim(), selectedFile)
+        const res = await (window as any).api.sendSupportMessage(effectiveToken, activeConvId, userMsgText, filePayload)
         if (res?.success) {
-          setChatInput('')
-          setSelectedFile(null)
           loadActiveConversation(activeConvId)
         } else {
-          alert(res?.error || 'Failed to send message.')
+          console.warn('sendSupportMessage warning:', res?.error)
         }
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`)
+      console.error('Error sending message:', err)
     } finally {
       setLoading(false)
     }
@@ -266,11 +288,32 @@ export const SupportChatWidget: React.FC = () => {
 
       const createdConvId = res?.data?.id || res?.conversation_id
       if (res?.success && createdConvId) {
+        const initMsg: SupportMessage = {
+          id: `init_${Date.now()}`,
+          conversation_id: createdConvId,
+          sender_id: currentUser?.id || effectiveToken,
+          sender_type: 'user',
+          sender_name: currentUser?.name || 'You',
+          message: newMessage.trim(),
+          attachment_name: selectedFile?.name,
+          is_read: false,
+          created_at: new Date().toISOString()
+        }
+
+        const optimisticConv = {
+          id: createdConvId,
+          subject: newSubject.trim(),
+          status: 'open',
+          messages: [initMsg]
+        }
+
         setNewSubject('')
         setNewMessage('')
         setSelectedFile(null)
         setIsCreatingTicket(false)
+        setActiveConv(optimisticConv)
         setActiveConvId(createdConvId)
+        loadActiveConversation(createdConvId)
         loadConversations()
       } else {
         alert(res?.error || 'Failed to create live support conversation. Please try again.')
@@ -549,66 +592,77 @@ export const SupportChatWidget: React.FC = () => {
             )}
 
             {/* View 3: Active Live Chat Thread View */}
-            {activeConvId && activeConv && (
+            {activeConvId && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 
                 {/* Subject Header */}
-                <div style={{ padding: '8px 12px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                  <span style={{ fontWeight: 700, color: '#F1F5F9' }}>{activeConv.subject}</span>
-                  <span style={{ fontSize: '10px', color: '#94A3B8', marginLeft: '8px' }}>({activeConv.status})</span>
+                <div style={{ padding: '8px 12px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: '#F1F5F9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>
+                    {activeConv?.subject || 'Live Support Chat'}
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#2DD4BF', fontWeight: 600, padding: '2px 6px', backgroundColor: 'rgba(45,212,191,0.1)', borderRadius: '4px' }}>
+                    {(activeConv?.status || 'Active').toUpperCase()}
+                  </span>
                 </div>
 
                 {/* Messages Thread */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
-                  {activeConv.messages?.map((m: SupportMessage) => {
-                    const isUser = m.sender_type === 'user'
-                    return (
-                      <div
-                        key={m.id}
-                        style={{
-                          alignSelf: isUser ? 'flex-end' : 'flex-start',
-                          maxWidth: '82%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: isUser ? 'flex-end' : 'flex-start'
-                        }}
-                      >
-                        <div style={{ fontSize: '10px', color: '#64748B', marginBottom: '2px' }}>
-                          {isUser ? 'You' : (m.sender_name || 'Support Agent')}
-                        </div>
+                  {(!activeConv?.messages || activeConv.messages.length === 0) ? (
+                    <div style={{ textAlign: 'center', color: '#64748B', fontSize: '12px', marginTop: '30px' }}>
+                      Connecting with Support Team...<br />You can send your message below.
+                    </div>
+                  ) : (
+                    activeConv.messages.map((m: SupportMessage) => {
+                      const isUser = m.sender_type === 'user'
+                      return (
+                        <div
+                          key={m.id}
+                          style={{
+                            alignSelf: isUser ? 'flex-end' : 'flex-start',
+                            maxWidth: '82%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: isUser ? 'flex-end' : 'flex-start'
+                          }}
+                        >
+                          <div style={{ fontSize: '10px', color: '#64748B', marginBottom: '2px' }}>
+                            {isUser ? 'You' : (m.sender_name || 'Support Agent')}
+                          </div>
 
-                        <div style={{
-                          padding: '10px 14px',
-                          borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                          backgroundColor: isUser ? '#2DD4BF' : '#2C2C3E',
-                          color: isUser ? '#0F0F17' : '#F1F5F9',
-                          fontSize: '13px',
-                          lineHeight: 1.5,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          whiteSpace: 'pre-wrap'
-                        }}>
-                          {m.message}
+                          <div style={{
+                            padding: '10px 14px',
+                            borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                            backgroundColor: isUser ? '#2DD4BF' : '#2C2C3E',
+                            color: isUser ? '#0F0F17' : '#F1F5F9',
+                            fontSize: '13px',
+                            lineHeight: 1.5,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word'
+                          }}>
+                            {m.message}
 
-                          {/* Attachment Link */}
-                          {m.attachment_name && (
-                            <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: isUser ? '1px solid #0F0F1730' : '1px solid #ffffff20', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>📎</span>
-                              <span style={{ fontWeight: 700, textDecoration: 'underline' }}>{m.attachment_name}</span>
-                            </div>
-                          )}
-                        </div>
+                            {/* Attachment Link */}
+                            {m.attachment_name && (
+                              <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: isUser ? '1px solid #0F0F1730' : '1px solid #ffffff20', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>📎</span>
+                                <span style={{ fontWeight: 700, textDecoration: 'underline' }}>{m.attachment_name}</span>
+                              </div>
+                            )}
+                          </div>
 
-                        <div style={{ fontSize: '9px', color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          {isUser && (
-                            <span style={{ color: m.is_read ? '#10B981' : '#64748B', fontWeight: 800 }}>
-                              {m.is_read ? '✓✓ Read' : '✓ Sent'}
-                            </span>
-                          )}
+                          <div style={{ fontSize: '9px', color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span>{new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {isUser && (
+                              <span style={{ color: m.is_read ? '#10B981' : '#64748B', fontWeight: 800 }}>
+                                {m.is_read ? '✓✓ Read' : '✓ Sent'}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })
+                  )}
 
                   {/* Support is Typing Indicator */}
                   {supportIsTyping && (
@@ -640,7 +694,7 @@ export const SupportChatWidget: React.FC = () => {
                       placeholder="Type a message..."
                       value={chatInput}
                       onChange={handleInputChange}
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: '20px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#F1F5F9', fontSize: '13px' }}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: '20px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#F1F5F9', fontSize: '13px', outline: 'none' }}
                     />
 
                     <button
@@ -653,7 +707,8 @@ export const SupportChatWidget: React.FC = () => {
                         color: '#0F0F17',
                         fontWeight: 800,
                         border: 'none',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        opacity: loading || (!chatInput.trim() && !selectedFile) ? 0.5 : 1
                       }}
                     >
                       🚀
@@ -668,3 +723,4 @@ export const SupportChatWidget: React.FC = () => {
     </div>
   )
 }
+
