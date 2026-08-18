@@ -607,10 +607,9 @@ try {
         // ── 7. Admin: Send Reply Message ──
         case 'admin-reply':
         case 'admin-send-reply':
-            requireAdmin();
-            $adminUser = $user;
-            $convId = trim($input['conversation_id'] ?? '');
-            $messageText = trim($input['message'] ?? '');
+            $adminUser = requireAdmin();
+            $convId = trim($input['conversation_id'] ?? $_GET['conversation_id'] ?? '');
+            $messageText = trim($input['message'] ?? $input['reply'] ?? '');
 
             if (!$convId || !$messageText) {
                 respondJson(['success' => false, 'error' => 'Conversation ID and message are required.'], 400);
@@ -624,6 +623,7 @@ try {
 
             $msgId = 'msg_' . bin2hex(random_bytes(8));
             $adminName = $adminUser['name'] ?? 'Support Team';
+            $adminId = $adminUser['id'] ?? 'admin_default';
 
             $db->beginTransaction();
 
@@ -634,7 +634,7 @@ try {
             ")->execute([
                 $msgId,
                 $convId,
-                $adminUser['id'],
+                $adminId,
                 $adminName,
                 $messageText
             ]);
@@ -646,7 +646,7 @@ try {
                     status = 'waiting_user',
                     assigned_agent_id = ?
                 WHERE id = ?
-            ")->execute([$adminUser['id'], $convId]);
+            ")->execute([$adminId, $convId]);
 
             $db->commit();
 
@@ -656,12 +656,12 @@ try {
             publishEvent('support.reply.created', [
                 'conversation_id' => $convId,
                 'message_id' => $msgId,
-                'sender_id' => $adminUser['id'],
+                'sender_id' => $adminId,
                 'sender_name' => $adminName,
                 'sender_type' => 'agent',
                 'message' => $messageText,
-                'visitor_token' => $conv['visitor_token'],
-                'user_id' => $conv['user_id'],
+                'visitor_token' => $conv['visitor_token'] ?? null,
+                'user_id' => $conv['user_id'] ?? null,
                 'created_at' => date('c')
             ]);
 
@@ -678,7 +678,7 @@ try {
         case 'admin-close':
         case 'admin-close-conversation':
             requireAdmin();
-            $convId = trim($input['conversation_id'] ?? '');
+            $convId = trim($input['conversation_id'] ?? $_GET['conversation_id'] ?? '');
             if (!$convId) respondJson(['success' => false, 'error' => 'Conversation ID required.'], 400);
 
             $db->prepare("UPDATE support_conversations SET status = 'closed', closed_at = NOW(), last_message_at = NOW() WHERE id = ?")->execute([$convId]);
@@ -690,8 +690,8 @@ try {
 
         // ── 9. Admin: Add Internal Staff Note ──
         case 'admin-add-internal-note':
-            requireAdmin();
-            $convId = trim($input['conversation_id'] ?? '');
+            $adminUser = requireAdmin();
+            $convId = trim($input['conversation_id'] ?? $_GET['conversation_id'] ?? '');
             $note = trim($input['note'] ?? '');
             if (!$convId || !$note) {
                 respondJson(['success' => false, 'error' => 'Conversation ID and note are required.'], 400);
@@ -701,7 +701,7 @@ try {
             $db->prepare("
                 INSERT INTO support_internal_notes (id, conversation_id, agent_id, agent_name, note, created_at)
                 VALUES (?, ?, ?, ?, ?, NOW())
-            ")->execute([$noteId, $convId, $user['id'], $user['name'], $note]);
+            ")->execute([$noteId, $convId, $adminUser['id'], $adminUser['name'], $note]);
 
             respondJson(['success' => true, 'note_id' => $noteId]);
             break;

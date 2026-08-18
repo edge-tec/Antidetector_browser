@@ -5325,7 +5325,10 @@ header('Content-Type: text/html; charset=utf-8');
         async function sendAdminSupportReply(e, convId) {
             if (e && e.preventDefault) e.preventDefault();
             const token = localStorage.getItem('sessionToken');
-            if (!token || !convId) return;
+            if (!token || !convId) {
+                alert('Session expired. Please refresh the page and log in as admin.');
+                return;
+            }
 
             const input = document.getElementById('adminReplyInput_' + convId);
             const text = input ? input.value.trim() : '';
@@ -5334,20 +5337,23 @@ header('Content-Type: text/html; charset=utf-8');
             input.value = '';
 
             try {
-                const res = await fetch('/api/support/admin-reply', {
+                const res = await fetch('/api/support?action=admin-reply', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify({ conversation_id: convId, message: text })
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (data && data.success) {
                     openAdminSupportThread(convId, true);
                     loadSupportConversations();
                 } else {
-                    alert('Failed to send reply: ' + (data.error || 'Unknown error'));
+                    alert('Failed to send reply: ' + ((data && data.error) ? data.error : 'Unknown error'));
+                    if (input) input.value = text;
                 }
             } catch(e) {
-                alert('Network error sending support response.');
+                console.error('Support reply error:', e);
+                alert('Error sending support response: ' + (e.message || 'Please check connection'));
+                if (input) input.value = text;
             }
         }
 
