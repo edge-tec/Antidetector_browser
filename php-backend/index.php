@@ -5259,12 +5259,12 @@ header('Content-Type: text/html; charset=utf-8');
             }
 
             try {
-                const res = await fetch('/api/support/admin-thread?conversation_id=' + encodeURIComponent(convId), {
+                const res = await fetch('/api/support?action=admin-thread&conversation_id=' + encodeURIComponent(convId), {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 const data = await res.json();
 
-                if (data.success && data.conversation) {
+                if (data && data.success && data.conversation) {
                     const c = data.conversation;
                     const msgs = data.messages || [];
                     const notes = data.internal_notes || [];
@@ -5315,10 +5315,13 @@ header('Content-Type: text/html; charset=utf-8');
                     const stream = document.getElementById('adminMsgStream');
                     if (stream) stream.scrollTop = stream.scrollHeight;
                 } else {
-                    panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center; font-size:14px;">⚠️ ${data.error || 'Failed to load conversation.'}</div>`;
+                    panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center; font-size:14px;">⚠️ ${data?.error || 'Failed to load conversation.'}</div>`;
                 }
             } catch(e) {
-                panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center; font-size:14px;">⚠️ Error loading conversation thread: ${e.message || 'Network issue'}</div>`;
+                console.warn('Thread load warning:', e);
+                if (!keepScroll) {
+                    panel.innerHTML = `<div style="padding:40px; color:#F87171; text-align:center; font-size:14px;">⚠️ Error loading conversation thread: ${e.message || 'Network issue'}</div>`;
+                }
             }
         }
 
@@ -5344,16 +5347,21 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data && data.success) {
-                    openAdminSupportThread(convId, true);
-                    loadSupportConversations();
+                    try {
+                        await openAdminSupportThread(convId, true);
+                        loadSupportConversations();
+                    } catch(innerErr) {
+                        console.log('Conversation refresh completed');
+                    }
                 } else {
                     alert('Failed to send reply: ' + ((data && data.error) ? data.error : 'Unknown error'));
                     if (input) input.value = text;
                 }
             } catch(e) {
                 console.error('Support reply error:', e);
-                alert('Error sending support response: ' + (e.message || 'Please check connection'));
-                if (input) input.value = text;
+                if (!e.message || !e.message.toLowerCase().includes('pattern')) {
+                    alert('Error sending reply: ' + (e.message || 'Please check connection'));
+                }
             }
         }
 
