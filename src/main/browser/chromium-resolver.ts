@@ -587,10 +587,34 @@ export function getProfileDataDir(profileId: string): string {
 }
 
 /**
+ * Get the dedicated Firefox profile data directory for a given profile ID.
+ */
+export function getFirefoxProfileDataDir(profileId: string): string {
+  let userDataPath: string
+  try {
+    userDataPath = app.getPath('userData')
+  } catch {
+    userDataPath = path.join(process.cwd(), 'userData')
+  }
+  return path.join(userDataPath, 'profiles', profileId, 'firefox-profile')
+}
+
+/**
  * Create the profile data directory if it doesn't exist.
  */
 export function ensureProfileDataDir(profileId: string): string {
   const dir = getProfileDataDir(profileId)
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
+
+/**
+ * Create the dedicated Firefox profile data directory if it doesn't exist.
+ */
+export function ensureFirefoxProfileDataDir(profileId: string): string {
+  const dir = getFirefoxProfileDataDir(profileId)
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }

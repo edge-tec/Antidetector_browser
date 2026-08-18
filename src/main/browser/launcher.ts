@@ -10,7 +10,7 @@ import { Profile, Proxy } from '../database/models'
 import { Fingerprint, createDefaultFingerprint } from '../fingerprint/types'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { decryptPassword } from '../security/encryption'
-import { ensureProfileDataDir } from './chromium-resolver'
+import { ensureProfileDataDir, ensureFirefoxProfileDataDir } from './chromium-resolver'
 import { setupBrowserInjection } from './injection/injector'
 import { startProxyBridge } from '../network/proxy-bridge'
 import { logger } from '../logging/logger'
@@ -35,8 +35,8 @@ function setupFirefoxProfilePrefs(
     fs.mkdirSync(resolvedDir, { recursive: true })
   }
 
-  // Remove stale lock files from previous crashes or ungraceful terminations
-  const lockFiles = ['.parentlock', 'parent.lock', 'lock']
+  // Remove stale lock files and corrupt caches from previous crashes or ungraceful terminations
+  const lockFiles = ['.parentlock', 'parent.lock', 'lock', '.parentlock.link', 'parent.lock.link']
   for (const file of lockFiles) {
     const lockPath = path.join(resolvedDir, file)
     if (fs.existsSync(lockPath)) {
@@ -47,6 +47,11 @@ function setupFirefoxProfilePrefs(
         logger.warn('browser', `[FirefoxProfile] Could not remove lock file ${lockPath}: ${err.message}`)
       }
     }
+  }
+
+  const cacheDir = path.join(resolvedDir, 'startupCache')
+  if (fs.existsSync(cacheDir)) {
+    try { fs.rmSync(cacheDir, { recursive: true, force: true }) } catch {}
   }
 
   const prefs: string[] = [
@@ -134,7 +139,7 @@ export async function launchFirefox(
   launchProxy: Proxy | null,
   startUrls: string[]
 ): Promise<LaunchResult> {
-  const userDataDir = path.resolve(ensureProfileDataDir(profile.id))
+  const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
 
   // Use single-dash -profile and -no-remote as required by Mozilla Firefox CLI
