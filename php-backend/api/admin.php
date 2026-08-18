@@ -1846,6 +1846,88 @@ switch ($action) {
         }
         break;
 
+    case 'upload-release-chunk':
+        $uploadId = preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['uploadId'] ?? '');
+        $chunkIndex = intval($_POST['chunkIndex'] ?? 0);
+        $totalChunks = intval($_POST['totalChunks'] ?? 1);
+        $platform = trim($_POST['platform'] ?? 'windows-x64');
+        $version = trim($_POST['version'] ?? '1.0.0');
+        $filename = trim($_POST['filename'] ?? 'app-binary.exe');
+
+        if (!$uploadId) {
+            respondJson(['success' => false, 'error' => 'Upload ID required.'], 400);
+        }
+
+        if (!isset($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
+            respondJson(['success' => false, 'error' => 'Chunk upload failed on server.'], 400);
+        }
+
+        $chunksBaseDir = __DIR__ . '/../releases/temp_chunks';
+        if (!is_dir($chunksBaseDir)) {
+            mkdir($chunksBaseDir, 0755, true);
+        }
+        $sessionDir = $chunksBaseDir . '/' . $uploadId;
+        if (!is_dir($sessionDir)) {
+            mkdir($sessionDir, 0755, true);
+        }
+
+        $chunkFilePath = $sessionDir . '/chunk_' . $chunkIndex . '.part';
+        if (!move_uploaded_file($_FILES['chunk']['tmp_name'], $chunkFilePath)) {
+            respondJson(['success' => false, 'error' => 'Failed to save chunk file.'], 500);
+        }
+
+        // If this is the last chunk, merge all chunks in sequence
+        if ($chunkIndex === $totalChunks - 1) {
+            $releasesDir = __DIR__ . '/../releases';
+            if (!is_dir($releasesDir)) {
+                mkdir($releasesDir, 0755, true);
+            }
+
+            $ext = pathinfo($filename, PATHINFO_EXTENSION) ?: 'exe';
+            $cleanVersion = preg_replace('/[^a-zA-Z0-9\._-]/', '', $version);
+            $targetFilename = "AntiProfiles-{$platform}-v{$cleanVersion}.{$ext}";
+            $targetPath = $releasesDir . '/' . $targetFilename;
+
+            $out = fopen($targetPath, 'wb');
+            if (!$out) {
+                respondJson(['success' => false, 'error' => 'Failed to assemble binary on server storage.'], 500);
+            }
+
+            for ($i = 0; $i < $totalChunks; $i++) {
+                $partPath = $sessionDir . '/chunk_' . $i . '.part';
+                if (!file_exists($partPath)) {
+                    fclose($out);
+                    respondJson(['success' => false, 'error' => "Missing chunk {$i} during assembly."], 400);
+                }
+                $in = fopen($partPath, 'rb');
+                while ($buff = fread($in, 8192)) {
+                    fwrite($out, $buff);
+                }
+                fclose($in);
+                @unlink($partPath);
+            }
+            fclose($out);
+            @rmdir($sessionDir);
+            chmod($targetPath, 0644);
+
+            $fileSize = filesize($targetPath);
+            respondJson([
+                'success' => true,
+                'completed' => true,
+                'filePath' => 'releases/' . $targetFilename,
+                'originalFilename' => $filename,
+                'fileSize' => $fileSize
+            ]);
+        }
+
+        respondJson([
+            'success' => true,
+            'completed' => false,
+            'chunkIndex' => $chunkIndex,
+            'nextChunk' => $chunkIndex + 1
+        ]);
+        break;
+
     case 'publish-app-release':
         @ini_set('upload_max_filesize', '1024M');
         @ini_set('post_max_size', '1024M');
@@ -1860,36 +1942,13 @@ switch ($action) {
         $releaseNotes = trim($_POST['release_notes'] ?? '');
         $status = trim($_POST['status'] ?? 'active');
         $directUrl = trim($_POST['download_url'] ?? '');
+        $filePath = trim($_POST['file_path'] ?? '');
+        $originalFilename = trim($_POST['original_filename'] ?? '');
+        $fileSize = intval($_POST['file_size'] ?? 0);
 
         $releaseId = 'rel_' . bin2hex(random_bytes(8));
-        $filePath = null;
-        $originalFilename = null;
-        $fileSize = 0;
 
-        if (isset($_FILES['file']) && $_FILES['file']['error'] !== UPLOAD_ERR_OK && $_FILES['file']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $errCode = $_FILES['file']['error'];
-            $errMsg = 'File upload failed with error code: ' . $errCode;
-            switch ($errCode) {
-                case UPLOAD_ERR_INI_SIZE:
-                    $errMsg = 'The uploaded binary exceeds the upload_max_filesize directive in PHP config. Please increase upload_max_filesize and post_max_size in aaPanel PHP settings.';
-                    break;
-                case UPLOAD_ERR_FORM_SIZE:
-                    $errMsg = 'The uploaded binary exceeds the MAX_FILE_SIZE directive.';
-                    break;
-                case UPLOAD_ERR_PARTIAL:
-                    $errMsg = 'The file was only partially uploaded. Connection was interrupted.';
-                    break;
-                case UPLOAD_ERR_NO_TMP_DIR:
-                    $errMsg = 'Missing temporary folder on server.';
-                    break;
-                case UPLOAD_ERR_CANT_WRITE:
-                    $errMsg = 'Failed to write file to server disk. Check disk space and folder permissions.';
-                    break;
-            }
-            respondJson(['success' => false, 'error' => $errMsg], 400);
-        }
-
-        if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+        if (empty($filePath) && isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
             $releasesDir = __DIR__ . '/../releases';
             if (!is_dir($releasesDir)) {
                 mkdir($releasesDir, 0755, true);

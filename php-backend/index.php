@@ -7238,7 +7238,7 @@ header('Content-Type: text/html; charset=utf-8');
             }
         }
 
-        function handlePublishRelease(e) {
+        async function handlePublishRelease(e) {
             e.preventDefault();
             const token = getAdminSessionToken();
             if (!token) {
@@ -7266,19 +7266,6 @@ header('Content-Type: text/html; charset=utf-8');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('platform', platform);
-            formData.append('version', version);
-            formData.append('release_name', releaseName);
-            formData.append('status', status);
-            formData.append('download_url', directUrl);
-            formData.append('release_notes', notes);
-            formData.append('token', token);
-
-            if (hasFile) {
-                formData.append('file', fileInput.files[0]);
-            }
-
             const msg = document.getElementById('releasesConfigMsg');
             const progressContainer = document.getElementById('releaseUploadProgressBarContainer');
             const progressLabel = document.getElementById('releaseUploadProgressLabel');
@@ -7288,16 +7275,7 @@ header('Content-Type: text/html; charset=utf-8');
             msg.style.display = 'block';
             msg.style.background = 'rgba(99,102,241,0.2)';
             msg.style.color = '#818CF8';
-            msg.innerText = hasFile ? '⏳ Starting upload to server storage...' : 'Publishing application release... Please wait...';
-
-            if (hasFile && progressContainer) {
-                progressContainer.style.display = 'block';
-                if (progressBar) progressBar.style.width = '0%';
-                if (progressPercent) progressPercent.innerText = '0%';
-                if (progressLabel) progressLabel.innerText = '⏳ Uploading: 0%';
-            } else if (progressContainer) {
-                progressContainer.style.display = 'none';
-            }
+            msg.innerText = hasFile ? '⏳ Slicing binary for smooth fast upload...' : 'Publishing application release... Please wait...';
 
             if (submitBtn) {
                 submitBtn.disabled = true;
@@ -7305,79 +7283,150 @@ header('Content-Type: text/html; charset=utf-8');
                 submitBtn.innerText = '⏳ Uploading / Publishing...';
             }
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/api/admin/publish-app-release?token=' + encodeURIComponent(token), true);
-            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-
-            if (hasFile) {
-                xhr.upload.onprogress = function(event) {
-                    if (event.lengthComputable) {
-                        const percent = Math.round((event.loaded / event.total) * 100);
-                        const uploadedMB = (event.loaded / (1024 * 1024)).toFixed(1);
-                        const totalMB = (event.total / (1024 * 1024)).toFixed(1);
-                        if (progressBar) progressBar.style.width = percent + '%';
-                        if (progressPercent) progressPercent.innerText = percent + '% (' + uploadedMB + ' MB / ' + totalMB + ' MB)';
-                        if (progressLabel) {
-                            if (percent >= 100) {
-                                progressLabel.innerText = '⚙️ Finalizing and storing installer package on server...';
-                            } else {
-                                progressLabel.innerText = `⏳ Uploading binary (${percent}%)...`;
-                            }
-                        }
-                    }
-                };
+            if (hasFile && progressContainer) {
+                progressContainer.style.display = 'block';
+                if (progressBar) progressBar.style.width = '0%';
+                if (progressPercent) progressPercent.innerText = '0%';
+                if (progressLabel) progressLabel.innerText = '⏳ Initializing chunked upload...';
             }
 
-            xhr.onload = function() {
+            let uploadedFilePath = null;
+            let uploadedFileSize = 0;
+            let uploadedFilename = null;
+
+            // 1. If file is selected, upload via 2MB chunk stream
+            if (hasFile) {
+                const file = fileInput.files[0];
+                const chunkSize = 2 * 1024 * 1024; // 2MB safe chunks
+                const totalChunks = Math.ceil(file.size / chunkSize);
+                const uploadId = 'upl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                uploadedFilename = file.name;
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
+                    const chunkBlob = file.slice(start, end);
+
+                    const chunkForm = new FormData();
+                    chunkForm.append('uploadId', uploadId);
+                    chunkForm.append('chunkIndex', i);
+                    chunkForm.append('totalChunks', totalChunks);
+                    chunkForm.append('platform', platform);
+                    chunkForm.append('version', version);
+                    chunkForm.append('filename', file.name);
+                    chunkForm.append('chunk', chunkBlob, 'chunk.part');
+                    chunkForm.append('token', token);
+
+                    let attempt = 0;
+                    let chunkSuccess = false;
+                    while (attempt < 3 && !chunkSuccess) {
+                        try {
+                            const res = await fetch('/api/admin/upload-release-chunk?token=' + encodeURIComponent(token), {
+                                method: 'POST',
+                                headers: { 'Authorization': 'Bearer ' + token },
+                                body: chunkForm
+                            });
+                            const data = await res.json();
+                            if (data && data.success) {
+                                chunkSuccess = true;
+                                if (data.completed) {
+                                    uploadedFilePath = data.filePath;
+                                    uploadedFileSize = data.fileSize || file.size;
+                                }
+                            } else {
+                                attempt++;
+                                await new Promise(r => setTimeout(r, 1000));
+                            }
+                        } catch(err) {
+                            attempt++;
+                            await new Promise(r => setTimeout(r, 1500));
+                        }
+                    }
+
+                    if (!chunkSuccess) {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.style.opacity = '1';
+                            submitBtn.innerText = '🚀 Publish Release & Update User Downloads';
+                        }
+                        msg.style.background = 'rgba(239,68,68,0.2)';
+                        msg.style.color = '#F87171';
+                        msg.innerText = `⚠️ Upload failed on chunk ${i + 1}/${totalChunks}. Please check internet connection and try again.`;
+                        return;
+                    }
+
+                    const progressBytes = end;
+                    const percent = Math.min(100, Math.round((progressBytes / file.size) * 100));
+                    const uploadedMB = (progressBytes / (1024 * 1024)).toFixed(1);
+                    const totalMB = (file.size / (1024 * 1024)).toFixed(1);
+
+                    if (progressBar) progressBar.style.width = percent + '%';
+                    if (progressPercent) progressPercent.innerText = `${percent}% (${uploadedMB} MB / ${totalMB} MB)`;
+                    if (progressLabel) {
+                        if (percent >= 100) {
+                            progressLabel.innerText = '⚙️ Finalizing and publishing application release on server...';
+                        } else {
+                            progressLabel.innerText = `⏳ Uploading chunk ${i + 1}/${totalChunks} (${percent}%)...`;
+                        }
+                    }
+                }
+            }
+
+            // 2. Finalize & publish release record
+            const publishForm = new FormData();
+            publishForm.append('platform', platform);
+            publishForm.append('version', version);
+            publishForm.append('release_name', releaseName);
+            publishForm.append('status', status);
+            publishForm.append('download_url', directUrl);
+            publishForm.append('release_notes', notes);
+            publishForm.append('token', token);
+
+            if (uploadedFilePath) {
+                publishForm.append('file_path', uploadedFilePath);
+                publishForm.append('original_filename', uploadedFilename);
+                publishForm.append('file_size', uploadedFileSize);
+            }
+
+            try {
+                const res = await fetch('/api/admin/publish-app-release?token=' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: publishForm
+                });
+                const data = await res.json();
+
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.style.opacity = '1';
                     submitBtn.innerText = '🚀 Publish Release & Update User Downloads';
                 }
 
-                if (xhr.status === 413) {
-                    if (progressContainer) progressContainer.style.display = 'none';
-                    msg.style.background = 'rgba(239,68,68,0.25)';
-                    msg.style.color = '#F87171';
-                    msg.innerHTML = '⚠️ <strong>Upload Rejected by Server (413 Payload Too Large):</strong><br>The installer file exceeds Nginx/PHP upload limits. Increase <code>client_max_body_size 1024m;</code> in aaPanel Nginx site configuration, or provide an External Direct Download URL.';
-                    return;
-                }
-
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    if (data && data.success) {
-                        if (progressContainer) {
-                            if (progressBar) progressBar.style.width = '100%';
-                            if (progressPercent) progressPercent.innerText = '100% Complete';
-                            if (progressLabel) progressLabel.innerText = '✓ Binary Uploaded & Published!';
-                        }
-                        msg.style.background = 'rgba(45,212,191,0.2)';
-                        msg.style.color = '#2DD4BF';
-                        msg.innerText = '✓ ' + (data.message || 'Release published successfully!');
-
-                        document.getElementById('relVersion').value = '';
-                        document.getElementById('relName').value = '';
-                        document.getElementById('relDirectUrl').value = '';
-                        document.getElementById('relNotes').value = '';
-                        if (fileInput) fileInput.value = '';
-
-                        loadAppReleasesTable();
-                        loadUserPortalData();
-                    } else {
-                        if (progressContainer) progressContainer.style.display = 'none';
-                        msg.style.background = 'rgba(239,68,68,0.2)';
-                        msg.style.color = '#F87171';
-                        msg.innerText = '⚠️ ' + (data?.error || 'Failed to publish release.');
+                if (data && data.success) {
+                    if (progressContainer) {
+                        if (progressBar) progressBar.style.width = '100%';
+                        if (progressPercent) progressPercent.innerText = '100% Complete';
+                        if (progressLabel) progressLabel.innerText = '✓ Binary Uploaded & Published!';
                     }
-                } catch(e) {
+                    msg.style.background = 'rgba(45,212,191,0.2)';
+                    msg.style.color = '#2DD4BF';
+                    msg.innerText = '✓ ' + (data.message || 'Application release published successfully!');
+
+                    document.getElementById('relVersion').value = '';
+                    document.getElementById('relName').value = '';
+                    document.getElementById('relDirectUrl').value = '';
+                    document.getElementById('relNotes').value = '';
+                    if (fileInput) fileInput.value = '';
+
+                    loadAppReleasesTable();
+                    loadUserPortalData();
+                } else {
                     if (progressContainer) progressContainer.style.display = 'none';
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
-                    msg.innerText = '⚠️ Server response error (' + xhr.status + '). Please check server logs.';
+                    msg.innerText = '⚠️ ' + (data?.error || 'Failed to publish release.');
                 }
-            };
-
-            xhr.onerror = function() {
+            } catch(e) {
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.style.opacity = '1';
@@ -7386,10 +7435,8 @@ header('Content-Type: text/html; charset=utf-8');
                 if (progressContainer) progressContainer.style.display = 'none';
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
-                msg.innerHTML = '⚠️ <strong>Network error during file upload:</strong> Connection was interrupted or terminated by web server proxy. Increase <code>client_max_body_size 1024m;</code> in Nginx configuration.';
-            };
-
-            xhr.send(formData);
+                msg.innerText = '⚠️ Network error finalizing release.';
+            }
         }
 
         async function activateAppRelease(releaseId) {
