@@ -340,6 +340,9 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
       const result = await window.api.updateProfile(sessionToken, editId, input)
       if (result.success) {
         showToast('success', 'Profile updated')
+        if (result.data) {
+          setProfiles(prev => prev.map(p => p.id === editId ? result.data! : p))
+        }
         setEditId(null)
         setEditProfile(null)
         setShowCreate(false)
@@ -350,7 +353,14 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
     } else {
       const result = await window.api.createProfile(sessionToken, input)
       if (result.success) {
-        showToast('success', `Profile "${result.data!.name}" created`)
+        const createdName = result.data?.name || input.name || 'New Profile'
+        showToast('success', `Profile "${createdName}" created`)
+        if (result.data) {
+          setProfiles(prev => {
+            const exists = prev.some(p => p.id === result.data!.id)
+            return exists ? prev : [result.data!, ...prev]
+          })
+        }
         setShowCreate(false)
         loadProfiles()
       } else {
@@ -370,7 +380,15 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
         groupId,
         proxyId
       })
-      if (res.success) successCount++
+      if (res.success) {
+        successCount++
+        if (res.data) {
+          setProfiles(prev => {
+            const exists = prev.some(p => p.id === res.data!.id)
+            return exists ? prev : [res.data!, ...prev]
+          })
+        }
+      }
     }
     showToast('success', `Created ${successCount} profiles successfully`)
     loadProfiles()
@@ -393,6 +411,12 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
       })
       if (res.success) {
         showToast('success', `Created profile "${templateName}"`)
+        if (res.data) {
+          setProfiles(prev => {
+            const exists = prev.some(p => p.id === res.data!.id)
+            return exists ? prev : [res.data!, ...prev]
+          })
+        }
         loadProfiles()
       } else {
         showToast('error', res.error || 'Failed to create template profile')
