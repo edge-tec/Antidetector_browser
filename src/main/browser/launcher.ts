@@ -159,18 +159,18 @@ export async function launchFirefox(
   const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
 
-  // Use standard --profile and -no-remote as required by Mozilla Firefox CLI
+  // Use standard -no-remote and -profile as required by Mozilla Firefox CLI
   const args: string[] = [
-    '--profile', userDataDir,
     '-no-remote',
-    '-new-instance'
+    '-profile',
+    userDataDir
   ]
 
   if (startUrls.length > 0) {
     args.push(...startUrls)
   }
 
-  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with --profile ${userDataDir} at: ${firefoxPath}`)
+  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with -profile ${userDataDir} at: ${firefoxPath}`)
 
   const child: ChildProcess = spawn(firefoxPath, args, {
     detached: true,
