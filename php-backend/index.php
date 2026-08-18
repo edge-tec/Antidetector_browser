@@ -2594,6 +2594,16 @@ header('Content-Type: text/html; charset=utf-8');
                                     <textarea id="relNotes" rows="3" placeholder="List new features, performance improvements, and security enhancements in this version..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px;"></textarea>
                                 </div>
 
+                                <div id="releaseUploadProgressBarContainer" style="display: none; margin-bottom: 16px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #FFF; margin-bottom: 8px;">
+                                        <span id="releaseUploadProgressLabel">⏳ Uploading installer binary...</span>
+                                        <span id="releaseUploadProgressPercent" style="color: #2DD4BF; font-weight: 800;">0%</span>
+                                    </div>
+                                    <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                                        <div id="releaseUploadProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #2DD4BF, #06B6D4); transition: width 0.1s ease;"></div>
+                                    </div>
+                                </div>
+
                                 <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 24px;">🚀 Publish Release & Update User Downloads</button>
                             </form>
                         </div>
@@ -3617,6 +3627,11 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <script>
+        function getAdminSessionToken() {
+            return localStorage.getItem('sessionToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+        }
+        window.getAdminSessionToken = getAdminSessionToken;
+
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
             return String(str)
@@ -7245,6 +7260,12 @@ header('Content-Type: text/html; charset=utf-8');
                 return;
             }
 
+            const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+            if (!hasFile && !directUrl) {
+                alert('Please either upload an application installer file or enter an external download URL.');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('platform', platform);
             formData.append('version', version);
@@ -7254,16 +7275,29 @@ header('Content-Type: text/html; charset=utf-8');
             formData.append('release_notes', notes);
             formData.append('token', token);
 
-            const hasFile = fileInput.files.length > 0;
             if (hasFile) {
                 formData.append('file', fileInput.files[0]);
             }
 
             const msg = document.getElementById('releasesConfigMsg');
+            const progressContainer = document.getElementById('releaseUploadProgressBarContainer');
+            const progressLabel = document.getElementById('releaseUploadProgressLabel');
+            const progressPercent = document.getElementById('releaseUploadProgressPercent');
+            const progressBar = document.getElementById('releaseUploadProgressBar');
+
             msg.style.display = 'block';
             msg.style.background = 'rgba(99,102,241,0.2)';
             msg.style.color = '#818CF8';
-            msg.innerText = hasFile ? '⏳ Preparing upload... 0%' : 'Publishing application release... Please wait...';
+            msg.innerText = hasFile ? '⏳ Starting upload to server storage...' : 'Publishing application release... Please wait...';
+
+            if (hasFile && progressContainer) {
+                progressContainer.style.display = 'block';
+                if (progressBar) progressBar.style.width = '0%';
+                if (progressPercent) progressPercent.innerText = '0%';
+                if (progressLabel) progressLabel.innerText = '⏳ Uploading: 0%';
+            } else if (progressContainer) {
+                progressContainer.style.display = 'none';
+            }
 
             if (submitBtn) {
                 submitBtn.disabled = true;
@@ -7281,7 +7315,15 @@ header('Content-Type: text/html; charset=utf-8');
                         const percent = Math.round((event.loaded / event.total) * 100);
                         const uploadedMB = (event.loaded / (1024 * 1024)).toFixed(1);
                         const totalMB = (event.total / (1024 * 1024)).toFixed(1);
-                        msg.innerText = `⏳ Uploading binary: ${percent}% (${uploadedMB} MB / ${totalMB} MB)... Please keep this tab open.`;
+                        if (progressBar) progressBar.style.width = percent + '%';
+                        if (progressPercent) progressPercent.innerText = percent + '% (' + uploadedMB + ' MB / ' + totalMB + ' MB)';
+                        if (progressLabel) {
+                            if (percent >= 100) {
+                                progressLabel.innerText = '⚙️ Finalizing and storing installer package on server...';
+                            } else {
+                                progressLabel.innerText = `⏳ Uploading binary (${percent}%)...`;
+                            }
+                        }
                     }
                 };
             }
@@ -7294,6 +7336,7 @@ header('Content-Type: text/html; charset=utf-8');
                 }
 
                 if (xhr.status === 413) {
+                    if (progressContainer) progressContainer.style.display = 'none';
                     msg.style.background = 'rgba(239,68,68,0.25)';
                     msg.style.color = '#F87171';
                     msg.innerHTML = '⚠️ <strong>Upload Rejected by Server (413 Payload Too Large):</strong><br>The installer file exceeds Nginx/PHP upload limits. Increase <code>client_max_body_size 1024m;</code> in aaPanel Nginx site configuration, or provide an External Direct Download URL.';
@@ -7303,6 +7346,11 @@ header('Content-Type: text/html; charset=utf-8');
                 try {
                     const data = JSON.parse(xhr.responseText);
                     if (data && data.success) {
+                        if (progressContainer) {
+                            if (progressBar) progressBar.style.width = '100%';
+                            if (progressPercent) progressPercent.innerText = '100% Complete';
+                            if (progressLabel) progressLabel.innerText = '✓ Binary Uploaded & Published!';
+                        }
                         msg.style.background = 'rgba(45,212,191,0.2)';
                         msg.style.color = '#2DD4BF';
                         msg.innerText = '✓ ' + (data.message || 'Release published successfully!');
@@ -7311,16 +7359,18 @@ header('Content-Type: text/html; charset=utf-8');
                         document.getElementById('relName').value = '';
                         document.getElementById('relDirectUrl').value = '';
                         document.getElementById('relNotes').value = '';
-                        fileInput.value = '';
+                        if (fileInput) fileInput.value = '';
 
                         loadAppReleasesTable();
                         loadUserPortalData();
                     } else {
+                        if (progressContainer) progressContainer.style.display = 'none';
                         msg.style.background = 'rgba(239,68,68,0.2)';
                         msg.style.color = '#F87171';
                         msg.innerText = '⚠️ ' + (data?.error || 'Failed to publish release.');
                     }
                 } catch(e) {
+                    if (progressContainer) progressContainer.style.display = 'none';
                     msg.style.background = 'rgba(239,68,68,0.2)';
                     msg.style.color = '#F87171';
                     msg.innerText = '⚠️ Server response error (' + xhr.status + '). Please check server logs.';
@@ -7333,6 +7383,7 @@ header('Content-Type: text/html; charset=utf-8');
                     submitBtn.style.opacity = '1';
                     submitBtn.innerText = '🚀 Publish Release & Update User Downloads';
                 }
+                if (progressContainer) progressContainer.style.display = 'none';
                 msg.style.background = 'rgba(239,68,68,0.2)';
                 msg.style.color = '#F87171';
                 msg.innerHTML = '⚠️ <strong>Network error during file upload:</strong> Connection was interrupted or terminated by web server proxy. Increase <code>client_max_body_size 1024m;</code> in Nginx configuration.';
