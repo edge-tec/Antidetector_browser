@@ -341,6 +341,41 @@ export async function launchBrowser(
       }
     }
 
+    // Inject Profile Cookies via CDP Network Domain
+    const cookiesToInject = fingerprint?.browser?.cookies || (profile as any).cookies
+    if (Array.isArray(cookiesToInject) && cookiesToInject.length > 0) {
+      try {
+        const pages = await browser.pages()
+        if (pages.length > 0) {
+          const client = await pages[0].target().createCDPSession()
+          const cdpCookies = cookiesToInject.map((c: any) => {
+            let domain = c.domain || 'localhost'
+            if (domain.startsWith('http://') || domain.startsWith('https://')) {
+              try { domain = new URL(domain).hostname } catch {}
+            }
+            const exp = c.expires || c.expirationDate
+            return {
+              name: String(c.name || ''),
+              value: String(c.value !== undefined ? c.value : ''),
+              domain,
+              path: c.path || '/',
+              expires: typeof exp === 'number' && exp > 0 ? exp : undefined,
+              httpOnly: Boolean(c.httpOnly),
+              secure: Boolean(c.secure),
+              sameSite: ['Strict', 'Lax', 'None'].includes(c.sameSite) ? c.sameSite : undefined
+            }
+          }).filter((c: any) => c.name)
+
+          if (cdpCookies.length > 0) {
+            await client.send('Network.setCookies', { cookies: cdpCookies })
+            logger.info('browser', `Injected ${cdpCookies.length} cookies into browser session via CDP for "${profile.name}"`)
+          }
+        }
+      } catch (err: any) {
+        logger.warn('browser', `Could not inject cookies via CDP: ${err.message}`)
+      }
+    }
+
     // Navigate to start URLs
     if (startUrls.length > 0) {
       try {

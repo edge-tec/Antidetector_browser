@@ -7,6 +7,7 @@ import {
   generateAndroidUserAgent,
   AndroidDeviceSpec
 } from '../data/android-devices'
+import { parseCookies, CookieItem } from '../utils/cookie-parser'
 
 interface Props {
   isOpen: boolean
@@ -26,6 +27,7 @@ type TabType =
   | 'bookmarks'
   | 'geolocation'
   | 'advanced'
+  | 'cookies'
 
 // Pre-defined timezones with UTC offset for timezone search
 const TIMEZONE_LIST = [
@@ -484,6 +486,15 @@ export const ProfileModal: React.FC<Props> = ({
   const [bmTitle, setBmTitle] = useState('')
   const [bmUrl, setBmUrl] = useState('')
 
+  // Cookies state
+  const [cookies, setCookies] = useState<CookieItem[]>([])
+  const [cookieSearch, setCookieSearch] = useState('')
+  const [showCookieModal, setShowCookieModal] = useState(false)
+  const [cookiePasteText, setCookiePasteText] = useState('')
+  const [cookieImportMode, setCookieImportMode] = useState<'replace' | 'append'>('replace')
+  const [cookieImportMsg, setCookieImportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [copiedCookieIdx, setCopiedCookieIdx] = useState<number | null>(null)
+
   // Fingerprint state initialized safely with fallback
   const [fp, setFp] = useState<any>(() => ensureFpStructure(null, 'macos-intel'))
   const [copiedUA, setCopiedUA] = useState(false)
@@ -545,6 +556,70 @@ export const ProfileModal: React.FC<Props> = ({
     if (dev) {
       applyAndroidDeviceToFp(dev)
     }
+  }
+
+  const handleImportCookieText = (rawText: string, mode: 'replace' | 'append' = 'replace') => {
+    setCookieImportMsg(null)
+    const result = parseCookies(rawText)
+    if (!result.success || result.cookies.length === 0) {
+      setCookieImportMsg({
+        type: 'error',
+        text: result.error || 'No valid cookies found. Please check JSON format or Netscape format.'
+      })
+      return false
+    }
+
+    if (mode === 'replace') {
+      setCookies(result.cookies)
+    } else {
+      // Append without duplicating exact name+domain
+      setCookies(prev => {
+        const existingKeys = new Set(prev.map(c => `${c.domain}|${c.name}`))
+        const newItems = result.cookies.filter(c => !existingKeys.has(`${c.domain}|${c.name}`))
+        return [...prev, ...newItems]
+      })
+    }
+
+    setCookieImportMsg({
+      type: 'success',
+      text: `✓ Successfully imported ${result.cookies.length} cookie${result.cookies.length === 1 ? '' : 's'}!`
+    })
+    setCookiePasteText('')
+    setTimeout(() => {
+      setShowCookieModal(false)
+      setCookieImportMsg(null)
+    }, 1200)
+    return true
+  }
+
+  const handleCookieFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = evt => {
+      const text = String(evt.target?.result || '')
+      handleImportCookieText(text, cookieImportMode)
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const handleExportCookies = () => {
+    if (cookies.length === 0) return
+    const jsonStr = JSON.stringify(cookies, null, 2)
+    const blob = new Blob([jsonStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(name || 'profile').replace(/\s+/g, '_')}_cookies.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleCopyCookieVal = (val: string, idx: number) => {
+    navigator.clipboard.writeText(val)
+    setCopiedCookieIdx(idx)
+    setTimeout(() => setCopiedCookieIdx(null), 1500)
   }
 
   useEffect(() => {
@@ -610,6 +685,13 @@ export const ProfileModal: React.FC<Props> = ({
         } else {
           setBookmarks([])
         }
+        if (initialProfile.cookies && Array.isArray(initialProfile.cookies)) {
+          setCookies(initialProfile.cookies)
+        } else if (initialProfile.fingerprint?.browser?.cookies && Array.isArray(initialProfile.fingerprint.browser.cookies)) {
+          setCookies(initialProfile.fingerprint.browser.cookies)
+        } else {
+          setCookies([])
+        }
       } else {
         setName('profile 1')
         setFolder('')
@@ -624,6 +706,7 @@ export const ProfileModal: React.FC<Props> = ({
         setGeoMode('prompt')
         setExtensions([])
         setBookmarks([])
+        setCookies([])
         handleGenerateNew('macos-arm')
       }
       setActiveTab('overview')
@@ -733,6 +816,7 @@ export const ProfileModal: React.FC<Props> = ({
       finalFp.browser = finalFp.browser || {}
       finalFp.browser.extensions = extensions
       finalFp.browser.bookmarks = bookmarks
+      finalFp.browser.cookies = cookies
       finalFp.browser.startUrl = startUrl
 
       const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean)
@@ -749,7 +833,8 @@ export const ProfileModal: React.FC<Props> = ({
         tags,
         fingerprint: finalFp,
         extensions,
-        bookmarks
+        bookmarks,
+        cookies
       })
       onClose()
     } catch (err) {
@@ -888,7 +973,8 @@ export const ProfileModal: React.FC<Props> = ({
             { id: 'extensions', label: 'Extensions' },
             { id: 'bookmarks', label: 'Bookmarks' },
             { id: 'geolocation', label: 'Geolocation' },
-            { id: 'advanced', label: 'Advanced' }
+            { id: 'advanced', label: 'Advanced' },
+            { id: 'cookies', label: `Cookies${cookies.length > 0 ? ` (${cookies.length})` : ''}` }
           ].map(t => {
             const active = activeTab === t.id
             return (
@@ -2355,6 +2441,481 @@ export const ProfileModal: React.FC<Props> = ({
                 </div>
               )}
 
+              {/* ── TAB: COOKIES ── */}
+              {activeTab === 'cookies' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#F1F5F9' }}>Profile Cookies</h3>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#94A3B8' }}>
+                        Import cookies to automatically authenticate and preserve active login sessions in this profile.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowCookieModal(true)}
+                        style={{
+                          padding: '8px 18px',
+                          borderRadius: '6px',
+                          backgroundColor: 'transparent',
+                          color: '#2DD4BF',
+                          border: '1px solid #2DD4BF',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Import Cookies
+                      </button>
+
+                      {cookies.length > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleExportCookies}
+                            style={{
+                              padding: '8px 14px',
+                              borderRadius: '6px',
+                              backgroundColor: '#14141F',
+                              color: '#94A3B8',
+                              border: '1px solid #2C2C3E',
+                              fontSize: '13px',
+                              cursor: 'pointer'
+                            }}
+                            title="Export cookies as JSON"
+                          >
+                            Export JSON
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to remove all cookies from this profile?')) {
+                                setCookies([])
+                              }
+                            }}
+                            style={{
+                              padding: '8px 14px',
+                              borderRadius: '6px',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              color: '#EF4444',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              fontSize: '13px',
+                              cursor: 'pointer'
+                            }}
+                            title="Clear all cookies"
+                          >
+                            Clear All
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Cookie Search & Count Bar */}
+                  {cookies.length > 0 && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <div style={{ flex: 1, position: 'relative' }}>
+                        <input
+                          type="text"
+                          value={cookieSearch}
+                          onChange={e => setCookieSearch(e.target.value)}
+                          placeholder="Search cookies by domain or name (e.g. google, session_id)..."
+                          style={{
+                            width: '100%',
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            backgroundColor: '#14141F',
+                            border: '1px solid #2C2C3E',
+                            color: '#FFF',
+                            fontSize: '13px',
+                            outline: 'none'
+                          }}
+                        />
+                        {cookieSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setCookieSearch('')}
+                            style={{
+                              position: 'absolute',
+                              right: '10px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: 'none',
+                              border: 'none',
+                              color: '#94A3B8',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <div style={{
+                        padding: '8px 14px',
+                        backgroundColor: '#14141F',
+                        border: '1px solid #2C2C3E',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        color: '#2DD4BF',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        🍪 {cookies.length} {cookies.length === 1 ? 'Cookie' : 'Cookies'} Loaded
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cookies Table or Empty State */}
+                  {cookies.length === 0 ? (
+                    <div style={{
+                      padding: '48px 24px',
+                      borderRadius: '10px',
+                      border: '1px dashed #2C2C3E',
+                      backgroundColor: '#14141F',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      gap: '14px'
+                    }}>
+                      <div style={{ fontSize: '36px' }}>🍪</div>
+                      <div>
+                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#F1F5F9', marginBottom: '4px' }}>
+                          No Cookies Added
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#94A3B8', maxWidth: '420px', lineHeight: 1.5 }}>
+                          Import cookies exported from browser extensions (EditThisCookie, Cookie-Editor) or Netscape format to start your profile pre-logged in.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowCookieModal(true)}
+                        style={{
+                          marginTop: '6px',
+                          padding: '10px 24px',
+                          borderRadius: '8px',
+                          backgroundColor: 'transparent',
+                          color: '#2DD4BF',
+                          border: '1px solid #2DD4BF',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Import Cookies
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{
+                      backgroundColor: '#14141F',
+                      border: '1px solid #2C2C3E',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      maxHeight: '380px',
+                      overflowY: 'auto'
+                    }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#181824', color: '#94A3B8', borderBottom: '1px solid #2C2C3E' }}>
+                            <th style={{ padding: '10px 14px', fontWeight: 600 }}>Domain</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600 }}>Name</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600 }}>Value</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600 }}>Security</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600 }}>Expires</th>
+                            <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600 }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cookies
+                            .filter(c => {
+                              if (!cookieSearch.trim()) return true
+                              const q = cookieSearch.toLowerCase()
+                              return c.domain.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.value.toLowerCase().includes(q)
+                            })
+                            .map((c, idx) => {
+                              const expDate = c.expires || c.expirationDate
+                              let expFormatted = 'Session'
+                              if (expDate && expDate > 0) {
+                                try {
+                                  expFormatted = new Date(expDate * 1000).toLocaleDateString()
+                                } catch {
+                                  expFormatted = 'Custom'
+                                }
+                              }
+
+                              return (
+                                <tr key={idx} style={{ borderBottom: '1px solid #1E1E2D' }}>
+                                  <td style={{ padding: '10px 14px', color: '#2DD4BF', fontFamily: 'monospace', fontWeight: 600 }}>
+                                    {c.domain}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', color: '#F1F5F9', fontWeight: 600 }}>
+                                    {c.name}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', color: '#94A3B8', fontFamily: 'monospace', maxWidth: '200px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                                        {c.value ? `${c.value.substring(0, 14)}••••` : '<empty>'}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyCookieVal(c.value, idx)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: copiedCookieIdx === idx ? '#10B981' : '#64748B',
+                                          cursor: 'pointer',
+                                          fontSize: '11px',
+                                          padding: '2px 4px'
+                                        }}
+                                        title="Copy Value"
+                                      >
+                                        {copiedCookieIdx === idx ? '✓' : '📋'}
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '10px 14px' }}>
+                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                      {c.secure && (
+                                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(16,185,129,0.15)', color: '#10B981', fontWeight: 600 }}>
+                                          Secure
+                                        </span>
+                                      )}
+                                      {c.httpOnly && (
+                                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(99,102,241,0.15)', color: '#818CF8', fontWeight: 600 }}>
+                                          HttpOnly
+                                        </span>
+                                      )}
+                                      {c.sameSite && (
+                                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>
+                                          {c.sameSite}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '10px 14px', color: '#94A3B8' }}>
+                                    {expFormatted}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setCookies(prev => prev.filter((_, i) => i !== idx))}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#EF4444',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        padding: '4px'
+                                      }}
+                                      title="Delete cookie"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* ── Import Cookies Modal Overlay ── */}
+                  {showCookieModal && (
+                    <div style={{
+                      position: 'fixed',
+                      inset: 0,
+                      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                      backdropFilter: 'blur(5px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 10000
+                    }}>
+                      <div style={{
+                        backgroundColor: '#1C1C28',
+                        border: '1px solid #2C2C3E',
+                        borderRadius: '12px',
+                        width: '640px',
+                        maxHeight: '90vh',
+                        padding: '24px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h3 style={{ margin: 0, fontSize: '17px', color: '#F1F5F9' }}>
+                            📥 Import Cookies
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCookieModal(false)
+                              setCookieImportMsg(null)
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '18px', cursor: 'pointer' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        <p style={{ margin: 0, fontSize: '13px', color: '#94A3B8', lineHeight: 1.5 }}>
+                          Paste cookies in <strong>JSON</strong> format (Cookie-Editor, EditThisCookie) or <strong>Netscape</strong> HTTP cookie file format, or upload a cookie file.
+                        </p>
+
+                        {/* File Upload Zone */}
+                        <div style={{
+                          padding: '16px',
+                          borderRadius: '8px',
+                          border: '1px dashed #2C2C3E',
+                          backgroundColor: '#14141F',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '20px' }}>📁</span>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: 600, color: '#F1F5F9' }}>Upload Cookie File</div>
+                              <div style={{ fontSize: '11px', color: '#64748B' }}>Supports .json, .txt, .csv</div>
+                            </div>
+                          </div>
+                          <label style={{
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            backgroundColor: '#2C2C3E',
+                            color: '#F1F5F9',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}>
+                            Choose File
+                            <input
+                              type="file"
+                              accept=".json,.txt,.csv"
+                              onChange={handleCookieFileUpload}
+                              style={{ display: 'none' }}
+                            />
+                          </label>
+                        </div>
+
+                        {/* Paste Textarea */}
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>
+                            Or Paste Raw Cookies Content
+                          </label>
+                          <textarea
+                            value={cookiePasteText}
+                            onChange={e => {
+                              setCookiePasteText(e.target.value)
+                              setCookieImportMsg(null)
+                            }}
+                            rows={8}
+                            placeholder={'[\n  {\n    "name": "session_id",\n    "value": "xyz123...",\n    "domain": ".example.com",\n    "path": "/",\n    "secure": true\n  }\n]'}
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              borderRadius: '8px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: '#FFF',
+                              fontSize: '12px',
+                              fontFamily: 'monospace',
+                              outline: 'none',
+                              resize: 'vertical',
+                              lineHeight: 1.4
+                            }}
+                          />
+                        </div>
+
+                        {/* Import Mode Options */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '13px', color: '#94A3B8' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="cookieImportMode"
+                              checked={cookieImportMode === 'replace'}
+                              onChange={() => setCookieImportMode('replace')}
+                            />
+                            Replace existing cookies
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="cookieImportMode"
+                              checked={cookieImportMode === 'append'}
+                              onChange={() => setCookieImportMode('append')}
+                            />
+                            Append to existing cookies
+                          </label>
+                        </div>
+
+                        {/* Feedback message */}
+                        {cookieImportMsg && (
+                          <div style={{
+                            padding: '10px 14px',
+                            borderRadius: '6px',
+                            backgroundColor: cookieImportMsg.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                            color: cookieImportMsg.type === 'success' ? '#10B981' : '#EF4444',
+                            fontSize: '12px',
+                            fontWeight: 500
+                          }}>
+                            {cookieImportMsg.text}
+                          </div>
+                        )}
+
+                        {/* Modal Action Buttons */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCookieModal(false)
+                              setCookieImportMsg(null)
+                            }}
+                            style={{
+                              padding: '9px 18px',
+                              borderRadius: '6px',
+                              backgroundColor: '#2C2C3E',
+                              color: '#CBD5E1',
+                              border: 'none',
+                              fontSize: '13px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleImportCookieText(cookiePasteText, cookieImportMode)}
+                            disabled={!cookiePasteText.trim()}
+                            style={{
+                              padding: '9px 24px',
+                              borderRadius: '6px',
+                              backgroundColor: cookiePasteText.trim() ? '#2DD4BF' : '#2DD4BF40',
+                              color: '#0F0F17',
+                              fontWeight: 600,
+                              border: 'none',
+                              fontSize: '13px',
+                              cursor: cookiePasteText.trim() ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            Import Cookies
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
 
             {/* Footer Buttons */}
@@ -2424,6 +2985,7 @@ export const ProfileModal: React.FC<Props> = ({
               {osType === 'android' && (
                 <div><strong style={{ color: '#94A3B8' }}>Device:</strong> <span style={{ color: '#2DD4BF', fontWeight: 600 }}>{safeFp.navigator.deviceModel || safeFp.navigator.deviceBrand || selectedAndroidDevice?.modelName || 'Samsung Galaxy S24 Ultra'}</span></div>
               )}
+              <div><strong style={{ color: '#94A3B8' }}>Cookies:</strong> <span style={{ color: cookies.length > 0 ? '#2DD4BF' : '#94A3B8', fontWeight: 600 }}>{cookies.length} {cookies.length === 1 ? 'cookie' : 'cookies'}</span></div>
               <div><strong style={{ color: '#94A3B8' }}>User-Agent:</strong> {safeFp.navigator.userAgent ? `${safeFp.navigator.userAgent.substring(0, 22)}...` : 'Mozilla/...'}</div>
               <div><strong style={{ color: '#94A3B8' }}>Resolution:</strong> {safeFp.screen.width}x{safeFp.screen.height} (@{safeFp.screen.devicePixelRatio || 1}x)</div>
               <div><strong style={{ color: '#94A3B8' }}>Languages:</strong> {safeFp.locale.language}</div>
