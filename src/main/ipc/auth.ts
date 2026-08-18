@@ -2,7 +2,8 @@
 // AntiProfiles — Authentication IPC Handlers
 // ──────────────────────────────────────────────
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, shell } from 'electron'
+import http from 'http'
 import { userRepo } from '../database/repositories/user.repo'
 import { tokenRepo } from '../database/repositories/token.repo'
 import { verifyPassword } from '../security/password'
@@ -307,139 +308,197 @@ export function setupAuthIPC(): void {
         }
       }
 
-      // 2. Interactive Google OAuth Window in Electron
+      // 2. High-Reliability OAuth Loopback Server + System Browser Flow
       return await new Promise((resolve) => {
         let isResolved = false
-        const customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
-
-        const authWin = new BrowserWindow({
-          width: 480,
-          height: 640,
-          title: 'Sign in with Google - AntiProfiles',
-          backgroundColor: '#0B0C10',
-          resizable: false,
-          minimizable: false,
-          maximizable: false,
-          autoHideMenuBar: true,
-          webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true,
-            sandbox: false
-          }
-        })
-
-        // Ensure Chrome standard user-agent so Google doesn't block Electron WebView
-        authWin.webContents.setUserAgent(customUserAgent)
-
-        // Handle Google OAuth child popups properly
-        authWin.webContents.setWindowOpenHandler(({ url }) => {
-          return {
-            action: 'allow',
-            overrideBrowserWindowOptions: {
-              width: 500,
-              height: 650,
-              title: 'Google Accounts',
-              backgroundColor: '#0B0C10',
-              autoHideMenuBar: true,
-              webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
-                sandbox: false
-              }
-            }
-          }
-        })
-
-        authWin.webContents.on('did-create-window', (childWin) => {
-          childWin.webContents.setUserAgent(customUserAgent)
-        })
-
-        const baseUrl = centralApi.getBaseUrl()
-        authWin.loadURL(`${baseUrl}/oauth/google?desktop=1`, {
-          userAgent: customUserAgent
-        })
-
-        let checkInterval: NodeJS.Timeout | null = null
+        let loopbackServer: http.Server | null = null
+        let inAppWin: BrowserWindow | null = null
+        let timeoutId: NodeJS.Timeout | null = null
 
         const cleanup = () => {
-          if (checkInterval) clearInterval(checkInterval)
-          checkInterval = null
+          if (loopbackServer) {
+            try { loopbackServer.close() } catch(e) {}
+            loopbackServer = null
+          }
+          if (inAppWin && !inAppWin.isDestroyed()) {
+            try { inAppWin.close() } catch(e) {}
+            inAppWin = null
+          }
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
         }
 
-        authWin.on('closed', () => {
+        const completeAuth = (sessionToken: string, userObj: any) => {
+          if (isResolved) return
+          isResolved = true
           cleanup()
-          if (!isResolved) {
-            isResolved = true
-            resolve({ success: false, error: 'Google sign-in was cancelled.' })
-          }
-        })
 
-        // Poll for successful login in the web view
-        checkInterval = setInterval(async () => {
-          if (isResolved || authWin.isDestroyed()) {
-            cleanup()
+          centralApi.setSessionToken(sessionToken)
+          centralApi.setCurrentUser(userObj)
+
+          let user = userRepo.getByEmail(userObj.email)
+          if (!user) {
+            userRepo.create({
+              name: userObj.name || userObj.email.split('@')[0],
+              email: userObj.email,
+              role: userObj.role || 'user',
+              emailVerified: true,
+              accountStatus: userObj.accountStatus || 'active'
+            })
+            user = userRepo.getByEmail(userObj.email)
+          } else {
+            userRepo.update(user.id, {
+              name: userObj.name || user.name,
+              emailVerified: true,
+              accountStatus: userObj.accountStatus || 'active',
+              role: userObj.role || user.role
+            })
+            user = userRepo.getById(user.id)
+          }
+
+          const displayUser = userRepo.getDisplayById(user!.id)!
+          sessionManager.registerSession(sessionToken, displayUser as any)
+
+          try {
+            syncService.startSync(sessionToken)
+          } catch {}
+
+          logger.info('auth', `Desktop Google OAuth successful: "${userObj.email}"`)
+          resolve({
+            success: true,
+            user: displayUser,
+            token: sessionToken
+          })
+        }
+
+        // Start Loopback server on random open port
+        loopbackServer = http.createServer((req, res) => {
+          res.setHeader('Access-Control-Allow-Origin', '*')
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204)
+            res.end()
             return
           }
 
           try {
-            const token = await authWin.webContents.executeJavaScript(`window.__antiprofiles_session_token || localStorage.getItem('sessionToken') || ''`)
-            const userStr = await authWin.webContents.executeJavaScript(`JSON.stringify(window.__antiprofiles_user || '') || localStorage.getItem('user') || ''`)
+            const reqUrl = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`)
+            if (reqUrl.pathname === '/callback') {
+              const token = reqUrl.searchParams.get('token')
+              const userRaw = reqUrl.searchParams.get('user')
 
-            if (token && userStr && token !== 'undefined' && userStr !== 'undefined' && userStr !== '""') {
-              let u: any = null
-              try {
-                u = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
-              } catch(e) {}
+              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+              res.end(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <title>Authentication Successful - AntiProfiles</title>
+                  <style>
+                    body { background: #0B0C10; color: #FFF; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                    .card { background: #12141D; border: 1px solid #272A3B; border-radius: 16px; padding: 40px 32px; text-align: center; max-width: 420px; }
+                    h2 { color: #2DD4BF; margin-bottom: 12px; font-size: 22px; }
+                    p { color: #94A3B8; font-size: 14px; line-height: 1.5; }
+                  </style>
+                </head>
+                <body>
+                  <div class="card">
+                    <h2>✅ Sign-In Successful!</h2>
+                    <p>Your Google Account has been authenticated. You can now close this tab and return to the AntiProfiles desktop application.</p>
+                  </div>
+                  <script>
+                    setTimeout(() => { try { window.close(); } catch(e) {} }, 1500);
+                  </script>
+                </body>
+                </html>
+              `)
 
-              if (u && u.email) {
-                isResolved = true
-                cleanup()
-                authWin.close()
-
-                // Set token in centralApi client
-                centralApi.setSessionToken(token)
-                centralApi.setCurrentUser(u)
-
-                // Sync locally
-                let user = userRepo.getByEmail(u.email)
-                if (!user) {
-                  userRepo.create({
-                    name: u.name || u.email.split('@')[0],
-                    email: u.email,
-                    role: u.role || 'user',
-                    emailVerified: true,
-                    accountStatus: u.accountStatus || 'active'
-                  })
-                  user = userRepo.getByEmail(u.email)
-                } else {
-                  userRepo.update(user.id, {
-                    name: u.name || user.name,
-                    emailVerified: true,
-                    accountStatus: u.accountStatus || 'active',
-                    role: u.role || user.role
-                  })
-                  user = userRepo.getById(user.id)
-                }
-
-                const displayUser = userRepo.getDisplayById(user!.id)!
-                sessionManager.registerSession(token, displayUser as any)
-
+              if (token && userRaw) {
                 try {
-                  syncService.startSync(token)
-                } catch {}
-
-                logger.info('auth', `Desktop Google OAuth successful for: "${u.email}"`)
-                resolve({
-                  success: true,
-                  user: displayUser,
-                  token
-                })
+                  const parsedUser = JSON.parse(userRaw)
+                  completeAuth(token, parsedUser)
+                } catch(e) {}
               }
             }
-          } catch (err) {
-            // Ignore execution errors while pages navigate
+          } catch(e) {
+            res.writeHead(400)
+            res.end('Invalid callback request')
           }
-        }, 500)
+        })
+
+        loopbackServer.listen(0, '127.0.0.1', () => {
+          const addr = loopbackServer?.address() as any
+          const port = addr ? addr.port : 0
+          const baseUrl = centralApi.getBaseUrl()
+          const oauthUrl = `${baseUrl}/oauth/google?desktop=1&port=${port}`
+
+          // 1. Open default system browser where user has active Google session
+          shell.openExternal(oauthUrl)
+
+          // 2. Also open in-app helper window for user visibility & fallback
+          const customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+          inAppWin = new BrowserWindow({
+            width: 480,
+            height: 640,
+            title: 'Sign in with Google - AntiProfiles',
+            backgroundColor: '#0B0C10',
+            resizable: false,
+            minimizable: false,
+            maximizable: false,
+            autoHideMenuBar: true,
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true,
+              sandbox: false
+            }
+          })
+          inAppWin.webContents.setUserAgent(customUserAgent)
+          inAppWin.loadURL(oauthUrl, { userAgent: customUserAgent })
+
+          inAppWin.on('closed', () => {
+            inAppWin = null
+            setTimeout(() => {
+              if (!isResolved) {
+                isResolved = true
+                cleanup()
+                resolve({ success: false, error: 'Google sign-in was cancelled.' })
+              }
+            }, 5000)
+          })
+
+          // Poll in-app window for token
+          const pollInterval = setInterval(async () => {
+            if (isResolved) {
+              clearInterval(pollInterval)
+              return
+            }
+            if (inAppWin && !inAppWin.isDestroyed()) {
+              try {
+                const token = await inAppWin.webContents.executeJavaScript(`window.__antiprofiles_session_token || localStorage.getItem('sessionToken') || ''`)
+                const userStr = await inAppWin.webContents.executeJavaScript(`JSON.stringify(window.__antiprofiles_user || '') || localStorage.getItem('user') || ''`)
+                if (token && userStr && token !== 'undefined' && userStr !== 'undefined' && userStr !== '""') {
+                  clearInterval(pollInterval)
+                  const parsedUser = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
+                  if (parsedUser && parsedUser.email) {
+                    completeAuth(token, parsedUser)
+                  }
+                }
+              } catch(e) {}
+            }
+          }, 500)
+        })
+
+        // Timeout after 3 minutes
+        timeoutId = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true
+            cleanup()
+            resolve({ success: false, error: 'Google sign-in timed out. Please try again.' })
+          }
+        }, 180000)
       })
     } catch (err: any) {
       logger.error('auth', `Google login failed: ${err.message}`)

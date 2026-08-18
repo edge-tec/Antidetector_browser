@@ -318,9 +318,19 @@ $isDesktop = isset($_GET['desktop']);
                     window.__antiprofiles_session_token = data.sessionToken;
                     window.__antiprofiles_user = data.user;
 
+                    // If loopback desktop port is present, redirect to local desktop server
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const port = urlParams.get('port');
+                    if (port && port.length > 1) {
+                        try {
+                            window.location.href = 'http://127.0.0.1:' + encodeURIComponent(port) + '/callback?token=' + encodeURIComponent(data.sessionToken) + '&user=' + encodeURIComponent(JSON.stringify(data.user));
+                            return;
+                        } catch(e) {}
+                    }
+
                     setTimeout(() => {
                         window.close();
-                    }, 1200);
+                    }, 1000);
                 } else {
                     showMessage('❌ ' + (data.error || 'Authentication failed. Please try again.'), false, true);
                     document.getElementById('fallbackForm').style.display = 'block';
