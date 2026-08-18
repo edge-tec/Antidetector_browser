@@ -118,6 +118,10 @@ function setupFirefoxProfilePrefs(
   prefs.push('user_pref("layout.css.devPixelsPerPx", "-1.0");')
   prefs.push('user_pref("browser.uidensity", 0);')
   prefs.push('user_pref("font.size.systemFontScale", 100);')
+  prefs.push('user_pref("browser.window.width", 1280);')
+  prefs.push('user_pref("browser.window.height", 800);')
+  prefs.push('user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);')
+  prefs.push('user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);')
 
   // Hardware Acceleration
   if (profile.hwAcceleration === false) {
@@ -148,6 +152,24 @@ function setupFirefoxProfilePrefs(
   if (!fs.existsSync(prefsJsPath)) {
     fs.writeFileSync(prefsJsPath, content, 'utf8')
   }
+
+  // Pre-seed xulstore.json to ensure Firefox opens in a normal, compact centered window
+  const xulstorePath = path.join(resolvedDir, 'xulstore.json')
+  const xulstoreConfig = {
+    'chrome://browser/content/browser.xhtml': {
+      'main-window': {
+        width: '1280',
+        height: '800',
+        sizemode: 'normal',
+        screenX: '100',
+        screenY: '60'
+      }
+    }
+  }
+  try {
+    fs.writeFileSync(xulstorePath, JSON.stringify(xulstoreConfig, null, 2), 'utf8')
+  } catch {}
+
   logger.info('browser', `[FirefoxProfile] Wrote Firefox profile configuration to: ${userJsPath}`)
 }
 
@@ -164,11 +186,15 @@ export async function launchFirefox(
   const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
 
-  // Use standard -no-remote and -profile as required by Mozilla Firefox CLI
+  // Use standard -no-remote, -profile, and compact window dimensions
   const args: string[] = [
     '-no-remote',
     '-profile',
-    userDataDir
+    userDataDir,
+    '-width',
+    '1280',
+    '-height',
+    '800'
   ]
 
   if (startUrls.length > 0) {
@@ -182,7 +208,7 @@ export async function launchFirefox(
 
   if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
     const appPath = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
-    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir]
+    const openArgs = ['-n', '-a', appPath, '--args', '-no-remote', '-profile', userDataDir, '-width', '1280', '-height', '800']
     if (startUrls.length > 0) {
       openArgs.push(...startUrls)
     }
@@ -292,8 +318,8 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   const args: string[] = [
     '--no-first-run',
     '--no-default-browser-check',
-    '--start-maximized',
-    '--window-position=0,0',
+    '--window-size=1280,800',
+    '--window-position=100,60',
     '--password-store=basic',
     '--use-mock-keychain',
     '--disable-blink-features=AutomationControlled',
@@ -498,7 +524,7 @@ export async function launchBrowser(
     // Inject full fingerprint via CDP
     await setupBrowserInjection(browser, fingerprint)
 
-    // Maximize Chromium window & WebContents view via CDP
+    // Set standard normal centered Chromium window bounds via CDP
     try {
       const pages = await browser.pages()
       if (pages.length > 0) {
@@ -506,11 +532,11 @@ export async function launchBrowser(
         const { windowId } = await client.send('Browser.getWindowForTarget')
         await client.send('Browser.setWindowBounds', {
           windowId,
-          bounds: { windowState: 'maximized' }
+          bounds: { windowState: 'normal', width: 1280, height: 800, left: 100, top: 60 }
         })
       }
     } catch (err: any) {
-      logger.warn('browser', `Could not maximize CDP window: ${err.message}`)
+      logger.warn('browser', `Could not set CDP window bounds: ${err.message}`)
     }
 
     // Set timezone via CDP
