@@ -83,7 +83,7 @@ export class ProfileRepository {
         os_type, fingerprint, folder, profile_locked, consistency_score, fingerprint_seed,
         start_url, launch_args, save_history, save_passwords, google_services, system_extensions, custom_dns
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'stopped', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       targetUserId,
@@ -106,6 +106,7 @@ export class ProfileRepository {
       input.hwAcceleration !== false ? 1 : 0,
       input.proxyId ?? null,
       JSON.stringify(input.tags ?? []),
+      'stopped',
       now,
       now,
       osType,

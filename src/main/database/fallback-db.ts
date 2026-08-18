@@ -95,18 +95,30 @@ export class FallbackDatabase {
   }
 
   private executeMutation(sql: string, params: any[]): number {
-    const lower = sql.toLowerCase()
-
     // INSERT INTO table (cols) VALUES (?, ?)
     const insertMatch = sql.match(/INSERT\s+(?:OR\s+REPLACE\s+INTO|INTO)\s+([`"'\w]+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i)
     if (insertMatch) {
       const tblName = insertMatch[1].toLowerCase().replace(/[`"']/g, '')
       const cols = insertMatch[2].split(',').map(c => c.trim().toLowerCase().replace(/[`"']/g, ''))
+      const rawValues = insertMatch[3].split(',').map(v => v.trim())
       const tbl = this.getTable(tblName)
 
+      let paramIdx = 0
       const row: any = {}
       cols.forEach((col, idx) => {
-        row[col] = params[idx] !== undefined ? params[idx] : null
+        const valToken = rawValues[idx] || '?'
+        if (valToken === '?') {
+          row[col] = params[paramIdx] !== undefined ? params[paramIdx] : null
+          paramIdx++
+        } else if (/^['"].*['"]$/.test(valToken)) {
+          row[col] = valToken.slice(1, -1)
+        } else if (!isNaN(Number(valToken))) {
+          row[col] = Number(valToken)
+        } else if (/^datetime\(/i.test(valToken)) {
+          row[col] = new Date().toISOString()
+        } else {
+          row[col] = valToken
+        }
       })
 
       // If ID exists, replace existing or push new
@@ -119,7 +131,7 @@ export class FallbackDatabase {
       return 1
     }
 
-    // UPDATE table SET col1 = ?, col2 = ? WHERE id = ?
+    // UPDATE table SET col1 = ?, col2 = ? WHERE ...
     const updateMatch = sql.match(/UPDATE\s+([`"'\w]+)\s+SET\s+([\s\S]+?)(?:\s+WHERE\s+([\s\S]+))?$/i)
     if (updateMatch) {
       const tblName = updateMatch[1].toLowerCase().replace(/[`"']/g, '')
@@ -138,17 +150,22 @@ export class FallbackDatabase {
         updates[col] = params[paramIdx++]
       }
 
+      const whereParams = params.slice(paramIdx)
       let count = 0
       for (let i = 0; i < tbl.length; i++) {
         let matches = true
         if (whereClause) {
-          const idMatch = whereClause.match(/id\s*=\s*\?/i)
-          if (idMatch && params[paramIdx] !== undefined) {
-            matches = String(tbl[i].id) === String(params[paramIdx])
+          const idMatch = whereClause.match(/\bid\s*=\s*\?/i)
+          if (idMatch && whereParams[0] !== undefined) {
+            matches = String(tbl[i].id) === String(whereParams[0])
           }
-          const emailMatch = whereClause.match(/email\s*=\s*\?/i)
-          if (emailMatch && params[paramIdx] !== undefined) {
-            matches = String(tbl[i].email).toLowerCase() === String(params[paramIdx]).toLowerCase()
+          const emailMatch = whereClause.match(/\bemail\s*=\s*\?/i)
+          if (emailMatch && whereParams[0] !== undefined) {
+            matches = String(tbl[i].email).toLowerCase() === String(whereParams[0]).toLowerCase()
+          }
+          const keyMatch = whereClause.match(/\bkey\s*=\s*\?/i)
+          if (keyMatch && whereParams[0] !== undefined) {
+            matches = String(tbl[i].key) === String(whereParams[0])
           }
         }
         if (matches) {
@@ -159,7 +176,7 @@ export class FallbackDatabase {
       return count
     }
 
-    // DELETE FROM table WHERE id = ?
+    // DELETE FROM table WHERE ...
     const deleteMatch = sql.match(/DELETE\s+FROM\s+([`"'\w]+)(?:\s+WHERE\s+([\s\S]+))?$/i)
     if (deleteMatch) {
       const tblName = deleteMatch[1].toLowerCase().replace(/[`"']/g, '')
@@ -180,39 +197,109 @@ export class FallbackDatabase {
   }
 
   private executeQuery(sql: string, params: any[]): any[] {
-    const selectMatch = sql.match(/SELECT\s+([\s\S]+?)\s+FROM\s+([`"'\w]+)(?:\s+WHERE\s+([\s\S]+?))?(?:\s+ORDER\s+BY\s+[\s\S]+?)?(?:\s+LIMIT\s+\d+)?$/i)
+    const selectMatch = sql.match(/SELECT\s+([\s\S]+?)\s+FROM\s+([`"'\w]+)(?:\s+WHERE\s+([\s\S]+?))?(?:\s+ORDER\s+BY\s+([\s\S]+?))?(?:\s+LIMIT\s+(\d+))?$/i)
     if (!selectMatch) {
-      // Return empty array for unparsed complex queries
       return []
     }
 
     const tblName = selectMatch[2].toLowerCase().replace(/[`"']/g, '')
     const whereClause = selectMatch[3] || ''
-    const tbl = this.getTable(tblName)
+    const orderByClause = selectMatch[4] || ''
+    const limitClause = selectMatch[5]
+    let results = [...this.getTable(tblName)]
 
-    if (!whereClause || params.length === 0) {
-      return [...tbl]
+    if (whereClause && params.length > 0) {
+      let paramIdx = 0
+
+      // Exact single ID lookup
+      if (/^\s*id\s*=\s*\?\s*$/i.test(whereClause.trim())) {
+        const targetId = String(params[0])
+        results = results.filter(r => String(r.id) === targetId)
+        return results
+      }
+
+      // Email lookup
+      if (/email/i.test(whereClause) && !/name\s+LIKE/i.test(whereClause)) {
+        const targetEmail = String(params[0] || '').toLowerCase()
+        results = results.filter(r => String(r.email || '').toLowerCase() === targetEmail)
+        return results
+      }
+
+      // Key lookup (settings)
+      if (/^\s*key\s*=\s*\?\s*$/i.test(whereClause.trim())) {
+        const targetKey = String(params[0])
+        results = results.filter(r => String(r.key) === targetKey)
+        return results
+      }
+
+      // Handle multi-condition queries (e.g. Profiles list query)
+      if (whereClause.includes('user_id = ?')) {
+        const uid = params[paramIdx++]
+        if (uid) {
+          results = results.filter(r => String(r.user_id || 'admin-default') === String(uid))
+        }
+      }
+
+      if (whereClause.includes('LIKE ?')) {
+        const searchParam = params[paramIdx++]
+        // Consume subsequent search params if 3 LIKEs were used
+        if (whereClause.includes('notes LIKE ?')) paramIdx++
+        if (whereClause.includes('tags LIKE ?')) paramIdx++
+
+        if (searchParam) {
+          const query = String(searchParam).replace(/%/g, '').toLowerCase()
+          if (query) {
+            results = results.filter(r =>
+              String(r.name || '').toLowerCase().includes(query) ||
+              String(r.notes || '').toLowerCase().includes(query) ||
+              String(r.tags || '').toLowerCase().includes(query)
+            )
+          }
+        }
+      }
+
+      if (whereClause.includes('group_id = ?')) {
+        const gid = params[paramIdx++]
+        if (gid) {
+          results = results.filter(r => String(r.group_id) === String(gid))
+        }
+      }
+
+      if (whereClause.includes('status = ?')) {
+        const stat = params[paramIdx++]
+        if (stat) {
+          results = results.filter(r => String(r.status) === String(stat))
+        }
+      }
+
+      if (whereClause.includes('profile_id = ?')) {
+        const pid = params[paramIdx++]
+        if (pid) {
+          results = results.filter(r => String(r.profile_id) === String(pid))
+        }
+      }
     }
 
-    // Basic condition evaluation
-    return tbl.filter(row => {
-      if (whereClause.includes('id = ?') && params[0] !== undefined) {
-        return String(row.id) === String(params[0])
+    // Handle Ordering
+    if (orderByClause) {
+      if (/updated_at\s+DESC/i.test(orderByClause)) {
+        results.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+      } else if (/created_at\s+DESC/i.test(orderByClause)) {
+        results.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+      } else if (/created_at\s+ASC/i.test(orderByClause)) {
+        results.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''))
       }
-      if (whereClause.includes('email = ?') && params[0] !== undefined) {
-        return String(row.email || '').toLowerCase() === String(params[0]).toLowerCase()
+    }
+
+    // Handle Limit
+    if (limitClause) {
+      const limit = parseInt(limitClause, 10)
+      if (!isNaN(limit)) {
+        results = results.slice(0, limit)
       }
-      if (whereClause.includes('google_id = ?') && params[0] !== undefined) {
-        return String(row.google_id || '') === String(params[0])
-      }
-      if (whereClause.includes('status = ?') && params[0] !== undefined) {
-        return String(row.status || '') === String(params[0])
-      }
-      if (whereClause.includes('group_id = ?') && params[0] !== undefined) {
-        return String(row.group_id || '') === String(params[0])
-      }
-      return true
-    })
+    }
+
+    return results
   }
 
   public close(): void {
