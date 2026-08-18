@@ -164,7 +164,6 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
   const fp = rawFp && typeof rawFp === 'object' ? rawFp : {}
 
   if (targetOs === 'android') {
-    const isAlreadyAndroid = fp.navigator?.userAgent?.includes('Android')
     const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
     const matchedDev = (existingModelCode ? getDeviceById(existingModelCode) : null) || ANDROID_DEVICES[0]
 
@@ -172,7 +171,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
       version: fp.version || 2,
       seed: fp.seed || 'default-seed',
       navigator: {
-        userAgent: isAlreadyAndroid && fp.navigator?.userAgent ? fp.navigator.userAgent : generateAndroidUserAgent(matchedDev),
+        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateAndroidUserAgent(matchedDev),
         browserVersion: fp.navigator?.browserVersion || '128.0.0.0',
         chromiumVersion: fp.navigator?.chromiumVersion || '128.0.0.0',
         platform: 'Linux armv8l',
@@ -269,10 +268,10 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
     version: fp.version || 2,
     seed: fp.seed || 'default-seed',
     navigator: {
-      userAgent: fp.navigator?.userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      browserVersion: fp.navigator?.browserVersion || '124.0.0.0',
-      chromiumVersion: fp.navigator?.chromiumVersion || '124.0.0.0',
-      platform: fp.navigator?.platform || (targetOs.startsWith('win') ? 'Win32' : 'MacIntel'),
+      userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateUAForOS(targetOs),
+      browserVersion: fp.navigator?.browserVersion || '128.0.0.0',
+      chromiumVersion: fp.navigator?.chromiumVersion || '128.0.0.0',
+      platform: fp.navigator?.platform || (targetOs.startsWith('win') ? 'Win32' : targetOs.startsWith('linux') ? 'Linux x86_64' : 'MacIntel'),
       vendor: fp.navigator?.vendor || 'Google Inc.',
       hardwareConcurrency: fp.navigator?.hardwareConcurrency || 8,
       deviceMemory: fp.navigator?.deviceMemory || 8,
@@ -2150,6 +2149,26 @@ export const ProfileModal: React.FC<Props> = ({
                             title="Paste User-Agent from clipboard"
                           >
                             📋 Paste UA
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUserAgentChange('')}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              backgroundColor: '#14141F',
+                              color: '#EF4444',
+                              border: '1px solid #2C2C3E',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Clear User-Agent input completely"
+                          >
+                            🗑️ Clear UA
                           </button>
                           <button
                             type="button"
