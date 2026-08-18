@@ -1,15 +1,15 @@
 // ──────────────────────────────────────────────
-// AntiProfiles — SQLite Connection Manager
+// AntiProfiles — SQLite Connection Manager (Fault-Tolerant Multi-Arch)
 // ──────────────────────────────────────────────
 
-import Database from 'better-sqlite3'
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { runMigrations } from './migrations/runner'
 import { hashPassword } from '../security/password'
+import { FallbackDatabase } from './fallback-db'
 
-let db: Database.Database | null = null
+let db: any = null
 
 export function getDbPath(): string {
   try {
@@ -23,18 +23,18 @@ export function getDbPath(): string {
   return path.join(process.cwd(), 'antiprofiles.db')
 }
 
-export function getDatabase(): Database.Database {
+export function getDatabase(): any {
   if (!db) {
     db = initDatabase()
   }
   return db
 }
 
-export function setDatabaseForTesting(testDb: Database.Database): void {
+export function setDatabaseForTesting(testDb: any): void {
   db = testDb
 }
 
-export function initDatabase(): Database.Database {
+export function initDatabase(): any {
   if (db) return db
   const dbPath = getDbPath()
 
@@ -44,40 +44,39 @@ export function initDatabase(): Database.Database {
     fs.mkdirSync(dir, { recursive: true })
   }
 
-  db = new Database(dbPath)
-
-  // Enable WAL mode for performance
-  db.pragma('journal_mode = WAL')
-  db.pragma('busy_timeout = 5000')
-  db.pragma('foreign_keys = ON')
-
-  // Set secure file permissions (owner only)
+  // 1. Attempt native SQLite driver
   try {
-    fs.chmodSync(dbPath, 0o600)
-  } catch {
-    // May fail on some systems, non-critical
-  }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Database = require('better-sqlite3')
+    db = new Database(dbPath)
 
-  // Run migrations
-  runMigrations(db)
+    // Enable WAL mode for performance
+    db.pragma('journal_mode = WAL')
+    db.pragma('busy_timeout = 5000')
+    db.pragma('foreign_keys = ON')
+
+    try {
+      fs.chmodSync(dbPath, 0o600)
+    } catch {}
+
+    // Run migrations
+    runMigrations(db)
+  } catch (err: any) {
+    console.warn('[Database] Native better-sqlite3 driver unavailable (e.g. cross-arch Mach-O slice). Using fault-tolerant storage:', err?.message || err)
+    db = new FallbackDatabase(dbPath)
+  }
 
   try {
     db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = 'admin@antiprofiles.com'").run(hashPassword('admin123'))
-  } catch {
-    // Ignore if table doesn't exist yet
-  }
+  } catch {}
 
   try {
     db.exec("ALTER TABLE profiles ADD COLUMN user_id TEXT DEFAULT 'admin-default'")
-  } catch {
-    // Column already exists, ignore
-  }
+  } catch {}
 
   try {
     db.exec("ALTER TABLE proxies ADD COLUMN region TEXT DEFAULT ''")
-  } catch {
-    // Column already exists, ignore
-  }
+  } catch {}
 
   return db
 }
@@ -86,9 +85,7 @@ export function closeDatabase(): void {
   if (db) {
     try {
       db.close()
-    } catch {
-      // Ignore close errors during shutdown
-    }
+    } catch {}
     db = null
   }
 }

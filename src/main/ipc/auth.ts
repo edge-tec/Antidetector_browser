@@ -435,60 +435,8 @@ export function setupAuthIPC(): void {
           const baseUrl = centralApi.getBaseUrl()
           const oauthUrl = `${baseUrl}/oauth/google?desktop=1&port=${port}`
 
-          // 1. Open default system browser where user has active Google session
+          // 1. Open default system browser for secure official Google OAuth flow
           shell.openExternal(oauthUrl)
-
-          // 2. Also open in-app helper window for user visibility & fallback
-          const customUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
-          inAppWin = new BrowserWindow({
-            width: 480,
-            height: 640,
-            title: 'Sign in with Google - AntiProfiles',
-            backgroundColor: '#0B0C10',
-            resizable: false,
-            minimizable: false,
-            maximizable: false,
-            autoHideMenuBar: true,
-            webPreferences: {
-              nodeIntegration: false,
-              contextIsolation: true,
-              sandbox: false
-            }
-          })
-          inAppWin.webContents.setUserAgent(customUserAgent)
-          inAppWin.loadURL(oauthUrl, { userAgent: customUserAgent })
-
-          inAppWin.on('closed', () => {
-            inAppWin = null
-            setTimeout(() => {
-              if (!isResolved) {
-                isResolved = true
-                cleanup()
-                resolve({ success: false, error: 'Google sign-in was cancelled.' })
-              }
-            }, 5000)
-          })
-
-          // Poll in-app window for token
-          const pollInterval = setInterval(async () => {
-            if (isResolved) {
-              clearInterval(pollInterval)
-              return
-            }
-            if (inAppWin && !inAppWin.isDestroyed()) {
-              try {
-                const token = await inAppWin.webContents.executeJavaScript(`window.__antiprofiles_session_token || localStorage.getItem('sessionToken') || ''`)
-                const userStr = await inAppWin.webContents.executeJavaScript(`JSON.stringify(window.__antiprofiles_user || '') || localStorage.getItem('user') || ''`)
-                if (token && userStr && token !== 'undefined' && userStr !== 'undefined' && userStr !== '""') {
-                  clearInterval(pollInterval)
-                  const parsedUser = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
-                  if (parsedUser && parsedUser.email) {
-                    completeAuth(token, parsedUser)
-                  }
-                }
-              } catch(e) {}
-            }
-          }, 500)
         })
 
         // Timeout after 3 minutes
