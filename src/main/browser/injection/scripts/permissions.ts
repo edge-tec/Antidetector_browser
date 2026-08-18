@@ -40,14 +40,14 @@ export function buildPermissionsScript(perms: PermissionsFingerprint): string {
   if (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) {
     const origQuery = navigator.permissions.query;
     navigator.permissions.query = function(desc) {
-      const name = desc && desc.name;
       return origQuery.apply(this, arguments).then(function(permStatus) {
+        const name = desc && desc.name;
         if (name && PERM_MAP[name] && permStatus) {
           try {
-            Object.defineProperty(permStatus, 'state', {
-              get: function() { return PERM_MAP[name]; },
-              configurable: true
-            });
+            if (typeof PermissionStatus !== 'undefined' && PermissionStatus.prototype) {
+              const origGetter = Object.getOwnPropertyDescriptor(PermissionStatus.prototype, 'state')?.get;
+              // Return status transparently
+            }
           } catch(e) {}
         }
         return permStatus;

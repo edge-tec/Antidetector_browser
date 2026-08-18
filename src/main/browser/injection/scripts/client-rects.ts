@@ -45,7 +45,18 @@ export function buildClientRectsScript(cr: ClientRectsFingerprint): string {
     const origGetBCR = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function() {
       const rect = origGetBCR.call(this);
-      if (!this || this.tagName === 'HTML' || this.tagName === 'BODY' || this === document.documentElement || this === document.body) {
+      if (
+        !this ||
+        this.tagName === 'HTML' ||
+        this.tagName === 'BODY' ||
+        this.tagName === 'INPUT' ||
+        this.tagName === 'BUTTON' ||
+        this.tagName === 'TEXTAREA' ||
+        this.tagName === 'SELECT' ||
+        this.tagName === 'A' ||
+        this === document.documentElement ||
+        this === document.body
+      ) {
         return rect;
       }
       return addRectNoise(rect);

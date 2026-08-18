@@ -17,26 +17,6 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
 (function() {
   'use strict';
 
-  const nativeToString = Function.prototype.toString;
-  const nativeFns = new WeakSet();
-
-  function makeNative(fn, name) {
-    if (typeof fn !== 'function') return fn;
-    nativeFns.add(fn);
-    return fn;
-  }
-
-  try {
-    Function.prototype.toString = function() {
-      if (nativeFns.has(this)) {
-        const fnName = this.name || '';
-        return fnName ? 'function ' + fnName + '() { [native code] }' : 'function () { [native code] }';
-      }
-      return nativeToString.call(this);
-    };
-    nativeFns.add(Function.prototype.toString);
-  } catch(e) {}
-
   const navOverrides = ${JSON.stringify({
     userAgent: nav.userAgent,
     platform: nav.platform,
@@ -58,17 +38,15 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
   for (const [key, value] of Object.entries(navOverrides)) {
     if (value === undefined) continue;
     try {
-      const getter = makeNative(function() { return value; }, 'get ' + key);
       Object.defineProperty(Navigator.prototype, key, {
-        get: getter,
+        get: function() { return value; },
         configurable: true,
         enumerable: true
       });
     } catch(e) {
       try {
-        const getter = makeNative(function() { return value; }, 'get ' + key);
         Object.defineProperty(navigator, key, {
-          get: getter,
+          get: function() { return value; },
           configurable: true,
           enumerable: true
         });
@@ -79,9 +57,8 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
   // Override navigator.languages (frozen array)
   const _languages = ${JSON.stringify(nav.languages || ['en-US', 'en'])};
   try {
-    const langGetter = makeNative(function() { return Object.freeze([..._languages]); }, 'get languages');
     Object.defineProperty(Navigator.prototype, 'languages', {
-      get: langGetter,
+      get: function() { return Object.freeze([..._languages]); },
       configurable: true,
       enumerable: true
     });
@@ -89,9 +66,8 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
 
   // Ensure navigator.webdriver is false
   try {
-    const wdGetter = makeNative(function() { return false; }, 'get webdriver');
     Object.defineProperty(Navigator.prototype, 'webdriver', {
-      get: wdGetter,
+      get: function() { return false; },
       configurable: true,
       enumerable: true
     });
@@ -149,22 +125,22 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
       });
 
       Object.defineProperty(pluginsObj, 'length', { value: rawPlugins.length, enumerable: false });
-      Object.defineProperty(pluginsObj, 'item', { value: makeNative(function(i) { return this[i] || null; }, 'item') });
-      Object.defineProperty(pluginsObj, 'namedItem', { value: makeNative(function(name) { return this[name] || null; }, 'namedItem') });
-      Object.defineProperty(pluginsObj, 'refresh', { value: makeNative(function() {}, 'refresh') });
+      Object.defineProperty(pluginsObj, 'item', { value: function(i) { return this[i] || null; } });
+      Object.defineProperty(pluginsObj, 'namedItem', { value: function(name) { return this[name] || null; } });
+      Object.defineProperty(pluginsObj, 'refresh', { value: function() {} });
 
       Object.defineProperty(mimeTypesObj, 'length', { value: rawMimes.length, enumerable: false });
-      Object.defineProperty(mimeTypesObj, 'item', { value: makeNative(function(i) { return this[i] || null; }, 'item') });
-      Object.defineProperty(mimeTypesObj, 'namedItem', { value: makeNative(function(name) { return this[name] || null; }, 'namedItem') });
+      Object.defineProperty(mimeTypesObj, 'item', { value: function(i) { return this[i] || null; } });
+      Object.defineProperty(mimeTypesObj, 'namedItem', { value: function(name) { return this[name] || null; } });
 
       Object.defineProperty(Navigator.prototype, 'plugins', {
-        get: makeNative(function() { return pluginsObj; }, 'get plugins'),
+        get: function() { return pluginsObj; },
         enumerable: true,
         configurable: true
       });
 
       Object.defineProperty(Navigator.prototype, 'mimeTypes', {
-        get: makeNative(function() { return mimeTypesObj; }, 'get mimeTypes'),
+        get: function() { return mimeTypesObj; },
         enumerable: true,
         configurable: true
       });
@@ -190,7 +166,7 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
         { brand: 'Not_A Brand', version: '24.0.0.0' }
       ];
 
-      const getHighEntropyValuesFn = makeNative(function(hints) {
+      const getHighEntropyValuesFn = function(hints) {
         return Promise.resolve({
           brands: brandsList,
           mobile: isMob,
@@ -202,25 +178,24 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
           uaFullVersion: ${JSON.stringify(nav.browserVersion || '131.0.0.0')},
           fullVersionList: fullList
         });
-      }, 'getHighEntropyValues');
+      };
 
       const uaDataObj = {
         brands: brandsList,
         mobile: isMob,
         platform: clientPlat,
         getHighEntropyValues: getHighEntropyValuesFn,
-        toJSON: makeNative(function() {
+        toJSON: function() {
           return {
             brands: brandsList,
             mobile: isMob,
             platform: clientPlat
           };
-        }, 'toJSON')
+        }
       };
 
-      const uaDataGetter = makeNative(function() { return uaDataObj; }, 'get userAgentData');
       Object.defineProperty(Navigator.prototype, 'userAgentData', {
-        get: uaDataGetter,
+        get: function() { return uaDataObj; },
         configurable: true,
         enumerable: true
       });
@@ -237,56 +212,10 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
         isInstalled: false,
         InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
         RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
-        getDetails: makeNative(function() { return null; }, 'getDetails'),
-        getIsInstalled: makeNative(function() { return false; }, 'getIsInstalled'),
-        runningState: makeNative(function() { return 'cannot_run'; }, 'runningState')
+        getDetails: function() { return null; },
+        getIsInstalled: function() { return false; },
+        runningState: function() { return 'cannot_run'; }
       };
-    }
-    if (!window.chrome.runtime) {
-      window.chrome.runtime = {
-        OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
-        OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
-        PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-        PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-        PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
-        RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' },
-        connect: makeNative(function() {}, 'connect'),
-        sendMessage: makeNative(function() {}, 'sendMessage')
-      };
-    }
-    if (!window.chrome.loadTimes) {
-      window.chrome.loadTimes = makeNative(function() {
-        const perf = window.performance && window.performance.timing;
-        const navStart = perf ? perf.navigationStart / 1000 : Date.now() / 1000;
-        return {
-          commitLoadTime: perf ? perf.responseStart / 1000 : navStart,
-          connectionInfo: 'h2',
-          finishDocumentLoadTime: perf ? perf.domContentLoadedEventEnd / 1000 : navStart,
-          finishLoadTime: perf ? perf.loadEventEnd / 1000 : navStart,
-          firstPaintAfterLoadTime: 0,
-          firstPaintTime: perf ? perf.responseEnd / 1000 : navStart,
-          navigationType: 'Other',
-          npnNegotiatedProtocol: 'h2',
-          requestTime: navStart,
-          startLoadTime: navStart,
-          wasAlternateProtocolAvailable: false,
-          wasFetchedViaSpdy: true,
-          wasNpnNegotiated: true
-        };
-      }, 'loadTimes');
-    }
-    if (!window.chrome.csi) {
-      window.chrome.csi = makeNative(function() {
-        const perf = window.performance && window.performance.timing;
-        const navStart = perf ? perf.navigationStart : Date.now();
-        const loadEnd = perf ? perf.loadEventEnd : Date.now();
-        return {
-          startE: navStart,
-          onloadT: loadEnd,
-          pageT: loadEnd - navStart,
-          tran: 15
-        };
-      }, 'csi');
     }
   } catch(e) {}
 })();`

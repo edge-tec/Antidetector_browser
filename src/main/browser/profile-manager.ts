@@ -89,9 +89,15 @@ class ProfileManager {
       this.chromiumPath = await findChromiumPath(customPathRow?.value)
 
       if (!this.chromiumPath || !fs.existsSync(this.chromiumPath)) {
-        throw new Error(
-          'Google Chrome / Chromium executable was not found on your system. Please install Google Chrome, or click Settings -> Browser Engine to Auto-Detect or Browse.'
-        )
+        logger.info('browser', '[BrowserLaunch] Managed Chromium runtime not found. Initiating automatic standalone download...')
+        try {
+          const { downloadAndInstallManagedChromium } = await import('./chromium-downloader')
+          this.chromiumPath = await downloadAndInstallManagedChromium()
+        } catch (downErr: any) {
+          throw new Error(
+            `Independent Chromium runtime was not found and automatic installation failed: ${downErr.message}.`
+          )
+        }
       }
       executablePath = this.chromiumPath
     }

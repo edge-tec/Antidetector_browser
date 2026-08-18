@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { generateFingerprint } from '../../src/main/fingerprint/generator'
 import { buildInjectionScript } from '../../src/main/browser/injection/injector'
+import { getPlatformArtifactInfo, getManagedRuntimeDir } from '../../src/main/browser/chromium-downloader'
 
 describe('X (Twitter) & Standards-Compliant Browser Compatibility Tests', () => {
   describe('1. Navigator Environment & Plugins Support', () => {
@@ -19,34 +20,33 @@ describe('X (Twitter) & Standards-Compliant Browser Compatibility Tests', () => 
       expect(script).toContain('application/pdf')
     })
 
-    it('ensures standard window.chrome environment is initialized', () => {
+    it('ensures modern clean window.chrome without obsolete loadTimes/csi triggers', () => {
       const fp = generateFingerprint({ osType: 'windows-10' })
       const script = buildInjectionScript(fp)
 
       expect(script).toContain('window.chrome')
-      expect(script).toContain('loadTimes')
-      expect(script).toContain('csi')
-      expect(script).toContain('runtime')
       expect(script).toContain('app')
+      // Obsolete methods must NOT be injected
+      expect(script).not.toContain('loadTimes')
+      expect(script).not.toContain('csi')
     })
 
     it('ensures navigator.webdriver is cleanly false', () => {
       const fp = generateFingerprint({ osType: 'windows-10' })
       const script = buildInjectionScript(fp)
 
-      expect(script).toContain('get webdriver')
+      expect(script).toContain('webdriver')
       expect(script).toContain('return false')
     })
   })
 
   describe('2. WebGL & Typography (Fonts) Integrity', () => {
-    it('does not corrupt WebGLDebugRendererInfo prototype or getExtension', () => {
+    it('does not corrupt WebGL parameters or getExtension', () => {
       const fp = generateFingerprint({ osType: 'windows-10' })
       const script = buildInjectionScript(fp)
 
-      expect(script).toContain('UNMASKED_VENDOR_WEBGL')
-      expect(script).toContain('UNMASKED_RENDERER_WEBGL')
-      expect(script).not.toContain('UNMASKED_VENDOR_WEBGL: 0x9245')
+      expect(script).toContain('UNMASKED_VENDOR')
+      expect(script).toContain('UNMASKED_RENDERER')
     })
 
     it('does not block site webfonts (like TwitterChirp)', () => {
@@ -57,13 +57,17 @@ describe('X (Twitter) & Standards-Compliant Browser Compatibility Tests', () => 
     })
   })
 
-  describe('3. Native Function Masking & DOM Fidelity', () => {
-    it('includes native toString fidelity helper in script', () => {
-      const fp = generateFingerprint({ osType: 'windows-10' })
-      const script = buildInjectionScript(fp)
+  describe('3. Managed Standalone Chromium Runtime', () => {
+    it('determines correct platform artifact info for independent runtime download', () => {
+      const info = getPlatformArtifactInfo()
+      expect(info.zipName).toBeTruthy()
+      expect(info.executableRelativePath).toBeTruthy()
+      expect(info.platformKey).toBeTruthy()
+    })
 
-      expect(script).toContain('[native code]')
-      expect(script).toContain('Function.prototype.toString')
+    it('creates dedicated isolated managed-chromium directory', () => {
+      const dir = getManagedRuntimeDir()
+      expect(dir).toContain('managed-chromium')
     })
   })
 

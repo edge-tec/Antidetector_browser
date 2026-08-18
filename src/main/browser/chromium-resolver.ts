@@ -252,6 +252,8 @@ export async function findBrowserExecutable(browserType: 'chrome' | 'firefox' = 
   return findChromiumPath(customPath)
 }
 
+import { getManagedChromiumExecutable } from './chromium-downloader'
+
 /**
  * Find a usable Chromium/Chrome binary on the system (Windows, macOS, Linux).
  */
@@ -264,6 +266,13 @@ export async function findChromiumPath(customPath?: string): Promise<string | nu
       return cleaned
     }
     logger.warn('browser', `[BrowserDetection] Custom Chromium path not found: ${cleaned}`)
+  }
+
+  // 2. Check Self-Contained Managed Chromium Runtime (Top Priority)
+  const managedExec = getManagedChromiumExecutable()
+  if (managedExec && fs.existsSync(managedExec)) {
+    logger.info('browser', `[BrowserDetection] Using standalone Managed Chromium runtime: ${managedExec}`)
+    return managedExec
   }
 
   const isWindows = process.platform === 'win32'

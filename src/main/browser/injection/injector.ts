@@ -211,10 +211,14 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
           url.includes('challenges.cloudflare.com') ||
           url.includes('geo.captcha-delivery.com') ||
           url.includes('arkoselabs.com') ||
-          url.includes('recaptcha/enterprise')
+          url.includes('recaptcha/enterprise') ||
+          url.includes('/i/api/1.1/onboarding/') ||
+          url.includes('api.twitter.com') ||
+          url.includes('api.x.com')
         ) {
-          logger.info('diagnostics', `[VerificationPageEncountered] Status: ${status} on URL: ${url.slice(0, 100)}...`, {
-            userAgent: fingerprint.navigator?.userAgent,
+          logger.info('diagnostics', `[AuthNetworkDiagnostic] Status: ${status} on URL: ${url.split('?')[0].slice(0, 100)}`, {
+            status,
+            endpoint: url.split('?')[0],
             platform: fingerprint.navigator?.platform,
             locale: fingerprint.locale?.language,
             timezone: fingerprint.timezone?.timezone
