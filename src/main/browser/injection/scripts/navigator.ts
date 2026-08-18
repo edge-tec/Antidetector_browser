@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — Navigator Injection Script Builder
-// Overrides navigator.* properties and provides native fidelity
+// Overrides navigator.* properties, plugins, mimeTypes, and native fidelity
 // ──────────────────────────────────────────────────────────────────
 
 import { NavigatorFingerprint } from '../../../fingerprint/types'
@@ -17,7 +17,6 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
 (function() {
   'use strict';
 
-  // Helper to make overridden functions look 100% native
   const nativeToString = Function.prototype.toString;
   const nativeFns = new WeakSet();
 
@@ -98,7 +97,81 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
     });
   } catch(e) {}
 
-  // Override User-Agent Client Hints API (navigator.userAgentData)
+  // ── Standard Desktop Plugins & MimeTypes Emulation ──
+  if (!${isMobile ? 'true' : 'false'} && typeof PluginArray !== 'undefined' && typeof MimeTypeArray !== 'undefined') {
+    try {
+      const pluginDefs = [
+        { name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
+        { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
+        { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
+        { name: 'Microsoft Edge PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] },
+        { name: 'WebKit built-in PDF', filename: 'internal-pdf-viewer', description: 'Portable Document Format', mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' }, { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }] }
+      ];
+
+      const pluginsObj = Object.create(PluginArray.prototype);
+      const mimeTypesObj = Object.create(MimeTypeArray.prototype);
+      const rawPlugins = [];
+      const rawMimes = [];
+
+      pluginDefs.forEach(function(p) {
+        const plugin = Object.create(Plugin.prototype);
+        Object.defineProperties(plugin, {
+          name: { value: p.name, enumerable: true },
+          filename: { value: p.filename, enumerable: true },
+          description: { value: p.description, enumerable: true },
+          length: { value: p.mimeTypes.length, enumerable: true }
+        });
+
+        p.mimeTypes.forEach(function(m, mIdx) {
+          const mime = Object.create(MimeType.prototype);
+          Object.defineProperties(mime, {
+            type: { value: m.type, enumerable: true },
+            suffixes: { value: m.suffixes, enumerable: true },
+            description: { value: m.description, enumerable: true },
+            enabledPlugin: { value: plugin, enumerable: true }
+          });
+          plugin[mIdx] = mime;
+          plugin[m.type] = mime;
+          rawMimes.push(mime);
+        });
+
+        rawPlugins.push(plugin);
+      });
+
+      rawPlugins.forEach(function(pl, i) {
+        pluginsObj[i] = pl;
+        pluginsObj[pl.name] = pl;
+      });
+
+      rawMimes.forEach(function(m, i) {
+        mimeTypesObj[i] = m;
+        mimeTypesObj[m.type] = m;
+      });
+
+      Object.defineProperty(pluginsObj, 'length', { value: rawPlugins.length, enumerable: false });
+      Object.defineProperty(pluginsObj, 'item', { value: makeNative(function(i) { return this[i] || null; }, 'item') });
+      Object.defineProperty(pluginsObj, 'namedItem', { value: makeNative(function(name) { return this[name] || null; }, 'namedItem') });
+      Object.defineProperty(pluginsObj, 'refresh', { value: makeNative(function() {}, 'refresh') });
+
+      Object.defineProperty(mimeTypesObj, 'length', { value: rawMimes.length, enumerable: false });
+      Object.defineProperty(mimeTypesObj, 'item', { value: makeNative(function(i) { return this[i] || null; }, 'item') });
+      Object.defineProperty(mimeTypesObj, 'namedItem', { value: makeNative(function(name) { return this[name] || null; }, 'namedItem') });
+
+      Object.defineProperty(Navigator.prototype, 'plugins', {
+        get: makeNative(function() { return pluginsObj; }, 'get plugins'),
+        enumerable: true,
+        configurable: true
+      });
+
+      Object.defineProperty(Navigator.prototype, 'mimeTypes', {
+        get: makeNative(function() { return mimeTypesObj; }, 'get mimeTypes'),
+        enumerable: true,
+        configurable: true
+      });
+    } catch(e) {}
+  }
+
+  // ── Override User-Agent Client Hints API ──
   if ('userAgentData' in Navigator.prototype || 'userAgentData' in navigator) {
     try {
       const brandVer = ${JSON.stringify(brandVersion)};

@@ -1,50 +1,36 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — Battery Injection Script Builder
-// Overrides navigator.getBattery() API
+// Preserves BatteryManager prototype when available
 // ──────────────────────────────────────────────────────────────────
 
 import { BatteryFingerprint } from '../../../fingerprint/types'
 
 export function buildBatteryScript(battery: BatteryFingerprint): string {
-  if (!battery.enabled) {
-    return `
-// ═══ Battery API Disabled ═══
-(function() {
-  if (navigator.getBattery) {
-    navigator.getBattery = undefined;
-    try {
-      Object.defineProperty(Navigator.prototype, 'getBattery', {
-        get: () => undefined,
-        configurable: true
-      });
-    } catch(e) {}
-  }
-})();`
+  if (!battery?.enabled) {
+    return '// Battery API: Disabled'
   }
 
   return `
 // ═══ Battery Override ═══
 (function() {
-  const batteryInfo = {
-    charging: ${battery.charging},
-    chargingTime: ${battery.chargingTime === Infinity ? 'Infinity' : battery.chargingTime},
-    dischargingTime: ${battery.dischargingTime === Infinity ? 'Infinity' : battery.dischargingTime},
-    level: ${battery.level},
-    addEventListener: function() {},
-    removeEventListener: function() {},
-    dispatchEvent: function() { return true; },
-    onchargingchange: null,
-    onchargingtimechange: null,
-    ondischargingtimechange: null,
-    onlevelchange: null
-  };
-
-  if (navigator.getBattery) {
-    Object.defineProperty(Navigator.prototype, 'getBattery', {
-      value: function() { return Promise.resolve(batteryInfo); },
-      configurable: true,
-      writable: true
-    });
+  'use strict';
+  if (typeof navigator !== 'undefined' && typeof navigator.getBattery === 'function') {
+    const origGetBattery = navigator.getBattery;
+    navigator.getBattery = function() {
+      return origGetBattery.apply(this, arguments).then(function(batteryManager) {
+        if (batteryManager) {
+          try {
+            Object.defineProperties(batteryManager, {
+              charging: { get: function() { return ${battery.charging}; }, configurable: true },
+              level: { get: function() { return ${battery.level}; }, configurable: true },
+              chargingTime: { get: function() { return ${battery.chargingTime === Infinity ? 'Infinity' : battery.chargingTime}; }, configurable: true },
+              dischargingTime: { get: function() { return ${battery.dischargingTime === Infinity ? 'Infinity' : battery.dischargingTime}; }, configurable: true }
+            });
+          } catch(e) {}
+        }
+        return batteryManager;
+      });
+    };
   }
 })();`
 }
