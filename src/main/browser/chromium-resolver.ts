@@ -162,6 +162,13 @@ export async function findFirefoxPath(customPath?: string): Promise<string | nul
     logger.warn('browser', `[BrowserDetection] Custom Firefox path not found: ${cleaned}`)
   }
 
+  // 2. Check Self-Contained Managed Firefox Runtime (Top Priority)
+  const managedFf = getManagedFirefoxExecutable()
+  if (managedFf && fs.existsSync(managedFf)) {
+    logger.info('browser', `[BrowserDetection] Using standalone Managed Firefox runtime: ${managedFf}`)
+    return managedFf
+  }
+
   const isWindows = process.platform === 'win32'
   const isMac = process.platform === 'darwin'
 
@@ -253,6 +260,7 @@ export async function findBrowserExecutable(browserType: 'chrome' | 'firefox' = 
 }
 
 import { getManagedChromiumExecutable } from './chromium-downloader'
+import { getManagedFirefoxExecutable } from './firefox-downloader'
 
 /**
  * Find a usable Chromium/Chrome binary on the system (Windows, macOS, Linux).

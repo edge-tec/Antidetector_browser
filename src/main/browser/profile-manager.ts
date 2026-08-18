@@ -9,7 +9,7 @@ import { profileRepo } from '../database/repositories/profile.repo'
 import { Profile, ProfileCreateInput } from '../database/models'
 import { launchBrowser } from './launcher'
 import { processTracker } from './process-tracker'
-import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
+import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
 import { logger } from '../logging/logger'
 import { getDatabase } from '../database/connection'
 
@@ -78,9 +78,15 @@ class ProfileManager {
       this.firefoxPath = await findFirefoxPath(customFfRow?.value)
 
       if (!this.firefoxPath || !fs.existsSync(this.firefoxPath)) {
-        throw new Error(
-          'Mozilla Firefox executable was not found on your system. Please install Mozilla Firefox on your computer, or configure the Firefox executable path in Settings -> Browser Engine.'
-        )
+        logger.info('browser', '[BrowserLaunch] Standalone Managed Firefox runtime not found. Initiating automatic standalone download...')
+        try {
+          const { downloadAndInstallManagedFirefox } = await import('./firefox-downloader')
+          this.firefoxPath = await downloadAndInstallManagedFirefox()
+        } catch (downErr: any) {
+          throw new Error(
+            `Independent Firefox runtime was not found and automatic installation failed: ${downErr.message}.`
+          )
+        }
       }
       executablePath = this.firefoxPath
     } else {
@@ -104,7 +110,11 @@ class ProfileManager {
 
     // Ensure profile data directory is accessible and created
     try {
-      ensureProfileDataDir(profileId)
+      if (browserType === 'firefox') {
+        ensureFirefoxProfileDataDir(profileId)
+      } else {
+        ensureProfileDataDir(profileId)
+      }
     } catch (dirErr: any) {
       throw new Error(`Cannot access profile data directory: ${dirErr.message}`)
     }
