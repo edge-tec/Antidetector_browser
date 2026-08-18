@@ -30,8 +30,23 @@ function setupFirefoxProfilePrefs(
   fingerprint: Fingerprint,
   proxy: Proxy | null
 ): void {
-  if (!fs.existsSync(userDataDir)) {
-    fs.mkdirSync(userDataDir, { recursive: true })
+  const resolvedDir = path.resolve(userDataDir)
+  if (!fs.existsSync(resolvedDir)) {
+    fs.mkdirSync(resolvedDir, { recursive: true })
+  }
+
+  // Remove stale lock files from previous crashes or ungraceful terminations
+  const lockFiles = ['.parentlock', 'parent.lock', 'lock']
+  for (const file of lockFiles) {
+    const lockPath = path.join(resolvedDir, file)
+    if (fs.existsSync(lockPath)) {
+      try {
+        fs.unlinkSync(lockPath)
+        logger.info('browser', `[FirefoxProfile] Removed stale lock file: ${lockPath}`)
+      } catch (err: any) {
+        logger.warn('browser', `[FirefoxProfile] Could not remove lock file ${lockPath}: ${err.message}`)
+      }
+    }
   }
 
   const prefs: string[] = [
@@ -46,7 +61,8 @@ function setupFirefoxProfilePrefs(
     'user_pref("app.shield.optoutstudies.enabled", true);',
     'user_pref("browser.discovery.enabled", false);',
     'user_pref("extensions.pocket.enabled", false);',
-    'user_pref("privacy.resistFingerprinting", false);'
+    'user_pref("privacy.resistFingerprinting", false);',
+    'user_pref("toolkit.startup.max_resumed_crashes", -1);'
   ]
 
   // User-Agent & Platform Overrides
@@ -103,7 +119,7 @@ function setupFirefoxProfilePrefs(
     }
   }
 
-  const userJsPath = path.join(userDataDir, 'user.js')
+  const userJsPath = path.join(resolvedDir, 'user.js')
   fs.writeFileSync(userJsPath, prefs.join('\n') + '\n', 'utf8')
   logger.info('browser', `[FirefoxProfile] Wrote Firefox profile configuration to: ${userJsPath}`)
 }
@@ -118,11 +134,12 @@ export async function launchFirefox(
   launchProxy: Proxy | null,
   startUrls: string[]
 ): Promise<LaunchResult> {
-  const userDataDir = ensureProfileDataDir(profile.id)
+  const userDataDir = path.resolve(ensureProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
 
+  // Use single-dash -profile and -no-remote as required by Mozilla Firefox CLI
   const args: string[] = [
-    '--profile', userDataDir,
+    '-profile', userDataDir,
     '-no-remote',
     '-new-instance'
   ]
@@ -131,69 +148,35 @@ export async function launchFirefox(
     args.push(...startUrls)
   }
 
-  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) at: ${firefoxPath}`)
+  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with -profile ${userDataDir} at: ${firefoxPath}`)
 
-  // 1. Try launching with Puppeteer Firefox driver
-  try {
-    const browser = await puppeteer.launch({
-      browser: 'firefox',
-      executablePath: firefoxPath,
-      userDataDir,
-      headless: false,
-      defaultViewport: null,
-      args: ['-no-remote', '-new-instance'],
-      ignoreDefaultArgs: ['--enable-automation'],
-      handleSIGINT: false,
-      handleSIGTERM: false,
-      handleSIGHUP: false
-    })
+  const child: ChildProcess = spawn(firefoxPath, args, {
+    detached: true,
+    stdio: 'ignore'
+  })
 
-    const wsEndpoint = browser.wsEndpoint()
-    const pid = browser.process()?.pid || 0
+  child.unref()
+  const pid = child.pid || 0
 
-    if (startUrls.length > 0) {
+  const mockBrowser: any = {
+    connected: true,
+    process: () => child,
+    wsEndpoint: () => '',
+    pages: async () => [],
+    close: async () => {
       try {
-        const pages = await browser.pages()
-        if (pages[0] && startUrls[0]) {
-          await pages[0].goto(startUrls[0], { waitUntil: 'domcontentloaded' })
-        }
+        if (child.pid) process.kill(child.pid, 'SIGTERM')
       } catch {}
-    }
-
-    logger.info('browser', `[FirefoxLaunch] Firefox launched via Puppeteer for "${profile.name}" (PID: ${pid})`)
-    return { browser, pid, wsEndpoint }
-  } catch (err: any) {
-    logger.warn('browser', `[FirefoxLaunch] Puppeteer Firefox bridge fallback to direct process spawn: ${err.message}`)
-
-    // 2. Direct Process Spawn fallback
-    const child: ChildProcess = spawn(firefoxPath, args, {
-      detached: true,
-      stdio: 'ignore'
-    })
-
-    child.unref()
-    const pid = child.pid || 0
-
-    const mockBrowser: any = {
-      connected: true,
-      process: () => child,
-      wsEndpoint: () => '',
-      pages: async () => [],
-      close: async () => {
-        try {
-          if (child.pid) process.kill(child.pid, 'SIGTERM')
-        } catch {}
-      },
-      on: (event: string, cb: any) => {
-        if (event === 'disconnected') {
-          child.on('exit', cb)
-        }
+    },
+    on: (event: string, cb: any) => {
+      if (event === 'disconnected') {
+        child.on('exit', cb)
       }
     }
-
-    logger.info('browser', `[FirefoxLaunch] Firefox launched directly for "${profile.name}" (PID: ${pid})`)
-    return { browser: mockBrowser, pid, wsEndpoint: '' }
   }
+
+  logger.info('browser', `[FirefoxLaunch] Firefox launched directly for "${profile.name}" (PID: ${pid})`)
+  return { browser: mockBrowser, pid, wsEndpoint: '' }
 }
 
 /**
