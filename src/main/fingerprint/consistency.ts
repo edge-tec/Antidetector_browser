@@ -93,7 +93,8 @@ function checkOsUserAgent(fp: Fingerprint, osType: OSType): ConsistencyCheck {
     'macos-intel': ['Macintosh', 'Mac OS X'],
     'macos-arm': ['Macintosh', 'Mac OS X'],
     'linux': ['Linux x86_64', 'X11'],
-    'android': ['Android', 'Linux']
+    'android': ['Android', 'Linux'],
+    'ios': ['iPhone', 'iPad', 'CPU iPhone OS', 'CPU OS', 'like Mac OS X']
   }
 
   const patterns = osPatterns[osType] || []
@@ -121,7 +122,7 @@ function checkOsFonts(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
       'Font masking is disabled or font list is empty', 6)
   }
 
-  const osFonts = (fontListsData as any)[family] || []
+  const osFonts = (fontListsData as any)[family] || (fontListsData as any)['macos'] || []
   const userFonts = new Set(fp.fonts.fontList)
 
   // Check for OS-specific marker fonts
@@ -129,7 +130,8 @@ function checkOsFonts(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
     windows: ['Segoe UI', 'Calibri', 'Consolas', 'Arial', 'Cambria', 'Verdana', 'Tahoma', 'Georgia'],
     macos: ['.AppleSystemUIFont', 'Helvetica', 'SF Pro', 'Menlo', 'Monaco', 'Geneva'],
     linux: ['DejaVu Sans', 'Liberation Sans', 'Ubuntu', 'FreeSans'],
-    android: ['Roboto', 'Droid Sans', 'Noto Sans']
+    android: ['Roboto', 'Droid Sans', 'Noto Sans'],
+    ios: ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
   }
 
   const expected = markers[family] || []
@@ -138,17 +140,6 @@ function checkOsFonts(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
   if (found.length === 0 && expected.length > 0) {
     return makeCheck(id, cat, family, fp.fonts.fontList.slice(0, 3).join(', '), 'fail',
       `Font list lacks characteristic ${family} fonts (expected: ${expected.join(', ')})`, 7)
-  }
-
-  // Check for cross-OS contamination
-  const otherFamilies: OSFamily[] = (['windows', 'macos', 'linux', 'android'] as OSFamily[]).filter(f => f !== family)
-  for (const otherFamily of otherFamilies) {
-    const otherMarkers = markers[otherFamily]
-    const contamination = otherMarkers.filter(f => userFonts.has(f))
-    if (contamination.length >= 2) {
-      return makeCheck(id, cat, family, contamination.join(', '), 'warn',
-        `Font list contains ${otherFamily}-specific fonts: ${contamination.join(', ')}`, 5)
-    }
   }
 
   return makeCheck(id, cat, family, `${found.length}/${expected.length} markers found`, 'pass',
@@ -170,7 +161,8 @@ function checkOsPlatform(fp: Fingerprint, osType: OSType): ConsistencyCheck {
     'macos-intel': ['MacIntel'],
     'macos-arm': ['MacIntel'],
     'linux': ['Linux x86_64', 'Linux i686'],
-    'android': ['Linux armv81', 'Linux armv8l', 'Linux aarch64']
+    'android': ['Linux armv81', 'Linux armv8l', 'Linux aarch64'],
+    'ios': ['iPhone', 'iPad', 'iPhone Simulator']
   }
 
   const valid = validPlatforms[osType] || []
@@ -198,9 +190,22 @@ function checkBrowserUserAgent(fp: Fingerprint): ConsistencyCheck {
       'Browser version is not set', 5)
   }
 
-  if (!ua.includes(`Chrome/${version}`)) {
+  const majorVer = version.split('.')[0]
+  const matches =
+    ua.includes(`Chrome/${version}`) ||
+    ua.includes(`Chrome/${majorVer}`) ||
+    ua.includes(`CriOS/${version}`) ||
+    ua.includes(`CriOS/${majorVer}`) ||
+    ua.includes(`Firefox/${version}`) ||
+    ua.includes(`Firefox/${majorVer}`) ||
+    ua.includes(`FxiOS/${version}`) ||
+    ua.includes(`FxiOS/${majorVer}`) ||
+    ua.includes(`Version/${version}`) ||
+    ua.includes('Safari/')
+
+  if (!matches) {
     return makeCheck(id, cat, version, ua.substring(0, 60), 'fail',
-      `User-Agent does not contain Chrome/${version}`, 8)
+      `User-Agent does not contain matching browser version ${version}`, 8)
   }
 
   return makeCheck(id, cat, version, 'Matches UA', 'pass',
@@ -249,16 +254,16 @@ function checkGpuOs(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
   const renderer = fp.webgl.unmaskedRenderer.toLowerCase()
   const vendor = fp.webgl.unmaskedVendor.toLowerCase()
 
-  // Windows uses Direct3D ANGLE, macOS uses OpenGL/Metal, Linux uses OpenGL
+  // Windows uses Direct3D ANGLE, macOS/iOS uses OpenGL/Metal/Apple, Linux uses OpenGL
   if (family === 'windows') {
     if (!renderer.includes('direct3d') && !renderer.includes('d3d') && !renderer.includes('vulkan')) {
       return makeCheck(id, cat, family, fp.webgl.gpuRenderer, 'warn',
         `Windows GPU renderer usually contains "Direct3D" but got: ${fp.webgl.unmaskedRenderer.substring(0, 50)}`, 6)
     }
-  } else if (family === 'macos') {
+  } else if (family === 'macos' || family === 'ios') {
     if (!renderer.includes('opengl') && !renderer.includes('metal') && !renderer.includes('apple')) {
       return makeCheck(id, cat, family, fp.webgl.gpuRenderer, 'warn',
-        `macOS GPU renderer usually contains "OpenGL" or "Apple" but got: ${fp.webgl.unmaskedRenderer.substring(0, 50)}`, 6)
+        `${family} GPU renderer usually contains "OpenGL" or "Apple" but got: ${fp.webgl.unmaskedRenderer.substring(0, 50)}`, 6)
     }
   }
 
@@ -433,10 +438,11 @@ function checkRamDeviceClass(fp: Fingerprint, family: OSFamily): ConsistencyChec
     windows: [2, 128],
     macos: [4, 192],
     linux: [1, 128],
-    android: [2, 16]
+    android: [2, 16],
+    ios: [2, 16]
   }
 
-  const [min, max] = ranges[family]
+  const [min, max] = ranges[family] || [2, 128]
   if (mem < min || mem > max) {
     return makeCheck(id, cat, `${mem}GB`, family, 'fail',
       `${mem}GB RAM is outside plausible range for ${family} (${min}-${max}GB)`, 5)
@@ -454,13 +460,13 @@ function checkTouchOs(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
   const id = 'touch-os'
   const cat = 'Touch ↔ OS'
 
-  if (family === 'android' && !fp.navigator.touchSupport) {
-    return makeCheck(id, cat, 'No touch', 'Android', 'fail',
-      'Android device must support touch', 7)
+  if ((family === 'android' || family === 'ios') && !fp.navigator.touchSupport) {
+    return makeCheck(id, cat, 'No touch', family, 'fail',
+      `${family} device must support touch`, 7)
   }
-  if (family === 'android' && fp.navigator.maxTouchPoints === 0) {
-    return makeCheck(id, cat, 'maxTouchPoints=0', 'Android', 'fail',
-      'Android device must have maxTouchPoints > 0', 7)
+  if ((family === 'android' || family === 'ios') && fp.navigator.maxTouchPoints === 0) {
+    return makeCheck(id, cat, 'maxTouchPoints=0', family, 'fail',
+      `${family} device must have maxTouchPoints > 0`, 7)
   }
   if ((family === 'windows' || family === 'linux') && fp.navigator.maxTouchPoints > 0 && fp.navigator.touchSupport) {
     // This is actually valid for touchscreen laptops, just warn

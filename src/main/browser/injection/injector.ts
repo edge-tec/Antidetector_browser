@@ -62,6 +62,7 @@ export async function injectFingerprint(page: Page, fingerprint: Fingerprint): P
 
 async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise<void> {
   const isAndroid = fingerprint.navigator?.userAgent?.includes('Android') || fingerprint.navigator?.appVersion?.includes('Android')
+  const isIOS = fingerprint.navigator?.userAgent?.includes('iPhone') || fingerprint.navigator?.userAgent?.includes('iPad') || fingerprint.navigator?.platform === 'iPhone'
   const script = buildInjectionScript(fingerprint)
 
   try {
@@ -133,6 +134,19 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
           mobile: true,
           bitness: '64'
         }
+      })
+    } else if (isIOS) {
+      // 1. Enable CDP Touch Emulation for iOS / iPhone
+      await client.send('Emulation.setTouchEmulationEnabled', {
+        enabled: true,
+        maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
+      })
+
+      // 2. Override HTTP User Agent via CDP Network Domain
+      await client.send('Network.setUserAgentOverride', {
+        userAgent: fingerprint.navigator.userAgent,
+        acceptLanguage: (fingerprint.locale?.languages || ['en-US']).join(','),
+        platform: 'iPhone'
       })
     }
   } catch (err: any) {

@@ -54,7 +54,8 @@ export const FingerprintPreview: React.FC<Props> = ({ osType, fingerprint, proxy
     'macos-intel': 'macOS (Intel)',
     'macos-arm': 'macOS (M1/M2)',
     'linux': 'Linux',
-    'android': 'Android'
+    'android': 'Android',
+    'ios': 'iOS (iPhone)'
   }
 
   const country = proxy?.country || geoData?.country
@@ -84,6 +85,14 @@ export const FingerprintPreview: React.FC<Props> = ({ osType, fingerprint, proxy
       )}
       <span style={{ padding: '2px 6px', borderRadius: '4px', background: '#2A2A3C', color: '#A5B4FC' }}>
         💻 {osLabels[osType] || (typeof osType === 'string' && !osType.startsWith('{') && osType.length <= 20 ? osType : 'Win 10')}
+      </span>
+      {nav.deviceModel && (
+        <span style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(45,212,191,0.12)', color: '#2DD4BF', border: '1px solid rgba(45,212,191,0.25)', fontWeight: 600 }}>
+          📱 {nav.deviceModel}
+        </span>
+      )}
+      <span style={{ padding: '2px 6px', borderRadius: '4px', background: '#2A2A3C', color: (fingerprint?.browser?.type === 'firefox' || nav?.userAgent?.includes('Firefox') || nav?.userAgent?.includes('FxiOS')) ? '#FB923C' : '#38BDF8', fontWeight: 500 }}>
+        {(fingerprint?.browser?.type === 'firefox' || nav?.userAgent?.includes('Firefox') || nav?.userAgent?.includes('FxiOS')) ? '🦊 Firefox' : '🌐 Chrome'}
       </span>
       <span style={{ padding: '2px 6px', borderRadius: '4px', background: '#2A2A3C', color: '#93C5FD' }}>
         🖥 {screen.width || 1920}x{screen.height || 1080} @{screen.devicePixelRatio || 1}x

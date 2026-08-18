@@ -4,7 +4,7 @@ import { validateConsistency, getStabilityWarnings } from '../../src/main/finger
 import { OSType } from '../../src/main/fingerprint/types'
 
 describe('Fingerprint Generator', () => {
-  const osTypes: OSType[] = ['windows-10', 'windows-11', 'macos-intel', 'macos-arm', 'linux', 'android']
+  const osTypes: OSType[] = ['windows-10', 'windows-11', 'macos-intel', 'macos-arm', 'linux', 'android', 'ios']
 
   it('generates complete, valid fingerprints for all OS types', () => {
     for (const os of osTypes) {
@@ -62,10 +62,15 @@ describe('Fingerprint Generator', () => {
     expect(fp1.audio.noiseSeed).not.toBe(fp2.audio.noiseSeed)
   })
 
-  it('enforces Touch support strictly for Android', () => {
+  it('enforces Touch support strictly for Android and iOS mobile profiles', () => {
     const androidFp = generateFingerprint({ osType: 'android' })
     expect(androidFp.navigator.touchSupport).toBe(true)
     expect(androidFp.navigator.maxTouchPoints).toBeGreaterThan(0)
+
+    const iosFp = generateFingerprint({ osType: 'ios' })
+    expect(iosFp.navigator.touchSupport).toBe(true)
+    expect(iosFp.navigator.maxTouchPoints).toBe(5)
+    expect(iosFp.navigator.platform).toBe('iPhone')
 
     const winFp = generateFingerprint({ osType: 'windows-10' })
     expect(winFp.navigator.touchSupport).toBe(false)
@@ -94,8 +99,8 @@ describe('Fingerprint Generator', () => {
 })
 
 describe('Consistency Engine', () => {
-  it('gives high consistency score (90+) to freshly generated fingerprints', () => {
-    const osTypes: OSType[] = ['windows-10', 'windows-11', 'macos-intel', 'macos-arm', 'linux', 'android']
+  it('gives high consistency score (90+) to freshly generated fingerprints for all OSes including iOS', () => {
+    const osTypes: OSType[] = ['windows-10', 'windows-11', 'macos-intel', 'macos-arm', 'linux', 'android', 'ios']
     for (const os of osTypes) {
       const fp = generateFingerprint({ osType: os })
       const result = validateConsistency(fp, os)

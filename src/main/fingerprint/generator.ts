@@ -87,7 +87,8 @@ const OS_PLATFORM_MAP: Record<OSType, string> = {
   'macos-intel': 'MacIntel',
   'macos-arm': 'MacIntel',       // Chrome on ARM still reports MacIntel
   'linux': 'Linux x86_64',
-  'android': 'Linux armv8l'
+  'android': 'Linux armv8l',
+  'ios': 'iPhone'
 }
 
 const OS_APP_VERSION_PREFIX: Record<OSType, string> = {
@@ -96,28 +97,32 @@ const OS_APP_VERSION_PREFIX: Record<OSType, string> = {
   'macos-intel': '5.0 (Macintosh; Intel Mac OS X 10_15_7)',
   'macos-arm': '5.0 (Macintosh; Intel Mac OS X 10_15_7)',
   'linux': '5.0 (X11; Linux x86_64)',
-  'android': '5.0 (Linux; Android 14)'
+  'android': '5.0 (Linux; Android 14)',
+  'ios': '5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'
 }
 
 const OS_CPU_ARCHITECTURES: Record<OSFamily, { arch: string; platformArch: string }> = {
   'windows': { arch: 'x86_64', platformArch: '64-bit' },
   'macos': { arch: 'x86_64', platformArch: '64-bit' },
   'linux': { arch: 'x86_64', platformArch: '64-bit' },
-  'android': { arch: 'arm64', platformArch: '64-bit' }
+  'android': { arch: 'arm64', platformArch: '64-bit' },
+  'ios': { arch: 'arm64', platformArch: '64-bit' }
 }
 
 const OS_CPU_RANGES: Record<OSFamily, number[]> = {
   'windows': [4, 6, 8, 12, 16, 24, 32],
   'macos': [4, 6, 8, 10, 12, 16, 20, 24],
   'linux': [2, 4, 6, 8, 12, 16, 32, 64],
-  'android': [4, 6, 8]
+  'android': [4, 6, 8],
+  'ios': [6]
 }
 
 const OS_MEMORY_RANGES: Record<OSFamily, number[]> = {
   'windows': [4, 8, 16, 32, 64],
   'macos': [8, 16, 24, 32, 36, 48, 64, 96, 128],
   'linux': [4, 8, 16, 32, 64],
-  'android': [4, 6, 8, 12]
+  'android': [4, 6, 8, 12],
+  'ios': [4, 6, 8]
 }
 
 const WEBGL_EXTENSIONS = [
@@ -248,30 +253,32 @@ function generateNavigator(osType: OSType, family: OSFamily, rng: SeededRandom):
   const cores = rng.pick(OS_CPU_RANGES[family])
   const memory = rng.pick(OS_MEMORY_RANGES[family])
 
+  const isMobile = family === 'android' || family === 'ios'
   const isAndroid = family === 'android'
+  const isIos = family === 'ios'
   const isMac = family === 'macos'
 
   return {
     userAgent: selectedUA.ua,
     browserVersion: selectedUA.version,
     chromiumVersion: selectedUA.chromium,
-    platform: OS_PLATFORM_MAP[osType],
+    platform: OS_PLATFORM_MAP[osType] || (isIos ? 'iPhone' : 'Win32'),
     appCodeName: 'Mozilla',
     appName: 'Netscape',
-    appVersion: OS_APP_VERSION_PREFIX[osType] + ` AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${selectedUA.version} ${isAndroid ? 'Mobile ' : ''}Safari/537.36`,
+    appVersion: OS_APP_VERSION_PREFIX[osType] + ` AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${selectedUA.version} ${isMobile ? 'Mobile ' : ''}Safari/537.36`,
     product: 'Gecko',
     productSub: '20030107',
-    vendor: 'Google Inc.',
+    vendor: isIos ? 'Apple Computer, Inc.' : 'Google Inc.',
     vendorSub: '',
     hardwareConcurrency: cores,
     deviceMemory: memory,
     cpuArchitecture: cpuArch.arch,
     platformArchitecture: cpuArch.platformArch,
-    maxTouchPoints: isAndroid ? rng.pick([5, 10]) : 0,
-    touchSupport: isAndroid,
+    maxTouchPoints: isMobile ? 5 : 0,
+    touchSupport: isMobile,
     doNotTrack: rng.next() > 0.8 ? '1' : null,    // ~20% enable DNT
     cookieEnabled: true,
-    pdfViewerEnabled: !isAndroid,
+    pdfViewerEnabled: !isMobile,
     javaEnabled: false,
     webdriver: false,
     localStorageEnabled: true,
@@ -287,11 +294,13 @@ function generateNavigator(osType: OSType, family: OSFamily, rng: SeededRandom):
 
 function generateScreen(osType: OSType, family: OSFamily, rng: SeededRandom): ScreenFingerprint {
   const configs = screenConfigsData as any
-  const taskbarHeight = configs.taskbar_heights[osType] || 40
+  const taskbarHeight = configs.taskbar_heights[osType] || 0
 
   let pool: any[]
   if (family === 'android') {
     pool = configs.android
+  } else if (family === 'ios') {
+    pool = configs.ios || configs.android
   } else if (osType === 'macos-arm' || osType === 'macos-intel') {
     // macOS uses retina displays predominantly
     pool = rng.next() > 0.15 ? configs['macos-retina'] : configs.desktop
@@ -301,8 +310,8 @@ function generateScreen(osType: OSType, family: OSFamily, rng: SeededRandom): Sc
 
   const selected = rng.pickWeighted(pool)
 
-  const isAndroid = family === 'android'
-  const availHeight = isAndroid ? selected.height : selected.height - taskbarHeight
+  const isMobile = family === 'android' || family === 'ios'
+  const availHeight = isMobile ? selected.height : selected.height - taskbarHeight
   const viewportWidth = selected.viewport[0]
   const viewportHeight = selected.viewport[1]
 
@@ -314,15 +323,15 @@ function generateScreen(osType: OSType, family: OSFamily, rng: SeededRandom): Sc
     colorDepth: 24,
     pixelDepth: 24,
     devicePixelRatio: selected.dpr,
-    orientation: isAndroid ? 'portrait-primary' : 'landscape-primary',
-    orientationAngle: isAndroid ? 0 : 0,
+    orientation: isMobile ? 'portrait-primary' : 'landscape-primary',
+    orientationAngle: 0,
     viewportWidth,
     viewportHeight,
-    outerWidth: isAndroid ? selected.width : viewportWidth,
-    outerHeight: isAndroid ? selected.height : viewportHeight + 71 + taskbarHeight, // Chrome UI height
+    outerWidth: isMobile ? selected.width : viewportWidth,
+    outerHeight: isMobile ? selected.height : viewportHeight + 71 + taskbarHeight, // Chrome UI height
     screenX: 0,
     screenY: 0,
-    isMultiMonitor: !isAndroid && rng.next() > 0.7, // 30% of desktop users have multi-monitor
+    isMultiMonitor: !isMobile && rng.next() > 0.7, // 30% of desktop users have multi-monitor
     isPrimaryDisplay: true
   }
 }

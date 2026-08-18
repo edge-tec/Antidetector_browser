@@ -1,4 +1,3 @@
-import React, { useState, useEffect, useMemo } from 'react'
 import {
   ANDROID_DEVICES,
   ANDROID_BRANDS,
@@ -7,6 +6,12 @@ import {
   generateAndroidUserAgent,
   AndroidDeviceSpec
 } from '../data/android-devices'
+import {
+  IOS_DEVICES,
+  getIosDeviceById,
+  generateIosUserAgent,
+  IosDeviceSpec
+} from '../data/ios-devices'
 import { parseCookies, CookieItem } from '../utils/cookie-parser'
 
 interface Props {
@@ -100,19 +105,40 @@ const CHROME_VERSIONS = [
 ]
 
 export const POPULAR_UA_PRESETS = [
-  { label: '🖥️ Windows 11 — Chrome 128 (x64)', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'windows-11', platform: 'Win32' },
-  { label: '🖥️ Windows 10 — Chrome 128 (x64)', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'windows-10', platform: 'Win32' },
-  { label: '🍏 macOS Sonoma — Chrome 128 (Apple Silicon)', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'macos-arm', platform: 'MacIntel' },
-  { label: '🍏 macOS Sonoma — Chrome 128 (Intel)', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'macos-intel', platform: 'MacIntel' },
-  { label: '🐧 Linux Ubuntu — Chrome 128 (x86_64)', ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'linux', platform: 'Linux x86_64' },
-  { label: '📱 Android 14 — Samsung Galaxy S24 Ultra', ua: 'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36', os: 'android', platform: 'Linux armv8l' },
-  { label: '📱 Android 14 — Google Pixel 8 Pro', ua: 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36', os: 'android', platform: 'Linux armv8l' },
-  { label: '📱 iOS 17.5 — iPhone 15 Pro (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', os: 'macos-arm', platform: 'iPhone' },
-  { label: '🖥️ Windows 11 — Microsoft Edge 128', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0', os: 'windows-11', platform: 'Win32' },
-  { label: '🦊 Windows 11 — Mozilla Firefox 129', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0', os: 'windows-11', platform: 'Win32' }
+  { label: '🖥️ Windows 11 — Chrome 128 (x64)', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'windows-11', platform: 'Win32', browser: 'chrome' },
+  { label: '🦊 Windows 11 — Mozilla Firefox 129', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0', os: 'windows-11', platform: 'Win32', browser: 'firefox' },
+  { label: '🖥️ Windows 10 — Chrome 128 (x64)', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'windows-10', platform: 'Win32', browser: 'chrome' },
+  { label: '🍏 macOS Sonoma — Chrome 128 (Apple Silicon)', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'macos-arm', platform: 'MacIntel', browser: 'chrome' },
+  { label: '🦊 macOS Sonoma — Firefox 129', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0', os: 'macos-arm', platform: 'MacIntel', browser: 'firefox' },
+  { label: '🍏 macOS Sonoma — Chrome 128 (Intel)', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'macos-intel', platform: 'MacIntel', browser: 'chrome' },
+  { label: '🐧 Linux Ubuntu — Chrome 128 (x86_64)', ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'linux', platform: 'Linux x86_64', browser: 'chrome' },
+  { label: '🦊 Linux Ubuntu — Firefox 129', ua: 'Mozilla/5.0 (X11; Linux x86_64; rv:129.0) Gecko/20100101 Firefox/129.0', os: 'linux', platform: 'Linux x86_64', browser: 'firefox' },
+  { label: '📱 iOS 18.0 — iPhone 16 Pro Max (Chrome)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.114 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
+  { label: '📱 iOS 18.0 — iPhone 16 Pro (Firefox)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/128.0 Mobile/15E148 Safari/605.1.15', os: 'ios', platform: 'iPhone', browser: 'firefox' },
+  { label: '📱 iOS 17.5 — iPhone 15 Pro (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
+  { label: '📱 Android 14 — Samsung Galaxy S24 Ultra', ua: 'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36', os: 'android', platform: 'Linux armv8l', browser: 'chrome' },
+  { label: '📱 Android 14 — Google Pixel 8 Pro', ua: 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36', os: 'android', platform: 'Linux armv8l', browser: 'chrome' }
 ]
 
-function generateUAForOS(osType: string, version = '124.0.6367.207'): string {
+function generateUAForOS(osType: string, version = '124.0.6367.207', browserType: 'chrome' | 'firefox' = 'chrome'): string {
+  if (browserType === 'firefox') {
+    if (osType === 'windows-10' || osType === 'windows-11') {
+      return `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0`
+    }
+    if (osType === 'macos-intel' || osType === 'macos-arm') {
+      return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0`
+    }
+    if (osType === 'linux') {
+      return `Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0`
+    }
+    if (osType === 'ios') {
+      return `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/128.0 Mobile/15E148 Safari/605.1.15`
+    }
+    if (osType === 'android') {
+      return `Mozilla/5.0 (Android 14; Mobile; rv:128.0) Gecko/128.0 Firefox/128.0`
+    }
+  }
+
   if (osType === 'windows-10' || osType === 'windows-11') {
     return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`
   }
@@ -123,13 +149,24 @@ function generateUAForOS(osType: string, version = '124.0.6367.207'): string {
   if (osType === 'linux') {
     return `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`
   }
+  if (osType === 'ios') {
+    return `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.114 Mobile/15E148 Safari/604.1`
+  }
   if (osType === 'android') {
     return `Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Mobile Safari/537.36`
   }
   return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`
 }
 
-function generateRandomUAForOS(osType: string): { ua: string; version: string; chromium: string } {
+function generateRandomUAForOS(osType: string, browserType: 'chrome' | 'firefox' = 'chrome'): { ua: string; version: string; chromium: string } {
+  if (browserType === 'firefox') {
+    const v = '128.0'
+    return {
+      ua: generateUAForOS(osType, v, 'firefox'),
+      version: v,
+      chromium: '128'
+    }
+  }
   const randomVer = CHROME_VERSIONS[Math.floor(Math.random() * CHROME_VERSIONS.length)]
   const majorVer = randomVer.split('.')[0]
 
@@ -165,17 +202,18 @@ function generateRandomUAForOS(osType: string): { ua: string; version: string; c
       chromium: majorVer
     }
   }
-  if (osType === 'android') {
-    const devices = [
-      'Linux; Android 14; Pixel 8',
-      'Linux; Android 14; SM-S928B',
-      'Linux; Android 13; SM-S918B',
-      'Linux; Android 13; Pixel 7',
-      'Linux; Android 14; Pixel 8 Pro'
-    ]
-    const dev = devices[Math.floor(Math.random() * devices.length)]
+  if (osType === 'ios') {
+    const dev = IOS_DEVICES[Math.floor(Math.random() * IOS_DEVICES.length)]
     return {
-      ua: `Mozilla/5.0 (${dev}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${randomVer} Mobile Safari/537.36`,
+      ua: generateIosUserAgent(dev, 'chrome'),
+      version: randomVer,
+      chromium: majorVer
+    }
+  }
+  if (osType === 'android') {
+    const dev = ANDROID_DEVICES[Math.floor(Math.random() * ANDROID_DEVICES.length)]
+    return {
+      ua: generateAndroidUserAgent(dev),
       version: randomVer,
       chromium: majorVer
     }
@@ -280,6 +318,113 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel'): any {
         effectiveType: fp.networkInfo?.effectiveType || '4g',
         downlink: fp.networkInfo?.downlink || 15,
         rtt: fp.networkInfo?.rtt || 50
+      },
+      permissions: fp.permissions || {
+        camera: 'prompt',
+        microphone: 'prompt',
+        geolocation: 'prompt',
+        notifications: 'prompt',
+        clipboard: 'prompt'
+      }
+    }
+  }
+
+  if (targetOs === 'ios') {
+    const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
+    const matchedDev = (existingModelCode ? getIosDeviceById(existingModelCode) : null) || IOS_DEVICES[0]
+    const bType = fp.browser?.type || (fp.navigator?.userAgent?.includes('Firefox') || fp.navigator?.userAgent?.includes('FxiOS') ? 'firefox' : 'chrome')
+
+    return {
+      version: fp.version || 2,
+      seed: fp.seed || 'default-seed',
+      browser: {
+        name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+        type: bType,
+        version: bType === 'firefox' ? '128.0' : '128.0.0.0'
+      },
+      navigator: {
+        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateIosUserAgent(matchedDev, bType),
+        browserVersion: fp.navigator?.browserVersion || (bType === 'firefox' ? '128.0' : '128.0.0.0'),
+        chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? '128' : '128.0.0.0'),
+        platform: 'iPhone',
+        vendor: 'Apple Computer, Inc.',
+        deviceBrand: 'Apple',
+        deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
+        deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.modelCode,
+        hardwareConcurrency: fp.navigator?.hardwareConcurrency || matchedDev.cores,
+        deviceMemory: fp.navigator?.deviceMemory || matchedDev.memory,
+        maxTouchPoints: 5,
+        touchSupport: true,
+        doNotTrack: fp.navigator?.doNotTrack || null
+      },
+      screen: {
+        width: fp.screen?.width || matchedDev.screenWidth,
+        height: fp.screen?.height || matchedDev.screenHeight,
+        devicePixelRatio: fp.screen?.devicePixelRatio || matchedDev.dpr,
+        viewportWidth: fp.screen?.viewportWidth || matchedDev.screenWidth,
+        viewportHeight: fp.screen?.viewportHeight || Math.floor(matchedDev.screenHeight * 0.9),
+        colorDepth: 24,
+        pixelDepth: 24,
+        orientation: 'portrait-primary',
+        orientationAngle: 0
+      },
+      locale: {
+        language: fp.locale?.language || 'en-US',
+        languages: fp.locale?.languages || ['en-US', 'en']
+      },
+      timezone: {
+        mode: fp.timezone?.mode || 'auto',
+        timezone: fp.timezone?.timezone || 'America/New_York'
+      },
+      geolocation: {
+        mode: fp.geolocation?.mode || 'ip-based',
+        latitude: fp.geolocation?.latitude || 40.7128,
+        longitude: fp.geolocation?.longitude || -74.006,
+        accuracy: fp.geolocation?.accuracy || 50
+      },
+      webrtc: {
+        mode: fp.webrtc?.mode || 'real',
+        ipPolicy: fp.webrtc?.ipPolicy || 'default_public_interface_only'
+      },
+      canvas: {
+        mode: fp.canvas?.mode || 'off',
+        noiseSeed: fp.canvas?.noiseSeed || 12345
+      },
+      webgl: {
+        enabled: fp.webgl?.enabled !== false,
+        gpuVendor: 'Apple Inc.',
+        gpuRenderer: fp.webgl?.gpuRenderer || matchedDev.gpuRenderer,
+        unmaskedVendor: 'Apple Inc.',
+        unmaskedRenderer: fp.webgl?.unmaskedRenderer || matchedDev.gpuRenderer,
+        imageMode: fp.webgl?.imageMode || 'off',
+        metadataMode: fp.webgl?.metadataMode || 'mask'
+      },
+      audio: {
+        mode: fp.audio?.mode || 'noise',
+        noiseSeed: fp.audio?.noiseSeed || 54321
+      },
+      clientRects: {
+        mode: fp.clientRects?.mode || 'off',
+        noiseSeed: fp.clientRects?.noiseSeed || 9999
+      },
+      fonts: {
+        enableMasking: fp.fonts?.enableMasking !== false,
+        fontList: fp.fonts?.fontList || ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
+      },
+      mediaDevices: {
+        videoInputs: fp.mediaDevices?.videoInputs ?? 2,
+        audioInputs: fp.mediaDevices?.audioInputs ?? 1,
+        audioOutputs: fp.mediaDevices?.audioOutputs ?? 1
+      },
+      battery: {
+        enabled: fp.battery?.enabled || true,
+        charging: fp.battery?.charging ?? false,
+        level: fp.battery?.level ?? 0.90
+      },
+      networkInfo: {
+        effectiveType: fp.networkInfo?.effectiveType || '4g',
+        downlink: fp.networkInfo?.downlink || 20,
+        rtt: fp.networkInfo?.rtt || 40
       },
       permissions: fp.permissions || {
         camera: 'prompt',
@@ -409,7 +554,8 @@ const PROCESSOR_OPTIONS: Record<string, string[]> = {
   'windows-10': ['Intel Core i9-13900K', 'Intel Core i7-12700K', 'Intel Core i5-11400', 'AMD Ryzen 9 7950X', 'AMD Ryzen 7 5800X'],
   'windows-11': ['Intel Core i9-14900K', 'Intel Core i7-13700K', 'Intel Core i5-13400', 'AMD Ryzen 7 7800X3D', 'AMD Ryzen 5 7600X'],
   'linux': ['Intel Core i9-13900K', 'Intel Core i7-12700K', 'AMD Ryzen 9 7900X', 'Mesa Intel UHD Graphics'],
-  'android': ['Snapdragon 8 Gen 3 (Adreno 750)', 'Snapdragon 8 Gen 2 (Adreno 740)', 'Google Tensor G3 (Mali-G715)', 'Exynos 2400 (Xclipse 940)']
+  'android': ['Snapdragon 8 Gen 3 (Adreno 750)', 'Snapdragon 8 Gen 2 (Adreno 740)', 'Google Tensor G3 (Mali-G715)', 'Exynos 2400 (Xclipse 940)'],
+  'ios': ['Apple A18 Pro (6 Cores)', 'Apple A18 (6 Cores)', 'Apple A17 Pro (6 Cores)', 'Apple A16 Bionic (6 Cores)', 'Apple A15 Bionic (6 Cores)', 'Apple A14 Bionic (6 Cores)']
 }
 
 const POPULAR_BOOKMARKS = [
@@ -471,9 +617,11 @@ export const ProfileModal: React.FC<Props> = ({
   const [name, setName] = useState(() => getNextProfileName(existingProfiles))
   const [folder, setFolder] = useState('')
   const [osType, setOsType] = useState('macos-arm')
+  const [browserType, setBrowserType] = useState<'chrome' | 'firefox'>('chrome')
   const [processorGen, setProcessorGen] = useState('M4')
   const [androidBrand, setAndroidBrand] = useState('Samsung')
   const [androidModelId, setAndroidModelId] = useState('samsung-s24-ultra')
+  const [iosModelId, setIosModelId] = useState('iphone-16-pro-max')
   const [groupId, setGroupId] = useState('')
   const [notes, setNotes] = useState('')
   const [startUrl, setStartUrl] = useState('')
@@ -482,6 +630,10 @@ export const ProfileModal: React.FC<Props> = ({
   const selectedAndroidDevice = useMemo(() => {
     return getDeviceById(androidModelId) || ANDROID_DEVICES[0]
   }, [androidModelId])
+
+  const selectedIosDevice = useMemo(() => {
+    return getIosDeviceById(iosModelId) || IOS_DEVICES[0]
+  }, [iosModelId])
 
   // Proxy state
   const [proxyTab, setProxyTab] = useState<'saved' | 'custom' | 'none'>('none')
@@ -594,6 +746,115 @@ export const ProfileModal: React.FC<Props> = ({
     const dev = getDeviceById(newModelId)
     if (dev) {
       applyAndroidDeviceToFp(dev)
+    }
+  }
+
+  const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType) => {
+    const newUa = generateIosUserAgent(dev, bType)
+    handleFpChange(prev => ({
+      ...prev,
+      browser: {
+        name: bType === 'firefox' ? 'Firefox' : 'Chrome',
+        type: bType,
+        version: bType === 'firefox' ? '128.0' : '128.0.0.0'
+      },
+      navigator: {
+        ...prev.navigator,
+        userAgent: newUa,
+        appVersion: `5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) ${bType === 'firefox' ? 'FxiOS/128.0' : 'CriOS/128.0.6613.114'} Mobile/15E148 Safari/604.1`,
+        platform: 'iPhone',
+        vendor: 'Apple Computer, Inc.',
+        deviceBrand: 'Apple',
+        deviceModel: dev.modelName,
+        deviceModelCode: dev.modelCode,
+        hardwareConcurrency: dev.cores,
+        deviceMemory: dev.memory,
+        maxTouchPoints: 5,
+        touchSupport: true,
+        browserVersion: bType === 'firefox' ? '128.0' : '128.0.0.0',
+        chromiumVersion: bType === 'firefox' ? '128' : '128.0.0.0'
+      },
+      screen: {
+        ...prev.screen,
+        width: dev.screenWidth,
+        height: dev.screenHeight,
+        availWidth: dev.screenWidth,
+        availHeight: dev.screenHeight,
+        devicePixelRatio: dev.dpr,
+        viewportWidth: dev.screenWidth,
+        viewportHeight: Math.floor(dev.screenHeight * 0.9),
+        orientation: 'portrait-primary',
+        orientationAngle: 0
+      },
+      webgl: {
+        ...prev.webgl,
+        gpuVendor: 'Apple Inc.',
+        gpuRenderer: dev.gpuRenderer,
+        unmaskedVendor: 'Apple Inc.',
+        unmaskedRenderer: dev.gpuRenderer
+      },
+      fonts: {
+        ...prev.fonts,
+        fontList: ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
+      }
+    }))
+  }
+
+  const handleIosModelChange = (newModelId: string) => {
+    setIosModelId(newModelId)
+    const dev = getIosDeviceById(newModelId)
+    if (dev) {
+      applyIosDeviceToFp(dev, browserType)
+    }
+  }
+
+  const handleBrowserTypeChange = (newBrowser: 'chrome' | 'firefox') => {
+    setBrowserType(newBrowser)
+    if (osType === 'ios') {
+      const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
+      applyIosDeviceToFp(dev, newBrowser)
+    } else if (osType === 'android') {
+      const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
+      const newUa = newBrowser === 'firefox'
+        ? `Mozilla/5.0 (Android ${dev.androidVersion}; Mobile; rv:128.0) Gecko/128.0 Firefox/128.0`
+        : generateAndroidUserAgent(dev)
+      handleFpChange(prev => ({
+        ...prev,
+        browser: {
+          name: newBrowser === 'firefox' ? 'Firefox' : 'Chrome',
+          type: newBrowser,
+          version: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
+        },
+        navigator: {
+          ...prev.navigator,
+          userAgent: newUa,
+          vendor: newBrowser === 'firefox' ? '' : 'Google Inc.',
+          browserVersion: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
+        }
+      }))
+    } else {
+      let newUa = ''
+      if (newBrowser === 'firefox') {
+        if (osType.startsWith('windows')) newUa = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
+        else if (osType === 'linux') newUa = 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'
+        else newUa = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0'
+      } else {
+        newUa = generateUAForOS(osType, '128.0.0.0', 'chrome')
+      }
+      handleFpChange(prev => ({
+        ...prev,
+        browser: {
+          name: newBrowser === 'firefox' ? 'Firefox' : 'Chrome',
+          type: newBrowser,
+          version: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
+        },
+        navigator: {
+          ...prev.navigator,
+          userAgent: newUa,
+          vendor: newBrowser === 'firefox' ? '' : 'Google Inc.',
+          browserVersion: newBrowser === 'firefox' ? '128.0' : '128.0.0.0'
+        }
+      }))
     }
   }
 
@@ -723,11 +984,18 @@ export const ProfileModal: React.FC<Props> = ({
         setNotes(initialProfile.notes || '')
         setTagsStr((initialProfile.tags || []).join(', '))
 
+        const initialBrowserType: 'chrome' | 'firefox' = initialProfile.browserType || (initialProfile.fingerprint?.browser?.type) || (initialProfile.fingerprint?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+        setBrowserType(initialBrowserType)
+
         if (targetOs === 'android') {
           const rawCode = initialProfile.fingerprint?.navigator?.deviceModelCode || initialProfile.fingerprint?.navigator?.deviceModel || ''
           const matched = (rawCode ? getDeviceById(rawCode) : null) || ANDROID_DEVICES[0]
           setAndroidBrand(matched.brand)
           setAndroidModelId(matched.id)
+        } else if (targetOs === 'ios') {
+          const rawCode = initialProfile.fingerprint?.navigator?.deviceModelCode || initialProfile.fingerprint?.navigator?.deviceModel || ''
+          const matched = (rawCode ? getIosDeviceById(rawCode) : null) || IOS_DEVICES[0]
+          setIosModelId(matched.id)
         }
 
         if (initialProfile.proxyId) {
@@ -786,6 +1054,7 @@ export const ProfileModal: React.FC<Props> = ({
         setName(nextName)
         setFolder('')
         setOsType('macos-arm')
+        setBrowserType('chrome')
         setGroupId('')
         setNotes('')
         setTagsStr('')
@@ -811,6 +1080,15 @@ export const ProfileModal: React.FC<Props> = ({
         setAndroidBrand(dev.brand)
         setAndroidModelId(dev.id)
         applyAndroidDeviceToFp(dev)
+        setFpToast(true)
+        setTimeout(() => setFpToast(false), 2200)
+        return
+      }
+    } else if (targetOs === 'ios') {
+      const dev = IOS_DEVICES[Math.floor(Math.random() * IOS_DEVICES.length)]
+      if (dev) {
+        setIosModelId(dev.id)
+        applyIosDeviceToFp(dev, browserType)
         setFpToast(true)
         setTimeout(() => setFpToast(false), 2200)
         return
@@ -843,6 +1121,12 @@ export const ProfileModal: React.FC<Props> = ({
       setAndroidBrand(dev.brand)
       setAndroidModelId(dev.id)
       applyAndroidDeviceToFp(dev)
+      setFpToast(true)
+      setTimeout(() => setFpToast(false), 2200)
+    } else if (newOs === 'ios') {
+      const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
+      setIosModelId(dev.id)
+      applyIosDeviceToFp(dev, browserType)
       setFpToast(true)
       setTimeout(() => setFpToast(false), 2200)
     } else {
@@ -904,6 +1188,8 @@ export const ProfileModal: React.FC<Props> = ({
       }
 
       finalFp.browser = finalFp.browser || {}
+      finalFp.browser.type = browserType
+      finalFp.browser.name = browserType === 'firefox' ? 'Firefox' : 'Chrome'
       finalFp.browser.extensions = extensions
       finalFp.browser.bookmarks = bookmarks
       finalFp.browser.cookies = cookies
@@ -915,6 +1201,7 @@ export const ProfileModal: React.FC<Props> = ({
         name,
         folder,
         osType,
+        browserType,
         groupId: groupId || null,
         proxyId: finalProxyId,
         webrtcMode: webrtcSetting === 'off' ? 'disabled' : 'default',
@@ -1120,6 +1407,7 @@ export const ProfileModal: React.FC<Props> = ({
                         { id: 'macos-intel', label: 'Mac Intel' },
                         { id: 'macos-arm', label: 'Mac ARM' },
                         { id: 'linux', label: 'Linux' },
+                        { id: 'ios', label: 'iOS / iPhone' },
                         { id: 'android', label: 'Android' }
                       ].map(os => {
                         const isSelected = osType === os.id
@@ -1149,8 +1437,121 @@ export const ProfileModal: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Dynamic Processor or Android Phone Brand/Model Selection */}
-                  {osType === 'android' ? (
+                  {/* Browser Selection Section */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                      Browser Engine & Type
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleBrowserTypeChange('chrome')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 14px',
+                          backgroundColor: browserType === 'chrome' ? '#1C1C28' : '#14141F',
+                          color: browserType === 'chrome' ? '#2DD4BF' : '#94A3B8',
+                          border: browserType === 'chrome' ? '1px solid #2DD4BF' : '1px solid #2C2C3E',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          fontWeight: browserType === 'chrome' ? 600 : 400,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <span style={{ fontSize: '20px' }}>🌐</span>
+                        <div>
+                          <div style={{ color: browserType === 'chrome' ? '#FFF' : '#CBD5E1', fontWeight: 600 }}>Google Chrome / Chromium</div>
+                          <div style={{ fontSize: '11px', color: '#64748B' }}>Blink Engine • Full Client Hints</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleBrowserTypeChange('firefox')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 14px',
+                          backgroundColor: browserType === 'firefox' ? '#1C1C28' : '#14141F',
+                          color: browserType === 'firefox' ? '#F97316' : '#94A3B8',
+                          border: browserType === 'firefox' ? '1px solid #F97316' : '1px solid #2C2C3E',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          fontWeight: browserType === 'firefox' ? 600 : 400,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <span style={{ fontSize: '20px' }}>🦊</span>
+                        <div>
+                          <div style={{ color: browserType === 'firefox' ? '#FFF' : '#CBD5E1', fontWeight: 600 }}>Mozilla Firefox</div>
+                          <div style={{ fontSize: '11px', color: '#64748B' }}>Gecko Engine • Firefox Quantum</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Processor or Mobile Device Selection */}
+                  {osType === 'ios' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                          📱 iPhone Model & Generation
+                        </label>
+                        <select
+                          value={iosModelId}
+                          onChange={e => handleIosModelChange(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            backgroundColor: '#14141F',
+                            border: '1px solid #2C2C3E',
+                            color: '#FFF',
+                            fontSize: '14px',
+                            outline: 'none'
+                          }}
+                        >
+                          {IOS_DEVICES.map(d => (
+                            <option key={d.id} value={d.id}>
+                              {d.modelName} (iOS {d.iosVersion} • {d.cpu})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Realtime Specs Badge Bar */}
+                      {selectedIosDevice && (
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 14px',
+                          backgroundColor: '#14141F',
+                          border: '1px solid #2C2C3E',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          color: '#94A3B8'
+                        }}>
+                          <span style={{ background: 'rgba(45,212,191,0.12)', color: '#2DD4BF', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                            Apple • {selectedIosDevice.modelCode}
+                          </span>
+                          <span>⚡ <strong>Chipset:</strong> {selectedIosDevice.cpu}</span>
+                          <span>🎮 <strong>GPU:</strong> {selectedIosDevice.gpuRenderer}</span>
+                          <span>📐 <strong>Display:</strong> {selectedIosDevice.screenWidth}x{selectedIosDevice.screenHeight} (@{selectedIosDevice.dpr}x DPR)</span>
+                          <span>🧠 <strong>RAM:</strong> {selectedIosDevice.memory} GB</span>
+                          <span>🍏 <strong>iOS {selectedIosDevice.iosVersion}</strong></span>
+                        </div>
+                      )}
+                    </div>
+                  ) : osType === 'android' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         {/* Device Brand Dropdown */}

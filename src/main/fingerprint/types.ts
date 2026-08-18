@@ -14,13 +14,17 @@ export type OSType =
   | 'macos-arm'
   | 'linux'
   | 'android'
+  | 'ios'
 
-export type OSFamily = 'windows' | 'macos' | 'linux' | 'android'
+export type OSFamily = 'windows' | 'macos' | 'linux' | 'android' | 'ios'
+
+export type BrowserType = 'chrome' | 'firefox'
 
 export function getOSFamily(os: OSType): OSFamily {
   if (os.startsWith('windows')) return 'windows'
   if (os.startsWith('macos')) return 'macos'
   if (os === 'linux') return 'linux'
+  if (os === 'ios') return 'ios'
   return 'android'
 }
 
@@ -31,9 +35,10 @@ export function getOSLabel(os: OSType): string {
     'macos-intel': 'macOS (Intel)',
     'macos-arm': 'macOS (Apple Silicon)',
     'linux': 'Linux',
-    'android': 'Android'
+    'android': 'Android',
+    'ios': 'iOS (iPhone)'
   }
-  return labels[os]
+  return labels[os] || os
 }
 
 // ═══════════════════════════════════════════

@@ -93,6 +93,7 @@ export const BulkProfileModal: React.FC<Props> = ({
               <option value="macos-intel">macOS (Intel)</option>
               <option value="macos-arm">macOS (Apple Silicon)</option>
               <option value="linux">Linux</option>
+              <option value="ios">iOS (iPhone)</option>
               <option value="android">Android</option>
             </select>
           </div>
