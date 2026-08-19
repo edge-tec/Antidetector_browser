@@ -522,7 +522,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
   const defaultGpuRenderer = isWindows
     ? 'ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11)'
     : isMac
-    ? (targetOs === 'macos-arm' ? 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)' : 'ANGLE (Intel, Intel(R) Iris(TM) Plus Graphics 655, OpenGL 4.1)')
+    ? (targetOs === 'macos-arm' ? 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)' : 'ANGLE (Intel, Intel(R) Iris(TM) Plus Graphics 655, OpenGL 4.1)')
     : 'ANGLE (Intel, Mesa Intel(R) UHD Graphics 630 (CFL GT2), OpenGL 4.6)'
 
   const defaultUnmaskedVendor = isWindows
@@ -533,7 +533,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
 
   const rawUa = typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : ''
   const isMatchingEngine = bType === 'firefox'
-    ? (rawUa.includes('Firefox/') || rawUa.includes('rv:')) && !rawUa.includes('Chrome/')
+    ? (rawUa.includes('Firefox/') || rawUa.includes('rv:')) && !rawUa.includes('Chrome/') && !rawUa.includes('AppleWebKit')
     : rawUa.includes('Chrome/') && !rawUa.includes('Firefox/') && !rawUa.includes('rv:') && !rawUa.includes('Gecko/20100101')
   const isMatchingOs = isWindows
     ? rawUa.includes('Windows NT')
@@ -551,8 +551,28 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
     ? ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Menlo', 'Monaco']
     : ['DejaVu Sans', 'Liberation Sans', 'Ubuntu', 'FreeSans']
 
+  // Validate and sanitize GPU renderer for Mac ARM
+  let finalGpuRenderer = fp.webgl?.gpuRenderer || defaultGpuRenderer
+  let finalUnmaskedRenderer = fp.webgl?.unmaskedRenderer || defaultGpuRenderer
+  let finalGpuVendor = fp.webgl?.gpuVendor || defaultGpuVendor
+  let finalUnmaskedVendor = fp.webgl?.unmaskedVendor || defaultUnmaskedVendor
+
+  if (targetOs === 'macos-arm') {
+    const isInvalidArmGpu = !finalUnmaskedRenderer.toLowerCase().includes('apple') &&
+      !finalUnmaskedRenderer.toLowerCase().includes('m1') &&
+      !finalUnmaskedRenderer.toLowerCase().includes('m2') &&
+      !finalUnmaskedRenderer.toLowerCase().includes('m3') &&
+      !finalUnmaskedRenderer.toLowerCase().includes('m4')
+    if (isInvalidArmGpu) {
+      finalGpuRenderer = defaultGpuRenderer
+      finalUnmaskedRenderer = defaultGpuRenderer
+      finalGpuVendor = 'Apple'
+      finalUnmaskedVendor = 'Google Inc. (Apple)'
+    }
+  }
+
   return {
-    version: fp.version || 2,
+    version: fp.version || 3,
     seed: fp.seed || 'default-seed',
     browser: {
       name: bType === 'firefox' ? 'Firefox' : 'Chrome',
@@ -565,7 +585,8 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       chromiumVersion: bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0',
       platform: defaultPlatform,
       vendor: defaultVendor,
-      hardwareConcurrency: fp.navigator?.hardwareConcurrency || (isMac ? 8 : 8),
+      productSub: bType === 'firefox' ? '20100101' : '20030107',
+      hardwareConcurrency: fp.navigator?.hardwareConcurrency || (targetOs === 'macos-arm' ? 10 : 8),
       deviceMemory: fp.navigator?.deviceMemory || (isMac ? 16 : 16),
       maxTouchPoints: 0,
       touchSupport: false,
@@ -607,10 +628,10 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
     },
     webgl: {
       enabled: fp.webgl?.enabled !== false,
-      gpuVendor: fp.webgl?.gpuVendor && (isWindows ? !fp.webgl.gpuVendor.includes('Apple') : isMac ? !fp.webgl.gpuVendor.includes('Direct3D') : true) ? fp.webgl.gpuVendor : defaultGpuVendor,
-      gpuRenderer: fp.webgl?.gpuRenderer && (isWindows ? !fp.webgl.gpuRenderer.includes('Metal') : isMac ? !fp.webgl.gpuRenderer.includes('Direct3D') : true) ? fp.webgl.gpuRenderer : defaultGpuRenderer,
-      unmaskedVendor: fp.webgl?.unmaskedVendor || defaultUnmaskedVendor,
-      unmaskedRenderer: fp.webgl?.unmaskedRenderer && (isWindows ? !fp.webgl.unmaskedRenderer.includes('Metal') : isMac ? !fp.webgl.unmaskedRenderer.includes('Direct3D') : true) ? fp.webgl.unmaskedRenderer : defaultGpuRenderer,
+      gpuVendor: finalGpuVendor,
+      gpuRenderer: finalGpuRenderer,
+      unmaskedVendor: finalUnmaskedVendor,
+      unmaskedRenderer: finalUnmaskedRenderer,
       imageMode: fp.webgl?.imageMode || 'off',
       metadataMode: fp.webgl?.metadataMode || 'mask'
     },
@@ -922,6 +943,39 @@ export const ProfileModal: React.FC<Props> = ({
 
   const handleFixInconsistencies = async () => {
     try {
+      if ((window as any).api?.autoRepairProfile) {
+        const res = await (window as any).api.autoRepairProfile(
+          {
+            osType,
+            browserType,
+            browserVersion,
+            deviceTemplateId: deviceTemplateId || undefined,
+            deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined,
+            processorGen,
+            customOverrides: {
+              processorGen,
+              language: selectedLanguages[0],
+              languages: selectedLanguages,
+              timezone: selectedTimezone,
+              latitude,
+              longitude,
+              accuracy,
+              webrtcMode: webrtcSetting === 'off' ? 'disabled' : 'real'
+            }
+          },
+          fp
+        )
+        if (res?.success && res?.data?.repairedFingerprint) {
+          setFp(res.data.repairedFingerprint)
+          setFpToast(true)
+          const repairedCount = res.data.repairedCount || 0
+          const repairedProps = res.data.actionsTaken?.map((a: any) => a.property).join(', ')
+          console.log(`[Auto-Repair] Successfully fixed ${repairedCount} field(s): ${repairedProps}`)
+          setTimeout(() => setFpToast(false), 2500)
+          return
+        }
+      }
+
       // v3: If deviceTemplateId is set, use template resolver
       if (deviceTemplateId && (window as any).api?.generateFromTemplate) {
         const res = await (window as any).api.generateFromTemplate({
@@ -2182,10 +2236,64 @@ export const ProfileModal: React.FC<Props> = ({
                       <select
                         value={processorGen}
                         onChange={e => {
-                          setProcessorGen(e.target.value)
+                          const newProc = e.target.value
+                          setProcessorGen(newProc)
+                          let newGpuRenderer = newProc
+                          let cores = 8
+                          let mem = 16
+                          if (osType === 'macos-arm') {
+                            if (newProc.includes('M4 Pro')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)'
+                              cores = 14
+                              mem = 24
+                            } else if (newProc.includes('M4')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)'
+                              cores = 10
+                              mem = 16
+                            } else if (newProc.includes('M3 Max')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)'
+                              cores = 16
+                              mem = 36
+                            } else if (newProc.includes('M3 Pro')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)'
+                              cores = 12
+                              mem = 18
+                            } else if (newProc.includes('M3')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)'
+                              cores = 8
+                              mem = 16
+                            } else if (newProc.includes('M2 Max')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Max, Unspecified Version)'
+                              cores = 12
+                              mem = 32
+                            } else if (newProc.includes('M2')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)'
+                              cores = 8
+                              mem = 16
+                            } else if (newProc.includes('M1 Pro')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)'
+                              cores = 10
+                              mem = 16
+                            } else if (newProc.includes('M1')) {
+                              newGpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)'
+                              cores = 8
+                              mem = 16
+                            }
+                          }
                           handleFpChange(prev => ({
                             ...prev,
-                            webgl: { ...prev.webgl, gpuRenderer: e.target.value }
+                            navigator: {
+                              ...prev?.navigator,
+                              hardwareConcurrency: cores,
+                              deviceMemory: mem
+                            },
+                            webgl: {
+                              ...prev?.webgl,
+                              gpuVendor: osType === 'macos-arm' ? 'Apple' : prev?.webgl?.gpuVendor,
+                              gpuRenderer: newGpuRenderer,
+                              unmaskedVendor: osType === 'macos-arm' ? 'Google Inc. (Apple)' : prev?.webgl?.unmaskedVendor,
+                              unmaskedRenderer: newGpuRenderer
+                            }
                           }))
                         }}
                         style={{

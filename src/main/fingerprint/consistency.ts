@@ -40,8 +40,9 @@ export function validateConsistency(
   // Run all consistency & contradiction checks
   checks.push(checkOsUserAgent(fingerprint, osType))
   checks.push(checkOsPlatform(fingerprint, osType))
-  checks.push(checkBrowserUserAgent(fingerprint, bType, bVer))
+  checks.push(checkBrowserUserAgent(fingerprint, bType, bVer, osType))
   checks.push(checkBrowserEngineProperties(fingerprint, bType))
+  checks.push(checkProcessorHardwareConsistency(fingerprint, osType))
   checks.push(checkScreenDPR(fingerprint, family, osType))
   checks.push(checkGpuOs(fingerprint, family, osType))
   checks.push(checkWebGLGpu(fingerprint))
@@ -221,24 +222,39 @@ function checkOsPlatform(fp: Fingerprint, osType: OSType): ConsistencyCheck {
 function checkBrowserUserAgent(
   fp: Fingerprint,
   expectedBrowserType: 'chrome' | 'firefox',
-  expectedVersion?: string
+  expectedVersion?: string,
+  osType?: OSType
 ): ConsistencyCheck {
   const id = 'browser-ua'
   const cat = 'Browser Engine ↔ User-Agent'
   const ua = fp.navigator?.userAgent || ''
   const reportedVersion = expectedVersion || fp.navigator?.browserVersion || ''
+  const isIos = osType === 'ios' || fp.navigator?.platform === 'iPhone'
 
   const isFirefoxUA = ua.includes('Firefox/') || ua.includes('FxiOS/')
   const isChromeUA = ua.includes('Chrome/') || ua.includes('CriOS/')
 
-  if (expectedBrowserType === 'firefox' && !isFirefoxUA) {
-    return makeCheck(id, cat, 'Firefox', ua.substring(0, 60), 'fail',
-      `Contradiction: Profile is configured as Mozilla Firefox, but User-Agent is not Firefox: "${ua.substring(0, 60)}..."`, 10)
+  if (expectedBrowserType === 'firefox') {
+    if (!isFirefoxUA) {
+      return makeCheck(id, cat, 'Firefox', ua.substring(0, 60), 'fail',
+        `Contradiction: Profile is configured as Mozilla Firefox, but User-Agent is not Firefox: "${ua.substring(0, 60)}..."`, 10)
+    }
+    // Desktop Firefox must NOT contain WebKit / Chrome / Safari tokens
+    if (!isIos && (ua.includes('AppleWebKit') || ua.includes('Chrome/') || ua.includes('Safari/'))) {
+      return makeCheck(id, cat, 'Firefox Desktop', ua.substring(0, 60), 'fail',
+        `Contradiction: Desktop Firefox User-Agent contains non-Gecko tokens (AppleWebKit/Chrome/Safari): "${ua.substring(0, 60)}..."`, 10)
+    }
   }
 
-  if (expectedBrowserType === 'chrome' && isFirefoxUA && !isChromeUA) {
-    return makeCheck(id, cat, 'Chrome/Chromium', ua.substring(0, 60), 'fail',
-      `Contradiction: Profile is configured as Google Chrome / Chromium, but User-Agent contains Firefox: "${ua.substring(0, 60)}..."`, 10)
+  if (expectedBrowserType === 'chrome') {
+    if (!isChromeUA) {
+      return makeCheck(id, cat, 'Chrome/Chromium', ua.substring(0, 60), 'fail',
+        `Contradiction: Profile is configured as Google Chrome / Chromium, but User-Agent is not Chromium: "${ua.substring(0, 60)}..."`, 10)
+    }
+    if (isFirefoxUA && !isChromeUA) {
+      return makeCheck(id, cat, 'Chrome/Chromium', ua.substring(0, 60), 'fail',
+        `Contradiction: Profile is configured as Google Chrome / Chromium, but User-Agent contains Firefox: "${ua.substring(0, 60)}..."`, 10)
+    }
   }
 
   if (reportedVersion) {
@@ -276,22 +292,70 @@ function checkBrowserEngineProperties(
   const id = 'browser-engine-props'
   const cat = 'Browser Engine ↔ Properties'
   const vendor = fp.navigator?.vendor || ''
+  const productSub = fp.navigator?.productSub || ''
   const isIos = fp.navigator?.platform === 'iPhone' || fp.navigator?.userAgent?.includes('iPhone')
 
   if (browserType === 'firefox') {
     if (vendor === 'Google Inc.' && !isIos) {
       return makeCheck(id, cat, 'Firefox', `vendor="${vendor}"`, 'fail',
-        'Contradiction: Firefox profile reports Chromium vendor "Google Inc."', 9)
+        'Contradiction: Firefox profile reports Chromium vendor "Google Inc." (Firefox vendor must be empty string)', 9)
+    }
+    if (productSub === '20030107') {
+      return makeCheck(id, cat, 'Firefox', `productSub="${productSub}"`, 'fail',
+        'Contradiction: Firefox profile reports Chromium productSub "20030107" (Firefox must report "20100101")', 8)
     }
   } else if (browserType === 'chrome') {
     if (!isIos && vendor !== 'Google Inc.' && vendor !== '') {
       return makeCheck(id, cat, 'Chrome', `vendor="${vendor}"`, 'warn',
         `Chromium desktop typically reports "Google Inc." vendor but found "${vendor}"`, 5)
     }
+    if (productSub === '20100101') {
+      return makeCheck(id, cat, 'Chrome', `productSub="${productSub}"`, 'fail',
+        'Contradiction: Chrome profile reports Firefox productSub "20100101" (Chrome must report "20030107")', 8)
+    }
   }
 
   return makeCheck(id, cat, browserType, 'Properties consistent', 'pass',
     'Browser engine properties are consistent', 7)
+}
+
+/**
+ * Check 4b: Processor ↔ Hardware & OS Consistency
+ */
+function checkProcessorHardwareConsistency(
+  fp: Fingerprint,
+  osType: OSType
+): ConsistencyCheck {
+  const id = 'proc-hardware'
+  const cat = 'Processor ↔ Hardware & OS'
+  const renderer = (fp.webgl?.unmaskedRenderer || fp.webgl?.gpuRenderer || '').toLowerCase()
+  const dpr = fp.screen?.devicePixelRatio || 1
+
+  if (osType === 'macos-arm') {
+    const isAppleSiliconGPU = renderer.includes('apple') || renderer.includes('m1') || renderer.includes('m2') || renderer.includes('m3') || renderer.includes('m4')
+    if (!isAppleSiliconGPU && fp.webgl?.enabled !== false && renderer) {
+      return makeCheck(id, cat, 'Mac ARM', fp.webgl?.unmaskedRenderer || 'GPU', 'fail',
+        `Contradiction: Mac ARM (Apple Silicon) profile must use Apple M-series GPU renderer, found: "${fp.webgl?.unmaskedRenderer}"`, 9)
+    }
+    if (fp.navigator?.platform && fp.navigator?.platform !== 'MacIntel') {
+      return makeCheck(id, cat, 'Mac ARM', `platform="${fp.navigator?.platform}"`, 'fail',
+        `Contradiction: macOS browsers must report platform "MacIntel" (found: "${fp.navigator?.platform}")`, 9)
+    }
+    if (dpr < 2 && fp.screen?.width) {
+      return makeCheck(id, cat, 'Mac ARM', `DPR=${dpr}x`, 'warn',
+        `Apple Silicon Macs feature Retina displays with 2x DPR (found: ${dpr}x)`, 6)
+    }
+  }
+
+  if (osType === 'macos-intel') {
+    if (renderer.includes('metal') || (renderer.includes('apple') && (renderer.includes('m1') || renderer.includes('m2') || renderer.includes('m3') || renderer.includes('m4')))) {
+      return makeCheck(id, cat, 'Mac Intel', fp.webgl?.unmaskedRenderer || 'GPU', 'fail',
+        `Contradiction: Intel Mac profile configured with Apple Silicon M-series GPU`, 9)
+    }
+  }
+
+  return makeCheck(id, cat, osType, 'Hardware Coherent', 'pass',
+    'Hardware architecture, processor, GPU, and display metrics are coherent', 8)
 }
 
 /**

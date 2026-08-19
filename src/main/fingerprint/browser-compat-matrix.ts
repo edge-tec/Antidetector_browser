@@ -244,10 +244,10 @@ export function buildConsistentUA(options: UABuildOptions): string {
 
   // macOS
   if (osType === 'macos-arm' || osType === 'macos-intel') {
-    const macVer = (osVersion || '14_5').replace(/\./g, '_')
+    const macVer = (osVersion || (osType === 'macos-arm' ? '14_5' : '10_15_7')).replace(/\./g, '_')
     if (browserType === 'firefox') {
       const ffVer = browserVersion.includes('.') ? browserVersion : `${browserVersion}.0`
-      return `Mozilla/5.0 (Macintosh; Intel Mac OS X ${macVer}; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+      return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
     }
     return `Mozilla/5.0 (Macintosh; Intel Mac OS X ${macVer}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVersion} Safari/537.36`
   }

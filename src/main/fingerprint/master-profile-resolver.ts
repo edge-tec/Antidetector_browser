@@ -45,6 +45,7 @@ export interface MasterProfileInput {
   browserVersion: string
   deviceTemplateId?: string
   deviceModelId?: string
+  processorGen?: string
   seed?: string
   existingFingerprint?: Partial<Fingerprint>
   proxy?: {
@@ -55,6 +56,7 @@ export interface MasterProfileInput {
     password?: string
   } | null
   customOverrides?: {
+    processorGen?: string
     language?: string
     languages?: string[]
     timezone?: string
@@ -78,6 +80,7 @@ export interface MasterResolvedProfile {
   deviceModel: string
   deviceManufacturer: string
   platform: string
+  vendor: string
   userAgent: string
   appVersion: string
   oscpu: string
@@ -195,13 +198,14 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
   const vendor = isIos ? 'Apple Computer, Inc.' : browserType === 'firefox' ? '' : 'Google Inc.'
 
   // 4. Resolve Hardware (CPU / RAM)
-  const hardwareConcurrency = isIos
+  const proc = input.processorGen || input.customOverrides?.processorGen || ''
+  let hardwareConcurrency = isIos
     ? (iosDev?.cpuCores || 6)
     : isAndroid
     ? (androidDev?.cores || 8)
-    : template?.cpuThreads || (isMac ? 8 : 8)
+    : template?.cpuThreads || (isMac ? 10 : 8)
 
-  const deviceMemory = isIos
+  let deviceMemory = isIos
     ? (iosDev?.memory || 8)
     : isAndroid
     ? (androidDev?.memory || 12)
@@ -234,12 +238,52 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
   let gpuRenderer = isWindows
     ? 'ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11)'
     : isMac
-    ? (osType === 'macos-arm' ? 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)' : 'ANGLE (Intel, Intel(R) Iris(TM) Plus Graphics 655, OpenGL 4.1)')
+    ? (osType === 'macos-arm' ? 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)' : 'ANGLE (Intel, Intel(R) Iris(TM) Plus Graphics 655, OpenGL 4.1)')
     : isIos
     ? (iosDev?.gpuRenderer || 'Apple GPU')
     : isAndroid
     ? (androidDev?.gpuRenderer || 'Mali-G720 Immortalis')
     : 'ANGLE (Intel, Mesa Intel(R) UHD Graphics 630 (CFL GT2), OpenGL 4.6)'
+
+  if (osType === 'macos-arm') {
+    if (proc.includes('M4 Pro')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)'
+      hardwareConcurrency = 14
+      deviceMemory = 24
+    } else if (proc.includes('M4') || !proc) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)'
+      hardwareConcurrency = 10
+      deviceMemory = 16
+    } else if (proc.includes('M3 Max')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)'
+      hardwareConcurrency = 16
+      deviceMemory = 36
+    } else if (proc.includes('M3 Pro')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)'
+      hardwareConcurrency = 12
+      deviceMemory = 18
+    } else if (proc.includes('M3')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)'
+      hardwareConcurrency = 8
+      deviceMemory = 16
+    } else if (proc.includes('M2 Max')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Max, Unspecified Version)'
+      hardwareConcurrency = 12
+      deviceMemory = 32
+    } else if (proc.includes('M2')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)'
+      hardwareConcurrency = 8
+      deviceMemory = 16
+    } else if (proc.includes('M1 Pro')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)'
+      hardwareConcurrency = 10
+      deviceMemory = 16
+    } else if (proc.includes('M1')) {
+      gpuRenderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)'
+      hardwareConcurrency = 8
+      deviceMemory = 16
+    }
+  }
 
   let unmaskedVendor = isWindows
     ? 'Google Inc. (NVIDIA)'
@@ -253,7 +297,7 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
 
   let unmaskedRenderer = gpuRenderer
 
-  if (template?.webglProfile) {
+  if (template?.webglProfile && !proc) {
     unmaskedVendor = template.webglProfile.unmaskedVendor || unmaskedVendor
     unmaskedRenderer = template.webglProfile.unmaskedRenderer || unmaskedRenderer
     gpuVendor = template.gpuVendor || gpuVendor
@@ -486,6 +530,7 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
     deviceModel,
     deviceManufacturer,
     platform,
+    vendor,
     userAgent,
     appVersion,
     oscpu,

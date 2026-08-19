@@ -74,6 +74,7 @@ export class ProfileAutoRepairEngine {
       browserVersion: input.browserVersion,
       deviceTemplateId: input.deviceTemplateId,
       deviceModelId: input.deviceModelId,
+      processorGen: input.processorGen,
       seed: input.seed || currentFingerprint?.seed,
       proxy: input.proxy,
       customOverrides: input.customOverrides

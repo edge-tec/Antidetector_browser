@@ -424,7 +424,7 @@ export function recalculateDependentFields(
     if (osType === 'macos-arm') {
       vKey = 'apple'
     } else if (osType === 'macos-intel') {
-      vKey = rng.pick(['intel', 'amd']) || vendorKeys[0]
+      vKey = 'intel'
     } else {
       vKey = rng.pick(vendorKeys)
     }
@@ -441,7 +441,7 @@ export function recalculateDependentFields(
       maxTextureSize: gpu.maxTexture || 16384,
       maxViewportDims: [gpu.maxTexture || 32767, gpu.maxTexture || 32767],
       maxRenderbufferSize: gpu.maxTexture || 16384,
-      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)',
+      shadingLanguageVersion: `WebGL GLSL ES 3.00 (${browserType === 'firefox' ? 'OpenGL ES GLSL ES 3.0 Firefox' : 'OpenGL ES GLSL ES 3.0 Chromium'})`,
       extensions: WEBGL_EXTENSIONS,
       antialiasing: true,
       gpuVendor: gpu.vendor.replace(/Google Inc\. \(|\)/g, '').split(',')[0].trim(),

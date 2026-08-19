@@ -29,7 +29,10 @@
       { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M2, OpenGL 4.1)", "gpu": "Apple M2", "maxTexture": 16384 },
       { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M2 Pro, OpenGL 4.1)", "gpu": "Apple M2 Pro", "maxTexture": 16384 },
       { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M3, OpenGL 4.1)", "gpu": "Apple M3", "maxTexture": 16384 },
-      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M3 Pro, OpenGL 4.1)", "gpu": "Apple M3 Pro", "maxTexture": 16384 }
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, Apple M3 Pro, OpenGL 4.1)", "gpu": "Apple M3 Pro", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)", "gpu": "Apple M4", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)", "gpu": "Apple M4 Pro", "maxTexture": 16384 },
+      { "vendor": "Google Inc. (Apple)", "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Max, Unspecified Version)", "gpu": "Apple M4 Max", "maxTexture": 16384 }
     ],
     "intel": [
       { "vendor": "Google Inc. (Intel)", "renderer": "ANGLE (Intel Inc., Intel(R) UHD Graphics 630, OpenGL 4.1)", "gpu": "UHD Graphics 630", "maxTexture": 16384 },

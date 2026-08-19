@@ -356,6 +356,48 @@ const WINDOWS_TEMPLATES: DeviceTemplate[] = [
 
 const MACOS_TEMPLATES: DeviceTemplate[] = [
   {
+    deviceId: 'mac-mbp14-m4',
+    manufacturer: 'Apple', model: 'MacBook Pro 14" M4', deviceType: 'laptop', category: 'Pro Laptop',
+    operatingSystem: 'macos-arm', osVersion: '15.0', platform: 'MacIntel', architecture: 'arm64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 3024, screenHeight: 1964, devicePixelRatio: 2, viewportWidth: 1512, viewportHeight: 911,
+    orientation: 'landscape-primary', colorDepth: 30, pixelDepth: 30,
+    cpuClass: 'Apple M4', cpuThreads: 10, memoryGB: 16,
+    gpuVendor: 'Apple', gpuModel: 'Apple M4',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (Apple)', unmaskedRenderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: true, pdfViewerEnabled: true,
+    networkType: 'wifi', networkDownlink: 100, networkRtt: 15,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['MacBook Pro Microphone'], speakerLabels: ['MacBook Pro Speakers'] }
+  },
+  {
+    deviceId: 'mac-mbp16-m4pro',
+    manufacturer: 'Apple', model: 'MacBook Pro 16" M4 Pro', deviceType: 'laptop', category: 'Pro Laptop',
+    operatingSystem: 'macos-arm', osVersion: '15.0', platform: 'MacIntel', architecture: 'arm64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 3456, screenHeight: 2234, devicePixelRatio: 2, viewportWidth: 1728, viewportHeight: 1046,
+    orientation: 'landscape-primary', colorDepth: 30, pixelDepth: 30,
+    cpuClass: 'Apple M4 Pro', cpuThreads: 14, memoryGB: 24,
+    gpuVendor: 'Apple', gpuModel: 'Apple M4 Pro',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (Apple)', unmaskedRenderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: true, pdfViewerEnabled: true,
+    networkType: 'wifi', networkDownlink: 100, networkRtt: 15,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['MacBook Pro Microphone'], speakerLabels: ['MacBook Pro Speakers'] }
+  },
+  {
     deviceId: 'mac-mbp16-m3pro',
     manufacturer: 'Apple', model: 'MacBook Pro 16" M3 Pro', deviceType: 'laptop', category: 'Pro Laptop',
     operatingSystem: 'macos-arm', osVersion: '14.5', platform: 'MacIntel', architecture: 'arm64', platformArchitecture: '64-bit',
