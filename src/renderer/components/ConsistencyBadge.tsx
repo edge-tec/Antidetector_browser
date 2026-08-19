@@ -20,13 +20,14 @@ export interface ConsistencyResult {
 }
 
 interface Props {
-  score: number
+  score?: number
   result?: ConsistencyResult | null
   onRecheck?: () => void
 }
 
-export const ConsistencyBadge: React.FC<Props> = ({ score, result, onRecheck }) => {
+export const ConsistencyBadge: React.FC<Props> = ({ score: propScore, result, onRecheck }) => {
   const [showModal, setShowModal] = useState(false)
+  const score = typeof propScore === 'number' ? propScore : (typeof result?.score === 'number' ? result.score : 100)
 
   let badgeColor = '#10B981' // Green
   let badgeLabel = 'Pass'

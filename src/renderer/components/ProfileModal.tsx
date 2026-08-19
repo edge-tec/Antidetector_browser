@@ -406,7 +406,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         browserVersion: fp.navigator?.browserVersion || bVer,
         chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
         platform: 'iPhone',
-        vendor: bType === 'firefox' ? '' : 'Apple Computer, Inc.',
+        vendor: 'Apple Computer, Inc.',
         deviceBrand: 'Apple',
         deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
         deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.id,
@@ -911,22 +911,41 @@ export const ProfileModal: React.FC<Props> = ({
           return
         }
       }
+      if (osType === 'ios') {
+        const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
+        applyIosDeviceToFp(dev, browserType, browserVersion, osType)
+        setFpToast(true)
+        setTimeout(() => setFpToast(false), 2200)
+        return
+      }
+      if (osType === 'android') {
+        const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
+        applyAndroidDeviceToFp(dev, browserType, browserVersion, osType)
+        setFpToast(true)
+        setTimeout(() => setFpToast(false), 2200)
+        return
+      }
       // v2 fallback
       if ((window as any).api?.recalculateFingerprint) {
         const res = await (window as any).api.recalculateFingerprint(fp, {
           osType,
           browserType,
           browserVersion,
-          deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined
+          deviceModelId: undefined
         })
         if (res?.success && res?.data) {
           setFp(res.data)
           setFpToast(true)
           setTimeout(() => setFpToast(false), 2200)
+          return
         }
       }
+      setFp(ensureFpStructure(null, osType, browserType, browserVersion))
+      setFpToast(true)
+      setTimeout(() => setFpToast(false), 2200)
     } catch (err) {
       console.error('Failed to fix inconsistencies:', err)
+      setFp(ensureFpStructure(null, osType, browserType, browserVersion))
     }
   }
 
@@ -958,7 +977,7 @@ export const ProfileModal: React.FC<Props> = ({
     }
   }
 
-  const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion) => {
+  const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion, targetOs = 'android') => {
     const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
     const newUa = bType === 'firefox'
       ? `Mozilla/5.0 (Android ${dev.androidVersion}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
@@ -1007,7 +1026,7 @@ export const ProfileModal: React.FC<Props> = ({
         unmaskedVendor: dev.gpuVendor,
         unmaskedRenderer: dev.gpuRenderer
       }
-    }))
+    }), targetOs)
   }
 
   const handleAndroidBrandChange = (newBrand: string) => {
@@ -1016,7 +1035,7 @@ export const ProfileModal: React.FC<Props> = ({
     if (brandDevices.length > 0) {
       const firstDev = brandDevices[0]
       setAndroidModelId(firstDev.id)
-      applyAndroidDeviceToFp(firstDev, browserType, browserVersion)
+      applyAndroidDeviceToFp(firstDev, browserType, browserVersion, osType)
     }
   }
 
@@ -1024,7 +1043,7 @@ export const ProfileModal: React.FC<Props> = ({
     setAndroidModelId(newModelId)
     const dev = getDeviceById(newModelId)
     if (dev) {
-      applyAndroidDeviceToFp(dev, browserType, browserVersion)
+      applyAndroidDeviceToFp(dev, browserType, browserVersion, osType)
     }
   }
 
@@ -1035,32 +1054,12 @@ export const ProfileModal: React.FC<Props> = ({
   ) => {
     if (currentOs === 'ios') {
       const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
-      const ffVer = bVersion.includes('.') ? bVersion : `${bVersion}.0`
-      const newUa = bType === 'firefox'
-        ? `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
-        : `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/${bVersion} Mobile/15E148 Safari/604.1`
-      
-      handleFpChange(prev => ({
-        ...prev,
-        browser: {
-          name: bType === 'firefox' ? 'Firefox' : 'Chrome',
-          type: bType,
-          version: bVersion
-        },
-        navigator: {
-          ...prev.navigator,
-          userAgent: newUa,
-          vendor: bType === 'firefox' ? '' : 'Apple Computer, Inc.',
-          browserVersion: bVersion
-        }
-      }))
+      applyIosDeviceToFp(dev, bType, bVersion, currentOs)
     } else if (currentOs === 'android') {
       const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
-      const ffVer = bVersion.includes('.') ? bVersion : `${bVersion}.0`
-      const newUa = bType === 'firefox'
-        ? `Mozilla/5.0 (Android ${dev.androidVersion}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
-        : `Mozilla/5.0 (Linux; Android ${dev.androidVersion}; ${dev.modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVersion} Mobile Safari/537.36`
-
+      applyAndroidDeviceToFp(dev, bType, bVersion, currentOs)
+    } else {
+      const newUa = generateUAForOS(currentOs, bVersion, bType)
       handleFpChange(prev => ({
         ...prev,
         browser: {
@@ -1074,27 +1073,11 @@ export const ProfileModal: React.FC<Props> = ({
           vendor: bType === 'firefox' ? '' : 'Google Inc.',
           browserVersion: bVersion
         }
-      }))
-    } else {
-      const newUa = generateUAForOS(currentOs, bVersion, bType)
-      handleFpChange(prev => ({
-        ...prev,
-        browser: {
-          name: bType === 'firefox' ? 'Firefox' : 'Chrome',
-          type: bType,
-          version: bVersion
-        },
-        navigator: {
-          ...prev.navigator,
-          userAgent: newUa,
-          vendor: bType === 'firefox' ? '' : (currentOs.startsWith('macos') ? 'Google Inc.' : 'Google Inc.'),
-          browserVersion: bVersion
-        }
-      }))
+      }), currentOs)
     }
   }
 
-  const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion) => {
+  const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion, targetOs = 'ios') => {
     const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
     const newUa = bType === 'firefox'
       ? `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
@@ -1117,7 +1100,8 @@ export const ProfileModal: React.FC<Props> = ({
         hardwareConcurrency: dev.cpuCores,
         deviceMemory: dev.ramGb,
         maxTouchPoints: 5,
-        vendor: bType === 'firefox' ? '' : 'Apple Computer, Inc.',
+        touchSupport: true,
+        vendor: 'Apple Computer, Inc.',
         browserVersion: bVer
       },
       screen: {
@@ -1141,14 +1125,14 @@ export const ProfileModal: React.FC<Props> = ({
         ...prev.fonts,
         fontList: ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
       }
-    }))
+    }), targetOs)
   }
 
   const handleIosModelChange = (newModelId: string) => {
     setIosModelId(newModelId)
     const dev = getIosDeviceById(newModelId)
     if (dev) {
-      applyIosDeviceToFp(dev, browserType, browserVersion)
+      applyIosDeviceToFp(dev, browserType, browserVersion, osType)
     }
   }
 
@@ -1434,7 +1418,7 @@ export const ProfileModal: React.FC<Props> = ({
       const dev = IOS_DEVICES[Math.floor(Math.random() * IOS_DEVICES.length)]
       if (dev) {
         setIosModelId(dev.id)
-        applyIosDeviceToFp(dev, browserType, browserVersion)
+        applyIosDeviceToFp(dev, browserType, browserVersion, targetOs)
         setFpToast(true)
         setTimeout(() => setFpToast(false), 2200)
         return
@@ -1462,17 +1446,18 @@ export const ProfileModal: React.FC<Props> = ({
 
   const handleOsChange = async (newOs: string) => {
     setOsType(newOs)
+    setDeviceTemplateId('')
     if (newOs === 'android') {
       const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
       setAndroidBrand(dev.brand)
       setAndroidModelId(dev.id)
-      applyAndroidDeviceToFp(dev, browserType, browserVersion)
+      applyAndroidDeviceToFp(dev, browserType, browserVersion, newOs)
       setFpToast(true)
       setTimeout(() => setFpToast(false), 2200)
     } else if (newOs === 'ios') {
       const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
       setIosModelId(dev.id)
-      applyIosDeviceToFp(dev, browserType, browserVersion)
+      applyIosDeviceToFp(dev, browserType, browserVersion, newOs)
       setFpToast(true)
       setTimeout(() => setFpToast(false), 2200)
     } else {
@@ -1497,8 +1482,8 @@ export const ProfileModal: React.FC<Props> = ({
     }
   }
 
-  const handleFpChange = (updater: (prev: any) => any) => {
-    setFp((prev: any) => ensureFpStructure(updater(prev), osType, browserType, browserVersion))
+  const handleFpChange = (updater: (prev: any) => any, currentOs?: string) => {
+    setFp((prev: any) => ensureFpStructure(updater(prev), currentOs || osType, browserType, browserVersion))
   }
 
   const handleSave = async (e?: React.FormEvent) => {
