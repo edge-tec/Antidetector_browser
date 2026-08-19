@@ -859,6 +859,28 @@ export const ProfileModal: React.FC<Props> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [consistencyResult, setConsistencyResult] = useState<ConsistencyResult | null>(null)
 
+  // v3: Device Template State
+  const [deviceTemplateId, setDeviceTemplateId] = useState<string>('')
+  const [deviceTemplatesGrouped, setDeviceTemplatesGrouped] = useState<Record<string, any[]>>({})
+  const [templateLoading, setTemplateLoading] = useState(false)
+
+  // v3: Load device templates on mount
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        if ((window as any).api?.getDeviceTemplatesGrouped) {
+          const res = await (window as any).api.getDeviceTemplatesGrouped()
+          if (res?.success && res?.data) {
+            setDeviceTemplatesGrouped(res.data)
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load device templates:', err)
+      }
+    }
+    loadTemplates()
+  }, [])
+
   useEffect(() => {
     if (fp) {
       if ((window as any).api?.validateFingerprint) {
@@ -873,6 +895,23 @@ export const ProfileModal: React.FC<Props> = ({
 
   const handleFixInconsistencies = async () => {
     try {
+      // v3: If deviceTemplateId is set, use template resolver
+      if (deviceTemplateId && (window as any).api?.generateFromTemplate) {
+        const res = await (window as any).api.generateFromTemplate({
+          osType,
+          browserType,
+          browserVersion,
+          deviceTemplateId,
+          seed: fp?.seed || 'stable-seed'
+        })
+        if (res?.success && res?.data?.fingerprint) {
+          setFp(res.data.fingerprint)
+          setFpToast(true)
+          setTimeout(() => setFpToast(false), 2200)
+          return
+        }
+      }
+      // v2 fallback
       if ((window as any).api?.recalculateFingerprint) {
         const res = await (window as any).api.recalculateFingerprint(fp, {
           osType,
@@ -888,6 +927,34 @@ export const ProfileModal: React.FC<Props> = ({
       }
     } catch (err) {
       console.error('Failed to fix inconsistencies:', err)
+    }
+  }
+
+  // v3: Handle device template selection
+  const handleDeviceTemplateChange = async (templateId: string) => {
+    setDeviceTemplateId(templateId)
+    if (!templateId) return
+
+    setTemplateLoading(true)
+    try {
+      if ((window as any).api?.generateFromTemplate) {
+        const res = await (window as any).api.generateFromTemplate({
+          osType,
+          browserType,
+          browserVersion,
+          deviceTemplateId: templateId,
+          seed: fp?.seed || `tpl-${Date.now()}`
+        })
+        if (res?.success && res?.data?.fingerprint) {
+          setFp(res.data.fingerprint)
+          setFpToast(true)
+          setTimeout(() => setFpToast(false), 2200)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate from template:', err)
+    } finally {
+      setTemplateLoading(false)
     }
   }
 
@@ -1508,13 +1575,14 @@ export const ProfileModal: React.FC<Props> = ({
         osType,
         browserType,
         browserVersion,
+        deviceTemplateId: deviceTemplateId || null,
         groupId: groupId || null,
         proxyId: finalProxyId,
         webrtcMode: webrtcSetting === 'off' ? 'disabled' : 'default',
         notes,
         startUrl,
         tags,
-        fingerprint: finalFp,
+        fingerprint: { ...finalFp, deviceTemplateId: deviceTemplateId || undefined },
         extensions,
         bookmarks,
         cookies
@@ -1883,8 +1951,86 @@ export const ProfileModal: React.FC<Props> = ({
                     </select>
                   </div>
 
-                  {/* Dynamic Processor or Mobile Device Selection */}
-                  {osType === 'ios' ? (
+                  {/* v3: Device Hardware Template Selection */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                      🔧 Device Hardware Template
+                      <span style={{ fontSize: '11px', color: '#64748B', marginLeft: '8px', fontWeight: 400 }}>
+                        All hardware values derive from this template
+                      </span>
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                      <select
+                        value={deviceTemplateId}
+                        onChange={e => handleDeviceTemplateChange(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          backgroundColor: templateLoading ? '#1a1a2e' : '#14141F',
+                          border: deviceTemplateId ? '1px solid #2DD4BF' : '1px solid #2C2C3E',
+                          color: '#FFF',
+                          fontSize: '14px',
+                          outline: 'none',
+                          opacity: templateLoading ? 0.6 : 1
+                        }}
+                      >
+                        <option value="">— Select a hardware template (optional) —</option>
+                        {Object.entries(deviceTemplatesGrouped)
+                          .filter(([category]) => {
+                            // Filter categories to match current OS
+                            const catLower = category.toLowerCase()
+                            if (osType.startsWith('windows')) return catLower.includes('windows')
+                            if (osType.startsWith('macos')) return catLower.includes('mac') || catLower.includes('apple')
+                            if (osType === 'linux') return catLower.includes('linux')
+                            if (osType === 'ios') return catLower.includes('iphone') || catLower.includes('ios')
+                            if (osType === 'android') return catLower.includes('android') || catLower.includes('samsung') || catLower.includes('google') || catLower.includes('oneplus') || catLower.includes('xiaomi')
+                            return true
+                          })
+                          .map(([category, templates]) => (
+                            <optgroup key={category} label={category}>
+                              {(templates as any[]).map((t: any) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.model} — {t.cpuModel} • {t.gpuModel} • {t.screenWidth}×{t.screenHeight} @{t.devicePixelRatio}x • {t.memoryGB}GB RAM
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                      </select>
+
+                      {/* Template specs badge */}
+                      {deviceTemplateId && (() => {
+                        const allTemplates = Object.values(deviceTemplatesGrouped).flat() as any[]
+                        const tpl = allTemplates.find((t: any) => t.id === deviceTemplateId)
+                        if (!tpl) return null
+                        return (
+                          <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 14px',
+                            backgroundColor: '#14141F',
+                            border: '1px solid #2DD4BF33',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            color: '#94A3B8'
+                          }}>
+                            <span style={{ background: 'rgba(45,212,191,0.15)', color: '#2DD4BF', padding: '3px 10px', borderRadius: '4px', fontWeight: 600, fontSize: '12px' }}>
+                              🔒 Template Locked
+                            </span>
+                            <span>⚡ <strong>CPU:</strong> {tpl.cpuModel} ({tpl.cpuThreads} threads)</span>
+                            <span>🎮 <strong>GPU:</strong> {tpl.gpuModel}</span>
+                            <span>📐 <strong>Screen:</strong> {tpl.screenWidth}×{tpl.screenHeight} @{tpl.devicePixelRatio}x</span>
+                            <span>🧠 <strong>RAM:</strong> {tpl.memoryGB} GB</span>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Dynamic Processor or Mobile Device Selection (v2 fallback when no template selected) */}
+                  {!deviceTemplateId && osType === 'ios' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <div>
                         <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
@@ -1937,7 +2083,7 @@ export const ProfileModal: React.FC<Props> = ({
                         </div>
                       )}
                     </div>
-                  ) : osType === 'android' ? (
+                  ) : !deviceTemplateId && osType === 'android' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         {/* Device Brand Dropdown */}
@@ -2016,7 +2162,7 @@ export const ProfileModal: React.FC<Props> = ({
                         </div>
                       )}
                     </div>
-                  ) : (
+                  ) : !deviceTemplateId ? (
                     <div style={{ maxWidth: '280px' }}>
                       <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
                         Processor generation
@@ -2046,7 +2192,7 @@ export const ProfileModal: React.FC<Props> = ({
                         ))}
                       </select>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* New Fingerprint Button */}
                   <div>

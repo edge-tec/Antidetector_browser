@@ -212,6 +212,15 @@ const api = {
   getStabilityWarnings: (oldFp: any, newFp: any, hasBeenUsed: boolean) =>
     ipcRenderer.invoke('fingerprint:stability-warnings', oldFp, newFp, hasBeenUsed),
 
+  // ── Fingerprint v3: Device Templates ──
+  getDeviceTemplates: () => ipcRenderer.invoke('fingerprint:getDeviceTemplates'),
+  getDeviceTemplatesByOs: (osType: string) => ipcRenderer.invoke('fingerprint:getDeviceTemplatesByOs', osType),
+  getDeviceTemplatesGrouped: () => ipcRenderer.invoke('fingerprint:getDeviceTemplatesGrouped'),
+  getDeviceTemplate: (templateId: string) => ipcRenderer.invoke('fingerprint:getDeviceTemplate', templateId),
+  generateFromTemplate: (selection: any) => ipcRenderer.invoke('fingerprint:generateFromTemplate', selection),
+  resolveLegacyProfile: (existingFp: any, osType: string, browserType: string, browserVersion: string) =>
+    ipcRenderer.invoke('fingerprint:resolveLegacyProfile', existingFp, osType, browserType, browserVersion),
+
   // ── Logs ──
   getLogs: (limit?: number, level?: string, category?: string) =>
     ipcRenderer.invoke('logs:getAll', limit, level, category),

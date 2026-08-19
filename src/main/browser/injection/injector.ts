@@ -1,11 +1,13 @@
 // ──────────────────────────────────────────────────────────────────
-// AntiProfiles v2 — Browser Injection Orchestrator
+// AntiProfiles v3 — Browser Injection Orchestrator
 // Builds and injects fingerprint override scripts via CDP
 // Page.addScriptToEvaluateOnNewDocument & Emulation domain
+// Integrated with v3 browser-compat-matrix for accurate Client Hints
 // ──────────────────────────────────────────────────────────────────
 
 import { Page, Browser } from 'puppeteer-core'
-import { Fingerprint } from '../../fingerprint/types'
+import { Fingerprint, OSType } from '../../fingerprint/types'
+import { getNotABrandVersion, getEngineForBrowser, hasFeatureFlag } from '../../fingerprint/browser-compat-matrix'
 import { logger } from '../../logging/logger'
 
 // Import injection script builders
@@ -116,16 +118,19 @@ export function buildUserAgentMetadata(fingerprint: Fingerprint): any {
     mobile = false
   }
 
+  // v3: Use browser-compat-matrix for correct Not-A-Brand version
+  const notABrandVer = getNotABrandVersion(fullVersion)
+
   return {
     brands: [
       { brand: 'Chromium', version: brandVersion },
       { brand: 'Google Chrome', version: brandVersion },
-      { brand: 'Not_A Brand', version: '24' }
+      { brand: 'Not_A Brand', version: notABrandVer }
     ],
     fullVersionList: [
       { brand: 'Chromium', version: fullVersion },
       { brand: 'Google Chrome', version: fullVersion },
-      { brand: 'Not_A Brand', version: '24.0.0.0' }
+      { brand: 'Not_A Brand', version: `${notABrandVer}.0.0.0` }
     ],
     fullVersion,
     platform,
@@ -200,6 +205,12 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     }
 
     // ── Universal User-Agent & Client Hints Override for ALL Platforms ──
+    // v3: Use browser-compat-matrix to determine if Client Hints should be sent
+    const osType: OSType = (fingerprint as any).osType || 'windows-10'
+    const browserType: 'chrome' | 'firefox' = isFirefox ? 'firefox' : 'chrome'
+    const engine = getEngineForBrowser(osType, browserType)
+    const shouldSendClientHints = engine === 'blink' && hasFeatureFlag(osType, browserType, 'client-hints')
+
     const userAgentMetadata = buildUserAgentMetadata(fingerprint)
     const acceptLanguage = (fingerprint.locale?.languages || ['en-US', 'en']).join(',')
 
@@ -207,7 +218,7 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
       userAgent: fingerprint.navigator?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
       acceptLanguage,
       platform: userAgentMetadata.platform,
-      userAgentMetadata: isFirefox ? undefined : userAgentMetadata
+      userAgentMetadata: shouldSendClientHints ? userAgentMetadata : undefined
     })
   } catch (err: any) {
     logger.warn('browser', `Could not apply CDP page emulation: ${err.message}`)

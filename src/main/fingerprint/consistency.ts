@@ -1,7 +1,8 @@
 // ──────────────────────────────────────────────────────────────────
-// AntiProfiles v2 — Fingerprint Consistency Engine
+// AntiProfiles v3 — Fingerprint Consistency Engine
 // Validates cross-parameter coherence, flags contradictions, and returns
 // a consistency score for legitimate privacy and compatibility testing.
+// Includes v3 device-template-aware validation checks.
 // ──────────────────────────────────────────────────────────────────
 
 import {
@@ -9,6 +10,8 @@ import {
   Fingerprint, ConsistencyResult, ConsistencyCheck, ConsistencyStatus,
   StabilityWarning, StabilityWarningLevel, CORE_FINGERPRINT_FIELDS
 } from './types'
+import { DeviceTemplate, getDeviceTemplateById, findBestMatchingTemplate } from './device-templates'
+import { getEngineForBrowser, validateBrowserCompat } from './browser-compat-matrix'
 import fontListsData from './datasets/font-lists.json'
 
 // ═══════════════════════════════════════════
@@ -19,12 +22,15 @@ import fontListsData from './datasets/font-lists.json'
  * Run all consistency checks on a fingerprint and return a scored result.
  * Each check has a severity (1-10). The final score is weighted:
  *   score = 100 - sum(failed_severities) - sum(warned_severities * 0.3)
+ *
+ * v3: Optionally accepts a deviceTemplateId for template-locked checks.
  */
 export function validateConsistency(
   fingerprint: Fingerprint,
   osType: OSType,
   browserType?: 'chrome' | 'firefox',
-  browserVersion?: string
+  browserVersion?: string,
+  deviceTemplateId?: string
 ): ConsistencyResult {
   const checks: ConsistencyCheck[] = []
   const family = getOSFamily(osType)
@@ -48,6 +54,30 @@ export function validateConsistency(
   checks.push(checkMediaDeviceType(fingerprint, family))
   checks.push(checkOsFonts(fingerprint, family))
   checks.push(checkWebRTCConsistency(fingerprint))
+
+  // v3: iOS User-Agent engine check
+  if (osType === 'ios') {
+    checks.push(checkIosUaEngine(fingerprint, bType))
+  }
+
+  // v3: Device template-locked checks
+  const template = deviceTemplateId
+    ? getDeviceTemplateById(deviceTemplateId)
+    : null
+
+  if (template) {
+    checks.push(checkDeviceTemplateScreenMatch(fingerprint, template))
+    checks.push(checkDeviceTemplateGpuMatch(fingerprint, template))
+    checks.push(checkDeviceTemplateCpuRamMatch(fingerprint, template))
+  }
+
+  // v3: Browser compatibility matrix validation
+  if (bType && bVer) {
+    const compatErrors = validateBrowserCompat(osType, bType, bVer, fingerprint)
+    for (const err of compatErrors) {
+      checks.push(makeCheck('browser-compat', 'Browser Compat Matrix', bType, osType, 'fail', err, 8))
+    }
+  }
 
   // Calculate score
   const totalSeverity = checks.reduce((sum, c) => sum + c.severity, 0)
@@ -618,4 +648,123 @@ export function getStabilityWarnings(
   }
 
   return warnings
+}
+
+// ═══════════════════════════════════════════
+// v3 Device Template-Locked Checks
+// ═══════════════════════════════════════════
+
+/**
+ * v3 Check: Screen resolution and DPR must exactly match the device template.
+ */
+function checkDeviceTemplateScreenMatch(fp: Fingerprint, template: DeviceTemplate): ConsistencyCheck {
+  const id = 'tpl-screen'
+  const cat = 'Device Template ↔ Screen'
+  const w = fp.screen?.width
+  const h = fp.screen?.height
+  const dpr = fp.screen?.devicePixelRatio
+
+  if (w !== template.screenWidth || h !== template.screenHeight) {
+    return makeCheck(id, cat, `${w}×${h}`, `${template.screenWidth}×${template.screenHeight}`, 'fail',
+      `আলাদা (Contradiction): Screen ${w}×${h} does not match device template "${template.model}" (${template.screenWidth}×${template.screenHeight})`, 10)
+  }
+
+  if (dpr !== template.devicePixelRatio) {
+    return makeCheck(id, cat, `DPR ${dpr}`, `DPR ${template.devicePixelRatio}`, 'fail',
+      `Contradiction: DPR ${dpr} does not match device template "${template.model}" (${template.devicePixelRatio})`, 9)
+  }
+
+  return makeCheck(id, cat, `${w}×${h} @${dpr}x`, template.model, 'pass',
+    'Screen resolution and DPR match the device template', 10)
+}
+
+/**
+ * v3 Check: GPU / WebGL renderer must match the device template.
+ */
+function checkDeviceTemplateGpuMatch(fp: Fingerprint, template: DeviceTemplate): ConsistencyCheck {
+  const id = 'tpl-gpu'
+  const cat = 'Device Template ↔ GPU'
+
+  if (!fp.webgl?.enabled) {
+    return makeCheck(id, cat, 'WebGL', 'Disabled', 'pass', 'WebGL disabled, GPU template check skipped', 8)
+  }
+
+  const unmasked = fp.webgl?.unmaskedRenderer || ''
+  const expected = template.webglProfile?.unmaskedRenderer || ''
+
+  if (expected && unmasked && unmasked !== expected) {
+    return makeCheck(id, cat, unmasked.substring(0, 50), expected.substring(0, 50), 'fail',
+      `Contradiction: WebGL renderer "${unmasked.substring(0, 50)}..." does not match device template "${template.model}" (expected: "${expected.substring(0, 50)}...")`, 9)
+  }
+
+  return makeCheck(id, cat, template.gpuModel, template.model, 'pass',
+    'GPU/WebGL renderer matches the device template', 9)
+}
+
+/**
+ * v3 Check: CPU threads and RAM must match the device template.
+ */
+function checkDeviceTemplateCpuRamMatch(fp: Fingerprint, template: DeviceTemplate): ConsistencyCheck {
+  const id = 'tpl-cpu-ram'
+  const cat = 'Device Template ↔ CPU/RAM'
+  const cores = fp.navigator?.hardwareConcurrency
+  const mem = fp.navigator?.deviceMemory
+
+  if (cores !== undefined && cores !== template.cpuThreads) {
+    return makeCheck(id, cat, `${cores} threads`, `${template.cpuThreads} threads`, 'fail',
+      `Contradiction: CPU threads (${cores}) does not match device template "${template.model}" (${template.cpuThreads})`, 8)
+  }
+
+  if (mem !== undefined && mem !== template.memoryGB) {
+    return makeCheck(id, cat, `${mem}GB RAM`, `${template.memoryGB}GB`, 'warn',
+      `RAM (${mem}GB) does not match device template "${template.model}" (${template.memoryGB}GB)`, 6)
+  }
+
+  return makeCheck(id, cat, `${cores || '?'} cores / ${mem || '?'}GB`, template.model, 'pass',
+    'CPU threads and RAM match the device template', 8)
+}
+
+/**
+ * v3 Check: iOS must use WebKit engine identifiers (CriOS/FxiOS).
+ */
+function checkIosUaEngine(fp: Fingerprint, browserType: 'chrome' | 'firefox'): ConsistencyCheck {
+  const id = 'ios-ua-engine'
+  const cat = 'iOS ↔ Browser Engine'
+  const ua = fp.navigator?.userAgent || ''
+
+  if (browserType === 'chrome') {
+    if (ua.includes('Chrome/') && !ua.includes('CriOS/')) {
+      return makeCheck(id, cat, 'Chrome/', 'CriOS/', 'fail',
+        'Contradiction: iOS Chrome must use CriOS/ identifier in User-Agent, not desktop Chrome/', 10)
+    }
+  }
+
+  if (browserType === 'firefox') {
+    if (ua.includes('Gecko/') && !ua.includes('FxiOS/')) {
+      return makeCheck(id, cat, 'Gecko/', 'FxiOS/', 'fail',
+        'Contradiction: iOS Firefox must use FxiOS/ identifier in User-Agent, not desktop Gecko/', 10)
+    }
+  }
+
+  return makeCheck(id, cat, browserType, 'Correct iOS engine', 'pass',
+    'iOS browser uses correct WebKit-based engine identifier', 10)
+}
+
+// ═══════════════════════════════════════════
+// v3 Public API: Validate with Device Template
+// ═══════════════════════════════════════════
+
+/**
+ * Validates a fingerprint against a device template.
+ * If no templateId is given, tries to find the best matching template.
+ */
+export function validateWithDeviceTemplate(
+  fingerprint: Fingerprint,
+  osType: OSType,
+  browserType: 'chrome' | 'firefox',
+  browserVersion: string,
+  deviceTemplateId?: string
+): ConsistencyResult {
+  const templateId = deviceTemplateId || undefined
+  return validateConsistency(fingerprint, osType, browserType, browserVersion, templateId)
 }

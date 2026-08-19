@@ -1,6 +1,7 @@
 // ──────────────────────────────────────────────────────────────────
-// AntiProfiles v2 — Fingerprint IPC Handlers
+// AntiProfiles v3 — Fingerprint IPC Handlers
 // Exposes fingerprint operations to the renderer via contextBridge
+// Includes v3 Device Template resolver pipeline integration
 // ──────────────────────────────────────────────────────────────────
 
 import { ipcMain } from 'electron'
@@ -10,10 +11,19 @@ import {
   recalculateDependentFields,
   getBuiltinTemplates,
   GenerateOptions,
-  RecalculateOptions
+  RecalculateOptions,
+  generateFromDeviceTemplate,
+  resolveExistingProfile,
+  ALL_DEVICE_TEMPLATES,
+  getDeviceTemplatesByOs,
+  getDeviceTemplatesGrouped,
+  getDeviceTemplateById
 } from '../fingerprint/generator'
 import { validateConsistency, detectContradictions, getStabilityWarnings } from '../fingerprint/consistency'
-import { OSType, Fingerprint, ConsistencyResult, StabilityWarning, RuntimeDiagnosticReport } from '../fingerprint/types'
+import {
+  OSType, Fingerprint, ConsistencyResult, StabilityWarning,
+  RuntimeDiagnosticReport, DeviceSelection, ResolvedRuntimeProfile
+} from '../fingerprint/types'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { profileRepo } from '../database/repositories/profile.repo'
 import { logger } from '../logging/logger'
@@ -193,4 +203,81 @@ export function registerFingerprintIPC(): void {
   })
 
   logger.info('fingerprint', 'Fingerprint IPC handlers registered with recalculation and diagnostic support')
+
+  // ═══════════════════════════════════════════
+  // v3 Device Template IPC Handlers
+  // ═══════════════════════════════════════════
+
+  // ── List all device templates ──
+  ipcMain.handle('fingerprint:getDeviceTemplates', async () => {
+    try {
+      return { success: true, data: ALL_DEVICE_TEMPLATES }
+    } catch (err: any) {
+      logger.error('fingerprint', `Failed to get device templates: ${err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── List device templates filtered by OS ──
+  ipcMain.handle('fingerprint:getDeviceTemplatesByOs', async (_event, osType: OSType) => {
+    try {
+      const templates = getDeviceTemplatesByOs(osType)
+      return { success: true, data: templates }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── List device templates grouped by category ──
+  ipcMain.handle('fingerprint:getDeviceTemplatesGrouped', async () => {
+    try {
+      const grouped = getDeviceTemplatesGrouped()
+      return { success: true, data: grouped }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Get a single device template by ID ──
+  ipcMain.handle('fingerprint:getDeviceTemplate', async (_event, templateId: string) => {
+    try {
+      const template = getDeviceTemplateById(templateId)
+      if (!template) return { success: false, error: `Template not found: ${templateId}` }
+      return { success: true, data: template }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Generate fingerprint from device template (v3 resolver) ──
+  ipcMain.handle('fingerprint:generateFromTemplate', async (_event, selection: DeviceSelection) => {
+    try {
+      const profile = generateFromDeviceTemplate(selection)
+      logger.info('fingerprint', `Generated v3 profile from template "${profile.deviceTemplateId}" for ${selection.osType}/${selection.browserType}`)
+      return { success: true, data: profile }
+    } catch (err: any) {
+      logger.error('fingerprint', `Template-based generation failed: ${err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Resolve a legacy (v2) profile against device templates ──
+  ipcMain.handle('fingerprint:resolveLegacyProfile', async (
+    _event,
+    existingFp: Fingerprint,
+    osType: OSType,
+    browserType: 'chrome' | 'firefox',
+    browserVersion: string
+  ) => {
+    try {
+      const resolved = resolveExistingProfile(existingFp, osType, browserType, browserVersion)
+      logger.info('fingerprint', `Resolved legacy profile to template "${resolved.deviceTemplateId}" (legacy=${resolved.isLegacy})`)
+      return { success: true, data: resolved }
+    } catch (err: any) {
+      logger.error('fingerprint', `Legacy resolution failed: ${err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
+  logger.info('fingerprint', 'v3 Device Template IPC handlers registered')
 }

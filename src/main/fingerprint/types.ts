@@ -467,6 +467,35 @@ export interface RuntimeDiagnosticReport {
     webrtcIpPolicy: string
     disclaimer: string
   }
+  // v3: Device Template & Consistency Validation
+  deviceTemplate?: {
+    templateId: string
+    model: string
+    category: string
+    cpuModel: string
+    cpuThreads: number
+    gpuModel: string
+    screenWidth: number
+    screenHeight: number
+    devicePixelRatio: number
+    memoryGB: number
+    isTemplateLocked: boolean
+  }
+  consistencyValidation?: {
+    score: number
+    totalChecks: number
+    passedChecks: number
+    warnings: number
+    failures: number
+    contradictions: string[]
+    checks: Array<{
+      id: string
+      category: string
+      status: 'pass' | 'warn' | 'fail'
+      message: string
+      severity: number
+    }>
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -500,6 +529,71 @@ export interface StabilityWarning {
   field: string
   level: StabilityWarningLevel
   message: string
+}
+
+// ═══════════════════════════════════════════
+// Section 34: Device Profile System (v3)
+// ═══════════════════════════════════════════
+
+/**
+ * User's high-level device selection input.
+ * This is what the user picks in the Profile Editor.
+ */
+export interface DeviceSelection {
+  osType: OSType
+  deviceTemplateId?: string       // ID from device-templates.ts
+  browserType: 'chrome' | 'firefox'
+  browserVersion: string
+  seed?: string
+}
+
+/**
+ * Final immutable resolved runtime profile.
+ * This is the output of the resolver pipeline — passed to the browser launcher.
+ */
+export interface ResolvedRuntimeProfile {
+  // Source
+  deviceTemplateId: string
+  deviceModel: string
+  deviceManufacturer: string
+  deviceType: 'desktop' | 'laptop' | 'mobile' | 'tablet'
+  category: string
+
+  // Browser
+  browserType: 'chrome' | 'firefox'
+  browserEngine: 'blink' | 'gecko' | 'webkit'
+  browserVersion: string
+
+  // The resolved fingerprint
+  fingerprint: Fingerprint
+
+  // Validation
+  validation: ProfileConsistencyValidation
+
+  // Metadata
+  profileSchemaVersion: number
+  resolvedAt: string
+  isLegacy: boolean               // true if migrated from v2 profile
+}
+
+/**
+ * Profile consistency validation result.
+ */
+export interface ProfileConsistencyValidation {
+  valid: boolean
+  score: number                   // 0-100
+  errors: ProfileValidationIssue[]
+  warnings: ProfileValidationIssue[]
+}
+
+export interface ProfileValidationIssue {
+  code: string                    // e.g. 'DEVICE_GPU_MISMATCH'
+  field: string                   // e.g. 'webgl.unmaskedRenderer'
+  message: string
+  expected?: string
+  actual?: string
+  severity: 'error' | 'warning'
+  remediation?: string
 }
 
 // ═══════════════════════════════════════════

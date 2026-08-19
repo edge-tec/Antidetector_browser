@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────
-// AntiProfiles v2 — Runtime Diagnostic & Debug Modal
-// Deep inspection of Profile Configuration vs Effective Runtime vs Network Identity
+// AntiProfiles v3 — Runtime Diagnostic & Debug Modal
+// Deep inspection of Profile Config vs Runtime vs Network vs Device Template vs Consistency
 // ──────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react'
@@ -22,7 +22,7 @@ export const RuntimeDiagnosticModal: React.FC<Props> = ({
   const [report, setReport] = useState<RuntimeDiagnosticReport | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<'all' | 'profile' | 'runtime' | 'network'>('all')
+  const [activeSection, setActiveSection] = useState<'all' | 'profile' | 'runtime' | 'network' | 'template' | 'consistency'>('all')
 
   useEffect(() => {
     if (isOpen && profileId) {
@@ -91,6 +91,34 @@ export const RuntimeDiagnosticModal: React.FC<Props> = ({
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#F1F5F9' }}>
                 Runtime Diagnostic & Debug Inspector
               </h2>
+              {/* v3: Consistency Score Mini Badge */}
+              {report?.consistencyValidation && (
+                <span style={{
+                  marginLeft: '8px',
+                  padding: '3px 10px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  backgroundColor: report.consistencyValidation.score >= 90
+                    ? 'rgba(16, 185, 129, 0.2)'
+                    : report.consistencyValidation.score >= 70
+                    ? 'rgba(245, 158, 11, 0.2)'
+                    : 'rgba(239, 68, 68, 0.2)',
+                  color: report.consistencyValidation.score >= 90
+                    ? '#34D399'
+                    : report.consistencyValidation.score >= 70
+                    ? '#FBBF24'
+                    : '#F87171',
+                  border: `1px solid ${report.consistencyValidation.score >= 90
+                    ? 'rgba(16, 185, 129, 0.3)'
+                    : report.consistencyValidation.score >= 70
+                    ? 'rgba(245, 158, 11, 0.3)'
+                    : 'rgba(239, 68, 68, 0.3)'
+                  }`
+                }}>
+                  Score: {report.consistencyValidation.score}/100
+                </span>
+              )}
             </div>
             <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px' }}>
               Profile: <span style={{ color: '#2DD4BF', fontWeight: 500 }}>{profileName}</span> ({profileId})
@@ -122,9 +150,11 @@ export const RuntimeDiagnosticModal: React.FC<Props> = ({
         }}>
           {[
             { id: 'all', label: 'All Categories' },
-            { id: 'profile', label: '1. Profile Configuration' },
-            { id: 'runtime', label: '2. Effective Browser Runtime' },
-            { id: 'network', label: '3. Network & IP Identity' }
+            { id: 'template', label: '🔒 Device Template' },
+            { id: 'consistency', label: '✅ Consistency' },
+            { id: 'profile', label: '1. Profile Config' },
+            { id: 'runtime', label: '2. Browser Runtime' },
+            { id: 'network', label: '3. Network & IP' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -264,6 +294,188 @@ export const RuntimeDiagnosticModal: React.FC<Props> = ({
                       {report.networkIdentity.disclaimer}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* ── 4. Device Template (v3) ── */}
+              {(activeSection === 'all' || activeSection === 'template') && report.deviceTemplate && (
+                <div style={{
+                  backgroundColor: '#1C1C28',
+                  border: '1px solid #2DD4BF33',
+                  borderRadius: '10px',
+                  padding: '18px 20px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2DD4BF' }} />
+                    <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#2DD4BF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      4. Device Hardware Template (v3 Locked)
+                    </h3>
+                    <span style={{
+                      marginLeft: 'auto',
+                      padding: '2px 10px',
+                      borderRadius: '10px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      backgroundColor: report.deviceTemplate.isTemplateLocked ? 'rgba(45, 212, 191, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                      color: report.deviceTemplate.isTemplateLocked ? '#2DD4BF' : '#FBBF24'
+                    }}>
+                      {report.deviceTemplate.isTemplateLocked ? '🔒 Locked' : '🔓 Unlocked'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                    <Field label="Template ID" value={report.deviceTemplate.templateId} />
+                    <Field label="Device Model" value={report.deviceTemplate.model} highlight />
+                    <Field label="Category" value={report.deviceTemplate.category} />
+                    <Field label="CPU Model" value={`${report.deviceTemplate.cpuModel} (${report.deviceTemplate.cpuThreads} threads)`} highlight />
+                    <Field label="GPU Model" value={report.deviceTemplate.gpuModel} highlight />
+                    <Field label="RAM" value={`${report.deviceTemplate.memoryGB} GB`} highlight />
+                    <Field label="Screen Resolution" value={`${report.deviceTemplate.screenWidth}×${report.deviceTemplate.screenHeight}`} highlight />
+                    <Field label="Device Pixel Ratio" value={`${report.deviceTemplate.devicePixelRatio}x`} highlight />
+                  </div>
+                </div>
+              )}
+
+              {/* No template info notice */}
+              {(activeSection === 'template') && !report.deviceTemplate && (
+                <div style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  color: '#64748B',
+                  fontSize: '13px',
+                  backgroundColor: '#1C1C28',
+                  border: '1px solid #2C2C3E',
+                  borderRadius: '10px'
+                }}>
+                  📦 No device template is assigned to this profile. Select one in the Profile Editor to lock hardware values.
+                </div>
+              )}
+
+              {/* ── 5. Consistency Validation (v3) ── */}
+              {(activeSection === 'all' || activeSection === 'consistency') && report.consistencyValidation && (
+                <div style={{
+                  backgroundColor: '#1C1C28',
+                  border: '1px solid #2C2C3E',
+                  borderRadius: '10px',
+                  padding: '18px 20px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#A78BFA' }} />
+                    <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#A78BFA', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      5. Consistency Validation Report
+                    </h3>
+                  </div>
+
+                  {/* Score Summary Bar */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
+                    gap: '10px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      backgroundColor: '#14141F',
+                      border: '1px solid #242436',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 700, color: report.consistencyValidation.score >= 90 ? '#34D399' : report.consistencyValidation.score >= 70 ? '#FBBF24' : '#F87171' }}>
+                        {report.consistencyValidation.score}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', marginTop: '2px' }}>Score</div>
+                    </div>
+                    <div style={{ backgroundColor: '#14141F', border: '1px solid #242436', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 700, color: '#F1F5F9' }}>{report.consistencyValidation.totalChecks}</div>
+                      <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', marginTop: '2px' }}>Total</div>
+                    </div>
+                    <div style={{ backgroundColor: '#14141F', border: '1px solid #242436', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 700, color: '#34D399' }}>{report.consistencyValidation.passedChecks}</div>
+                      <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', marginTop: '2px' }}>Passed</div>
+                    </div>
+                    <div style={{ backgroundColor: '#14141F', border: '1px solid #242436', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 700, color: '#FBBF24' }}>{report.consistencyValidation.warnings}</div>
+                      <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', marginTop: '2px' }}>Warnings</div>
+                    </div>
+                    <div style={{ backgroundColor: '#14141F', border: '1px solid #242436', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 700, color: '#F87171' }}>{report.consistencyValidation.failures}</div>
+                      <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', marginTop: '2px' }}>Failures</div>
+                    </div>
+                  </div>
+
+                  {/* Contradictions */}
+                  {report.consistencyValidation.contradictions.length > 0 && (
+                    <div style={{
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      marginBottom: '14px'
+                    }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#F87171', marginBottom: '6px' }}>
+                        ⚠️ Contradictions Detected:
+                      </div>
+                      {report.consistencyValidation.contradictions.map((c, i) => (
+                        <div key={i} style={{ fontSize: '12px', color: '#FCA5A5', padding: '2px 0' }}>
+                          • {c}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Individual Checks Table */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {report.consistencyValidation.checks.map((check, idx) => (
+                      <div key={idx} style={{
+                        display: 'grid',
+                        gridTemplateColumns: '24px 100px 1fr 60px',
+                        gap: '8px',
+                        alignItems: 'center',
+                        padding: '6px 10px',
+                        backgroundColor: idx % 2 === 0 ? '#14141F' : '#1C1C28',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>
+                        <span style={{ fontSize: '14px' }}>
+                          {check.status === 'pass' ? '✅' : check.status === 'warn' ? '⚠️' : '❌'}
+                        </span>
+                        <span style={{
+                          color: '#64748B',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.3px'
+                        }}>
+                          {check.category}
+                        </span>
+                        <span style={{
+                          color: check.status === 'pass' ? '#94A3B8' : check.status === 'warn' ? '#FBBF24' : '#F87171'
+                        }}>
+                          {check.message}
+                        </span>
+                        <span style={{
+                          textAlign: 'right',
+                          fontSize: '10px',
+                          color: '#475569'
+                        }}>
+                          sev: {check.severity}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No consistency info notice */}
+              {(activeSection === 'consistency') && !report.consistencyValidation && (
+                <div style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  color: '#64748B',
+                  fontSize: '13px',
+                  backgroundColor: '#1C1C28',
+                  border: '1px solid #2C2C3E',
+                  borderRadius: '10px'
+                }}>
+                  📊 Consistency validation data not available for this profile.
                 </div>
               )}
 

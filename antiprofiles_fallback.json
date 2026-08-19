@@ -4,10 +4,10 @@
       "id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
       "name": "System Admin",
       "email": "admin@profilevault.local",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
       "messages": [],
       "internal_notes": [
@@ -66,6 +66,14 @@
           "agent_name": "Test Agent",
           "note": "User is running on Windows 11 with proxy auth enabled.",
           "created_at": "2026-08-19 09:35:09"
+        },
+        {
+          "id": "note_1787133579289_xnfl",
+          "conversation_id": "msg_1787133579276_5onp",
+          "agent_id": "agent_test_1787133579263",
+          "agent_name": "Test Agent",
+          "note": "User is running on Windows 11 with proxy auth enabled.",
+          "created_at": "2026-08-19 09:59:39"
         }
       ]
     },
@@ -73,238 +81,277 @@
       "id": "65793f7c-4531-4493-8ccf-2a26068c2e1d",
       "name": "John Doe",
       "email": "john_1787049316833@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "f1f106b6-d8fe-4797-900c-ac4ef3b2a015",
       "name": "User 1",
       "email": "u1_1787049316857@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "bf2b8d1c-e57e-4f4f-a41e-73b7994816b3",
       "name": "User 2",
       "email": "u2_1787049316857@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": null,
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "2cbefe5e-f6b2-4b5e-b26f-bdebe8f07bfb",
       "name": "John Doe",
       "email": "john_1787070802687@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T16:33:22.708Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "444be39d-d321-4c65-8d89-29133e79d695",
       "name": "User 1",
       "email": "u1_1787070802711@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T16:33:22.732Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "3a921bc8-eb9c-47fb-97fe-726681f1597a",
       "name": "User 2",
       "email": "u2_1787070802711@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T16:33:22.753Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "ac5881d6-02c3-4f43-a422-8f322e6b9529",
       "name": "John Doe",
       "email": "john_1787072131942@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T16:55:31.962Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "cdcb1f6d-53f7-4343-b4ff-99a55cd94e02",
       "name": "User 1",
       "email": "u1_1787072131966@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T16:55:31.986Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "11cf2613-6df2-4083-8cc4-cae6431c8af0",
       "name": "User 2",
       "email": "u2_1787072131966@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T16:55:32.006Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "e8ff63b1-6e76-48f1-8df1-6e1a5353a327",
       "name": "John Doe",
       "email": "john_1787073291994@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T17:14:52.016Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "7d853acf-2e3b-4684-8036-ee6039687767",
       "name": "User 1",
       "email": "u1_1787073292022@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T17:14:52.044Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "f28b52e8-ca48-4c71-b11d-d759f82f3bac",
       "name": "User 2",
       "email": "u2_1787073292022@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T17:14:52.065Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "3c095dd4-c63b-4635-a272-853e35b5c7a2",
       "name": "John Doe",
       "email": "john_1787074058875@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T17:27:38.897Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "5a5a66d3-a491-4695-822a-574a2fb6071e",
       "name": "User 1",
       "email": "u1_1787074058903@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T17:27:38.925Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "ceb7d2b4-2d99-48e8-a014-0a5caff3179d",
       "name": "User 2",
       "email": "u2_1787074058903@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T17:27:38.946Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "438b2afd-cefd-4252-8812-96ab020e15f7",
       "name": "John Doe",
       "email": "john_1787084195060@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T20:16:35.099Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "8d5101ba-a1ee-4434-bb5f-b7dff4c08eea",
       "name": "User 1",
       "email": "u1_1787084195109@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T20:16:35.135Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "984dd8c0-6e94-44e0-b275-7752ab10447f",
       "name": "User 2",
       "email": "u2_1787084195109@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-18T20:16:35.160Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "a35c261e-fd73-4a5a-804a-fe90c426e39c",
       "name": "John Doe",
       "email": "john_1787132109797@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-19T09:35:09.828Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "8eb8d5d6-f947-4c65-a11d-f9455ea29d7d",
       "name": "User 1",
       "email": "u1_1787132109839@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-19T09:35:09.866Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "cc0fb6e9-10b0-43a5-912a-170a08786e56",
       "name": "User 2",
       "email": "u2_1787132109839@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-19T09:35:09.897Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "0f4451e6-6fa9-44f6-b8e9-7aabbdf3a3fe",
       "name": "John Doe",
       "email": "john_1787133579557@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-19T09:59:39.592Z",
-      "updated_at": "2026-08-19T09:59:39.598Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
       "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "4de84051-c8a1-4938-b89e-e2452b5fd8ed",
       "name": "User 1",
       "email": "u1_1787133579600@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-19T09:59:39.632Z",
-      "updated_at": null
+      "updated_at": "2026-08-19T11:36:56.809Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
     },
     {
       "id": "3c2d08e2-6b1e-4dd0-83bc-c58b5ada3862",
       "name": "User 2",
       "email": "u2_1787133579600@example.com",
-      "password_hash": "0976958a45a11b133a9c0d1f297a13fb:a424bfce918c48d11738a716b64b8ddf5e96cb7c58f260c2c6e4383a4f68f77a129d367ab956f5565f7d77eeeda31bde0e566e3beab599baf20b9b5817238135",
+      "password_hash": "af31fd0eea84481ec41956dd794c4881:29eb6660ddac6372c4ecc7f4c5b30a85eb7aebf2b4fe369f65a7323be5c636ef45720e2d407bbd9bce4c982e1dc8df9ecf6f3be25d3de82172251d683551cceb",
       "google_id": null,
       "created_at": "2026-08-19T09:59:39.658Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "e6e361de-7a23-4490-9bd6-b8b19d6bd2bf",
+      "name": "John Doe",
+      "email": "john_1787139416772@example.com",
+      "password_hash": "7d423bb083bbcdf825c8df39f225c0be:cd041e461285c28d52abadc4e5ddbd15672af1a99cb98c4b738d6055cd2666f9297888e754ef2a1813d1d59d43a2a8362043c500b9f3f29144bbbc14fbe9e296",
+      "role": "user",
+      "email_verified": 0,
+      "account_status": "pending",
+      "google_id": null,
+      "created_at": "2026-08-19T11:36:56.801Z",
+      "updated_at": "2026-08-19T11:36:56.809Z",
+      "last_login_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "4d296d62-25d2-496d-b1ca-3978bacb6a02",
+      "name": "User 1",
+      "email": "u1_1787139416811@example.com",
+      "password_hash": "ad3d547f4647e01e21a9c906393aa447:4a9a845c36b9763e58a9ebca1897ee86041a551f87ef416d2b2e1c0464e7b6dc948f8efd9a5c665922824967279fbc46044593af11f9c9d832032bb2f66d1af3",
+      "role": "user",
+      "email_verified": 1,
+      "account_status": "active",
+      "google_id": null,
+      "created_at": "2026-08-19T11:36:56.850Z",
+      "updated_at": null
+    },
+    {
+      "id": "c11d378e-d8e0-43b5-80ed-5db1f1dfbb4f",
+      "name": "User 2",
+      "email": "u2_1787139416811@example.com",
+      "password_hash": "d4ee3705520d62216add3f1f22654bab:7302ef06f1d6ff9d3dfca02284babd435e17b71351c8c7178a406a30716f97758dfa957866a42436c4eefd89fc87e1b946d70da948dcba9d1bc974abda1b1e95",
+      "role": "user",
+      "email_verified": 1,
+      "account_status": "active",
+      "google_id": null,
+      "created_at": "2026-08-19T11:36:56.881Z",
       "updated_at": null
     }
   ],
@@ -389,6 +436,16 @@
       "last_message_at": "2026-08-19 09:59:39",
       "created_at": "2026-08-19 09:59:39",
       "updated_at": "2026-08-19 09:59:39"
+    },
+    {
+      "id": "conv_1787139416546_wisd",
+      "user_id": "usr_test_1787139416536",
+      "status": "open",
+      "priority": "high",
+      "subject": "Proxy Network Issue",
+      "last_message_at": "2026-08-19 11:36:56",
+      "created_at": "2026-08-19 11:36:56",
+      "updated_at": "2026-08-19 11:36:56"
     }
   ],
   "support_messages": [
@@ -495,6 +552,19 @@
       "attachment_size": null,
       "attachment_mime": null,
       "created_at": "2026-08-19 09:59:39"
+    },
+    {
+      "id": "msg_1787139416549_dy26",
+      "conversation_id": "conv_1787139416546_wisd",
+      "sender_id": "usr_test_1787139416536",
+      "sender_type": "user",
+      "message": "Hello, I am having trouble connecting my HTTP proxy.",
+      "message_type": "text",
+      "attachment_path": null,
+      "attachment_name": null,
+      "attachment_size": null,
+      "attachment_mime": null,
+      "created_at": "2026-08-19 11:36:56"
     }
   ],
   "support_internal_notes": [
@@ -561,6 +631,14 @@
       "agent_name": "Test Agent",
       "note": "User is running on Windows 11 with proxy auth enabled.",
       "created_at": "2026-08-19 09:59:39"
+    },
+    {
+      "id": "note_1787139416561_zynx",
+      "conversation_id": "msg_1787139416549_dy26",
+      "agent_id": "agent_test_1787139416537",
+      "agent_name": "Test Agent",
+      "note": "User is running on Windows 11 with proxy auth enabled.",
+      "created_at": "2026-08-19 11:36:56"
     }
   ],
   "profiles": [
@@ -2519,6 +2597,45 @@
       "google_services": 0,
       "system_extensions": 0,
       "custom_dns": ""
+    },
+    {
+      "id": "fef2697e-8202-4116-ab97-4c01df26c9c8",
+      "user_id": "4d296d62-25d2-496d-b1ca-3978bacb6a02",
+      "name": "User 1 Profile",
+      "group_id": null,
+      "notes": "",
+      "color": "#6366F1",
+      "icon": "globe",
+      "browser_version": "131.0.0.0",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "language": "en-US",
+      "timezone": "America/New_York",
+      "screen_width": 1920,
+      "screen_height": 1200,
+      "webrtc_mode": "real",
+      "canvas_mode": "noise",
+      "webgl_mode": "default",
+      "hw_concurrency": 8,
+      "device_memory": 8,
+      "hw_acceleration": 1,
+      "proxy_id": null,
+      "tags": "[]",
+      "status": "stopped",
+      "created_at": "2026-08-19T11:36:56.883Z",
+      "updated_at": "2026-08-19T11:36:56.883Z",
+      "os_type": "windows-10",
+      "fingerprint": "{\"version\":2,\"generatedAt\":\"2026-08-19T11:36:56.883Z\",\"seed\":\"88e93ebac12212ad5a5b68954f06614d\",\"osType\":\"windows-10\",\"navigator\":{\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\",\"browserVersion\":\"131.0.0.0\",\"chromiumVersion\":\"131\",\"platform\":\"Win32\",\"appCodeName\":\"Mozilla\",\"appName\":\"Netscape\",\"appVersion\":\"5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\",\"product\":\"Gecko\",\"productSub\":\"20030107\",\"vendor\":\"Google Inc.\",\"vendorSub\":\"\",\"hardwareConcurrency\":8,\"deviceMemory\":8,\"cpuArchitecture\":\"x86_64\",\"platformArchitecture\":\"64-bit\",\"maxTouchPoints\":0,\"touchSupport\":false,\"doNotTrack\":null,\"cookieEnabled\":true,\"pdfViewerEnabled\":true,\"javaEnabled\":false,\"webdriver\":false,\"localStorageEnabled\":true,\"sessionStorageEnabled\":true,\"indexedDBEnabled\":true,\"webSQLEnabled\":false},\"screen\":{\"width\":1920,\"height\":1200,\"availWidth\":1920,\"availHeight\":1160,\"colorDepth\":24,\"pixelDepth\":24,\"devicePixelRatio\":1,\"orientation\":\"landscape-primary\",\"orientationAngle\":0,\"viewportWidth\":1920,\"viewportHeight\":1129,\"outerWidth\":1920,\"outerHeight\":1200,\"screenX\":0,\"screenY\":0,\"isMultiMonitor\":false,\"isPrimaryDisplay\":true},\"locale\":{\"language\":\"en-US\",\"languages\":[\"en-US\",\"en\"],\"country\":\"US\",\"region\":\"\",\"currency\":\"USD\",\"numberFormat\":\"en-US\",\"dateFormat\":\"M/d/yyyy\",\"firstDayOfWeek\":0,\"measurementSystem\":\"imperial\",\"hourCycle\":\"12h\"},\"timezone\":{\"mode\":\"manual\",\"timezone\":\"America/New_York\",\"utcOffset\":-300,\"hasDST\":true,\"dstOffset\":60},\"geolocation\":{\"mode\":\"ask\",\"latitude\":40.7128,\"longitude\":-74.006,\"accuracy\":50,\"altitude\":null,\"altitudeAccuracy\":null,\"heading\":null,\"speed\":null,\"permissionState\":\"prompt\"},\"webrtc\":{\"mode\":\"real\",\"ipPolicy\":\"default_public_interface_only\",\"localIP\":\"\",\"publicIP\":\"\"},\"canvas\":{\"mode\":\"noise\",\"noiseSeed\":747738},\"webgl\":{\"enabled\":true,\"version\":\"WebGL 2.0\",\"vendor\":\"WebKit\",\"renderer\":\"WebKit WebGL\",\"unmaskedVendor\":\"Google Inc. (Intel)\",\"unmaskedRenderer\":\"ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)\",\"maxTextureSize\":16384,\"maxViewportDims\":[16384,16384],\"maxRenderbufferSize\":16384,\"shadingLanguageVersion\":\"WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)\",\"extensions\":[\"ANGLE_instanced_arrays\",\"EXT_blend_minmax\",\"EXT_color_buffer_half_float\",\"EXT_disjoint_timer_query\",\"EXT_float_blend\",\"EXT_frag_depth\",\"EXT_shader_texture_lod\",\"EXT_texture_compression_bptc\",\"EXT_texture_compression_rgtc\",\"EXT_texture_filter_anisotropic\",\"EXT_sRGB\",\"KHR_parallel_shader_compile\",\"OES_element_index_uint\",\"OES_fbo_render_mipmap\",\"OES_standard_derivatives\",\"OES_texture_float\",\"OES_texture_float_linear\",\"OES_texture_half_float\",\"OES_texture_half_float_linear\",\"OES_vertex_array_object\",\"WEBGL_color_buffer_float\",\"WEBGL_compressed_texture_s3tc\",\"WEBGL_compressed_texture_s3tc_srgb\",\"WEBGL_debug_renderer_info\",\"WEBGL_debug_shaders\",\"WEBGL_depth_texture\",\"WEBGL_draw_buffers\",\"WEBGL_lose_context\",\"WEBGL_multi_draw\"],\"antialiasing\":true,\"gpuVendor\":\"Intel\",\"gpuRenderer\":\"UHD Graphics 630\",\"driverInfo\":\"\"},\"audio\":{\"mode\":\"noise\",\"noiseSeed\":527075,\"sampleRate\":44100,\"channelCount\":2,\"maxChannelCount\":2,\"numberOfInputs\":1,\"numberOfOutputs\":1,\"channelCountMode\":\"max\",\"channelInterpretation\":\"speakers\"},\"clientRects\":{\"mode\":\"noise\",\"noiseSeed\":202779},\"fonts\":{\"enableMasking\":true,\"mode\":\"automatic\",\"fontList\":[\"Arial\",\"Arial Black\",\"Calibri\",\"Cambria\",\"Cambria Math\",\"Candara\",\"Comic Sans MS\",\"Consolas\",\"Constantia\",\"Corbel\",\"Courier New\",\"Ebrima\",\"Franklin Gothic Medium\",\"Gabriola\",\"Gadugi\",\"Georgia\",\"Impact\",\"Ink Free\",\"Javanese Text\",\"Leelawadee UI\",\"Lucida Console\",\"Lucida Sans Unicode\",\"MS Gothic\",\"MS PGothic\",\"MS UI Gothic\",\"MV Boli\",\"Malgun Gothic\",\"Microsoft Himalaya\",\"Microsoft JhengHei\",\"Microsoft New Tai Lue\",\"Microsoft PhagsPa\",\"Microsoft Sans Serif\",\"Microsoft Tai Le\",\"Microsoft YaHei\",\"Microsoft Yi Baiti\",\"MingLiU-ExtB\",\"Mongolian Baiti\",\"Myanmar Text\",\"Nirmala UI\",\"Palatino Linotype\",\"Segoe MDL2 Assets\",\"Segoe Print\",\"Segoe Script\",\"Segoe UI\",\"Segoe UI Emoji\",\"Segoe UI Historic\",\"Segoe UI Symbol\",\"SimSun\",\"Sitka Text\",\"Sylfaen\",\"Symbol\",\"Tahoma\",\"Times New Roman\",\"Trebuchet MS\",\"Verdana\",\"Webdings\",\"Wingdings\",\"Yu Gothic\"]},\"mediaDevices\":{\"videoInputs\":1,\"audioInputs\":1,\"audioOutputs\":2,\"cameraLabels\":[\"Integrated HD Camera\"],\"microphoneLabels\":[\"Default Microphone\"],\"speakerLabels\":[\"Default Speaker\"],\"deviceIds\":[\"4bf869fbf316f70a43b16b8aed6b69a9e9b64966c7e40d046a557093cde3f6db\",\"184c185869a59616567e3515dd0f06c61fa188d38ecb053430f12316fd786a06\",\"a894081d2221b87f8758bee9439bdf34046be26a846add1b0cc738d57850114d\"]},\"battery\":{\"enabled\":false,\"charging\":true,\"level\":0.95,\"chargingTime\":0,\"dischargingTime\":null},\"networkInfo\":{\"effectiveType\":\"4g\",\"downlink\":100,\"rtt\":20,\"saveData\":false,\"type\":\"wifi\"},\"permissions\":{\"camera\":\"prompt\",\"microphone\":\"prompt\",\"geolocation\":\"prompt\",\"notifications\":\"prompt\",\"clipboard\":\"prompt\",\"midi\":\"prompt\",\"sensors\":\"prompt\",\"usb\":\"prompt\",\"bluetooth\":\"prompt\",\"backgroundSync\":\"prompt\",\"persistentStorage\":\"prompt\"},\"browser\":{\"saveHistory\":true,\"clearHistoryOnDelete\":true,\"savePasswords\":false,\"googleServicesEnabled\":false,\"safeBrowsing\":false,\"spellCheck\":true,\"backgroundServices\":false,\"systemExtensionsEnabled\":false,\"startUrlMode\":\"new-tab\",\"startUrls\":[],\"customLaunchArgs\":[],\"dnsMode\":\"system\",\"primaryDns\":\"\",\"secondaryDns\":\"\",\"type\":\"chrome\",\"name\":\"Chrome\",\"version\":\"131.0.0.0\"}}",
+      "folder": "",
+      "profile_locked": 0,
+      "consistency_score": 100,
+      "fingerprint_seed": "88e93ebac12212ad5a5b68954f06614d",
+      "start_url": "",
+      "launch_args": "[]",
+      "save_history": 1,
+      "save_passwords": 0,
+      "google_services": 0,
+      "system_extensions": 0,
+      "custom_dns": ""
     }
   ],
   "email_verification_tokens": [
@@ -2647,7 +2764,23 @@
       "user_id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
       "token_hash": "edbe28ffb3cdbd26f9497e5d98cc0f0762e16e23dd1570bf7f36b608f374cc6f",
       "expires_at": "2026-08-20T09:59:39.701Z",
-      "created_at": "2026-08-19T09:59:39.702Z"
+      "created_at": "2026-08-19T09:59:39.702Z",
+      "used_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "77bb9448-dfb5-48c9-96a5-be464f88a24d",
+      "user_id": "e6e361de-7a23-4490-9bd6-b8b19d6bd2bf",
+      "token_hash": "5ef849f5df02b5da78ca748bd0e5bb6550b107a38c0127b3ee089aa3dd10a79f",
+      "expires_at": "2026-08-20T11:36:56.804Z",
+      "created_at": "2026-08-19T11:36:56.805Z",
+      "used_at": "424d71e4-0e65-4720-92df-9ae86ea8f0ae"
+    },
+    {
+      "id": "cd33e1a2-76a7-40f0-bb7f-918e85adafcf",
+      "user_id": "424d71e4-0e65-4720-92df-9ae86ea8f0ae",
+      "token_hash": "1294acfcb9e67f14d28a9015e2c97a45908a920a091c4af68302ac23d1a0ed01",
+      "expires_at": "2026-08-20T11:36:56.955Z",
+      "created_at": "2026-08-19T11:36:56.957Z"
     }
   ],
   "settings": [
@@ -2874,6 +3007,56 @@
     {
       "key": "smtp_enabled",
       "value": "true"
+    },
+    {
+      "key": "smtp_host",
+      "value": "smtp.example.com"
+    },
+    {
+      "key": "smtp_port",
+      "value": "587"
+    },
+    {
+      "key": "smtp_user",
+      "value": "user@example.com"
+    },
+    {
+      "key": "smtp_password",
+      "value": "secretpassword"
+    },
+    {
+      "key": "smtp_from_email",
+      "value": "noreply@example.com"
+    },
+    {
+      "key": "smtp_secure",
+      "value": "false"
+    },
+    {
+      "key": "smtp_enabled",
+      "value": "true"
+    }
+  ],
+  "seo_settings": [
+    {
+      "key": "site_name",
+      "value": "ProfileVault"
+    },
+    {
+      "key": "seo_enabled",
+      "value": "1"
+    },
+    {
+      "key": "schema_enabled",
+      "value": "1"
+    },
+    {
+      "key": "site_name",
+      "value": "ProfileVault Pro"
+    },
+    {
+      "key": "default_og_image",
+      "value": "https://example.com/og.png"
     }
   ]
 }

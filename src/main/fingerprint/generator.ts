@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────────
-// AntiProfiles v2 — Fingerprint Generator & Recalculation Engine
+// AntiProfiles v3 — Fingerprint Generator & Recalculation Engine
 // Generates coherent, consistent fingerprints following the cascade:
-//   OS → Browser Engine → Hardware → Display → Locale → Network → Validate
+//   OS → Device Template → Browser Engine → Hardware → Display → Locale → Network → Validate
 // ──────────────────────────────────────────────────────────────────
 
 import crypto from 'crypto'
@@ -13,11 +13,17 @@ import {
   AudioFingerprint, ClientRectsFingerprint, FontsFingerprint,
   MediaDevicesFingerprint, BatteryFingerprint, NetworkInfoFingerprint,
   PermissionsFingerprint, BrowserConfig, ProfileTemplate,
+  DeviceSelection, ResolvedRuntimeProfile,
   createDefaultFingerprint
 } from './types'
 import { validateConsistency } from './consistency'
 import { ANDROID_DEVICES, AndroidDeviceSpec, getDeviceById as getAndroidDeviceById } from './android-devices'
 import { IOS_DEVICES, IosDeviceSpec, getIosDeviceById, generateIosUserAgent } from './ios-devices'
+import { resolveDeviceProfile, resolveLegacyProfile } from './resolvers'
+import {
+  ALL_DEVICE_TEMPLATES, getDeviceTemplateById, getDeviceTemplatesByOs,
+  getDeviceTemplatesGrouped, getDefaultDeviceTemplate, findBestMatchingTemplate
+} from './device-templates'
 
 // Import curated datasets
 import userAgentsData from './datasets/user-agents.json'
@@ -196,6 +202,7 @@ export interface RecalculateOptions {
   browserType?: 'chrome' | 'firefox'
   browserVersion?: string
   deviceModelId?: string
+  deviceTemplateId?: string     // v3: device template ID
   seed?: string
 }
 
@@ -595,6 +602,7 @@ export interface GenerateOptions {
   browserType?: 'chrome' | 'firefox'
   browserVersion?: string
   deviceModelId?: string
+  deviceTemplateId?: string     // v3: device template ID
   seed?: string
   country?: string
   proxyTimezone?: string
@@ -623,6 +631,41 @@ export function generateBulkFingerprints(options: { count: number; osType: OSTyp
     }))
   }
   return result
+}
+
+// ═══════════════════════════════════════════
+// v3 Device Template Integration
+// ═══════════════════════════════════════════
+
+/**
+ * Generate a fingerprint using the v3 device template resolver pipeline.
+ * Returns a ResolvedRuntimeProfile with full validation.
+ */
+export function generateFromDeviceTemplate(selection: DeviceSelection): ResolvedRuntimeProfile {
+  return resolveDeviceProfile(selection)
+}
+
+/**
+ * Resolve a legacy fingerprint against the best-matching device template.
+ * Non-destructive — the original fingerprint values are preserved.
+ */
+export function resolveExistingProfile(
+  existingFp: Fingerprint,
+  osType: OSType,
+  browserType: 'chrome' | 'firefox',
+  browserVersion: string
+): ResolvedRuntimeProfile {
+  return resolveLegacyProfile(existingFp, osType, browserType, browserVersion)
+}
+
+// Re-export device template functions for IPC/UI access
+export {
+  ALL_DEVICE_TEMPLATES,
+  getDeviceTemplateById,
+  getDeviceTemplatesByOs,
+  getDeviceTemplatesGrouped,
+  getDefaultDeviceTemplate,
+  findBestMatchingTemplate
 }
 
 // ═══════════════════════════════════════════

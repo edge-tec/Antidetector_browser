@@ -1,5 +1,6 @@
 // ──────────────────────────────────────────────────────────────────
-// AntiProfiles v2 — Browser Launcher (Puppeteer + Fingerprint Injection)
+// AntiProfiles v3 — Browser Launcher (Puppeteer + Fingerprint Injection)
+// Integrated with v3 Device Template resolver pipeline
 // ──────────────────────────────────────────────────────────────────
 
 import { spawn, ChildProcess } from 'child_process'
@@ -7,7 +8,7 @@ import fs from 'fs'
 import path from 'path'
 import puppeteer, { Browser } from 'puppeteer-core'
 import { Profile, Proxy } from '../database/models'
-import { Fingerprint, createDefaultFingerprint } from '../fingerprint/types'
+import { Fingerprint, OSType, createDefaultFingerprint } from '../fingerprint/types'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { decryptPassword } from '../security/encryption'
 import { ensureProfileDataDir, ensureFirefoxProfileDataDir } from './chromium-resolver'
@@ -510,16 +511,49 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   return args
 }
 
-import { recalculateDependentFields } from '../fingerprint/generator'
+import { recalculateDependentFields, generateFromDeviceTemplate, resolveExistingProfile } from '../fingerprint/generator'
 import { validateConsistency } from '../fingerprint/consistency'
+import { getDeviceTemplateById } from '../fingerprint/device-templates'
 
-function normalizeFingerprint(raw: any, osType: string, browserType?: 'chrome' | 'firefox', browserVersion?: string): Fingerprint {
-  const targetOs = (osType as any) || 'windows-10'
+/**
+ * Normalize a fingerprint using either:
+ * 1) v3 device template resolver (if deviceTemplateId is available), or
+ * 2) v2 recalculateDependentFields (legacy fallback)
+ */
+function normalizeFingerprint(
+  raw: any,
+  osType: string,
+  browserType?: 'chrome' | 'firefox',
+  browserVersion?: string,
+  deviceTemplateId?: string
+): Fingerprint {
+  const targetOs = (osType as OSType) || 'windows-10'
   const targetBrowser: 'chrome' | 'firefox' =
     browserType || raw?.browser?.type || (raw?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
   const targetVer =
     browserVersion || raw?.browser?.version || raw?.navigator?.browserVersion || (targetBrowser === 'firefox' ? '129.0' : '131.0.0.0')
 
+  // v3: If deviceTemplateId is available, use the resolver pipeline
+  if (deviceTemplateId) {
+    const template = getDeviceTemplateById(deviceTemplateId)
+    if (template) {
+      try {
+        const resolved = generateFromDeviceTemplate({
+          osType: targetOs,
+          browserType: targetBrowser,
+          browserVersion: targetVer,
+          deviceTemplateId,
+          seed: raw?.seed || 'stable-seed'
+        })
+        logger.info('browser', `[v3 Resolver] Fingerprint resolved from device template "${deviceTemplateId}" (model: ${template.model})`)
+        return resolved.fingerprint
+      } catch (err: any) {
+        logger.warn('browser', `[v3 Resolver] Fallback to v2 recalculate: ${err.message}`)
+      }
+    }
+  }
+
+  // v2 fallback: recalculate dependent fields
   const base = raw && typeof raw === 'object' ? raw : createDefaultFingerprint()
   return recalculateDependentFields(base, {
     osType: targetOs,
@@ -562,15 +596,25 @@ export async function launchBrowser(
     (effectiveBrowserType === 'firefox' ? '129.0' : '131.0.0.0')
 
   // Enforce consistent fingerprint normalization
+  // v3: Check for deviceTemplateId on the profile
+  const deviceTemplateId = (profile as any).deviceTemplateId || rawFp?.deviceTemplateId || undefined
+
   const fingerprint: Fingerprint = normalizeFingerprint(
     rawFp,
     profile.osType || 'windows-10',
     effectiveBrowserType,
-    effectiveBrowserVer
+    effectiveBrowserVer,
+    deviceTemplateId
   )
 
-  // Validate consistency before launching
-  const consistencyReport = validateConsistency(fingerprint, (profile.osType as any) || 'windows-10', effectiveBrowserType, effectiveBrowserVer)
+  // Validate consistency before launching (v3: passes deviceTemplateId for template-locked checks)
+  const consistencyReport = validateConsistency(
+    fingerprint,
+    (profile.osType as any) || 'windows-10',
+    effectiveBrowserType,
+    effectiveBrowserVer,
+    deviceTemplateId
+  )
 
   // Resolve proxy
   let proxy: Proxy | null = null
@@ -609,6 +653,7 @@ export async function launchBrowser(
     osType: profile.osType || 'windows-10',
     browserEngine: effectiveBrowserType,
     browserVersion: effectiveBrowserVer,
+    deviceTemplateId: deviceTemplateId || '[legacy/none]',
     platform: fingerprint.navigator?.platform,
     screen: `${fingerprint.screen?.width}x${fingerprint.screen?.height} @${fingerprint.screen?.devicePixelRatio}x`,
     hardwareConcurrency: fingerprint.navigator?.hardwareConcurrency,
