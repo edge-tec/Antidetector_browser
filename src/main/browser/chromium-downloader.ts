@@ -309,6 +309,12 @@ export async function downloadAndInstallManagedChromium(onProgress?: DownloadPro
       execSync(`"${execPath}" --version`, { encoding: 'utf8', timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] })
     } catch {}
 
+    // Apply custom Chromium branding assets to the newly extracted runtime
+    try {
+      const { BrowserIconManager } = require('./branding/browser-icon-manager')
+      BrowserIconManager.patchChromiumRuntimeBranding(execPath)
+    } catch {}
+
     currentDownload.isDownloading = false
     currentDownload.progress = 100
     logger.info('browser', `[ChromiumManager] Successfully installed Managed Chromium at: ${execPath}`)

@@ -303,13 +303,122 @@ export class BrowserIconManager {
   }
 
   /**
+   * Patch standalone or system Chromium runtime package / bundle to use custom branding.
+   * - macOS: updates app.icns, document.icns, and Info.plist in Google Chrome for Testing.app / Chromium.app
+   * - Windows: updates visualelements and shortcut icons in the Chromium directory
+   * - Linux: updates product logos and creates .desktop entry
+   */
+  public static patchChromiumRuntimeBranding(executablePath?: string | null): boolean {
+    try {
+      const resolvedIcon = this.resolveIcon('chromium')
+      if (!resolvedIcon) return false
+
+      let targetExec = executablePath
+      if (!targetExec) {
+        try {
+          const { getManagedChromiumExecutable } = require('../chromium-downloader')
+          targetExec = getManagedChromiumExecutable()
+        } catch {}
+      }
+
+      if (!targetExec || !fs.existsSync(targetExec)) return false
+
+      if (process.platform === 'darwin') {
+        const appBundle = targetExec.includes('.app') ? targetExec.split('.app')[0] + '.app' : null
+        if (appBundle && fs.existsSync(appBundle)) {
+          const resDir = path.join(appBundle, 'Contents', 'Resources')
+          if (fs.existsSync(resDir)) {
+            if (resolvedIcon.icnsPath && fs.existsSync(resolvedIcon.icnsPath)) {
+              fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'app.icns'))
+              fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'document.icns'))
+              const appProfileIcns = path.join(resDir, 'app_profile.icns')
+              if (fs.existsSync(appProfileIcns)) {
+                fs.copyFileSync(resolvedIcon.icnsPath, appProfileIcns)
+              }
+            }
+          }
+          const infoPlist = path.join(appBundle, 'Contents', 'Info.plist')
+          if (fs.existsSync(infoPlist)) {
+            try {
+              let plistContent = fs.readFileSync(infoPlist, 'utf8')
+              plistContent = plistContent.replace(/<key>CFBundleDisplayName<\/key>\s*<string>[^<]*<\/string>/, '<key>CFBundleDisplayName</key>\n\t<string>AntiProfiles Chromium</string>')
+              plistContent = plistContent.replace(/<key>CFBundleName<\/key>\s*<string>[^<]*<\/string>/, '<key>CFBundleName</key>\n\t<string>AntiProfiles Chromium</string>')
+              fs.writeFileSync(infoPlist, plistContent, 'utf8')
+            } catch {}
+          }
+          try {
+            execSync(`touch "${appBundle}"`, { stdio: 'ignore' })
+          } catch {}
+          logger.info('browser', `[Branding] Patched macOS Chromium .app bundle at: ${appBundle}`)
+          return true
+        }
+      } else if (process.platform === 'win32') {
+        const chromeDir = path.dirname(targetExec)
+        const visDir = path.join(chromeDir, 'VisualElements')
+        if (!fs.existsSync(visDir)) {
+          try { fs.mkdirSync(visDir, { recursive: true }) } catch {}
+        }
+        if (fs.existsSync(visDir) && resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(visDir, 'VisualElements_70.png'))
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(visDir, 'VisualElements_150.png'))
+        }
+        if (resolvedIcon.icoPath && fs.existsSync(resolvedIcon.icoPath)) {
+          fs.copyFileSync(resolvedIcon.icoPath, path.join(chromeDir, 'app.ico'))
+        }
+        logger.info('browser', `[Branding] Patched Windows Chromium runtime at: ${chromeDir}`)
+        return true
+      } else {
+        const chromeDir = path.dirname(targetExec)
+        const desktopPath = path.join(chromeDir, 'antiprofiles-chromium.desktop')
+        const desktopContent = `[Desktop Entry]\nVersion=1.0\nName=AntiProfiles Chromium\nExec="${targetExec}" %U\nIcon=${resolvedIcon.pngPath || 'chromium'}\nType=Application\nCategories=Network;WebBrowser;\n`
+        try {
+          fs.writeFileSync(desktopPath, desktopContent, 'utf8')
+        } catch {}
+        logger.info('browser', `[Branding] Patched Linux Chromium runtime at: ${chromeDir}`)
+        return true
+      }
+      return false
+    } catch (err: any) {
+      logger.warn('browser', `[Branding] Could not patch Chromium runtime branding: ${err.message}`)
+      return false
+    }
+  }
+
+  /**
+   * Setup Chromium profile-level branding assets.
+   */
+  public static setupChromiumBranding(userDataDir: string, profile: Profile): void {
+    try {
+      const resolvedIcon = this.resolveIcon('chromium', profile)
+      const brandingDir = path.join(userDataDir, 'branding')
+      if (!fs.existsSync(brandingDir)) {
+        fs.mkdirSync(brandingDir, { recursive: true })
+      }
+
+      if (resolvedIcon.icoPath && fs.existsSync(resolvedIcon.icoPath)) {
+        fs.copyFileSync(resolvedIcon.icoPath, path.join(brandingDir, 'app.ico'))
+      }
+
+      if (resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
+        fs.copyFileSync(resolvedIcon.pngPath, path.join(brandingDir, 'app.png'))
+        fs.copyFileSync(resolvedIcon.pngPath, path.join(brandingDir, 'icon-128.png'))
+      }
+
+      logger.info('browser', `[Branding] Custom Chromium profile branding provisioned for "${profile.name}" from ${resolvedIcon.source}`)
+    } catch (err: any) {
+      logger.warn('browser', `[Branding] Could not setup Chromium branding: ${err.message}`)
+    }
+  }
+
+  /**
    * Get Chromium launch arguments for custom branding / window class / AppUserModelID.
    */
   public static getChromiumBrandingArgs(profile: Profile): string[] {
     const resolvedIcon = this.resolveIcon('chromium', profile)
     const args: string[] = [
       `--app-id=antiprofiles.browser.${profile.id}`,
-      `--class=antiprofiles-chromium`
+      `--class=antiprofiles-chromium`,
+      `--app-name=AntiProfiles Chromium`
     ]
 
     if (process.platform === 'win32' && resolvedIcon.icoPath) {

@@ -129,4 +129,33 @@ describe('Custom Browser Branding & Profile Icon Architecture', () => {
       expect(plistAfter).toContain('AntiProfiles Firefox')
     })
   })
+
+  describe('7. Chromium Standalone Runtime Package Patching & Profile Branding', () => {
+    it('patches standalone Chromium .app bundle resources and provisions profile branding assets', () => {
+      // Create a mock macOS Chrome.app structure
+      const mockApp = path.join(tempDir, 'Google Chrome for Testing.app')
+      const mockContents = path.join(mockApp, 'Contents')
+      const mockRes = path.join(mockContents, 'Resources')
+      const mockMacOS = path.join(mockContents, 'MacOS')
+      fs.mkdirSync(mockRes, { recursive: true })
+      fs.mkdirSync(mockMacOS, { recursive: true })
+
+      const mockExec = path.join(mockMacOS, 'Google Chrome for Testing')
+      fs.writeFileSync(mockExec, '#!/bin/sh\nexit 0\n')
+      fs.writeFileSync(path.join(mockContents, 'Info.plist'), '<plist><dict><key>CFBundleDisplayName</key><string>Chromium</string><key>CFBundleName</key><string>Chromium</string></dict></plist>')
+      fs.writeFileSync(path.join(mockRes, 'app.icns'), Buffer.from('old-icns'))
+
+      const patched = BrowserIconManager.patchChromiumRuntimeBranding(mockExec)
+      expect(patched).toBe(true)
+
+      const plistAfter = fs.readFileSync(path.join(mockContents, 'Info.plist'), 'utf8')
+      expect(plistAfter).toContain('AntiProfiles Chromium')
+
+      // Profile branding setup
+      const mockProfile: any = { id: 'test-chrome-profile', name: 'Chrome Work Profile' }
+      BrowserIconManager.setupChromiumBranding(tempDir, mockProfile)
+      const brandingDir = path.join(tempDir, 'branding')
+      expect(fs.existsSync(brandingDir)).toBe(true)
+    })
+  })
 })

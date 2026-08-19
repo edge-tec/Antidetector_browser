@@ -122,8 +122,11 @@ export class EmailService {
           auth: {
             user: smtpConfig.user,
             pass: smtpConfig.password
-          }
-        })
+          },
+          connectionTimeout: 2000,
+          greetingTimeout: 2000,
+          socketTimeout: 2000
+        } as any)
 
         await transporter.sendMail({
           from: `"AntiProfiles Security" <${smtpConfig.fromEmail || smtpConfig.user}>`,
@@ -174,8 +177,11 @@ export class EmailService {
           auth: {
             user: smtpConfig.user,
             pass: smtpConfig.password
-          }
-        })
+          },
+          connectionTimeout: 2000,
+          greetingTimeout: 2000,
+          socketTimeout: 2000
+        } as any)
 
         await transporter.sendMail({
           from: `"AntiProfiles Security" <${smtpConfig.fromEmail || smtpConfig.user}>`,

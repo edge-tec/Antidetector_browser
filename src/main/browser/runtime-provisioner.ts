@@ -580,6 +580,11 @@ export async function ensureBrowserRuntime(engine: BrowserEngine, profileId?: st
         const { BrowserIconManager } = require('./branding/browser-icon-manager')
         BrowserIconManager.patchFirefoxRuntimeBranding(finalExec)
       } catch {}
+    } else if (engine === 'chromium') {
+      try {
+        const { BrowserIconManager } = require('./branding/browser-icon-manager')
+        BrowserIconManager.patchChromiumRuntimeBranding(finalExec)
+      } catch {}
     }
 
     logger.info('browser', `[RuntimeProvisioner] Successfully installed and verified ${engineName} at: ${finalExec}`)

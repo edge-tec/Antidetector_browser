@@ -751,6 +751,8 @@ export async function launchBrowser(
     setupProfileBookmarks(userDataDir, fingerprint.browser.bookmarks)
   }
 
+  BrowserIconManager.patchChromiumRuntimeBranding(executablePath)
+  BrowserIconManager.setupChromiumBranding(userDataDir, profile)
   const args = buildLaunchArgs(profile, fingerprint, launchProxy)
   const brandingArgs = BrowserIconManager.getChromiumBrandingArgs(profile)
   args.push(...brandingArgs)
