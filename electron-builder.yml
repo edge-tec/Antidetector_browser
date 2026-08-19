@@ -16,7 +16,7 @@ asarUnpack:
 
 # ── macOS Packaging ──
 mac:
-  icon: resources/icon.png
+  icon: resources/icon.icns
   category: public.app-category.developer-tools
   darkModeSupport: true
   minimumSystemVersion: '10.15'
@@ -38,7 +38,7 @@ dmg:
 
 # ── Windows Packaging ──
 win:
-  icon: resources/icon.png
+  icon: resources/icon.ico
   target:
     - target: nsis
       arch:

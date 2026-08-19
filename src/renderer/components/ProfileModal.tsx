@@ -17,6 +17,8 @@ import { parseCookies, CookieItem } from '../utils/cookie-parser'
 import { ProxyInfoCard } from './ProxyInfoCard'
 import { ConsistencyBadge, ConsistencyResult } from './ConsistencyBadge'
 import { ProxyTestResult } from '../types'
+import chromeIconImg from '../assets/antiprofiles-chrome.png'
+import firefoxIconImg from '../assets/antiprofiles-firefox.png'
 
 interface Props {
   isOpen: boolean
@@ -1899,7 +1901,7 @@ export const ProfileModal: React.FC<Props> = ({
                           textAlign: 'left'
                         }}
                       >
-                        <span style={{ fontSize: '20px' }}>🌐</span>
+                        <img src={chromeIconImg} alt="Antiprofile Chrome" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
                         <div>
                           <div style={{ color: browserType === 'chrome' ? '#FFF' : '#CBD5E1', fontWeight: 600 }}>Google Chrome / Chromium</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>Blink Engine • Full Client Hints</div>
@@ -1925,7 +1927,7 @@ export const ProfileModal: React.FC<Props> = ({
                           textAlign: 'left'
                         }}
                       >
-                        <span style={{ fontSize: '20px' }}>🦊</span>
+                        <img src={firefoxIconImg} alt="Antiprofile Firefox" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} />
                         <div>
                           <div style={{ color: browserType === 'firefox' ? '#FFF' : '#CBD5E1', fontWeight: 600 }}>Mozilla Firefox</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>Gecko Engine • Firefox Quantum</div>

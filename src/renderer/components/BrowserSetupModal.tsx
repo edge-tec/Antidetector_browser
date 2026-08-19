@@ -1,8 +1,6 @@
-// ──────────────────────────────────────────────
-// AntiProfiles — Browser Setup & Diagnostic Modal
-// ──────────────────────────────────────────────
-
 import React, { useState, useEffect } from 'react'
+import chromeIconImg from '../assets/antiprofiles-chrome.png'
+import firefoxIconImg from '../assets/antiprofiles-firefox.png'
 
 interface BrowserSetupModalProps {
   isOpen: boolean
@@ -327,13 +325,20 @@ export function BrowserSetupModal({
                 borderRadius: 8,
                 padding: 12
               }}>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {isFirefoxSelected ? (
-                    <>🦊 <strong>Mozilla Firefox (Gecko Engine)</strong>: AntiProfiles launches isolated Firefox profiles with customized <code>user.js</code> preferences, strict WebRTC privacy, and proxy isolation.</>
+                    <img src={firefoxIconImg} alt="Antiprofile Firefox" style={{ width: '24px', height: '24px', borderRadius: '6px', objectFit: 'cover' }} />
                   ) : (
-                    <>🌐 <strong>{engine}</strong>: AntiProfiles launches isolated browser sessions with CDP injection, customized fingerprint attributes, and proxy routing.</>
+                    <img src={chromeIconImg} alt="Antiprofile Chromium" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
                   )}
-                </p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
+                    {isFirefoxSelected ? (
+                      <><strong>Mozilla Firefox (Gecko Engine)</strong>: AntiProfiles launches isolated Firefox profiles with customized <code>user.js</code> preferences, strict WebRTC privacy, and proxy isolation.</>
+                    ) : (
+                      <><strong>{engine}</strong>: AntiProfiles launches isolated browser sessions with CDP injection, customized fingerprint attributes, and proxy routing.</>
+                    )}
+                  </p>
+                </div>
               </div>
 
               {/* Browser Engine Selection */}

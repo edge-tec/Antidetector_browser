@@ -1,8 +1,6 @@
-// ──────────────────────────────────────────────
-// AntiProfiles — Runtime Provisioning & Download Progress Modal
-// ──────────────────────────────────────────────
-
 import React from 'react'
+import chromeIconImg from '../assets/antiprofiles-chrome.png'
+import firefoxIconImg from '../assets/antiprofiles-firefox.png'
 
 export interface ProvisioningProgressData {
   profileId?: string
@@ -28,7 +26,9 @@ export const RuntimeProvisioningModal: React.FC<Props> = ({ data, onClose }) => 
 
   const isChromium = data.engine === 'chromium'
   const engineTitle = isChromium ? 'Google Chromium Engine' : 'Mozilla Firefox Quantum'
-  const engineIcon = isChromium ? '🌐' : '🦊'
+  const engineIcon = isChromium
+    ? <img src={chromeIconImg} alt="Antiprofile Chromium" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+    : <img src={firefoxIconImg} alt="Antiprofile Firefox" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }} />
   const accentColor = isChromium ? '#38BDF8' : '#FB923C'
 
   const formatMB = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1)

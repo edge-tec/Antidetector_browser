@@ -1,8 +1,6 @@
-// ──────────────────────────────────────────────
-// AntiProfiles — Standalone Browser Runtime Manager UI
-// ──────────────────────────────────────────────
-
 import React, { useState, useEffect } from 'react'
+import chromeIconImg from '../assets/antiprofiles-chrome.png'
+import firefoxIconImg from '../assets/antiprofiles-firefox.png'
 
 interface RuntimeInfo {
   installed: boolean
@@ -85,7 +83,7 @@ export const BrowserRuntimeManager: React.FC = () => {
 
   const renderEngineCard = (
     title: string,
-    icon: string,
+    icon: React.ReactNode,
     engine: 'chromium' | 'firefox',
     info: RuntimeInfo | undefined,
     color: string
@@ -110,8 +108,8 @@ export const BrowserRuntimeManager: React.FC = () => {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '28px' }}>{icon}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9', fontWeight: 600 }}>{title}</h3>
                 <span style={{ fontSize: '12px', color: '#94A3B8' }}>Official Standalone Managed Build</span>
@@ -280,8 +278,20 @@ export const BrowserRuntimeManager: React.FC = () => {
       )}
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-        {renderEngineCard('Google Chromium Engine', '🌐', 'chromium', data?.chromium, '#38BDF8')}
-        {renderEngineCard('Mozilla Firefox Quantum Engine', '🦊', 'firefox', data?.firefox, '#FB923C')}
+        {renderEngineCard(
+          'Google Chromium Engine',
+          <img src={chromeIconImg} alt="Antiprofile Chromium" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />,
+          'chromium',
+          data?.chromium,
+          '#38BDF8'
+        )}
+        {renderEngineCard(
+          'Mozilla Firefox Quantum Engine',
+          <img src={firefoxIconImg} alt="Antiprofile Firefox" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />,
+          'firefox',
+          data?.firefox,
+          '#FB923C'
+        )}
       </div>
     </div>
   )
