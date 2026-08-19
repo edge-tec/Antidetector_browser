@@ -192,11 +192,21 @@ export class BrowserIconManager {
         fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDefaultDir, 'default48.png'))
         fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDefaultDir, 'default64.png'))
         fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDefaultDir, 'default128.png'))
+        fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDefaultDir, 'default256.png'))
+        fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDefaultDir, 'about-logo.png'))
       }
 
-      // 2. Enable toolkit.legacyUserProfileCustomizations.stylesheets in user.js if needed
+      // 2. Enable toolkit.legacyUserProfileCustomizations.stylesheets in user.js
       const userJsPath = path.join(userDataDir, 'user.js')
-      const prefLine = 'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);\n'
+      const prefLine = [
+        'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);',
+        'user_pref("app.branding.name", "AntiProfiles Firefox");',
+        'user_pref("app.branding.app", "AntiProfiles Firefox");',
+        'user_pref("app.branding.version", "129.0");',
+        'user_pref("browser.aboutwelcome.enabled", false);',
+        'user_pref("browser.newtabpage.activity-stream.showSearch", false);'
+      ].join('\n') + '\n'
+
       if (fs.existsSync(userJsPath)) {
         const content = fs.readFileSync(userJsPath, 'utf8')
         if (!content.includes('toolkit.legacyUserProfileCustomizations.stylesheets')) {
@@ -207,6 +217,88 @@ export class BrowserIconManager {
       logger.info('browser', `[Branding] Custom Firefox branding installed for profile "${profile.name}" from ${resolvedIcon.source}`)
     } catch (err: any) {
       logger.warn('browser', `[Branding] Could not setup Firefox branding: ${err.message}`)
+    }
+  }
+
+  /**
+   * Patch standalone or system Firefox runtime package / bundle to use custom branding.
+   * - macOS: updates Firefox.app/Contents/Resources/firefox.icns and document.icns, updates Info.plist
+   * - Windows: updates visualelements and browser/chrome/icons/default/main-window.ico
+   * - Linux: updates browser/chrome/icons/default/ and generates .desktop entry
+   */
+  public static patchFirefoxRuntimeBranding(executablePath?: string | null): boolean {
+    try {
+      const resolvedIcon = this.resolveIcon('firefox')
+      if (!resolvedIcon) return false
+
+      let targetExec = executablePath
+      if (!targetExec) {
+        try {
+          const { getManagedFirefoxExecutable } = require('../firefox-downloader')
+          targetExec = getManagedFirefoxExecutable()
+        } catch {}
+      }
+
+      if (!targetExec || !fs.existsSync(targetExec)) return false
+
+      if (process.platform === 'darwin') {
+        const appBundle = targetExec.includes('.app') ? targetExec.split('.app')[0] + '.app' : null
+        if (appBundle && fs.existsSync(appBundle)) {
+          const resDir = path.join(appBundle, 'Contents', 'Resources')
+          if (fs.existsSync(resDir)) {
+            if (resolvedIcon.icnsPath && fs.existsSync(resolvedIcon.icnsPath)) {
+              fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'firefox.icns'))
+              fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'document.icns'))
+            }
+          }
+          const infoPlist = path.join(appBundle, 'Contents', 'Info.plist')
+          if (fs.existsSync(infoPlist)) {
+            try {
+              let plistContent = fs.readFileSync(infoPlist, 'utf8')
+              plistContent = plistContent.replace(/<key>CFBundleDisplayName<\/key>\s*<string>[^<]*<\/string>/, '<key>CFBundleDisplayName</key>\n\t<string>AntiProfiles Firefox</string>')
+              plistContent = plistContent.replace(/<key>CFBundleName<\/key>\s*<string>[^<]*<\/string>/, '<key>CFBundleName</key>\n\t<string>AntiProfiles Firefox</string>')
+              fs.writeFileSync(infoPlist, plistContent, 'utf8')
+            } catch {}
+          }
+          try {
+            execSync(`touch "${appBundle}"`, { stdio: 'ignore' })
+          } catch {}
+          logger.info('browser', `[Branding] Patched macOS Firefox.app bundle at: ${appBundle}`)
+          return true
+        }
+      } else if (process.platform === 'win32') {
+        const firefoxDir = path.dirname(targetExec)
+        const visDir = path.join(firefoxDir, 'browser', 'visualelements')
+        if (fs.existsSync(visDir) && resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(visDir, 'VisualElements_70.png'))
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(visDir, 'VisualElements_150.png'))
+        }
+        const iconsDir = path.join(firefoxDir, 'browser', 'chrome', 'icons', 'default')
+        if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true })
+        if (resolvedIcon.icoPath && fs.existsSync(resolvedIcon.icoPath)) {
+          fs.copyFileSync(resolvedIcon.icoPath, path.join(iconsDir, 'main-window.ico'))
+          fs.copyFileSync(resolvedIcon.icoPath, path.join(iconsDir, 'default.ico'))
+        }
+        logger.info('browser', `[Branding] Patched Windows Firefox runtime at: ${firefoxDir}`)
+        return true
+      } else {
+        const firefoxDir = path.dirname(targetExec)
+        const iconsDir = path.join(firefoxDir, 'browser', 'chrome', 'icons', 'default')
+        if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true })
+        if (resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'main-window.png'))
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'default16.png'))
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'default32.png'))
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'default48.png'))
+          fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'default128.png'))
+        }
+        logger.info('browser', `[Branding] Patched Linux Firefox runtime at: ${firefoxDir}`)
+        return true
+      }
+      return false
+    } catch (err: any) {
+      logger.warn('browser', `[Branding] Could not patch Firefox runtime branding: ${err.message}`)
+      return false
     }
   }
 
@@ -295,6 +387,11 @@ export class BrowserIconManager {
       // Generate multi-size .ico
       this.generateIcoFromPng(targetPng, targetIco)
 
+      // Generate native macOS .icns
+      if (process.platform === 'darwin') {
+        this.generateIcnsFromPng(targetPng, targetIcns)
+      }
+
       // Clean temp
       try {
         fs.unlinkSync(tempIn)
@@ -306,6 +403,11 @@ export class BrowserIconManager {
         `branding_${target}_custom`,
         'true'
       )
+
+      // If target is firefox or app, patch any existing standalone runtime packages
+      if (target === 'firefox') {
+        this.patchFirefoxRuntimeBranding()
+      }
 
       const previewUrl = this.pathToDataUrl(targetPng)
       logger.info('admin', `[Branding] Successfully updated custom branding icon for: ${target}`)
@@ -444,6 +546,43 @@ export class BrowserIconManager {
       fs.writeFileSync(targetIco, icoBuf)
     } catch (err: any) {
       logger.warn('system', `Could not generate ICO: ${err.message}`)
+    }
+  }
+
+  /**
+   * Helper to build a native macOS ICNS file with 16 to 1024 Retina resolutions.
+   */
+  private static generateIcnsFromPng(sourcePng: string, targetIcns: string): void {
+    if (process.platform !== 'darwin') return
+    try {
+      if (!fs.existsSync(sourcePng)) return
+      const customDir = this.getCustomBrandingDir()
+      const iconsetDir = path.join(customDir, `temp_${Date.now()}.iconset`)
+      if (fs.existsSync(iconsetDir)) fs.rmSync(iconsetDir, { recursive: true, force: true })
+      fs.mkdirSync(iconsetDir, { recursive: true })
+
+      const sizes = [
+        { name: 'icon_16x16.png', size: 16 },
+        { name: 'icon_16x16@2x.png', size: 32 },
+        { name: 'icon_32x32.png', size: 32 },
+        { name: 'icon_32x32@2x.png', size: 64 },
+        { name: 'icon_128x128.png', size: 128 },
+        { name: 'icon_128x128@2x.png', size: 256 },
+        { name: 'icon_256x256.png', size: 256 },
+        { name: 'icon_256x256@2x.png', size: 512 },
+        { name: 'icon_512x512.png', size: 512 },
+        { name: 'icon_512x512@2x.png', size: 1024 }
+      ]
+
+      for (const s of sizes) {
+        const outPath = path.join(iconsetDir, s.name)
+        execSync(`sips -z ${s.size} ${s.size} -s format png "${sourcePng}" --out "${outPath}"`, { stdio: 'ignore' })
+      }
+
+      execSync(`iconutil -c icns "${iconsetDir}" -o "${targetIcns}"`, { stdio: 'ignore' })
+      fs.rmSync(iconsetDir, { recursive: true, force: true })
+    } catch (err: any) {
+      logger.warn('system', `Could not generate ICNS: ${err.message}`)
     }
   }
 

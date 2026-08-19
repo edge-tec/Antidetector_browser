@@ -575,6 +575,13 @@ export async function ensureBrowserRuntime(engine: BrowserEngine, profileId?: st
       throw new Error(`Verification failed for ${engineName}: ${verification.error}`)
     }
 
+    if (engine === 'firefox') {
+      try {
+        const { BrowserIconManager } = require('./branding/browser-icon-manager')
+        BrowserIconManager.patchFirefoxRuntimeBranding(finalExec)
+      } catch {}
+    }
+
     logger.info('browser', `[RuntimeProvisioner] Successfully installed and verified ${engineName} at: ${finalExec}`)
     emitProvisioningStatus({
       profileId,

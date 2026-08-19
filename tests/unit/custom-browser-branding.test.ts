@@ -106,4 +106,27 @@ describe('Custom Browser Branding & Profile Icon Architecture', () => {
       expect(resetRes.success).toBe(true)
     })
   })
+
+  describe('6. Firefox Standalone Runtime Package Patching', () => {
+    it('patches standalone macOS/Windows/Linux Firefox bundle resources with custom branding', () => {
+      // Create a mock macOS Firefox.app structure
+      const mockApp = path.join(tempDir, 'Firefox.app')
+      const mockContents = path.join(mockApp, 'Contents')
+      const mockRes = path.join(mockContents, 'Resources')
+      const mockMacOS = path.join(mockContents, 'MacOS')
+      fs.mkdirSync(mockRes, { recursive: true })
+      fs.mkdirSync(mockMacOS, { recursive: true })
+
+      const mockExec = path.join(mockMacOS, 'firefox')
+      fs.writeFileSync(mockExec, '#!/bin/sh\nexit 0\n')
+      fs.writeFileSync(path.join(mockContents, 'Info.plist'), '<plist><dict><key>CFBundleDisplayName</key><string>Firefox</string><key>CFBundleName</key><string>Firefox</string></dict></plist>')
+      fs.writeFileSync(path.join(mockRes, 'firefox.icns'), Buffer.from('old-icns'))
+
+      const patched = BrowserIconManager.patchFirefoxRuntimeBranding(mockExec)
+      expect(patched).toBe(true)
+
+      const plistAfter = fs.readFileSync(path.join(mockContents, 'Info.plist'), 'utf8')
+      expect(plistAfter).toContain('AntiProfiles Firefox')
+    })
+  })
 })

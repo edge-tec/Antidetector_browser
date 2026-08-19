@@ -10,6 +10,8 @@ import { ResolvedFirefoxProfile } from './firefox-resolver'
 import { buildInjectionScript } from '../injection/injector'
 import { logger } from '../../logging/logger'
 
+import { BrowserIconManager } from '../branding/browser-icon-manager'
+
 /**
  * Builds and installs the AntiProfiles Runtime Isolation WebExtension
  * directly into the Firefox profile's extension directory.
@@ -45,12 +47,29 @@ export function installFirefoxRuntimeExtension(
 })();
 `
 
-    // 3. Manifest v2 (Compatible across all Firefox Quantum / ESR versions)
+    // 3. Icons provisioning
+    const iconsDir = path.join(extensionDir, 'icons')
+    if (!fs.existsSync(iconsDir)) {
+      fs.mkdirSync(iconsDir, { recursive: true })
+    }
+    const resolvedIcon = BrowserIconManager.resolveIcon('firefox', resolvedProfile.profile)
+    if (resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
+      fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-16.png'))
+      fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-48.png'))
+      fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-128.png'))
+    }
+
+    // 4. Manifest v2 (Compatible across all Firefox Quantum / ESR versions)
     const manifest = {
       manifest_version: 2,
       name: 'AntiProfiles Runtime Isolation Guard',
       version: '1.0.0',
       description: 'Applies resolved profile fingerprint parameters to web pages at runtime',
+      icons: {
+        '16': 'icons/icon-16.png',
+        '48': 'icons/icon-48.png',
+        '128': 'icons/icon-128.png'
+      },
       applications: {
         gecko: {
           id: 'antiprofiles-guard@antiprofiles.com',

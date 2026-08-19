@@ -345,6 +345,7 @@ export async function launchFirefox(
 
   const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, resolvedProfile, launchProxy)
+  BrowserIconManager.patchFirefoxRuntimeBranding(firefoxPath)
   BrowserIconManager.setupFirefoxBranding(userDataDir, profile)
 
   // Use standard -no-remote, -profile, and responsive user-friendly dimensions

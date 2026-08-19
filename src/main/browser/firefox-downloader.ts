@@ -334,6 +334,12 @@ export async function downloadAndInstallManagedFirefox(onProgress?: DownloadProg
       }
     }
 
+    // Apply custom Firefox branding assets to the newly extracted runtime
+    try {
+      const { BrowserIconManager } = require('./branding/browser-icon-manager')
+      BrowserIconManager.patchFirefoxRuntimeBranding(executablePath)
+    } catch {}
+
     logger.info('browser', `[ManagedFirefox] Managed Firefox runtime successfully installed at: ${executablePath}`)
     currentDownload.isDownloading = false
     currentDownload.progress = 100
