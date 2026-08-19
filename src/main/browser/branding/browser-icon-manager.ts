@@ -88,8 +88,17 @@ export class BrowserIconManager {
     engine: BrowserEngineType = 'chromium',
     profile?: Partial<Profile> | null
   ): ResolvedBrowserIcon {
-    const normalizedEngine: 'chromium' | 'firefox' =
-      engine === 'firefox' || profile?.browserVersion?.includes('Firefox') ? 'firefox' : 'chromium'
+    let isFirefox = engine === 'firefox'
+    if (profile) {
+      if ((profile as any).browserType === 'firefox') isFirefox = true
+      else if (profile.browserVersion?.toLowerCase().includes('firefox')) isFirefox = true
+      else if (profile.userAgent?.includes('Firefox') || profile.userAgent?.includes('FxiOS')) isFirefox = true
+      else if (profile.fingerprint) {
+        if (typeof profile.fingerprint === 'object' && profile.fingerprint.browser?.type === 'firefox') isFirefox = true
+        else if (typeof profile.fingerprint === 'string' && profile.fingerprint.includes('"type":"firefox"')) isFirefox = true
+      }
+    }
+    const normalizedEngine: 'chromium' | 'firefox' = isFirefox ? 'firefox' : 'chromium'
 
     const customDir = this.getCustomBrandingDir()
     const profileDir = this.getProfileIconsDir()

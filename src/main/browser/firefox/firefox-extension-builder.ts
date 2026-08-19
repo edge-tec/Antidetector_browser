@@ -31,18 +31,37 @@ export function installFirefoxRuntimeExtension(
     // 1. Build the JavaScript injection payload
     const rawInjectionPayload = buildInjectionScript(resolvedProfile.fingerprint, 'firefox')
 
-    // 2. Create the content-bridge.js script
+    // 2. Create the content-bridge.js script with resilient document_start execution
     const contentBridgeJs = `// AntiProfiles Firefox Runtime Content Bridge
 (function() {
   'use strict';
-  try {
-    const code = ${JSON.stringify(rawInjectionPayload)};
-    const scriptEl = document.createElement('script');
-    scriptEl.textContent = code;
-    (document.head || document.documentElement).appendChild(scriptEl);
-    scriptEl.remove();
-  } catch (err) {
-    // Silent fail
+  const code = ${JSON.stringify(rawInjectionPayload)};
+  function inject() {
+    try {
+      const target = document.documentElement || document.head || document.body;
+      if (target) {
+        const scriptEl = document.createElement('script');
+        scriptEl.textContent = code;
+        target.appendChild(scriptEl);
+        scriptEl.remove();
+        return true;
+      }
+    } catch (err) {}
+    return false;
+  }
+
+  if (!inject()) {
+    const observer = new MutationObserver(function(mutations, obs) {
+      if (document.documentElement || document.head || document.body) {
+        obs.disconnect();
+        inject();
+      }
+    });
+    try {
+      observer.observe(document, { childList: true, subtree: true });
+    } catch (e) {
+      document.addEventListener('DOMContentLoaded', inject, { once: true });
+    }
   }
 })();
 `
@@ -52,7 +71,11 @@ export function installFirefoxRuntimeExtension(
     if (!fs.existsSync(iconsDir)) {
       fs.mkdirSync(iconsDir, { recursive: true })
     }
-    const resolvedIcon = BrowserIconManager.resolveIcon('firefox', resolvedProfile.profile)
+    const resolvedIcon = BrowserIconManager.resolveIcon('firefox', {
+      id: resolvedProfile.profileId,
+      name: resolvedProfile.profileName,
+      browserVersion: resolvedProfile.browserVersion
+    } as any)
     if (resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
       fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-16.png'))
       fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-48.png'))

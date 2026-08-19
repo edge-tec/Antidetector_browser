@@ -170,16 +170,19 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   try {
     const client = await page.target().createCDPSession()
 
-    // Clear or apply device metrics override
+    // Apply authoritative device metrics override (Desktop & Mobile) to prevent host screen/DPR leakage
+    const scr = fingerprint.screen || { width: 1920, height: 1080, devicePixelRatio: 1 }
+    const osType: OSType = (fingerprint as any).osType || (fingerprint.navigator as any)?.osType || 'windows-10'
+    const isMac = osType.includes('macos')
+
     if (isAndroid || isIOS) {
-      const scr = fingerprint.screen || { width: 393, height: 852, devicePixelRatio: 3 }
       await client.send('Emulation.setDeviceMetricsOverride', {
         width: scr.width || 393,
         height: scr.height || 852,
         deviceScaleFactor: scr.devicePixelRatio || 3,
         mobile: true,
         screenOrientation: {
-          angle: 0,
+          angle: scr.orientationAngle || 0,
           type: (scr.orientation === 'portrait-primary' ? 'portraitPrimary' : 'landscapePrimary') as any
         }
       })
@@ -188,7 +191,20 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
         maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
       })
     } else {
-      await client.send('Emulation.clearDeviceMetricsOverride')
+      await client.send('Emulation.setDeviceMetricsOverride', {
+        width: scr.width || 1920,
+        height: scr.height || 1080,
+        deviceScaleFactor: scr.devicePixelRatio || (isMac ? 2 : 1),
+        mobile: false,
+        screenOrientation: {
+          angle: scr.orientationAngle || 0,
+          type: (scr.orientation === 'portrait-primary' ? 'portraitPrimary' : 'landscapePrimary') as any
+        }
+      })
+      await client.send('Emulation.setTouchEmulationEnabled', {
+        enabled: false,
+        maxTouchPoints: 0
+      })
     }
 
     // Geolocation CDP Override
@@ -206,7 +222,6 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
 
     // ── Universal User-Agent & Client Hints Override for ALL Platforms ──
     // v3: Use browser-compat-matrix to determine if Client Hints should be sent
-    const osType: OSType = (fingerprint as any).osType || 'windows-10'
     const browserType: 'chrome' | 'firefox' = isFirefox ? 'firefox' : 'chrome'
     const engine = getEngineForBrowser(osType, browserType)
     const shouldSendClientHints = engine === 'blink' && hasFeatureFlag(osType, browserType, 'client-hints')

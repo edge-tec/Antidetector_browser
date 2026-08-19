@@ -560,7 +560,6 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
       }
     }
   }
-
   return args
 }
 
@@ -574,19 +573,30 @@ import { getDeviceTemplateById } from '../fingerprint/device-templates'
  * 2) v2 recalculateDependentFields (legacy fallback)
  */
 function normalizeFingerprint(
-  raw: any,
+  raw: Partial<Fingerprint> | null,
   osType: string,
   browserType?: 'chrome' | 'firefox',
   browserVersion?: string,
-  deviceTemplateId?: string
+  deviceTemplateId?: string,
+  profile?: Profile
 ): Fingerprint {
-  const targetOs = (osType as OSType) || 'windows-10'
+  const targetOs = (osType as OSType) || (profile?.osType as OSType) || 'windows-10'
   const targetBrowser: 'chrome' | 'firefox' =
-    browserType || raw?.browser?.type || (raw?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+    browserType ||
+    (profile as any)?.browserType ||
+    raw?.browser?.type ||
+    (raw?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
   const targetVer =
-    browserVersion || raw?.browser?.version || raw?.navigator?.browserVersion || (targetBrowser === 'firefox' ? '129.0' : '131.0.0.0')
+    browserVersion ||
+    profile?.browserVersion ||
+    raw?.browser?.version ||
+    raw?.navigator?.browserVersion ||
+    (targetBrowser === 'firefox' ? '129.0' : '131.0.0.0')
 
-  // v3: If deviceTemplateId is available, use the resolver pipeline
+  logger.info('profile', `[ConfigPrecedence] Resolving Profile Hierarchy for "${profile?.name || 'profile'}": Explicit Profile Config -> Template -> Defaults (Host defaults blocked)`)
+
+  let baseFp: Fingerprint
+  // 1. If deviceTemplateId is available, generate base from template
   if (deviceTemplateId) {
     const template = getDeviceTemplateById(deviceTemplateId)
     if (template) {
@@ -598,22 +608,80 @@ function normalizeFingerprint(
           deviceTemplateId,
           seed: raw?.seed || 'stable-seed'
         })
-        logger.info('browser', `[v3 Resolver] Fingerprint resolved from device template "${deviceTemplateId}" (model: ${template.model})`)
-        return resolved.fingerprint
+        baseFp = resolved.fingerprint
       } catch (err: any) {
         logger.warn('browser', `[v3 Resolver] Fallback to v2 recalculate: ${err.message}`)
+        const base = raw && typeof raw === 'object' ? (raw as Fingerprint) : createDefaultFingerprint()
+        baseFp = recalculateDependentFields(base, {
+          osType: targetOs,
+          browserType: targetBrowser,
+          browserVersion: targetVer,
+          seed: base.seed || 'stable-seed'
+        })
       }
+    } else {
+      const base = raw && typeof raw === 'object' ? (raw as Fingerprint) : createDefaultFingerprint()
+      baseFp = recalculateDependentFields(base, {
+        osType: targetOs,
+        browserType: targetBrowser,
+        browserVersion: targetVer,
+        seed: base.seed || 'stable-seed'
+      })
+    }
+  } else {
+    const base = raw && typeof raw === 'object' ? (raw as Fingerprint) : createDefaultFingerprint()
+    baseFp = recalculateDependentFields(base, {
+      osType: targetOs,
+      browserType: targetBrowser,
+      browserVersion: targetVer,
+      seed: base.seed || 'stable-seed'
+    })
+  }
+
+  // 2. Apply Explicit Profile / Fingerprint Overrides on top of Template/Defaults
+  if (raw) {
+    if (raw.navigator) {
+      if (raw.navigator.hardwareConcurrency) baseFp.navigator.hardwareConcurrency = raw.navigator.hardwareConcurrency
+      if (raw.navigator.deviceMemory) baseFp.navigator.deviceMemory = raw.navigator.deviceMemory
+      if (raw.navigator.userAgent) baseFp.navigator.userAgent = raw.navigator.userAgent
+      if (raw.navigator.platform) baseFp.navigator.platform = raw.navigator.platform
+      if (raw.navigator.cpuArchitecture) baseFp.navigator.cpuArchitecture = raw.navigator.cpuArchitecture
+    }
+    if (raw.screen) {
+      if (raw.screen.width) baseFp.screen.width = raw.screen.width
+      if (raw.screen.height) baseFp.screen.height = raw.screen.height
+      if (raw.screen.availWidth) baseFp.screen.availWidth = raw.screen.availWidth
+      if (raw.screen.availHeight) baseFp.screen.availHeight = raw.screen.availHeight
+      if (raw.screen.devicePixelRatio) baseFp.screen.devicePixelRatio = raw.screen.devicePixelRatio
+    }
+    if (raw.webgl) {
+      if (raw.webgl.unmaskedVendor) baseFp.webgl.unmaskedVendor = raw.webgl.unmaskedVendor
+      if (raw.webgl.unmaskedRenderer) baseFp.webgl.unmaskedRenderer = raw.webgl.unmaskedRenderer
+    }
+    if (raw.locale) {
+      if (raw.locale.language) baseFp.locale.language = raw.locale.language
+      if (raw.locale.languages) baseFp.locale.languages = raw.locale.languages
+    }
+    if (raw.timezone?.timezone) {
+      baseFp.timezone.timezone = raw.timezone.timezone
+    }
+    if (raw.geolocation) {
+      baseFp.geolocation = { ...baseFp.geolocation, ...raw.geolocation }
     }
   }
 
-  // v2 fallback: recalculate dependent fields
-  const base = raw && typeof raw === 'object' ? raw : createDefaultFingerprint()
-  return recalculateDependentFields(base, {
-    osType: targetOs,
-    browserType: targetBrowser,
-    browserVersion: targetVer,
-    seed: base.seed || 'stable-seed'
-  })
+  // 3. Apply top-level Profile fields if explicitly provided on profile row
+  if (profile) {
+    if (profile.hwConcurrency) baseFp.navigator.hardwareConcurrency = profile.hwConcurrency
+    if (profile.deviceMemory) baseFp.navigator.deviceMemory = profile.deviceMemory
+    if (profile.screenWidth) baseFp.screen.width = profile.screenWidth
+    if (profile.screenHeight) baseFp.screen.height = profile.screenHeight
+    if (profile.userAgent) baseFp.navigator.userAgent = profile.userAgent
+    if (profile.language) baseFp.locale.language = profile.language
+    if (profile.timezone) baseFp.timezone.timezone = profile.timezone
+  }
+
+  return baseFp
 }
 
 /**
@@ -657,7 +725,8 @@ export async function launchBrowser(
     profile.osType || 'windows-10',
     effectiveBrowserType,
     effectiveBrowserVer,
-    deviceTemplateId
+    deviceTemplateId,
+    profile
   )
 
   // Validate consistency before launching (v3: passes deviceTemplateId for template-locked checks)

@@ -207,30 +207,30 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
 
   // 4. Resolve Hardware (CPU / RAM)
   const proc = input.processorGen || input.customOverrides?.processorGen || ''
-  let hardwareConcurrency = isIos
+  let hardwareConcurrency = input.existingFingerprint?.navigator?.hardwareConcurrency || (isIos
     ? (iosDev?.cpuCores || 6)
     : isAndroid
     ? (androidDev?.cores || 8)
-    : template?.cpuThreads || (isMac ? 10 : 8)
+    : template?.cpuThreads || (isMac ? 10 : 8))
 
-  let deviceMemory = isIos
+  let deviceMemory = input.existingFingerprint?.navigator?.deviceMemory || (isIos
     ? (iosDev?.memory || 8)
     : isAndroid
     ? (androidDev?.memory || 12)
-    : template?.memoryGB || (isMac ? 16 : 16)
+    : template?.memoryGB || (isMac ? 16 : 16))
 
   // 5. Resolve Display & Screen Metrics
-  const screenWidth = isIos
+  const screenWidth = input.existingFingerprint?.screen?.width || (isIos
     ? (iosDev?.screenWidth || 393)
     : isAndroid
     ? (androidDev?.screenWidth || 412)
-    : template?.screenWidth || (isMac ? 1512 : 1920)
+    : template?.screenWidth || (isMac ? 1512 : 1920))
 
-  const screenHeight = isIos
+  const screenHeight = input.existingFingerprint?.screen?.height || (isIos
     ? (iosDev?.screenHeight || 852)
     : isAndroid
     ? (androidDev?.screenHeight || 915)
-    : template?.screenHeight || (isMac ? 982 : 1080)
+    : template?.screenHeight || (isMac ? 982 : 1080))
 
   const taskbarHeight = isMobile ? 0 : (isMac ? 25 : isLinux ? 27 : 40)
   const availScreenWidth = screenWidth

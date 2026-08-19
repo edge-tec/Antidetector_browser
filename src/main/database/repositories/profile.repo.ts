@@ -71,9 +71,26 @@ export class ProfileRepository {
     if (!fingerprint || Object.keys(fingerprint).length === 0) {
       fingerprint = generateFingerprint({
         osType,
-        browserType: (input.browserType as any) || (fingerprint?.browser?.type as any) || 'chrome',
-        browserVersion: input.browserVersion || fingerprint?.browser?.version
+        browserType: (input.browserType as any) || 'chrome',
+        browserVersion: input.browserVersion
       })
+    }
+
+    // Strictly sync explicit creation inputs into the fingerprint object
+    if (fingerprint && fingerprint.navigator) {
+      if (input.hwConcurrency !== undefined) fingerprint.navigator.hardwareConcurrency = input.hwConcurrency
+      if (input.deviceMemory !== undefined) fingerprint.navigator.deviceMemory = input.deviceMemory
+      if (input.userAgent !== undefined) fingerprint.navigator.userAgent = input.userAgent
+    }
+    if (fingerprint && fingerprint.screen) {
+      if (input.screenWidth !== undefined) fingerprint.screen.width = input.screenWidth
+      if (input.screenHeight !== undefined) fingerprint.screen.height = input.screenHeight
+    }
+    if (fingerprint && fingerprint.locale) {
+      if (input.language !== undefined) fingerprint.locale.language = input.language
+    }
+    if (fingerprint && fingerprint.timezone) {
+      if (input.timezone !== undefined) fingerprint.timezone.timezone = input.timezone
     }
 
     const consistencyResult = validateConsistency(fingerprint, osType)
@@ -245,12 +262,25 @@ export class ProfileRepository {
     const original = this.getById(id)
     if (!original) return null
 
-    // Generate a fresh fingerprint with a new seed for the duplicate to maintain uniqueness
-    const newFp = generateFingerprint({
-      osType: original.osType as any,
-      browserType: (original as any).browserType || (original.fingerprint?.browser?.type as any) || 'chrome',
-      browserVersion: original.browserVersion || original.fingerprint?.browser?.version
-    })
+    // Deep clone the original fingerprint preserving 100% of hardware, browser, OS, GPU, and screen config
+    let newFp: any = null
+    if (original.fingerprint) {
+      try {
+        newFp = JSON.parse(JSON.stringify(original.fingerprint))
+        newFp.seed = uuidv4()
+        if (newFp.canvas) newFp.canvas.noiseSeed = Math.floor(Math.random() * 1000000)
+        if (newFp.audio) newFp.audio.noiseSeed = Math.floor(Math.random() * 1000000)
+        if (newFp.clientRects) newFp.clientRects.noiseSeed = Math.floor(Math.random() * 1000000)
+      } catch {}
+    }
+
+    if (!newFp) {
+      newFp = generateFingerprint({
+        osType: original.osType as any,
+        browserType: (original as any).browserType || (original.fingerprint?.browser?.type as any) || 'chrome',
+        browserVersion: original.browserVersion || original.fingerprint?.browser?.version
+      })
+    }
 
     return this.create({
       name: `${original.name} (Copy)`,

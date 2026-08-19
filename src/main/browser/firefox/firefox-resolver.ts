@@ -455,6 +455,12 @@ export function resolveFirefoxProfile(
     version: versionRes.version,
     customLaunchArgs: rawFp?.browser?.customLaunchArgs || []
   }
+
+  const explicitCores = profile.hwConcurrency || rawFp?.navigator?.hardwareConcurrency || (osType === 'macos-arm' ? 10 : hardware.cores)
+  const explicitMemory = profile.deviceMemory || rawFp?.navigator?.deviceMemory || (isMac ? 16 : hardware.memory)
+  const explicitWidth = profile.screenWidth || rawFp?.screen?.width || display.screenWidth
+  const explicitHeight = profile.screenHeight || rawFp?.screen?.height || display.screenHeight
+
   fp.navigator = {
     ...fp.navigator,
     userAgent: uaInfo.userAgent,
@@ -462,18 +468,18 @@ export function resolveFirefoxProfile(
     platform,
     oscpu: uaInfo.oscpu,
     vendor: isIos ? 'Apple Computer, Inc.' : '',
-    hardwareConcurrency: rawFp?.navigator?.hardwareConcurrency || hardware.cores,
-    deviceMemory: rawFp?.navigator?.deviceMemory || hardware.memory,
+    hardwareConcurrency: explicitCores,
+    deviceMemory: explicitMemory,
     maxTouchPoints: display.maxTouchPoints,
     touchSupport: display.touchSupport,
     doNotTrack: rawFp?.navigator?.doNotTrack || null
   }
   fp.screen = {
     ...fp.screen,
-    width: display.screenWidth,
-    height: display.screenHeight,
-    availWidth: display.availableScreenWidth,
-    availHeight: display.availableScreenHeight,
+    width: explicitWidth,
+    height: explicitHeight,
+    availWidth: explicitWidth,
+    availHeight: isMac ? explicitHeight - 25 : explicitHeight - 40,
     devicePixelRatio: display.devicePixelRatio,
     orientation: display.orientation,
     colorDepth: display.colorDepth,
@@ -515,18 +521,18 @@ export function resolveFirefoxProfile(
     appVersion: uaInfo.appVersion,
     productSub: isIos ? '20030107' : '20100101',
     vendor: isIos ? 'Apple Computer, Inc.' : '',
-    screenWidth: display.screenWidth,
-    screenHeight: display.screenHeight,
-    availableScreenWidth: display.availableScreenWidth,
-    availableScreenHeight: display.availableScreenHeight,
+    screenWidth: explicitWidth,
+    screenHeight: explicitHeight,
+    availableScreenWidth: explicitWidth,
+    availableScreenHeight: isMac ? explicitHeight - 25 : explicitHeight - 40,
     devicePixelRatio: display.devicePixelRatio,
-    viewportWidth: display.viewportWidth,
-    viewportHeight: display.viewportHeight,
+    viewportWidth: explicitWidth,
+    viewportHeight: isMac ? explicitHeight - 25 : explicitHeight - 40,
     orientation: display.orientation,
     colorDepth: display.colorDepth,
     pixelDepth: display.pixelDepth,
-    hardwareConcurrency: fp.navigator.hardwareConcurrency,
-    deviceMemory: fp.navigator.deviceMemory,
+    hardwareConcurrency: explicitCores,
+    deviceMemory: explicitMemory,
     touchSupport: display.touchSupport,
     maxTouchPoints: display.maxTouchPoints,
     gpuVendor: hardware.gpuVendor,

@@ -338,7 +338,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         mode: fp.locale?.mode || 'custom',
         language: fp.locale?.language || 'en-US',
         languages: fp.locale?.languages || ['en-US', 'en'],
-        displayLanguageMode: fp.locale?.displayLanguageMode || 'real',
+        displayLanguageMode: fp.locale?.displayLanguageMode || 'custom',
         displayLanguage: fp.locale?.displayLanguage || 'en-US'
       },
       timezone: {
@@ -352,7 +352,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         accuracy: fp.geolocation?.accuracy || 50
       },
       webrtc: {
-        mode: fp.webrtc?.mode || 'real',
+        mode: fp.webrtc?.mode || 'default',
         ipPolicy: fp.webrtc?.ipPolicy || 'default_public_interface_only'
       },
       canvas: {
@@ -457,7 +457,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         mode: fp.locale?.mode || 'custom',
         language: fp.locale?.language || 'en-US',
         languages: fp.locale?.languages || ['en-US', 'en'],
-        displayLanguageMode: fp.locale?.displayLanguageMode || 'real',
+        displayLanguageMode: fp.locale?.displayLanguageMode || 'custom',
         displayLanguage: fp.locale?.displayLanguage || 'en-US'
       },
       timezone: {
@@ -471,7 +471,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         accuracy: fp.geolocation?.accuracy || 50
       },
       webrtc: {
-        mode: fp.webrtc?.mode || 'real',
+        mode: fp.webrtc?.mode || 'default',
         ipPolicy: fp.webrtc?.ipPolicy || 'default_public_interface_only'
       },
       canvas: {
@@ -614,7 +614,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       mode: fp.locale?.mode || 'custom',
       language: fp.locale?.language || 'en-US',
       languages: fp.locale?.languages || ['en-US', 'en'],
-      displayLanguageMode: fp.locale?.displayLanguageMode || 'real',
+      displayLanguageMode: fp.locale?.displayLanguageMode || 'custom',
       displayLanguage: fp.locale?.displayLanguage || 'en-US'
     },
     timezone: {
@@ -628,7 +628,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       accuracy: fp.geolocation?.accuracy || 50
     },
     webrtc: {
-      mode: fp.webrtc?.mode || 'real',
+      mode: fp.webrtc?.mode || 'default',
       ipPolicy: fp.webrtc?.ipPolicy || 'default_public_interface_only'
     },
     canvas: {

@@ -8,4 +8,6 @@ out/
 *.log
 profilevault.db*
 uploads/
+scratch/
+antiprofiles_fallback.json
 
