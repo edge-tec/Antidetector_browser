@@ -203,6 +203,7 @@ export interface RecalculateOptions {
   browserVersion?: string
   deviceModelId?: string
   deviceTemplateId?: string     // v3: device template ID
+  processorGen?: string
   seed?: string
 }
 
@@ -214,7 +215,7 @@ export function recalculateDependentFields(
   currentFp: Fingerprint,
   options: RecalculateOptions
 ): Fingerprint {
-  const { osType, deviceModelId } = options
+  const { osType, deviceModelId, processorGen } = options
   const family = getOSFamily(osType)
   const isMobile = family === 'android' || family === 'ios'
   const isIos = family === 'ios'
@@ -222,8 +223,15 @@ export function recalculateDependentFields(
 
   const browserType: 'chrome' | 'firefox' =
     options.browserType || currentFp?.browser?.type || (currentFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
-  const browserVersion =
-    options.browserVersion || currentFp?.browser?.version || currentFp?.navigator?.browserVersion || (browserType === 'firefox' ? '129.0' : '131.0.0.0')
+  let defaultVer = browserType === 'firefox' ? '129.0' : '128.0.6613.120'
+  let rawVersion = options.browserVersion || currentFp?.browser?.version || currentFp?.navigator?.browserVersion || defaultVer
+  if (browserType === 'firefox' && (rawVersion.split('.').length > 2 || rawVersion.includes('6613') || rawVersion.includes('Chrome'))) {
+    rawVersion = '129.0'
+  }
+  if (browserType === 'chrome' && rawVersion.split('.').length <= 2) {
+    rawVersion = '128.0.6613.120'
+  }
+  const browserVersion = rawVersion
 
   const seed = options.seed || currentFp?.seed || crypto.randomBytes(16).toString('hex')
   const rng = new SeededRandom(seed)
@@ -264,6 +272,18 @@ export function recalculateDependentFields(
 
   let memory = isIos ? (iosDev?.memory || 8) : isAndroid ? (androidDev?.memory || 12) : currentFp?.navigator?.deviceMemory || rng.pick(OS_MEMORY_RANGES[family])
   if (isIos && memory > 8) memory = 8
+
+  if (osType === 'macos-arm' && processorGen) {
+    if (processorGen.includes('M4 Pro')) { cores = 14; memory = 24 }
+    else if (processorGen.includes('M4')) { cores = 10; memory = 16 }
+    else if (processorGen.includes('M3 Max')) { cores = 16; memory = 36 }
+    else if (processorGen.includes('M3 Pro')) { cores = 12; memory = 18 }
+    else if (processorGen.includes('M3')) { cores = 8; memory = 16 }
+    else if (processorGen.includes('M2 Max')) { cores = 12; memory = 32 }
+    else if (processorGen.includes('M2')) { cores = 8; memory = 16 }
+    else if (processorGen.includes('M1 Pro')) { cores = 10; memory = 16 }
+    else if (processorGen.includes('M1')) { cores = 8; memory = 16 }
+  }
 
   const vendor = isIos ? 'Apple Computer, Inc.' : browserType === 'firefox' ? '' : 'Google Inc.'
 
@@ -429,7 +449,18 @@ export function recalculateDependentFields(
       vKey = rng.pick(vendorKeys)
     }
     const gpuList = osGpus[vKey] || osGpus[vendorKeys[0]]
-    const gpu = rng.pick(gpuList)
+    let gpu = rng.pick(gpuList)
+
+    if (osType === 'macos-arm' && processorGen) {
+      const appleList = osGpus['apple'] || []
+      const matched = appleList.find((g: any) =>
+        (g.gpu && g.gpu.toLowerCase().includes(processorGen.toLowerCase())) ||
+        (g.renderer && g.renderer.toLowerCase().includes(processorGen.toLowerCase()))
+      )
+      if (matched) {
+        gpu = matched
+      }
+    }
 
     webgl = {
       enabled: true,

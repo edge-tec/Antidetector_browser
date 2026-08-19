@@ -277,6 +277,15 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
   const isWindows = targetOs.startsWith('windows')
   const isMobile = isIos || isAndroid
 
+  let cleanVer = bVer || (bType === 'firefox' ? '129.0' : '128.0.6613.120')
+  if (bType === 'firefox' && (cleanVer.split('.').length > 2 || cleanVer.includes('6613') || cleanVer.includes('Chrome'))) {
+    cleanVer = '129.0'
+  }
+  if (bType === 'chrome' && cleanVer.split('.').length <= 2) {
+    cleanVer = '128.0.6613.120'
+  }
+  bVer = cleanVer
+
   // 1. Android
   if (isAndroid) {
     const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
@@ -966,12 +975,34 @@ export const ProfileModal: React.FC<Props> = ({
           fp
         )
         if (res?.success && res?.data?.repairedFingerprint) {
-          setFp(res.data.repairedFingerprint)
+          const repFp = res.data.repairedFingerprint
+          setFp(repFp)
+          if (res.data.repairedMasterProfile) {
+            if (res.data.repairedMasterProfile.browserVersion) {
+              setBrowserVersion(res.data.repairedMasterProfile.browserVersion)
+            }
+            if (res.data.repairedMasterProfile.browserType) {
+              setBrowserType(res.data.repairedMasterProfile.browserType)
+            }
+          }
           setFpToast(true)
           const repairedCount = res.data.repairedCount || 0
           const repairedProps = res.data.actionsTaken?.map((a: any) => a.property).join(', ')
           console.log(`[Auto-Repair] Successfully fixed ${repairedCount} field(s): ${repairedProps}`)
           setTimeout(() => setFpToast(false), 2500)
+
+          if ((window as any).api?.validateFingerprint) {
+            (window as any).api.validateFingerprint(
+              repFp,
+              osType,
+              res.data.repairedMasterProfile?.browserType || browserType,
+              res.data.repairedMasterProfile?.browserVersion || browserVersion
+            ).then((valRes: any) => {
+              if (valRes?.success && valRes?.data) {
+                setConsistencyResult(valRes.data)
+              }
+            })
+          }
           return
         }
       }
@@ -1227,6 +1258,7 @@ export const ProfileModal: React.FC<Props> = ({
           osType,
           browserType: newBrowser,
           browserVersion: defaultVer,
+          processorGen,
           deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined
         })
         if (res?.success && res?.data) {
@@ -1246,6 +1278,7 @@ export const ProfileModal: React.FC<Props> = ({
           osType,
           browserType,
           browserVersion: newVersion,
+          processorGen,
           deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined
         })
         if (res?.success && res?.data) {
@@ -1384,9 +1417,30 @@ export const ProfileModal: React.FC<Props> = ({
         setTagsStr((initialProfile.tags || []).join(', '))
 
         const initialBrowserType: 'chrome' | 'firefox' = initialProfile.browserType || (initialProfile.fingerprint?.browser?.type) || (initialProfile.fingerprint?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+        let initialBrowserVer: string = initialProfile.browserVersion || initialProfile.fingerprint?.browser?.version || initialProfile.fingerprint?.navigator?.browserVersion || (initialBrowserType === 'firefox' ? '129.0' : '128.0.6613.120')
+        if (initialBrowserType === 'firefox' && (initialBrowserVer.split('.').length > 2 || initialBrowserVer.includes('6613') || initialBrowserVer.includes('Chrome'))) {
+          initialBrowserVer = '129.0'
+        }
+        if (initialBrowserType === 'chrome' && initialBrowserVer.split('.').length <= 2) {
+          initialBrowserVer = '128.0.6613.120'
+        }
         setBrowserType(initialBrowserType)
-        const initialBrowserVer: string = initialProfile.browserVersion || initialProfile.fingerprint?.browser?.version || initialProfile.fingerprint?.navigator?.browserVersion || (initialBrowserType === 'firefox' ? '129.0' : '128.0.6613.120')
         setBrowserVersion(initialBrowserVer)
+
+        // Synchronize processor generation for Mac ARM
+        if (targetOs === 'macos-arm') {
+          const rawGpu = (initialProfile.fingerprint?.webgl?.unmaskedRenderer || initialProfile.fingerprint?.webgl?.gpuRenderer || '').toLowerCase()
+          if (rawGpu.includes('m4 pro')) setProcessorGen('M4 Pro')
+          else if (rawGpu.includes('m4')) setProcessorGen('M4')
+          else if (rawGpu.includes('m3 max')) setProcessorGen('M3 Max')
+          else if (rawGpu.includes('m3 pro')) setProcessorGen('M3 Pro')
+          else if (rawGpu.includes('m3')) setProcessorGen('M3')
+          else if (rawGpu.includes('m2 max')) setProcessorGen('M2 Max')
+          else if (rawGpu.includes('m2')) setProcessorGen('M2')
+          else if (rawGpu.includes('m1 pro')) setProcessorGen('M1 Pro')
+          else if (rawGpu.includes('m1')) setProcessorGen('M1')
+          else setProcessorGen('M4')
+        }
 
         if (targetOs === 'android') {
           const rawCode = initialProfile.fingerprint?.navigator?.deviceModelCode || initialProfile.fingerprint?.navigator?.deviceModel || ''
@@ -1416,7 +1470,7 @@ export const ProfileModal: React.FC<Props> = ({
         }
 
         if (initialProfile.fingerprint && Object.keys(initialProfile.fingerprint).length > 0) {
-          const loadedFp = ensureFpStructure(initialProfile.fingerprint, targetOs)
+          const loadedFp = ensureFpStructure(initialProfile.fingerprint, targetOs, initialBrowserType, initialBrowserVer)
           setFp(loadedFp)
           setSelectedTimezone(loadedFp.timezone?.timezone || 'America/New_York')
           setAutoTimezone(loadedFp.timezone?.mode === 'auto')
@@ -1431,7 +1485,7 @@ export const ProfileModal: React.FC<Props> = ({
           setCustomDisplayLanguage(loadedLocale?.displayLanguage || 'en-US')
         } else {
           const rawFp = initialProfile.fingerprint || null
-          setFp(ensureFpStructure(rawFp, targetOs))
+          setFp(ensureFpStructure(rawFp, targetOs, initialBrowserType, initialBrowserVer))
           const fpWrtc = initialProfile.webrtcMode
           setWebrtcSetting(fpWrtc === 'disabled' || fpWrtc === 'off' ? 'off' : 'based_on_ip')
           setLanguageMode('custom')
@@ -1543,13 +1597,15 @@ export const ProfileModal: React.FC<Props> = ({
       setTimeout(() => setFpToast(false), 2200)
     } else {
       const options = PROCESSOR_OPTIONS[newOs] || ['Default Processor']
-      setProcessorGen(options[0])
+      const newProc = options[0] || 'Default Processor'
+      setProcessorGen(newProc)
       try {
         if ((window as any).api?.recalculateFingerprint) {
           const res = await (window as any).api.recalculateFingerprint(fp, {
             osType: newOs,
             browserType,
-            browserVersion
+            browserVersion,
+            processorGen: newProc
           })
           if (res?.success && res?.data) {
             setFp(res.data)

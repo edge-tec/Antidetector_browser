@@ -135,7 +135,15 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
 
   const browserType: 'chrome' | 'firefox' = input.browserType === 'firefox' ? 'firefox' : 'chrome'
   const defaultVer = browserType === 'firefox' ? '129.0' : '128.0.6613.120'
-  const browserVersion = (input.browserVersion && input.browserVersion.trim()) || defaultVer
+  let rawVersion = (input.browserVersion && input.browserVersion.trim()) || defaultVer
+  if (browserType === 'firefox' && (rawVersion.split('.').length > 2 || rawVersion.includes('6613') || rawVersion.includes('Chrome'))) {
+    rawVersion = '129.0'
+  }
+  if (browserType === 'chrome' && rawVersion.split('.').length <= 2) {
+    rawVersion = '128.0.6613.120'
+  }
+  const match = rawVersion.match(/\d+(\.\d+)*/)
+  const browserVersion = match ? match[0] : defaultVer
   const majorBrowserVersion = browserVersion.split('.')[0] || (browserType === 'firefox' ? '129' : '128')
   const engine = getEngineForBrowser(osType, browserType)
 
