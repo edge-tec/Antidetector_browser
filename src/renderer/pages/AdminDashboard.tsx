@@ -9,6 +9,7 @@ import { AdminSupportManager } from '../components/AdminSupportManager'
 import { AdminSeoManager } from '../components/AdminSeoManager'
 import { AdminSoftwareVersionManager } from '../components/AdminSoftwareVersionManager'
 import { AdminAffiliateManager } from '../components/AdminAffiliateManager'
+import { CustomBrandingManager } from '../components/CustomBrandingManager'
 
 interface SmtpFormState {
   host: string
@@ -917,14 +918,18 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {cmsTab === 'branding' && (
-              <form onSubmit={handleSaveBranding} style={{ maxWidth: '600px', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9' }}>Site Branding & Colors</h3>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Site Name</label>
-                  <input type="text" value={cmsBranding.site_name || ''} onChange={e => setCmsBranding({ ...cmsBranding, site_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }} />
-                </div>
-                <button type="submit" style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 700, border: 'none', cursor: 'pointer' }}>💾 Save Branding</button>
-              </form>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <form onSubmit={handleSaveBranding} style={{ maxWidth: '600px', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9' }}>Site Branding & Colors</h3>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Site Name</label>
+                    <input type="text" value={cmsBranding.site_name || ''} onChange={e => setCmsBranding({ ...cmsBranding, site_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }} />
+                  </div>
+                  <button type="submit" style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 700, border: 'none', cursor: 'pointer' }}>💾 Save Branding</button>
+                </form>
+
+                <CustomBrandingManager />
+              </div>
             )}
           </div>
         )}

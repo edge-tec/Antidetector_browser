@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import chromeIconImg from '../assets/antiprofiles-chrome.png'
 import firefoxIconImg from '../assets/antiprofiles-firefox.png'
+import { CustomBrandingManager } from './CustomBrandingManager'
 
 interface RuntimeInfo {
   installed: boolean
@@ -293,6 +294,8 @@ export const BrowserRuntimeManager: React.FC = () => {
           '#FB923C'
         )}
       </div>
+
+      <CustomBrandingManager />
     </div>
   )
 }

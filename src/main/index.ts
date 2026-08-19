@@ -20,6 +20,7 @@ import { setupSupportIPC } from './ipc/support.ipc'
 import { registerSeoHandlers } from './ipc/seo.ipc'
 import { registerUpdaterHandlers } from './ipc/updater'
 import { registerAffiliateHandlers } from './ipc/affiliate.ipc'
+import { registerBrandingHandlers } from './ipc/branding.ipc'
 import { logger } from './logging/logger'
 
 let mainWindow: BrowserWindow | null = null
@@ -115,6 +116,7 @@ app.whenReady().then(async () => {
   try { registerGroupHandlers() } catch (err: any) { logger.error('system', `Group IPC failed: ${err.message}`) }
   try { registerSettingsHandlers() } catch (err: any) { logger.error('system', `Settings IPC failed: ${err.message}`) }
   try { registerFingerprintIPC() } catch (err: any) { logger.error('system', `Fingerprint IPC failed: ${err.message}`) }
+  try { registerBrandingHandlers() } catch (err: any) { logger.error('system', `Branding IPC failed: ${err.message}`) }
 
   // Initialize profile manager (find Chromium)
   try {

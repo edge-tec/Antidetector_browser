@@ -228,6 +228,17 @@ const api = {
   getAuditLogs: (filter?: any) =>
     ipcRenderer.invoke('fingerprint:getAuditLogs', filter),
 
+  // ── Custom Browser Branding ──
+  getBrandingConfig: () => ipcRenderer.invoke('branding:getConfig'),
+  selectAndUploadBrandingIcon: (target: string) => ipcRenderer.invoke('branding:selectAndUploadIcon', target),
+  uploadBrandingIcon: (target: string, base64Data: string, filename: string) =>
+    ipcRenderer.invoke('branding:uploadIcon', target, base64Data, filename),
+  resetBrandingIcon: (target: string) => ipcRenderer.invoke('branding:resetIcon', target),
+  resolveBrowserIcon: (engine: string, profileId?: string) =>
+    ipcRenderer.invoke('branding:resolveIcon', engine, profileId),
+  selectProfileIcon: (profileId: string) => ipcRenderer.invoke('branding:selectProfileIcon', profileId),
+  resetProfileIcon: (profileId: string) => ipcRenderer.invoke('branding:resetProfileIcon', profileId),
+
   // ── Logs ──
   getLogs: (limit?: number, level?: string, category?: string) =>
     ipcRenderer.invoke('logs:getAll', limit, level, category),

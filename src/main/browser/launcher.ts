@@ -18,6 +18,7 @@ import { logger } from '../logging/logger'
 
 import { ResolvedFirefoxProfile, resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { installFirefoxRuntimeExtension } from './firefox/firefox-extension-builder'
+import { BrowserIconManager } from './branding/browser-icon-manager'
 
 export interface LaunchResult {
   browser: Browser | any
@@ -344,6 +345,7 @@ export async function launchFirefox(
 
   const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
   setupFirefoxProfilePrefs(userDataDir, profile, resolvedProfile, launchProxy)
+  BrowserIconManager.setupFirefoxBranding(userDataDir, profile)
 
   // Use standard -no-remote, -profile, and responsive user-friendly dimensions
   const isMobile = resolvedProfile.operatingSystem === 'ios' || resolvedProfile.operatingSystem === 'android'
@@ -749,6 +751,8 @@ export async function launchBrowser(
   }
 
   const args = buildLaunchArgs(profile, fingerprint, launchProxy)
+  const brandingArgs = BrowserIconManager.getChromiumBrandingArgs(profile)
+  args.push(...brandingArgs)
 
   logger.info('browser', `[RuntimeConfig] Launching Chromium Blink Engine runtime for profile "${profile.name}"`, {
     profileId: profile.id,
