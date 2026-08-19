@@ -213,7 +213,7 @@ const api = {
   getStabilityWarnings: (oldFp: any, newFp: any, hasBeenUsed: boolean) =>
     ipcRenderer.invoke('fingerprint:stability-warnings', oldFp, newFp, hasBeenUsed),
 
-  // ── Fingerprint v3: Device Templates ──
+  // ── Fingerprint v3: Device Templates & Real-Time Audit ──
   getDeviceTemplates: () => ipcRenderer.invoke('fingerprint:getDeviceTemplates'),
   getDeviceTemplatesByOs: (osType: string) => ipcRenderer.invoke('fingerprint:getDeviceTemplatesByOs', osType),
   getDeviceTemplatesGrouped: () => ipcRenderer.invoke('fingerprint:getDeviceTemplatesGrouped'),
@@ -221,6 +221,12 @@ const api = {
   generateFromTemplate: (selection: any) => ipcRenderer.invoke('fingerprint:generateFromTemplate', selection),
   resolveLegacyProfile: (existingFp: any, osType: string, browserType: string, browserVersion: string) =>
     ipcRenderer.invoke('fingerprint:resolveLegacyProfile', existingFp, osType, browserType, browserVersion),
+  runRealTimeAudit: (profileInput: any, runtimeProbe?: any) =>
+    ipcRenderer.invoke('fingerprint:runRealTimeAudit', profileInput, runtimeProbe),
+  autoRepairProfile: (profileInput: any, currentFingerprint?: any) =>
+    ipcRenderer.invoke('fingerprint:autoRepairProfile', profileInput, currentFingerprint),
+  getAuditLogs: (filter?: any) =>
+    ipcRenderer.invoke('fingerprint:getAuditLogs', filter),
 
   // ── Logs ──
   getLogs: (limit?: number, level?: string, category?: string) =>

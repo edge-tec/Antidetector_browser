@@ -349,5 +349,54 @@ export function registerFingerprintIPC(): void {
     }
   })
 
-  logger.info('fingerprint', 'v3 Device Template IPC handlers registered')
+  // ── Run Real-Time Profile Audit ──
+  ipcMain.handle('fingerprint:runRealTimeAudit', async (
+    _event,
+    profileInput: any,
+    runtimeProbe?: any
+  ) => {
+    try {
+      const { resolveMasterProfile } = await import('../fingerprint/master-profile-resolver')
+      const { RealTimeProfileValidator } = await import('../browser/realtime-profile-validator')
+      
+      const masterProfile = resolveMasterProfile(profileInput)
+      const auditReport = RealTimeProfileValidator.validate(masterProfile, runtimeProbe)
+      return { success: true, data: auditReport }
+    } catch (err: any) {
+      logger.error('fingerprint', `Real-time audit failed: ${err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Auto-Repair Profile Configuration ──
+  ipcMain.handle('fingerprint:autoRepairProfile', async (
+    _event,
+    profileInput: any,
+    currentFingerprint?: any
+  ) => {
+    try {
+      const { ProfileAutoRepairEngine } = await import('../fingerprint/auto-repair')
+      const repairResult = ProfileAutoRepairEngine.repair(profileInput, currentFingerprint)
+      return { success: true, data: repairResult }
+    } catch (err: any) {
+      logger.error('fingerprint', `Auto-repair failed: ${err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Query Audit Logs ──
+  ipcMain.handle('fingerprint:getAuditLogs', async (
+    _event,
+    filter?: { profileId?: string; status?: any; limit?: number }
+  ) => {
+    try {
+      const { auditLogger } = await import('../logging/audit-logger')
+      const logs = auditLogger.getLogs(filter)
+      return { success: true, data: logs }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  logger.info('fingerprint', 'v3 Device Template and Real-Time Audit IPC handlers registered')
 }
