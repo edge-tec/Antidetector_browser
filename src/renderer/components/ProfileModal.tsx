@@ -15,6 +15,7 @@ import {
 } from '../data/ios-devices'
 import { parseCookies, CookieItem } from '../utils/cookie-parser'
 import { ProxyInfoCard } from './ProxyInfoCard'
+import { ConsistencyBadge, ConsistencyResult } from './ConsistencyBadge'
 import { ProxyTestResult } from '../types'
 
 interface Props {
@@ -267,11 +268,17 @@ function generateRandomUAForOS(osType: string, browserType: 'chrome' | 'firefox'
 
 function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome' | 'firefox' = 'chrome', bVer = '128.0.6613.120'): any {
   const fp = rawFp && typeof rawFp === 'object' ? rawFp : {}
+  const isIos = targetOs === 'ios'
+  const isAndroid = targetOs === 'android'
+  const isMac = targetOs.startsWith('macos')
+  const isLinux = targetOs === 'linux'
+  const isWindows = targetOs.startsWith('windows')
+  const isMobile = isIos || isAndroid
 
-  if (targetOs === 'android') {
+  // 1. Android
+  if (isAndroid) {
     const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
     const matchedDev = (existingModelCode ? getDeviceById(existingModelCode) : null) || ANDROID_DEVICES[0]
-
     return {
       version: fp.version || 2,
       seed: fp.seed || 'default-seed',
@@ -281,7 +288,9 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         version: bVer
       },
       navigator: {
-        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateAndroidUserAgent(matchedDev, bType, bVer),
+        userAgent: typeof fp.navigator?.userAgent === 'string' && fp.navigator.userAgent.includes('Android')
+          ? fp.navigator.userAgent
+          : generateAndroidUserAgent(matchedDev, bType, bVer),
         browserVersion: fp.navigator?.browserVersion || bVer,
         chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
         platform: 'Linux armv8l',
@@ -289,18 +298,18 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         deviceBrand: fp.navigator?.deviceBrand || matchedDev.brand,
         deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
         deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.modelCode,
-        hardwareConcurrency: fp.navigator?.hardwareConcurrency || matchedDev.cores,
-        deviceMemory: fp.navigator?.deviceMemory || matchedDev.memory,
-        maxTouchPoints: fp.navigator?.maxTouchPoints || 5,
+        hardwareConcurrency: Math.min(fp.navigator?.hardwareConcurrency || matchedDev.cores, 8),
+        deviceMemory: Math.min(fp.navigator?.deviceMemory || matchedDev.memory, 16),
+        maxTouchPoints: 5,
         touchSupport: true,
         doNotTrack: fp.navigator?.doNotTrack || null
       },
       screen: {
-        width: fp.screen?.width || matchedDev.screenWidth,
-        height: fp.screen?.height || matchedDev.screenHeight,
-        devicePixelRatio: fp.screen?.devicePixelRatio || matchedDev.dpr,
-        viewportWidth: fp.screen?.viewportWidth || matchedDev.screenWidth,
-        viewportHeight: fp.screen?.viewportHeight || Math.floor(matchedDev.screenHeight * 0.9),
+        width: fp.screen?.width && fp.screen.width < 1000 ? fp.screen.width : matchedDev.screenWidth,
+        height: fp.screen?.height && fp.screen.height < 1500 ? fp.screen.height : matchedDev.screenHeight,
+        devicePixelRatio: fp.screen?.devicePixelRatio && fp.screen.devicePixelRatio >= 2 ? fp.screen.devicePixelRatio : matchedDev.dpr,
+        viewportWidth: matchedDev.screenWidth,
+        viewportHeight: Math.floor(matchedDev.screenHeight * 0.9),
         colorDepth: 24,
         pixelDepth: 24,
         orientation: 'portrait-primary',
@@ -333,10 +342,10 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       },
       webgl: {
         enabled: fp.webgl?.enabled !== false,
-        gpuVendor: fp.webgl?.gpuVendor || matchedDev.gpuVendor,
-        gpuRenderer: fp.webgl?.gpuRenderer || matchedDev.gpuRenderer,
-        unmaskedVendor: fp.webgl?.unmaskedVendor || matchedDev.gpuVendor,
-        unmaskedRenderer: fp.webgl?.unmaskedRenderer || matchedDev.gpuRenderer,
+        gpuVendor: matchedDev.gpuVendor,
+        gpuRenderer: matchedDev.gpuRenderer,
+        unmaskedVendor: matchedDev.gpuVendor,
+        unmaskedRenderer: matchedDev.gpuRenderer,
         imageMode: fp.webgl?.imageMode || 'off',
         metadataMode: fp.webgl?.metadataMode || 'mask'
       },
@@ -350,7 +359,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       },
       fonts: {
         enableMasking: fp.fonts?.enableMasking !== false,
-        fontList: fp.fonts?.fontList || ['Roboto', 'Noto Sans', 'Droid Sans']
+        fontList: fp.fonts?.fontList?.length ? fp.fonts.fontList : ['Roboto', 'Noto Sans', 'Droid Sans']
       },
       mediaDevices: {
         videoInputs: fp.mediaDevices?.videoInputs ?? 2,
@@ -358,7 +367,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         audioOutputs: fp.mediaDevices?.audioOutputs ?? 1
       },
       battery: {
-        enabled: fp.battery?.enabled || true,
+        enabled: true,
         charging: fp.battery?.charging ?? false,
         level: fp.battery?.level ?? 0.85
       },
@@ -377,7 +386,8 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
     }
   }
 
-  if (targetOs === 'ios') {
+  // 2. iOS
+  if (isIos) {
     const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
     const matchedDev = (existingModelCode ? getIosDeviceById(existingModelCode) : null) || IOS_DEVICES[0]
 
@@ -390,7 +400,9 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         version: bVer
       },
       navigator: {
-        userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateIosUserAgent(matchedDev, bType, bVer),
+        userAgent: typeof fp.navigator?.userAgent === 'string' && fp.navigator.userAgent.includes('iPhone')
+          ? fp.navigator.userAgent
+          : generateIosUserAgent(matchedDev, bType, bVer),
         browserVersion: fp.navigator?.browserVersion || bVer,
         chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
         platform: 'iPhone',
@@ -398,20 +410,20 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         deviceBrand: 'Apple',
         deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
         deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.id,
-        hardwareConcurrency: fp.navigator?.hardwareConcurrency || matchedDev.cpuCores,
-        deviceMemory: fp.navigator?.deviceMemory || matchedDev.ramGb,
+        hardwareConcurrency: Math.min(fp.navigator?.hardwareConcurrency || matchedDev.cores, 6),
+        deviceMemory: Math.min(fp.navigator?.deviceMemory || matchedDev.memory, 8),
         maxTouchPoints: 5,
         touchSupport: true,
         doNotTrack: fp.navigator?.doNotTrack || null
       },
       screen: {
-        width: fp.screen?.width || matchedDev.width,
-        height: fp.screen?.height || matchedDev.height,
-        devicePixelRatio: fp.screen?.devicePixelRatio || matchedDev.dpr,
-        viewportWidth: fp.screen?.viewportWidth || matchedDev.width,
-        viewportHeight: fp.screen?.viewportHeight || Math.floor(matchedDev.height * 0.9),
-        colorDepth: 24,
-        pixelDepth: 24,
+        width: fp.screen?.width && fp.screen.width < 1000 ? fp.screen.width : matchedDev.screenWidth,
+        height: fp.screen?.height && fp.screen.height < 1500 ? fp.screen.height : matchedDev.screenHeight,
+        devicePixelRatio: fp.screen?.devicePixelRatio && fp.screen.devicePixelRatio >= 2 ? fp.screen.devicePixelRatio : matchedDev.dpr,
+        viewportWidth: matchedDev.screenWidth,
+        viewportHeight: Math.floor(matchedDev.screenHeight * 0.9),
+        colorDepth: 32,
+        pixelDepth: 32,
         orientation: 'portrait-primary',
         orientationAngle: 0
       },
@@ -443,9 +455,9 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       webgl: {
         enabled: fp.webgl?.enabled !== false,
         gpuVendor: 'Apple Inc.',
-        gpuRenderer: fp.webgl?.gpuRenderer || matchedDev.gpuRenderer,
+        gpuRenderer: matchedDev.gpuRenderer,
         unmaskedVendor: 'Apple Inc.',
-        unmaskedRenderer: fp.webgl?.unmaskedRenderer || matchedDev.gpuRenderer,
+        unmaskedRenderer: matchedDev.gpuRenderer,
         imageMode: fp.webgl?.imageMode || 'off',
         metadataMode: fp.webgl?.metadataMode || 'mask'
       },
@@ -459,7 +471,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       },
       fonts: {
         enableMasking: fp.fonts?.enableMasking !== false,
-        fontList: fp.fonts?.fontList || ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
+        fontList: fp.fonts?.fontList?.length ? fp.fonts.fontList : ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
       },
       mediaDevices: {
         videoInputs: fp.mediaDevices?.videoInputs ?? 2,
@@ -467,7 +479,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         audioOutputs: fp.mediaDevices?.audioOutputs ?? 1
       },
       battery: {
-        enabled: fp.battery?.enabled || true,
+        enabled: true,
         charging: fp.battery?.charging ?? false,
         level: fp.battery?.level ?? 0.90
       },
@@ -486,6 +498,28 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
     }
   }
 
+  // 3. Desktop OS Defaults (Windows, macOS, Linux)
+  const defaultPlatform = isWindows ? 'Win32' : isLinux ? 'Linux x86_64' : 'MacIntel'
+  const defaultVendor = bType === 'firefox' ? '' : 'Google Inc.'
+  const defaultGpuVendor = isWindows ? 'NVIDIA' : isMac ? 'Apple' : 'Intel'
+  const defaultGpuRenderer = isWindows
+    ? 'ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11)'
+    : isMac
+    ? (targetOs === 'macos-arm' ? 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)' : 'ANGLE (Intel, Intel(R) Iris(TM) Plus Graphics 655, OpenGL 4.1)')
+    : 'ANGLE (Intel, Mesa Intel(R) UHD Graphics 630 (CFL GT2), OpenGL 4.6)'
+
+  const defaultUnmaskedVendor = isWindows
+    ? 'Google Inc. (NVIDIA)'
+    : isMac
+    ? (targetOs === 'macos-arm' ? 'Google Inc. (Apple)' : 'Google Inc. (Intel)')
+    : 'Google Inc. (Intel)'
+
+  const defaultFonts = isWindows
+    ? ['Segoe UI', 'Arial', 'Calibri', 'Tahoma', 'Consolas', 'Verdana']
+    : isMac
+    ? ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Menlo', 'Monaco']
+    : ['DejaVu Sans', 'Liberation Sans', 'Ubuntu', 'FreeSans']
+
   return {
     version: fp.version || 2,
     seed: fp.seed || 'default-seed',
@@ -495,24 +529,29 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       version: bVer
     },
     navigator: {
-      userAgent: typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : generateUAForOS(targetOs, bVer, bType),
+      userAgent: typeof fp.navigator?.userAgent === 'string' && (isWindows ? fp.navigator.userAgent.includes('Windows') : isMac ? fp.navigator.userAgent.includes('Macintosh') : fp.navigator.userAgent.includes('Linux'))
+        ? fp.navigator.userAgent
+        : generateUAForOS(targetOs, bVer, bType),
       browserVersion: fp.navigator?.browserVersion || bVer,
       chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
-      platform: fp.navigator?.platform || (targetOs.startsWith('win') ? 'Win32' : targetOs.startsWith('linux') ? 'Linux x86_64' : 'MacIntel'),
-      vendor: fp.navigator?.vendor !== undefined ? fp.navigator.vendor : (bType === 'firefox' ? '' : 'Google Inc.'),
+      platform: fp.navigator?.platform && (isWindows ? fp.navigator.platform === 'Win32' : isMac ? fp.navigator.platform === 'MacIntel' : fp.navigator.platform.includes('Linux'))
+        ? fp.navigator.platform
+        : defaultPlatform,
+      vendor: fp.navigator?.vendor !== undefined ? fp.navigator.vendor : defaultVendor,
       hardwareConcurrency: fp.navigator?.hardwareConcurrency || 8,
-      deviceMemory: fp.navigator?.deviceMemory || 8,
-      maxTouchPoints: fp.navigator?.maxTouchPoints || 0,
+      deviceMemory: fp.navigator?.deviceMemory || (isMac ? 16 : 16),
+      maxTouchPoints: 0,
+      touchSupport: false,
       doNotTrack: fp.navigator?.doNotTrack || null
     },
     screen: {
-      width: fp.screen?.width || 1920,
-      height: fp.screen?.height || 1080,
-      devicePixelRatio: fp.screen?.devicePixelRatio || 1,
-      viewportWidth: fp.screen?.viewportWidth || fp.screen?.width || 1920,
-      viewportHeight: fp.screen?.viewportHeight || fp.screen?.height || 1080,
-      colorDepth: fp.screen?.colorDepth || 24,
-      pixelDepth: fp.screen?.pixelDepth || 24
+      width: fp.screen?.width && fp.screen.width >= 1200 ? fp.screen.width : (isMac ? 1512 : 1920),
+      height: fp.screen?.height && fp.screen.height >= 700 ? fp.screen.height : (isMac ? 982 : 1080),
+      devicePixelRatio: isMac ? 2 : (fp.screen?.devicePixelRatio || 1),
+      viewportWidth: fp.screen?.viewportWidth || (isMac ? 1512 : 1920),
+      viewportHeight: fp.screen?.viewportHeight || (isMac ? 942 : 1040),
+      colorDepth: 24,
+      pixelDepth: 24
     },
     locale: {
       mode: fp.locale?.mode || 'custom',
@@ -541,10 +580,10 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
     },
     webgl: {
       enabled: fp.webgl?.enabled !== false,
-      gpuVendor: fp.webgl?.gpuVendor || 'Apple',
-      gpuRenderer: fp.webgl?.gpuRenderer || 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)',
-      unmaskedVendor: fp.webgl?.unmaskedVendor || 'Google Inc. (Apple)',
-      unmaskedRenderer: fp.webgl?.unmaskedRenderer || 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)',
+      gpuVendor: fp.webgl?.gpuVendor && (isWindows ? !fp.webgl.gpuVendor.includes('Apple') : isMac ? !fp.webgl.gpuVendor.includes('Direct3D') : true) ? fp.webgl.gpuVendor : defaultGpuVendor,
+      gpuRenderer: fp.webgl?.gpuRenderer && (isWindows ? !fp.webgl.gpuRenderer.includes('Metal') : isMac ? !fp.webgl.gpuRenderer.includes('Direct3D') : true) ? fp.webgl.gpuRenderer : defaultGpuRenderer,
+      unmaskedVendor: fp.webgl?.unmaskedVendor || defaultUnmaskedVendor,
+      unmaskedRenderer: fp.webgl?.unmaskedRenderer && (isWindows ? !fp.webgl.unmaskedRenderer.includes('Metal') : isMac ? !fp.webgl.unmaskedRenderer.includes('Direct3D') : true) ? fp.webgl.unmaskedRenderer : defaultGpuRenderer,
       imageMode: fp.webgl?.imageMode || 'off',
       metadataMode: fp.webgl?.metadataMode || 'mask'
     },
@@ -558,20 +597,20 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
     },
     fonts: {
       enableMasking: fp.fonts?.enableMasking !== false,
-      fontList: fp.fonts?.fontList || []
+      fontList: fp.fonts?.fontList?.length ? fp.fonts.fontList : defaultFonts
     },
     mediaDevices: {
       videoInputs: fp.mediaDevices?.videoInputs ?? 1,
       audioInputs: fp.mediaDevices?.audioInputs ?? 1,
-      audioOutputs: fp.mediaDevices?.audioOutputs ?? 1
+      audioOutputs: fp.mediaDevices?.audioOutputs ?? 2
     },
     battery: {
-      enabled: fp.battery?.enabled || false
+      enabled: fp.battery?.enabled || isMac
     },
     networkInfo: {
       effectiveType: fp.networkInfo?.effectiveType || '4g',
-      downlink: fp.networkInfo?.downlink || 10,
-      rtt: fp.networkInfo?.rtt || 50
+      downlink: fp.networkInfo?.downlink || 100,
+      rtt: fp.networkInfo?.rtt || 20
     },
     permissions: fp.permissions || {
       camera: 'prompt',
@@ -818,6 +857,39 @@ export const ProfileModal: React.FC<Props> = ({
   const [copiedUA, setCopiedUA] = useState(false)
   const [fpToast, setFpToast] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [consistencyResult, setConsistencyResult] = useState<ConsistencyResult | null>(null)
+
+  useEffect(() => {
+    if (fp) {
+      if ((window as any).api?.validateFingerprint) {
+        (window as any).api.validateFingerprint(fp, osType, browserType, browserVersion).then((res: any) => {
+          if (res?.success && res?.data) {
+            setConsistencyResult(res.data)
+          }
+        })
+      }
+    }
+  }, [fp, osType, browserType, browserVersion])
+
+  const handleFixInconsistencies = async () => {
+    try {
+      if ((window as any).api?.recalculateFingerprint) {
+        const res = await (window as any).api.recalculateFingerprint(fp, {
+          osType,
+          browserType,
+          browserVersion,
+          deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined
+        })
+        if (res?.success && res?.data) {
+          setFp(res.data)
+          setFpToast(true)
+          setTimeout(() => setFpToast(false), 2200)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fix inconsistencies:', err)
+    }
+  }
 
   const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion) => {
     const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
@@ -1013,15 +1085,43 @@ export const ProfileModal: React.FC<Props> = ({
     }
   }
 
-  const handleBrowserTypeChange = (newBrowser: 'chrome' | 'firefox') => {
+  const handleBrowserTypeChange = async (newBrowser: 'chrome' | 'firefox') => {
     setBrowserType(newBrowser)
-    const defaultVer = newBrowser === 'firefox' ? '129.0' : '128.0.6613.120'
+    const defaultVer = newBrowser === 'firefox' ? '129.0' : '131.0.6778.86'
     setBrowserVersion(defaultVer)
+    try {
+      if ((window as any).api?.recalculateFingerprint) {
+        const res = await (window as any).api.recalculateFingerprint(fp, {
+          osType,
+          browserType: newBrowser,
+          browserVersion: defaultVer,
+          deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined
+        })
+        if (res?.success && res?.data) {
+          setFp(res.data)
+          return
+        }
+      }
+    } catch {}
     applyBrowserConfig(newBrowser, defaultVer, osType)
   }
 
-  const handleBrowserVersionChange = (newVersion: string) => {
+  const handleBrowserVersionChange = async (newVersion: string) => {
     setBrowserVersion(newVersion)
+    try {
+      if ((window as any).api?.recalculateFingerprint) {
+        const res = await (window as any).api.recalculateFingerprint(fp, {
+          osType,
+          browserType,
+          browserVersion: newVersion,
+          deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined
+        })
+        if (res?.success && res?.data) {
+          setFp(res.data)
+          return
+        }
+      }
+    } catch {}
     applyBrowserConfig(browserType, newVersion, osType)
   }
 
@@ -1293,7 +1393,7 @@ export const ProfileModal: React.FC<Props> = ({
     setTimeout(() => setFpToast(false), 2200)
   }
 
-  const handleOsChange = (newOs: string) => {
+  const handleOsChange = async (newOs: string) => {
     setOsType(newOs)
     if (newOs === 'android') {
       const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
@@ -1311,6 +1411,21 @@ export const ProfileModal: React.FC<Props> = ({
     } else {
       const options = PROCESSOR_OPTIONS[newOs] || ['Default Processor']
       setProcessorGen(options[0])
+      try {
+        if ((window as any).api?.recalculateFingerprint) {
+          const res = await (window as any).api.recalculateFingerprint(fp, {
+            osType: newOs,
+            browserType,
+            browserVersion
+          })
+          if (res?.success && res?.data) {
+            setFp(res.data)
+            setFpToast(true)
+            setTimeout(() => setFpToast(false), 2200)
+            return
+          }
+        }
+      } catch {}
       handleGenerateNew(newOs)
     }
   }
@@ -1477,9 +1592,14 @@ export const ProfileModal: React.FC<Props> = ({
           alignItems: 'center',
           backgroundColor: '#1C1C28'
         }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600, color: '#F1F5F9' }}>
-            {initialProfile ? `Edit Profile — ${name}` : 'New Browser Profile'}
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600, color: '#F1F5F9' }}>
+              {initialProfile ? `Edit Profile — ${name}` : 'New Browser Profile'}
+            </h2>
+            {consistencyResult && (
+              <ConsistencyBadge result={consistencyResult} />
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -1488,6 +1608,53 @@ export const ProfileModal: React.FC<Props> = ({
             ✕
           </button>
         </div>
+
+        {/* ── Live Contradiction / Consistency Warning Banner ── */}
+        {consistencyResult && (consistencyResult.failures > 0 || (consistencyResult.contradictions && consistencyResult.contradictions.length > 0)) && (
+          <div style={{
+            margin: '0 28px 10px',
+            padding: '8px 14px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#FCA5A5' }}>
+              <span>⚠️</span>
+              <span>
+                <strong>Incompatible Configuration:</strong> {consistencyResult.contradictions?.[0] || consistencyResult.warnings?.[0] || 'Contradictory values detected.'}
+                {((consistencyResult.contradictions?.length || 0) + (consistencyResult.failures || 0)) > 1 && (
+                  <span style={{ opacity: 0.8, marginLeft: '4px' }}>
+                    (+{((consistencyResult.contradictions?.length || 0) + (consistencyResult.failures || 0)) - 1} more issue{((consistencyResult.contradictions?.length || 0) + (consistencyResult.failures || 0)) > 2 ? 's' : ''})
+                  </span>
+                )}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleFixInconsistencies}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor: '#EF4444',
+                color: '#FFFFFF',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              ⚡ Auto-Fix Coherence
+            </button>
+          </div>
+        )}
 
         {/* ── Name & Folder Inputs Row ── */}
         <div style={{ padding: '0 28px 16px', display: 'flex', gap: '16px' }}>

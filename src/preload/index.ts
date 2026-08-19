@@ -201,8 +201,14 @@ const api = {
 
   // ── Fingerprint ──
   generateFingerprint: (options: any) => ipcRenderer.invoke('fingerprint:generate', options),
+  recalculateFingerprint: (currentFp: any, options: any) => ipcRenderer.invoke('fingerprint:recalculate', currentFp, options),
   regenerateFingerprint: (osType: string, country?: string) => ipcRenderer.invoke('fingerprint:regenerate', osType, country),
-  validateFingerprint: (fingerprint: any, osType: string) => ipcRenderer.invoke('fingerprint:validate', fingerprint, osType),
+  validateFingerprint: (fingerprint: any, osType: string, browserType?: string, browserVersion?: string) =>
+    ipcRenderer.invoke('fingerprint:validate', fingerprint, osType, browserType, browserVersion),
+  detectContradictions: (fingerprint: any, osType: string, browserType?: string, browserVersion?: string) =>
+    ipcRenderer.invoke('fingerprint:detectContradictions', fingerprint, osType, browserType, browserVersion),
+  getProfileTemplates: () => ipcRenderer.invoke('fingerprint:getTemplates'),
+  getDiagnosticReport: (profileId: string) => ipcRenderer.invoke('fingerprint:getDiagnosticReport', profileId),
   getStabilityWarnings: (oldFp: any, newFp: any, hasBeenUsed: boolean) =>
     ipcRenderer.invoke('fingerprint:stability-warnings', oldFp, newFp, hasBeenUsed),
 

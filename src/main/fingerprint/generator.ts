@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────────
-// AntiProfiles v2 — Fingerprint Generator
+// AntiProfiles v2 — Fingerprint Generator & Recalculation Engine
 // Generates coherent, consistent fingerprints following the cascade:
-//   OS → Browser → Hardware → Display → Locale → Network → Validate
+//   OS → Browser Engine → Hardware → Display → Locale → Network → Validate
 // ──────────────────────────────────────────────────────────────────
 
 import crypto from 'crypto'
@@ -12,9 +12,12 @@ import {
   WebRTCFingerprint, CanvasFingerprint, WebGLFingerprint,
   AudioFingerprint, ClientRectsFingerprint, FontsFingerprint,
   MediaDevicesFingerprint, BatteryFingerprint, NetworkInfoFingerprint,
-  PermissionsFingerprint, BrowserConfig,
+  PermissionsFingerprint, BrowserConfig, ProfileTemplate,
   createDefaultFingerprint
 } from './types'
+import { validateConsistency } from './consistency'
+import { ANDROID_DEVICES, AndroidDeviceSpec, getDeviceById as getAndroidDeviceById } from './android-devices'
+import { IOS_DEVICES, IosDeviceSpec, getIosDeviceById, generateIosUserAgent } from './ios-devices'
 
 // Import curated datasets
 import userAgentsData from './datasets/user-agents.json'
@@ -25,14 +28,12 @@ import localeProfilesData from './datasets/locale-profiles.json'
 
 // ═══════════════════════════════════════════
 // Seeded Random Number Generator
-// Deterministic PRNG for reproducible fingerprints
 // ═══════════════════════════════════════════
 
-class SeededRandom {
+export class SeededRandom {
   private seed: number
 
   constructor(seedStr: string) {
-    // Convert string seed to numeric seed via hash
     let h = 0
     for (let i = 0; i < seedStr.length; i++) {
       h = ((h << 5) - h + seedStr.charCodeAt(i)) | 0
@@ -40,24 +41,22 @@ class SeededRandom {
     this.seed = Math.abs(h) || 1
   }
 
-  /** Returns a random float between 0 and 1 */
   next(): number {
     this.seed = (this.seed * 1664525 + 1013904223) & 0x7fffffff
     return this.seed / 0x7fffffff
   }
 
-  /** Returns a random integer between min (inclusive) and max (inclusive) */
   int(min: number, max: number): number {
     return Math.floor(this.next() * (max - min + 1)) + min
   }
 
-  /** Pick a random element from an array */
   pick<T>(arr: T[]): T {
+    if (!arr || arr.length === 0) return undefined as any
     return arr[Math.floor(this.next() * arr.length)]
   }
 
-  /** Pick a random element using weighted probabilities */
   pickWeighted<T extends { weight: number }>(arr: T[]): T {
+    if (!arr || arr.length === 0) return undefined as any
     const totalWeight = arr.reduce((sum, item) => sum + item.weight, 0)
     let r = this.next() * totalWeight
     for (const item of arr) {
@@ -67,7 +66,6 @@ class SeededRandom {
     return arr[arr.length - 1]
   }
 
-  /** Generate a random hex string */
   hex(length: number): string {
     let result = ''
     for (let i = 0; i < length; i++) {
@@ -78,20 +76,20 @@ class SeededRandom {
 }
 
 // ═══════════════════════════════════════════
-// OS Compatibility Matrices
+// OS Compatibility Constants
 // ═══════════════════════════════════════════
 
-const OS_PLATFORM_MAP: Record<OSType, string> = {
+export const OS_PLATFORM_MAP: Record<OSType, string> = {
   'windows-10': 'Win32',
   'windows-11': 'Win32',
   'macos-intel': 'MacIntel',
-  'macos-arm': 'MacIntel',       // Chrome on ARM still reports MacIntel
+  'macos-arm': 'MacIntel',       // Chrome/Firefox on macOS ARM still report MacIntel in navigator.platform
   'linux': 'Linux x86_64',
   'android': 'Linux armv8l',
   'ios': 'iPhone'
 }
 
-const OS_APP_VERSION_PREFIX: Record<OSType, string> = {
+export const OS_APP_VERSION_PREFIX: Record<OSType, string> = {
   'windows-10': '5.0 (Windows NT 10.0; Win64; x64)',
   'windows-11': '5.0 (Windows NT 10.0; Win64; x64)',
   'macos-intel': '5.0 (Macintosh; Intel Mac OS X 10_15_7)',
@@ -101,7 +99,7 @@ const OS_APP_VERSION_PREFIX: Record<OSType, string> = {
   'ios': '5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'
 }
 
-const OS_CPU_ARCHITECTURES: Record<OSFamily, { arch: string; platformArch: string }> = {
+export const OS_CPU_ARCHITECTURES: Record<OSFamily, { arch: string; platformArch: string }> = {
   'windows': { arch: 'x86_64', platformArch: '64-bit' },
   'macos': { arch: 'x86_64', platformArch: '64-bit' },
   'linux': { arch: 'x86_64', platformArch: '64-bit' },
@@ -109,20 +107,20 @@ const OS_CPU_ARCHITECTURES: Record<OSFamily, { arch: string; platformArch: strin
   'ios': { arch: 'arm64', platformArch: '64-bit' }
 }
 
-const OS_CPU_RANGES: Record<OSFamily, number[]> = {
+export const OS_CPU_RANGES: Record<OSFamily, number[]> = {
   'windows': [4, 6, 8, 12, 16, 24, 32],
-  'macos': [4, 6, 8, 10, 12, 16, 20, 24],
-  'linux': [2, 4, 6, 8, 12, 16, 32, 64],
+  'macos': [4, 6, 8, 10, 12, 16],
+  'linux': [4, 6, 8, 12, 16, 32],
   'android': [4, 6, 8],
   'ios': [6]
 }
 
-const OS_MEMORY_RANGES: Record<OSFamily, number[]> = {
-  'windows': [4, 8, 16, 32, 64],
-  'macos': [8, 16, 24, 32, 36, 48, 64, 96, 128],
-  'linux': [4, 8, 16, 32, 64],
+export const OS_MEMORY_RANGES: Record<OSFamily, number[]> = {
+  'windows': [8, 16, 32, 64],
+  'macos': [8, 16, 24, 32, 64],
+  'linux': [8, 16, 32, 64],
   'android': [4, 6, 8, 12],
-  'ios': [4, 6, 8]
+  'ios': [6, 8]
 }
 
 const WEBGL_EXTENSIONS = [
@@ -141,6 +139,454 @@ const WEBGL_EXTENSIONS = [
 ]
 
 // ═══════════════════════════════════════════
+// Helper: Format User-Agent String
+// ═══════════════════════════════════════════
+
+export function formatUserAgent(
+  osType: OSType,
+  browserType: 'chrome' | 'firefox' = 'chrome',
+  browserVersion = '131.0.0.0',
+  deviceModelId?: string
+): string {
+  const family = getOSFamily(osType)
+
+  if (family === 'ios') {
+    const dev = (deviceModelId ? getIosDeviceById(deviceModelId) : null) || IOS_DEVICES[0]
+    return generateIosUserAgent(dev, browserType, browserVersion)
+  }
+
+  if (family === 'android') {
+    const dev = (deviceModelId ? getAndroidDeviceById(deviceModelId) : null) || ANDROID_DEVICES[0]
+    const osVer = dev.androidVersion || '14'
+    const modelCode = dev.modelCode || 'SM-S928B'
+    if (browserType === 'firefox') {
+      const ffVer = browserVersion.includes('.') ? browserVersion : `${browserVersion}.0`
+      return `Mozilla/5.0 (Android ${osVer}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
+    }
+    return `Mozilla/5.0 (Linux; Android ${osVer}; ${modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVersion} Mobile Safari/537.36`
+  }
+
+  if (browserType === 'firefox') {
+    const ffVer = browserVersion.includes('.') ? browserVersion : `${browserVersion}.0`
+    if (osType === 'windows-10' || osType === 'windows-11') {
+      return `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+    } else if (osType.startsWith('macos')) {
+      return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+    } else {
+      return `Mozilla/5.0 (X11; Linux x86_64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
+    }
+  }
+
+  // Chrome Desktop
+  if (osType === 'windows-10' || osType === 'windows-11') {
+    return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVersion} Safari/537.36`
+  } else if (osType.startsWith('macos')) {
+    return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVersion} Safari/537.36`
+  } else {
+    return `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVersion} Safari/537.36`
+  }
+}
+
+// ═══════════════════════════════════════════
+// Recalculate Dependent Fields Engine
+// ═══════════════════════════════════════════
+
+export interface RecalculateOptions {
+  osType: OSType
+  browserType?: 'chrome' | 'firefox'
+  browserVersion?: string
+  deviceModelId?: string
+  seed?: string
+}
+
+/**
+ * Automatically recalculates all dependent fingerprint values when the OS,
+ * browser type, or version is changed, guaranteeing internal coherence.
+ */
+export function recalculateDependentFields(
+  currentFp: Fingerprint,
+  options: RecalculateOptions
+): Fingerprint {
+  const { osType, deviceModelId } = options
+  const family = getOSFamily(osType)
+  const isMobile = family === 'android' || family === 'ios'
+  const isIos = family === 'ios'
+  const isAndroid = family === 'android'
+
+  const browserType: 'chrome' | 'firefox' =
+    options.browserType || currentFp?.browser?.type || (currentFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+  const browserVersion =
+    options.browserVersion || currentFp?.browser?.version || currentFp?.navigator?.browserVersion || (browserType === 'firefox' ? '129.0' : '131.0.0.0')
+
+  const seed = options.seed || currentFp?.seed || crypto.randomBytes(16).toString('hex')
+  const rng = new SeededRandom(seed)
+
+  // 1. Mobile Specific Specs
+  let iosDev: IosDeviceSpec | null = null
+  let androidDev: AndroidDeviceSpec | null = null
+  if (isIos) {
+    if (deviceModelId) {
+      iosDev = getIosDeviceById(deviceModelId)
+    }
+    if (!iosDev && (currentFp?.navigator as any)?.deviceModelCode) {
+      iosDev = getIosDeviceById((currentFp.navigator as any).deviceModelCode)
+    }
+    if (!iosDev) {
+      iosDev = IOS_DEVICES[0]
+    }
+  } else if (isAndroid) {
+    if (deviceModelId) {
+      androidDev = getAndroidDeviceById(deviceModelId)
+    }
+    if (!androidDev && (currentFp?.navigator as any)?.deviceModelCode) {
+      androidDev = getAndroidDeviceById((currentFp.navigator as any).deviceModelCode)
+    }
+    if (!androidDev) {
+      androidDev = ANDROID_DEVICES[0]
+    }
+  }
+
+  // 2. User-Agent & Navigator Alignment
+  const userAgent = formatUserAgent(osType, browserType, browserVersion, iosDev?.id || androidDev?.id)
+  const platform = OS_PLATFORM_MAP[osType] || (isIos ? 'iPhone' : 'Win32')
+  const cpuArch = OS_CPU_ARCHITECTURES[family]
+
+  let cores = isIos ? (iosDev?.cores || 6) : isAndroid ? (androidDev?.cores || 8) : currentFp?.navigator?.hardwareConcurrency || rng.pick(OS_CPU_RANGES[family])
+  if (isIos && cores > 8) cores = 6
+  if (isAndroid && cores > 8) cores = 8
+
+  let memory = isIos ? (iosDev?.memory || 8) : isAndroid ? (androidDev?.memory || 12) : currentFp?.navigator?.deviceMemory || rng.pick(OS_MEMORY_RANGES[family])
+  if (isIos && memory > 8) memory = 8
+
+  const vendor = isIos ? (browserType === 'firefox' ? '' : 'Apple Computer, Inc.') : browserType === 'firefox' ? '' : 'Google Inc.'
+
+  const navigator: NavigatorFingerprint = {
+    ...(currentFp?.navigator || {}),
+    userAgent,
+    browserVersion,
+    chromiumVersion: browserVersion.split('.')[0],
+    platform,
+    vendor,
+    vendorSub: '',
+    product: 'Gecko',
+    productSub: browserType === 'firefox' ? '20100101' : '20030107',
+    appCodeName: 'Mozilla',
+    appName: 'Netscape',
+    appVersion: OS_APP_VERSION_PREFIX[osType] + (browserType === 'firefox' ? '' : ` AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVersion} ${isMobile ? 'Mobile ' : ''}Safari/537.36`),
+    hardwareConcurrency: cores,
+    deviceMemory: memory,
+    cpuArchitecture: cpuArch.arch,
+    platformArchitecture: cpuArch.platformArch,
+    maxTouchPoints: isMobile ? 5 : 0,
+    touchSupport: isMobile,
+    pdfViewerEnabled: !isMobile && browserType === 'chrome',
+    webdriver: false,
+    doNotTrack: currentFp?.navigator?.doNotTrack || null,
+    cookieEnabled: true,
+    javaEnabled: false,
+    localStorageEnabled: true,
+    sessionStorageEnabled: true,
+    indexedDBEnabled: true,
+    webSQLEnabled: false
+  }
+
+  if (isIos && iosDev) {
+    (navigator as any).deviceBrand = 'Apple';
+    (navigator as any).deviceModel = iosDev.modelName;
+    (navigator as any).deviceModelCode = iosDev.id;
+  } else if (isAndroid && androidDev) {
+    (navigator as any).deviceBrand = androidDev.brand;
+    (navigator as any).deviceModel = androidDev.modelName;
+    (navigator as any).deviceModelCode = androidDev.modelCode;
+  }
+
+  // 3. Screen & Resolution Alignment
+  let screen: ScreenFingerprint
+  if (isIos && iosDev) {
+    screen = {
+      width: iosDev.screenWidth,
+      height: iosDev.screenHeight,
+      availWidth: iosDev.screenWidth,
+      availHeight: iosDev.screenHeight,
+      colorDepth: 32,
+      pixelDepth: 32,
+      devicePixelRatio: iosDev.dpr,
+      orientation: 'portrait-primary',
+      orientationAngle: 0,
+      viewportWidth: iosDev.screenWidth,
+      viewportHeight: Math.floor(iosDev.screenHeight * 0.9),
+      outerWidth: iosDev.screenWidth,
+      outerHeight: iosDev.screenHeight,
+      screenX: 0,
+      screenY: 0,
+      isMultiMonitor: false,
+      isPrimaryDisplay: true
+    }
+  } else if (isAndroid && androidDev) {
+    screen = {
+      width: androidDev.screenWidth,
+      height: androidDev.screenHeight,
+      availWidth: androidDev.screenWidth,
+      availHeight: androidDev.screenHeight,
+      colorDepth: 24,
+      pixelDepth: 24,
+      devicePixelRatio: androidDev.dpr,
+      orientation: 'portrait-primary',
+      orientationAngle: 0,
+      viewportWidth: androidDev.screenWidth,
+      viewportHeight: Math.floor(androidDev.screenHeight * 0.9),
+      outerWidth: androidDev.screenWidth,
+      outerHeight: androidDev.screenHeight,
+      screenX: 0,
+      screenY: 0,
+      isMultiMonitor: false,
+      isPrimaryDisplay: true
+    }
+  } else {
+    // Desktop Screen Configuration
+    const configs = screenConfigsData as any
+    const pool = osType.startsWith('macos') ? configs['macos-retina'] || configs.desktop : configs.desktop
+    const selected = rng.pickWeighted(pool) || { width: 1920, height: 1080, dpr: 1, viewport: [1920, 969] }
+    const taskbarHeight = (configs.taskbar_heights as any)[osType] || 40
+
+    screen = {
+      width: selected.width,
+      height: selected.height,
+      availWidth: selected.width,
+      availHeight: selected.height - taskbarHeight,
+      colorDepth: 24,
+      pixelDepth: 24,
+      devicePixelRatio: selected.dpr,
+      orientation: 'landscape-primary',
+      orientationAngle: 0,
+      viewportWidth: selected.viewport ? selected.viewport[0] : selected.width,
+      viewportHeight: selected.viewport ? selected.viewport[1] : selected.height - taskbarHeight,
+      outerWidth: selected.width,
+      outerHeight: selected.height,
+      screenX: 0,
+      screenY: 0,
+      isMultiMonitor: !isMobile && rng.next() > 0.7,
+      isPrimaryDisplay: true
+    }
+  }
+
+  // 4. WebGL / GPU Alignment
+  let webgl: WebGLFingerprint
+  if (isIos && iosDev) {
+    webgl = {
+      enabled: true,
+      version: 'WebGL 2.0',
+      vendor: 'Apple Inc.',
+      renderer: iosDev.gpuRenderer,
+      unmaskedVendor: 'Apple Inc.',
+      unmaskedRenderer: iosDev.gpuRenderer,
+      maxTextureSize: 16384,
+      maxViewportDims: [16384, 16384],
+      maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Apple)',
+      extensions: WEBGL_EXTENSIONS.slice(0, 20),
+      antialiasing: true,
+      gpuVendor: 'Apple Inc.',
+      gpuRenderer: iosDev.gpuRenderer,
+      driverInfo: ''
+    }
+  } else if (isAndroid && androidDev) {
+    webgl = {
+      enabled: true,
+      version: 'WebGL 2.0',
+      vendor: 'WebKit',
+      renderer: 'WebKit WebGL',
+      unmaskedVendor: androidDev.gpuVendor,
+      unmaskedRenderer: androidDev.gpuRenderer,
+      maxTextureSize: 16384,
+      maxViewportDims: [16384, 16384],
+      maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Android)',
+      extensions: WEBGL_EXTENSIONS.slice(0, 22),
+      antialiasing: true,
+      gpuVendor: androidDev.gpuVendor,
+      gpuRenderer: androidDev.gpuRenderer,
+      driverInfo: ''
+    }
+  } else {
+    // Pick GPU appropriate for OS
+    const gpuData = gpuModelsData as any
+    const osGpus = gpuData[family === 'macos' ? 'macos' : family === 'linux' ? 'linux' : 'windows'] || gpuData.windows
+    const vendorKeys = Object.keys(osGpus)
+    let vKey = vendorKeys[0]
+    if (osType === 'macos-arm') {
+      vKey = 'apple'
+    } else if (osType === 'macos-intel') {
+      vKey = rng.pick(['intel', 'amd']) || vendorKeys[0]
+    } else {
+      vKey = rng.pick(vendorKeys)
+    }
+    const gpuList = osGpus[vKey] || osGpus[vendorKeys[0]]
+    const gpu = rng.pick(gpuList)
+
+    webgl = {
+      enabled: true,
+      version: 'WebGL 2.0',
+      vendor: 'WebKit',
+      renderer: 'WebKit WebGL',
+      unmaskedVendor: gpu.vendor,
+      unmaskedRenderer: gpu.renderer,
+      maxTextureSize: gpu.maxTexture || 16384,
+      maxViewportDims: [gpu.maxTexture || 32767, gpu.maxTexture || 32767],
+      maxRenderbufferSize: gpu.maxTexture || 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)',
+      extensions: WEBGL_EXTENSIONS,
+      antialiasing: true,
+      gpuVendor: gpu.vendor.replace(/Google Inc\. \(|\)/g, '').split(',')[0].trim(),
+      gpuRenderer: gpu.gpu,
+      driverInfo: ''
+    }
+  }
+
+  // 5. Fonts Alignment
+  const osFonts: string[] = (fontListsData as any)[family] || (fontListsData as any)['windows']
+  const fonts: FontsFingerprint = {
+    enableMasking: true,
+    mode: 'automatic',
+    fontList: [...osFonts].sort()
+  }
+
+  // 6. Media Devices
+  const mediaDevices: MediaDevicesFingerprint = {
+    videoInputs: isMobile ? 2 : 1,
+    audioInputs: 1,
+    audioOutputs: isMobile ? 1 : 2,
+    cameraLabels: isMobile ? ['camera2 0, facing back', 'camera2 1, facing front'] : ['Integrated HD Camera'],
+    microphoneLabels: ['Default Microphone'],
+    speakerLabels: ['Default Speaker'],
+    deviceIds: [rng.hex(64), rng.hex(64), rng.hex(64)]
+  }
+
+  // 7. Battery & Network
+  const battery: BatteryFingerprint = {
+    enabled: isMobile || family === 'macos',
+    charging: true,
+    level: 0.95,
+    chargingTime: 0,
+    dischargingTime: Infinity
+  }
+
+  const networkInfo: NetworkInfoFingerprint = {
+    effectiveType: '4g',
+    downlink: isMobile ? 15 : 100,
+    rtt: isMobile ? 50 : 20,
+    saveData: false,
+    type: isMobile ? 'cellular' : 'wifi'
+  }
+
+  // 8. Browser Config
+  const browser: BrowserConfig = {
+    ...(currentFp?.browser || {
+      saveHistory: true,
+      clearHistoryOnDelete: true,
+      savePasswords: false,
+      googleServicesEnabled: false,
+      safeBrowsing: false,
+      spellCheck: true,
+      backgroundServices: false,
+      systemExtensionsEnabled: false,
+      startUrlMode: 'new-tab',
+      startUrls: [],
+      customLaunchArgs: [],
+      dnsMode: 'system',
+      primaryDns: '',
+      secondaryDns: ''
+    }),
+    type: browserType,
+    name: browserType === 'firefox' ? 'Firefox' : 'Chrome',
+    version: browserVersion
+  }
+
+  return {
+    version: 2,
+    generatedAt: new Date().toISOString(),
+    seed,
+    osType,
+    navigator,
+    screen,
+    locale: currentFp?.locale || {
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+      country: 'US',
+      region: '',
+      currency: 'USD',
+      numberFormat: 'en-US',
+      dateFormat: 'M/d/yyyy',
+      firstDayOfWeek: 0,
+      measurementSystem: 'imperial',
+      hourCycle: '12h'
+    },
+    timezone: currentFp?.timezone || {
+      mode: 'auto',
+      timezone: 'America/New_York',
+      utcOffset: -300,
+      hasDST: true,
+      dstOffset: 60
+    },
+    geolocation: currentFp?.geolocation || {
+      mode: 'ask',
+      latitude: 40.7128,
+      longitude: -74.006,
+      accuracy: 50,
+      altitude: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+      permissionState: 'prompt'
+    },
+    webrtc: currentFp?.webrtc || {
+      mode: 'real',
+      ipPolicy: 'default_public_interface_only',
+      localIP: '',
+      publicIP: ''
+    },
+    canvas: {
+      mode: currentFp?.canvas?.mode || 'noise',
+      noiseSeed: (currentFp?.canvas?.noiseSeed && currentFp.canvas.noiseSeed > 0) ? currentFp.canvas.noiseSeed : rng.int(100000, 999999)
+    },
+    webgl,
+    audio: {
+      mode: currentFp?.audio?.mode || 'noise',
+      noiseSeed: (currentFp?.audio?.noiseSeed && currentFp.audio.noiseSeed > 0) ? currentFp.audio.noiseSeed : rng.int(100000, 999999),
+      sampleRate: 44100,
+      channelCount: 2,
+      maxChannelCount: 2,
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      channelCountMode: 'max',
+      channelInterpretation: 'speakers'
+    },
+    clientRects: {
+      mode: currentFp?.clientRects?.mode || 'noise',
+      noiseSeed: (currentFp?.clientRects?.noiseSeed && currentFp.clientRects.noiseSeed > 0) ? currentFp.clientRects.noiseSeed : rng.int(100000, 999999)
+    },
+    fonts,
+    mediaDevices,
+    battery,
+    networkInfo,
+    permissions: currentFp?.permissions || {
+      camera: 'prompt',
+      microphone: 'prompt',
+      geolocation: 'prompt',
+      notifications: 'prompt',
+      clipboard: 'prompt',
+      midi: 'prompt',
+      sensors: 'prompt',
+      usb: 'prompt',
+      bluetooth: 'prompt',
+      backgroundSync: 'prompt',
+      persistentStorage: 'prompt'
+    },
+    browser
+  }
+}
+
+// ═══════════════════════════════════════════
 // Main Fingerprint Generator
 // ═══════════════════════════════════════════
 
@@ -148,658 +594,148 @@ export interface GenerateOptions {
   osType: OSType
   browserType?: 'chrome' | 'firefox'
   browserVersion?: string
-  seed?: string               // If provided, produces deterministic results
-  country?: string            // ISO country code, e.g. "US"
-  proxyTimezone?: string      // Auto-detected timezone from proxy
-}
-
-/**
- * Generate a complete, coherent fingerprint for the given OS type.
- *
- * The generation follows a strict cascade to ensure consistency:
- *   1. OS type → platform, architecture, compatible browsers
- *   2. Browser → user-agent, version, vendor
- *   3. Hardware → CPU cores, memory, GPU/WebGL
- *   4. Display → screen resolution, DPR, viewport
- *   5. Locale → language, timezone, country, currency
- *   6. Privacy → canvas, audio, clientRects noise seeds
- *   7. Peripherals → media devices, battery, network
- *   8. Permissions → default states
- */
-export function generateFingerprint(options: GenerateOptions): Fingerprint {
-  const { osType, country, browserType = 'chrome', browserVersion } = options
-  const seed = options.seed || crypto.randomBytes(16).toString('hex')
-  const rng = new SeededRandom(seed)
-  const family = getOSFamily(osType)
-
-  // ── Step 1: Navigator (OS & Browser Engine aware) ──
-  const navigator = generateNavigator(osType, family, rng, browserType, browserVersion)
-
-  // ── Step 2: Screen (OS-aware, consistent with DPR) ──
-  const screen = generateScreen(osType, family, rng)
-
-  // ── Step 3: Locale (country-aware) ──
-  const locale = generateLocale(country || 'US', rng)
-
-  // ── Step 4: Timezone (consistent with country/locale) ──
-  const timezone = generateTimezone(country || 'US', options.proxyTimezone, rng)
-
-  // ── Step 5: Geolocation (consistent with country/timezone) ──
-  const geolocation = generateGeolocation(country || 'US', rng)
-
-  // ── Step 6: WebRTC ──
-  const webrtc = generateWebRTC()
-
-  // ── Step 7: Canvas ──
-  const canvas = generateCanvas(rng)
-
-  // ── Step 8: WebGL (OS-aware, consistent with GPU) ──
-  const webgl = generateWebGL(osType, family, rng)
-
-  // ── Step 9: Audio ──
-  const audio = generateAudio(rng)
-
-  // ── Step 10: ClientRects ──
-  const clientRects = generateClientRects(rng)
-
-  // ── Step 11: Fonts (OS-specific) ──
-  const fonts = generateFonts(family, rng)
-
-  // ── Step 12: Media Devices ──
-  const mediaDevices = generateMediaDevices(family, rng)
-
-  // ── Step 13: Battery ──
-  const battery = generateBattery(family)
-
-  // ── Step 14: Network Info ──
-  const networkInfo = generateNetworkInfo(family)
-
-  // ── Step 15: Permissions ──
-  const permissions = generatePermissions()
-
-  // ── Step 16: Browser Config ──
-  const browser: BrowserConfig = {
-    ...generateBrowserConfig(),
-    type: browserType,
-    name: browserType === 'firefox' ? 'Firefox' : 'Chrome',
-    version: navigator.browserVersion
-  }
-
-  return {
-    version: 2,
-    generatedAt: new Date().toISOString(),
-    seed,
-    navigator,
-    screen,
-    locale,
-    timezone,
-    geolocation,
-    webrtc,
-    canvas,
-    webgl,
-    audio,
-    clientRects,
-    fonts,
-    mediaDevices,
-    battery,
-    networkInfo,
-    permissions,
-    browser
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 1: Navigator Generation
-// ═══════════════════════════════════════════
-
-function generateNavigator(
-  osType: OSType,
-  family: OSFamily,
-  rng: SeededRandom,
-  browserType: 'chrome' | 'firefox' = 'chrome',
-  customBrowserVersion?: string
-): NavigatorFingerprint {
-  const isMobile = family === 'android' || family === 'ios'
-  const isAndroid = family === 'android'
-  const isIos = family === 'ios'
-  const isMac = family === 'macos'
-
-  const cpuArch = OS_CPU_ARCHITECTURES[family]
-  const cores = rng.pick(OS_CPU_RANGES[family])
-  const memory = rng.pick(OS_MEMORY_RANGES[family])
-
-  if (browserType === 'firefox') {
-    const rawVer = customBrowserVersion || '129.0'
-    const ffVer = rawVer.includes('.') ? rawVer : `${rawVer}.0`
-
-    let userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
-    let appVersion = `5.0 (Windows)`
-
-    if (osType === 'windows-10' || osType === 'windows-11') {
-      userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
-      appVersion = `5.0 (Windows)`
-    } else if (osType === 'macos-intel' || osType === 'macos-arm') {
-      userAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
-      appVersion = `5.0 (Macintosh)`
-    } else if (osType === 'linux') {
-      userAgent = `Mozilla/5.0 (X11; Linux x86_64; rv:${ffVer}) Gecko/20100101 Firefox/${ffVer}`
-      appVersion = `5.0 (X11)`
-    } else if (osType === 'ios') {
-      userAgent = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
-      appVersion = `5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
-    } else if (osType === 'android') {
-      userAgent = `Mozilla/5.0 (Android 14; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
-      appVersion = `5.0 (Android 14)`
-    }
-
-    return {
-      userAgent,
-      browserVersion: ffVer,
-      chromiumVersion: ffVer.split('.')[0],
-      platform: OS_PLATFORM_MAP[osType] || (isIos ? 'iPhone' : 'Win32'),
-      appCodeName: 'Mozilla',
-      appName: 'Netscape',
-      appVersion,
-      product: 'Gecko',
-      productSub: '20100101',
-      vendor: isIos ? 'Apple Computer, Inc.' : '',
-      vendorSub: '',
-      hardwareConcurrency: cores,
-      deviceMemory: memory,
-      cpuArchitecture: cpuArch.arch,
-      platformArchitecture: cpuArch.platformArch,
-      maxTouchPoints: isMobile ? 5 : 0,
-      touchSupport: isMobile,
-      doNotTrack: rng.next() > 0.8 ? '1' : null,
-      cookieEnabled: true,
-      pdfViewerEnabled: !isMobile,
-      javaEnabled: false,
-      webdriver: false,
-      localStorageEnabled: true,
-      sessionStorageEnabled: true,
-      indexedDBEnabled: true,
-      webSQLEnabled: false
-    }
-  }
-
-  // Default: Chrome
-  const uaData = (userAgentsData as any)[osType] || (userAgentsData as any)['windows-10']
-  const selectedUA = rng.pick(uaData)
-  const bVer = customBrowserVersion || selectedUA.version
-
-  return {
-    userAgent: customBrowserVersion ? selectedUA.ua.replace(/Chrome\/[\d\.]+/g, `Chrome/${customBrowserVersion}`) : selectedUA.ua,
-    browserVersion: bVer,
-    chromiumVersion: selectedUA.chromium,
-    platform: OS_PLATFORM_MAP[osType] || (isIos ? 'iPhone' : 'Win32'),
-    appCodeName: 'Mozilla',
-    appName: 'Netscape',
-    appVersion: OS_APP_VERSION_PREFIX[osType] + ` AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} ${isMobile ? 'Mobile ' : ''}Safari/537.36`,
-    product: 'Gecko',
-    productSub: '20030107',
-    vendor: isIos ? 'Apple Computer, Inc.' : 'Google Inc.',
-    vendorSub: '',
-    hardwareConcurrency: cores,
-    deviceMemory: memory,
-    cpuArchitecture: cpuArch.arch,
-    platformArchitecture: cpuArch.platformArch,
-    maxTouchPoints: isMobile ? 5 : 0,
-    touchSupport: isMobile,
-    doNotTrack: rng.next() > 0.8 ? '1' : null,    // ~20% enable DNT
-    cookieEnabled: true,
-    pdfViewerEnabled: !isMobile,
-    javaEnabled: false,
-    webdriver: false,
-    localStorageEnabled: true,
-    sessionStorageEnabled: true,
-    indexedDBEnabled: true,
-    webSQLEnabled: false
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 2: Screen Generation
-// ═══════════════════════════════════════════
-
-function generateScreen(osType: OSType, family: OSFamily, rng: SeededRandom): ScreenFingerprint {
-  const configs = screenConfigsData as any
-  const taskbarHeight = configs.taskbar_heights[osType] || 0
-
-  let pool: any[]
-  if (family === 'android') {
-    pool = configs.android
-  } else if (family === 'ios') {
-    pool = configs.ios || configs.android
-  } else if (osType === 'macos-arm' || osType === 'macos-intel') {
-    // macOS uses retina displays predominantly
-    pool = rng.next() > 0.15 ? configs['macos-retina'] : configs.desktop
-  } else {
-    pool = configs.desktop
-  }
-
-  const selected = rng.pickWeighted(pool)
-
-  const isMobile = family === 'android' || family === 'ios'
-  const availHeight = isMobile ? selected.height : selected.height - taskbarHeight
-  const viewportWidth = selected.viewport[0]
-  const viewportHeight = selected.viewport[1]
-
-  return {
-    width: selected.width,
-    height: selected.height,
-    availWidth: selected.width,
-    availHeight,
-    colorDepth: 24,
-    pixelDepth: 24,
-    devicePixelRatio: selected.dpr,
-    orientation: isMobile ? 'portrait-primary' : 'landscape-primary',
-    orientationAngle: 0,
-    viewportWidth,
-    viewportHeight,
-    outerWidth: isMobile ? selected.width : viewportWidth,
-    outerHeight: isMobile ? selected.height : viewportHeight + 71 + taskbarHeight, // Chrome UI height
-    screenX: 0,
-    screenY: 0,
-    isMultiMonitor: !isMobile && rng.next() > 0.7, // 30% of desktop users have multi-monitor
-    isPrimaryDisplay: true
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 3: Locale Generation
-// ═══════════════════════════════════════════
-
-function generateLocale(country: string, rng: SeededRandom): LocaleFingerprint {
-  const profiles = (localeProfilesData as any).profiles
-  const profile = profiles[country] || profiles['US']
-
-  return {
-    language: profile.language,
-    languages: profile.languages,
-    country,
-    region: '',
-    currency: profile.currency,
-    numberFormat: profile.numberFormat,
-    dateFormat: profile.dateFormat,
-    firstDayOfWeek: profile.firstDayOfWeek,
-    measurementSystem: profile.measurementSystem,
-    hourCycle: profile.hourCycle
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 4: Timezone Generation
-// ═══════════════════════════════════════════
-
-function generateTimezone(country: string, proxyTimezone: string | undefined, rng: SeededRandom): TimezoneFingerprint {
-  if (proxyTimezone) {
-    return {
-      mode: 'auto',
-      timezone: proxyTimezone,
-      utcOffset: getUtcOffset(proxyTimezone),
-      hasDST: hasDST(proxyTimezone),
-      dstOffset: 60
-    }
-  }
-
-  const profiles = (localeProfilesData as any).profiles
-  const profile = profiles[country] || profiles['US']
-  const tz = rng.pick(profile.timezones)
-
-  return {
-    mode: 'manual',
-    timezone: tz,
-    utcOffset: getUtcOffset(tz),
-    hasDST: hasDST(tz),
-    dstOffset: 60
-  }
-}
-
-function getUtcOffset(timezone: string): number {
-  try {
-    const now = new Date()
-    const utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }))
-    const tzDate = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
-    return (tzDate.getTime() - utcDate.getTime()) / 60000
-  } catch {
-    return -300 // Default to EST
-  }
-}
-
-function hasDST(timezone: string): boolean {
-  try {
-    const jan = new Date(2024, 0, 1)
-    const jul = new Date(2024, 6, 1)
-    const janOffset = jan.toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' })
-    const julOffset = jul.toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' })
-    return janOffset !== julOffset
-  } catch {
-    return true
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 5: Geolocation Generation
-// ═══════════════════════════════════════════
-
-function generateGeolocation(country: string, rng: SeededRandom): GeolocationFingerprint {
-  const geoCoords = (localeProfilesData as any).geo_coords
-  const coords = geoCoords[country]
-
-  if (coords && coords.length > 0) {
-    const city = rng.pick(coords)
-    // Add small randomization to coordinates (within ~5km)
-    const latNoise = (rng.next() - 0.5) * 0.09
-    const lonNoise = (rng.next() - 0.5) * 0.09
-
-    return {
-      mode: 'custom',
-      latitude: Math.round((city.lat + latNoise) * 10000) / 10000,
-      longitude: Math.round((city.lon + lonNoise) * 10000) / 10000,
-      accuracy: rng.pick([10, 20, 50, 100, 150]),
-      altitude: null,
-      altitudeAccuracy: null,
-      heading: null,
-      speed: null,
-      permissionState: 'prompt'
-    }
-  }
-
-  // Fallback: New York
-  return {
-    mode: 'ask',
-    latitude: 40.7128,
-    longitude: -74.006,
-    accuracy: 50,
-    altitude: null,
-    altitudeAccuracy: null,
-    heading: null,
-    speed: null,
-    permissionState: 'prompt'
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 6: WebRTC
-// ═══════════════════════════════════════════
-
-function generateWebRTC(): WebRTCFingerprint {
-  return {
-    mode: 'real',
-    ipPolicy: 'default_public_interface_only',
-    localIP: '',
-    publicIP: ''
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 7: Canvas
-// ═══════════════════════════════════════════
-
-function generateCanvas(rng: SeededRandom): CanvasFingerprint {
-  return {
-    mode: 'noise',
-    noiseSeed: rng.int(100000, 999999)
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 8: WebGL (OS-aware GPU selection)
-// ═══════════════════════════════════════════
-
-function generateWebGL(osType: OSType, family: OSFamily, rng: SeededRandom): WebGLFingerprint {
-  const gpuData = gpuModelsData as any
-  const osGpus = gpuData[family === 'macos' ? 'macos' : family === 'android' ? 'android' : family === 'linux' ? 'linux' : 'windows']
-
-  // Pick a GPU vendor category appropriate to OS
-  const vendorCategories = Object.keys(osGpus)
-  let vendorKey: string
-
-  if (family === 'macos' && osType === 'macos-arm') {
-    // Apple Silicon always uses Apple GPU
-    vendorKey = 'apple'
-  } else if (family === 'macos' && osType === 'macos-intel') {
-    // Intel Macs can have Intel or AMD GPUs
-    vendorKey = rng.pick(['intel', 'apple'])
-    if (!osGpus[vendorKey]) vendorKey = vendorCategories[0]
-  } else {
-    vendorKey = rng.pick(vendorCategories)
-  }
-
-  const gpuList = osGpus[vendorKey] || osGpus[vendorCategories[0]]
-  const gpu = rng.pick(gpuList)
-
-  // Select WebGL extensions (pick ~70-90% of full list)
-  const extCount = rng.int(Math.floor(WEBGL_EXTENSIONS.length * 0.7), WEBGL_EXTENSIONS.length)
-  const extensions = [...WEBGL_EXTENSIONS].sort(() => rng.next() - 0.5).slice(0, extCount)
-
-  return {
-    enabled: true,
-    version: 'WebGL 2.0',
-    vendor: 'WebKit',
-    renderer: 'WebKit WebGL',
-    unmaskedVendor: gpu.vendor,
-    unmaskedRenderer: gpu.renderer,
-    maxTextureSize: gpu.maxTexture || 16384,
-    maxViewportDims: [gpu.maxTexture || 32767, gpu.maxTexture || 32767],
-    maxRenderbufferSize: gpu.maxTexture || 16384,
-    shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)',
-    extensions,
-    antialiasing: true,
-    gpuVendor: gpu.vendor.replace(/Google Inc\. \(|\)/g, '').split(',')[0].trim(),
-    gpuRenderer: gpu.gpu,
-    driverInfo: ''
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 9: Audio
-// ═══════════════════════════════════════════
-
-function generateAudio(rng: SeededRandom): AudioFingerprint {
-  return {
-    mode: 'noise',
-    noiseSeed: rng.int(100000, 999999),
-    sampleRate: rng.pick([44100, 48000]),
-    channelCount: 2,
-    maxChannelCount: rng.pick([2, 6]),
-    numberOfInputs: 1,
-    numberOfOutputs: 1,
-    channelCountMode: 'max',
-    channelInterpretation: 'speakers'
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 10: ClientRects
-// ═══════════════════════════════════════════
-
-function generateClientRects(rng: SeededRandom): ClientRectsFingerprint {
-  return {
-    mode: 'noise',
-    noiseSeed: rng.int(100000, 999999)
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 11: Fonts (OS-specific)
-// ═══════════════════════════════════════════
-
-function generateFonts(family: OSFamily, rng: SeededRandom): FontsFingerprint {
-  const allFonts: string[] = (fontListsData as any)[family] || (family === 'ios' ? (fontListsData as any)['macos'] : (fontListsData as any)['windows'])
-
-  // Use 60-90% of the OS font list to create variation
-  const count = Math.max(rng.int(Math.floor(allFonts.length * 0.6), allFonts.length), 3)
-  const shuffled = [...allFonts].sort(() => rng.next() - 0.5)
-  const selectedFonts = shuffled.slice(0, count)
-
-  const markers: Record<OSFamily, string[]> = {
-    windows: ['Segoe UI', 'Arial'],
-    macos: ['.AppleSystemUIFont', 'Helvetica'],
-    linux: ['DejaVu Sans', 'Ubuntu'],
-    android: ['Roboto', 'Droid Sans', 'Noto Sans'],
-    ios: ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
-  }
-  const primaryMarkers = markers[family] || []
-  if (primaryMarkers.length > 0 && !selectedFonts.some(f => primaryMarkers.includes(f))) {
-    selectedFonts.push(rng.pick(primaryMarkers))
-  }
-
-  return {
-    enableMasking: true,
-    mode: 'automatic',
-    fontList: selectedFonts.sort()
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 12: Media Devices
-// ═══════════════════════════════════════════
-
-function generateMediaDevices(family: OSFamily, rng: SeededRandom): MediaDevicesFingerprint {
-  const isDesktop = family !== 'android'
-  const videoInputs = isDesktop ? rng.pick([0, 1, 1, 1]) : rng.pick([1, 2])
-  const audioInputs = rng.pick([1, 1, 1, 2])
-  const audioOutputs = isDesktop ? rng.pick([1, 1, 2, 2, 3]) : 1
-
-  // Generate stable device IDs
-  const deviceIds: string[] = []
-  for (let i = 0; i < videoInputs + audioInputs + audioOutputs; i++) {
-    deviceIds.push(rng.hex(64))
-  }
-
-  const cameraLabels = Array.from({ length: videoInputs }, (_, i) =>
-    isDesktop
-      ? rng.pick(['Integrated Camera', 'HD WebCam', 'USB2.0 HD UVC WebCam', 'FaceTime HD Camera', 'Logitech HD Pro Webcam C920'])
-      : i === 0 ? 'camera2 0, facing back' : 'camera2 1, facing front'
-  )
-
-  const micLabels = Array.from({ length: audioInputs }, () =>
-    rng.pick(['Default', 'Internal Microphone', 'Built-in Microphone', 'Microphone Array'])
-  )
-
-  const speakerLabels = Array.from({ length: audioOutputs }, (_, i) =>
-    i === 0 ? 'Default' : rng.pick(['External Headphones', 'Speakers (Realtek)', 'Built-in Output'])
-  )
-
-  return {
-    videoInputs,
-    audioInputs,
-    audioOutputs,
-    cameraLabels,
-    microphoneLabels: micLabels,
-    speakerLabels,
-    deviceIds
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 13: Battery
-// ═══════════════════════════════════════════
-
-function generateBattery(family: OSFamily): BatteryFingerprint {
-  // Desktop devices typically don't expose Battery API meaningfully
-  // Android/laptop profiles can expose it
-  const isLaptop = family === 'macos' || family === 'android'
-
-  return {
-    enabled: isLaptop,
-    charging: true,
-    level: 1.0,
-    chargingTime: 0,
-    dischargingTime: Infinity
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 14: Network Info
-// ═══════════════════════════════════════════
-
-function generateNetworkInfo(family: OSFamily): NetworkInfoFingerprint {
-  return {
-    effectiveType: '4g',
-    downlink: family === 'android' ? 10 : 100,
-    rtt: family === 'android' ? 100 : 50,
-    saveData: false,
-    type: family === 'android' ? 'cellular' : 'wifi'
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 15: Permissions
-// ═══════════════════════════════════════════
-
-function generatePermissions(): PermissionsFingerprint {
-  return {
-    camera: 'prompt',
-    microphone: 'prompt',
-    geolocation: 'prompt',
-    notifications: 'prompt',
-    clipboard: 'prompt',
-    midi: 'prompt',
-    sensors: 'prompt',
-    usb: 'prompt',
-    bluetooth: 'prompt',
-    backgroundSync: 'prompt',
-    persistentStorage: 'prompt'
-  }
-}
-
-// ═══════════════════════════════════════════
-// Step 16: Browser Config
-// ═══════════════════════════════════════════
-
-function generateBrowserConfig(): BrowserConfig {
-  return {
-    saveHistory: true,
-    clearHistoryOnDelete: true,
-    savePasswords: false,
-    googleServicesEnabled: false,
-    safeBrowsing: false,
-    spellCheck: true,
-    backgroundServices: false,
-    systemExtensionsEnabled: false,
-    startUrlMode: 'new-tab',
-    startUrls: [],
-    customLaunchArgs: [],
-    dnsMode: 'system',
-    primaryDns: '',
-    secondaryDns: ''
-  }
-}
-
-// ═══════════════════════════════════════════
-// Bulk Generation
-// ═══════════════════════════════════════════
-
-export interface BulkCreateOptions {
-  count: number
-  osType: OSType
+  deviceModelId?: string
+  seed?: string
   country?: string
-  namePrefix?: string
+  proxyTimezone?: string
 }
 
-export function generateBulkFingerprints(options: BulkCreateOptions): Fingerprint[] {
-  const results: Fingerprint[] = []
-  for (let i = 0; i < options.count; i++) {
-    const seed = crypto.randomBytes(16).toString('hex')
-    results.push(generateFingerprint({
-      osType: options.osType,
-      seed,
-      country: options.country
-    }))
-  }
-  return results
+export function generateFingerprint(options: GenerateOptions): Fingerprint {
+  const blank = createDefaultFingerprint()
+  return recalculateDependentFields(blank, options)
 }
-
-// ═══════════════════════════════════════════
-// Regenerate (keep OS, generate new values)
-// ═══════════════════════════════════════════
 
 export function regenerateFingerprint(osType: OSType, country?: string): Fingerprint {
   return generateFingerprint({
     osType,
     seed: crypto.randomBytes(16).toString('hex'),
     country
+  })
+}
+
+export function generateBulkFingerprints(options: { count: number; osType: OSType; browserType?: 'chrome' | 'firefox' }): Fingerprint[] {
+  const result: Fingerprint[] = []
+  for (let i = 0; i < options.count; i++) {
+    result.push(generateFingerprint({
+      osType: options.osType,
+      browserType: options.browserType,
+      seed: crypto.randomBytes(16).toString('hex')
+    }))
+  }
+  return result
+}
+
+// ═══════════════════════════════════════════
+// Canonical Predefined Profile Templates
+// ═══════════════════════════════════════════
+
+export function getBuiltinTemplates(): ProfileTemplate[] {
+  const tpls: Array<{
+    id: string
+    name: string
+    osType: OSType
+    browserType: 'chrome' | 'firefox'
+    browserVersion: string
+    deviceClass: 'desktop' | 'mobile' | 'tablet'
+    description: string
+    deviceModelId?: string
+  }> = [
+    {
+      id: 'win11-chrome-standard',
+      name: 'Windows 11 Chrome Desktop (Workstation)',
+      osType: 'windows-11',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'desktop',
+      description: 'Windows 11 64-bit desktop with Google Chrome 131, NVIDIA GeForce RTX 4070, 1920x1080 @ 1x DPR, and 16GB RAM.'
+    },
+    {
+      id: 'win10-firefox-quantum',
+      name: 'Windows 10 Firefox Quantum (Privacy)',
+      osType: 'windows-10',
+      browserType: 'firefox',
+      browserVersion: '129.0',
+      deviceClass: 'desktop',
+      description: 'Windows 10 with Mozilla Firefox 129 Quantum Gecko engine, Intel UHD Graphics Direct3D, 8GB RAM, and 6 CPU cores.'
+    },
+    {
+      id: 'macos-arm-chrome-retina',
+      name: 'macOS Apple Silicon (M3 Pro) Chrome',
+      osType: 'macos-arm',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'desktop',
+      description: 'MacBook Pro Apple Silicon M3 GPU, Retina 1512x982 @ 2x DPR, 16GB RAM, Metal WebGL.'
+    },
+    {
+      id: 'macos-intel-firefox',
+      name: 'macOS Intel Firefox Quantum',
+      osType: 'macos-intel',
+      browserType: 'firefox',
+      browserVersion: '129.0',
+      deviceClass: 'desktop',
+      description: 'MacBook Pro Intel with Intel Iris Plus Graphics, 1440x900 @ 2x DPR, Firefox Quantum 129.'
+    },
+    {
+      id: 'linux-ubuntu-chrome',
+      name: 'Linux Ubuntu Chrome Workstation',
+      osType: 'linux',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'desktop',
+      description: 'Ubuntu Linux x86_64 desktop, Google Chrome 131, Mesa Intel OpenGL WebGL, 1920x1080 @ 1x DPR, 16GB RAM.'
+    },
+    {
+      id: 'linux-debian-firefox',
+      name: 'Linux Debian Firefox Stable',
+      osType: 'linux',
+      browserType: 'firefox',
+      browserVersion: '129.0',
+      deviceClass: 'desktop',
+      description: 'Debian Linux with Firefox 129, AMD Radeon OpenGL, 1920x1080, font masking.'
+    },
+    {
+      id: 'iphone-15-pro-ios',
+      name: 'iPhone 15 Pro (iOS 17.5 Safari/Chrome)',
+      osType: 'ios',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'mobile',
+      description: 'Apple iPhone 15 Pro with Apple A17 Pro GPU, 393x852 @ 3x DPR screen, 8GB RAM, 6 Cores, Touch support.',
+      deviceModelId: 'iphone-15-pro'
+    },
+    {
+      id: 'samsung-s24-ultra-android',
+      name: 'Samsung Galaxy S24 Ultra (Android 14 Chrome)',
+      osType: 'android',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'mobile',
+      description: 'Samsung Galaxy S24 Ultra (SM-S928B), Snapdragon 8 Gen 3 Adreno 750, 412x915 @ 3.5x DPR, 12GB RAM, Touch support.',
+      deviceModelId: 'samsung-s24-ultra'
+    }
+  ]
+
+  return tpls.map(t => {
+    const fp = generateFingerprint({
+      osType: t.osType,
+      browserType: t.browserType,
+      browserVersion: t.browserVersion,
+      deviceModelId: t.deviceModelId,
+      seed: `builtin-${t.id}`
+    })
+
+    return {
+      id: t.id,
+      name: t.name,
+      osType: t.osType,
+      browserType: t.browserType,
+      browserVersion: t.browserVersion,
+      deviceClass: t.deviceClass,
+      description: t.description,
+      fingerprint: fp,
+      isBuiltin: true,
+      createdAt: '2026-08-19T00:00:00.000Z'
+    }
   })
 }

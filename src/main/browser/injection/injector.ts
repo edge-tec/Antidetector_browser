@@ -26,9 +26,10 @@ import { buildGeolocationScript } from './scripts/geolocation'
  * Build the complete injection script from all sub-scripts.
  * This is a single IIFE that runs before any page JavaScript.
  */
-export function buildInjectionScript(fingerprint: Fingerprint): string {
+export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'chrome' | 'firefox'): string {
+  const bType = browserType || fingerprint.browser?.type || (fingerprint.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
   const scripts = [
-    buildNavigatorScript(fingerprint.navigator),
+    buildNavigatorScript(fingerprint.navigator, bType),
     buildScreenScript(fingerprint.screen),
     buildWebGLScript(fingerprint.webgl),
     buildCanvasScript(fingerprint.canvas),
@@ -56,7 +57,7 @@ export function buildInjectionScript(fingerprint: Fingerprint): string {
 /**
  * Build Client Hints userAgentMetadata aligned with OS platform and browser version.
  */
-function buildUserAgentMetadata(fingerprint: Fingerprint): any {
+export function buildUserAgentMetadata(fingerprint: Fingerprint): any {
   const nav = fingerprint.navigator || ({} as any)
   const fullVersion = nav.browserVersion || '131.0.0.0'
   const brandVersion = fullVersion.split('.')[0] || '131'
@@ -68,7 +69,6 @@ function buildUserAgentMetadata(fingerprint: Fingerprint): any {
   const isIOS = ua.includes('iPhone') || ua.includes('iPad') || platformStr === 'iPhone' || osType === 'ios'
   const isMac = !isAndroid && !isIOS && (platformStr.includes('Mac') || ua.includes('Macintosh') || osType.includes('macos'))
   const isLinux = !isAndroid && !isIOS && !isMac && (platformStr.includes('Linux') || ua.includes('Linux') || osType === 'linux')
-  const isWindows = !isAndroid && !isIOS && !isMac && !isLinux
 
   let platform = 'Windows'
   let platformVersion = '15.0.0'
@@ -147,7 +147,9 @@ export async function injectFingerprint(page: Page, fingerprint: Fingerprint): P
 async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise<void> {
   const isAndroid = fingerprint.navigator?.userAgent?.includes('Android') || fingerprint.navigator?.appVersion?.includes('Android')
   const isIOS = fingerprint.navigator?.userAgent?.includes('iPhone') || fingerprint.navigator?.userAgent?.includes('iPad') || fingerprint.navigator?.platform === 'iPhone'
-  const script = buildInjectionScript(fingerprint)
+  const isFirefox = fingerprint.browser?.type === 'firefox' || fingerprint.navigator?.userAgent?.includes('Firefox')
+
+  const script = buildInjectionScript(fingerprint, isFirefox ? 'firefox' : 'chrome')
 
   try {
     // Run script before any page JS on every frame/navigation
@@ -163,8 +165,26 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   try {
     const client = await page.target().createCDPSession()
 
-    // Clear device metrics override so Chromium renders edge-to-edge
-    await client.send('Emulation.clearDeviceMetricsOverride')
+    // Clear or apply device metrics override
+    if (isAndroid || isIOS) {
+      const scr = fingerprint.screen || { width: 393, height: 852, devicePixelRatio: 3 }
+      await client.send('Emulation.setDeviceMetricsOverride', {
+        width: scr.width || 393,
+        height: scr.height || 852,
+        deviceScaleFactor: scr.devicePixelRatio || 3,
+        mobile: true,
+        screenOrientation: {
+          angle: 0,
+          type: (scr.orientation === 'portrait-primary' ? 'portraitPrimary' : 'landscapePrimary') as any
+        }
+      })
+      await client.send('Emulation.setTouchEmulationEnabled', {
+        enabled: true,
+        maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
+      })
+    } else {
+      await client.send('Emulation.clearDeviceMetricsOverride')
+    }
 
     // Geolocation CDP Override
     if (fingerprint.geolocation && (fingerprint.geolocation.mode === 'custom' || fingerprint.geolocation.mode === 'ip-based')) {
@@ -179,13 +199,6 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
       }
     }
 
-    if (isAndroid || isIOS) {
-      await client.send('Emulation.setTouchEmulationEnabled', {
-        enabled: true,
-        maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
-      })
-    }
-
     // ── Universal User-Agent & Client Hints Override for ALL Platforms ──
     const userAgentMetadata = buildUserAgentMetadata(fingerprint)
     const acceptLanguage = (fingerprint.locale?.languages || ['en-US', 'en']).join(',')
@@ -194,7 +207,7 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
       userAgent: fingerprint.navigator?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
       acceptLanguage,
       platform: userAgentMetadata.platform,
-      userAgentMetadata
+      userAgentMetadata: isFirefox ? undefined : userAgentMetadata
     })
   } catch (err: any) {
     logger.warn('browser', `Could not apply CDP page emulation: ${err.message}`)
@@ -211,10 +224,7 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
           url.includes('challenges.cloudflare.com') ||
           url.includes('geo.captcha-delivery.com') ||
           url.includes('arkoselabs.com') ||
-          url.includes('recaptcha/enterprise') ||
-          url.includes('/i/api/1.1/onboarding/') ||
-          url.includes('api.twitter.com') ||
-          url.includes('api.x.com')
+          url.includes('recaptcha/enterprise')
         ) {
           logger.info('diagnostics', `[AuthNetworkDiagnostic] Status: ${status} on URL: ${url.split('?')[0].slice(0, 100)}`, {
             status,

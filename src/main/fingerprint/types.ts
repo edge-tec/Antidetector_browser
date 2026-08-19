@@ -316,7 +316,14 @@ export interface PermissionsFingerprint {
 // ═══════════════════════════════════════════
 
 export interface BrowserConfig {
-  // Section 19: Storage — handled by Chromium userDataDir isolation
+  type?: 'chrome' | 'firefox'
+  name?: string
+  version?: string
+  bookmarks?: Array<{ title: string; url: string }>
+  cookies?: any[]
+  extensions?: any[]
+
+  // Section 19: Storage — handled by Chromium/Firefox userDataDir isolation
 
   // Section 20: History
   saveHistory: boolean
@@ -357,6 +364,7 @@ export interface Fingerprint {
   version: number               // schema version for migrations
   generatedAt: string           // ISO date
   seed: string                  // master seed for reproducible noise
+  osType?: OSType
 
   navigator: NavigatorFingerprint
   screen: ScreenFingerprint
@@ -410,6 +418,55 @@ export interface ConsistencyResult {
   warnings: number
   failures: number
   checks: ConsistencyCheck[]
+  contradictions: string[]
+}
+
+export interface RuntimeDiagnosticReport {
+  profileConfig: {
+    osType: string
+    browserEngine: 'chrome' | 'firefox'
+    browserVersion: string
+    platform: string
+    userAgent: string
+    screenResolution: string
+    devicePixelRatio: number
+    cpuCores: number
+    memoryGb: number
+    gpuVendor: string
+    gpuRenderer: string
+    unmaskedRenderer: string
+    timezone: string
+    language: string
+    languages: string[]
+    webrtcPolicy: string
+    touchSupport: boolean
+    maxTouchPoints: number
+  }
+  effectiveRuntime: {
+    navigatorPlatform: string
+    navigatorUserAgent: string
+    navigatorVendor: string
+    navigatorAppVersion: string
+    hardwareConcurrency: number
+    deviceMemory: number
+    screenDimensions: string
+    windowDpr: number
+    webglVendor: string
+    webglRenderer: string
+    resolvedTimezone: string
+    resolvedLanguages: string[]
+    clientHintsActive: boolean
+    windowChromePresent: boolean
+    webrtcStatus: string
+  }
+  networkIdentity: {
+    hasProxy: boolean
+    proxyType?: string
+    proxyHost?: string
+    proxyPort?: number
+    webrtcIpPolicy: string
+    disclaimer: string
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -420,6 +477,9 @@ export interface ProfileTemplate {
   id: string
   name: string
   osType: OSType
+  browserType: 'chrome' | 'firefox'
+  browserVersion: string
+  deviceClass: 'desktop' | 'mobile' | 'tablet'
   description: string
   fingerprint: Fingerprint
   isBuiltin: boolean

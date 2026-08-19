@@ -1,31 +1,50 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — Navigator Injection Script Builder
-// Overrides navigator.* properties, plugins, mimeTypes, and native fidelity
+// Overrides navigator.* properties, Client Hints, plugins, and native fidelity
 // ──────────────────────────────────────────────────────────────────
 
 import { NavigatorFingerprint } from '../../../fingerprint/types'
 
-export function buildNavigatorScript(nav: NavigatorFingerprint): string {
-  const isMobile = !!nav.touchSupport || nav.platform === 'iPhone' || nav.platform.includes('Android') || nav.platform.includes('arm')
+export function buildNavigatorScript(
+  nav: NavigatorFingerprint,
+  browserType: 'chrome' | 'firefox' = 'chrome'
+): string {
+  const isMobile = !!nav.touchSupport || nav.platform === 'iPhone' || (nav.platform && nav.platform.includes('Android')) || (nav.platform && nav.platform.includes('arm'))
+  const isFirefox = browserType === 'firefox' || (nav.userAgent && nav.userAgent.includes('Firefox')) || (nav.userAgent && nav.userAgent.includes('FxiOS'))
+  const isIos = nav.platform === 'iPhone' || (nav.userAgent && nav.userAgent.includes('iPhone'))
+
   const brandVersion = nav.browserVersion ? nav.browserVersion.split('.')[0] : '131'
   const clientPlatform = isMobile
-    ? (nav.platform === 'iPhone' ? 'iOS' : 'Android')
+    ? (isIos ? 'iOS' : 'Android')
     : (nav.platform === 'Win32' ? 'Windows' : nav.platform.includes('Mac') ? 'macOS' : 'Linux')
 
   return `
-// ═══ Navigator & Browser Environment Integrity ═══
+// ═══ Navigator Override & Environment Integrity ═══
 (function() {
   'use strict';
 
-  const safeOverrides = ${JSON.stringify({
-    hardwareConcurrency: nav.hardwareConcurrency,
-    deviceMemory: nav.deviceMemory,
-    maxTouchPoints: nav.maxTouchPoints,
-    doNotTrack: nav.doNotTrack
-  })};
+  // 1. Prototype Property Traps
+  const protoOverrides = {
+    platform: ${JSON.stringify(nav.platform || 'Win32')},
+    vendor: ${JSON.stringify(nav.vendor || '')},
+    vendorSub: ${JSON.stringify(nav.vendorSub || '')},
+    product: ${JSON.stringify(nav.product || 'Gecko')},
+    productSub: ${JSON.stringify(nav.productSub || (isFirefox ? '20100101' : '20030107'))},
+    appCodeName: 'Mozilla',
+    appName: 'Netscape',
+    appVersion: ${JSON.stringify(nav.appVersion || '')},
+    userAgent: ${JSON.stringify(nav.userAgent || '')},
+    hardwareConcurrency: ${nav.hardwareConcurrency || 8},
+    deviceMemory: ${nav.deviceMemory || 8},
+    maxTouchPoints: ${nav.maxTouchPoints ?? (isMobile ? 5 : 0)},
+    doNotTrack: ${JSON.stringify(nav.doNotTrack || null)},
+    webdriver: false,
+    cookieEnabled: true,
+    pdfViewerEnabled: ${!isMobile && !isFirefox}
+  };
 
-  for (const [key, value] of Object.entries(safeOverrides)) {
-    if (value === undefined || value === null) continue;
+  for (const [key, value] of Object.entries(protoOverrides)) {
+    if (value === undefined) continue;
     try {
       Object.defineProperty(Navigator.prototype, key, {
         get: function() {
@@ -40,7 +59,7 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
     } catch(e) {}
   }
 
-  // Override navigator.languages (frozen array)
+  // 2. Override navigator.languages (frozen array)
   const _languages = ${JSON.stringify(nav.languages || ['en-US', 'en'])};
   try {
     Object.defineProperty(Navigator.prototype, 'languages', {
@@ -48,18 +67,104 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
       configurable: true,
       enumerable: true
     });
-  } catch(e) {}
-
-  // Ensure navigator.webdriver is false
-  try {
-    Object.defineProperty(Navigator.prototype, 'webdriver', {
-      get: function() { return false; },
+    Object.defineProperty(Navigator.prototype, 'language', {
+      get: function() { return _languages[0] || 'en-US'; },
       configurable: true,
       enumerable: true
     });
   } catch(e) {}
 
-  // ── Preserve Native Desktop Plugins & MimeTypes or Emulate Cleanly ──
+  ${isFirefox ? `
+  // ── Firefox Integrity: Ensure window.chrome & Client Hints are NOT Present ──
+  try {
+    if (typeof window !== 'undefined' && 'chrome' in window) {
+      delete window.chrome;
+    }
+    if ('userAgentData' in Navigator.prototype) {
+      delete (Navigator.prototype as any).userAgentData;
+    }
+  } catch(e) {}
+  ` : `
+  // ── Chromium Integrity: Standard window.chrome Object ──
+  try {
+    if (typeof window !== 'undefined') {
+      if (!window.chrome) {
+        window.chrome = {};
+      }
+      if (!window.chrome.app) {
+        window.chrome.app = {
+          isInstalled: false,
+          InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+          RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+          getDetails: function() { return null; },
+          getIsInstalled: function() { return false; },
+          runningState: function() { return 'cannot_run'; }
+        };
+      }
+      if (!window.chrome.runtime) {
+        window.chrome.runtime = {
+          OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+          OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+          PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+          PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+          PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+          RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' },
+          connect: function() { return { disconnect: function() {}, onDisconnect: { addListener: function() {} }, onMessage: { addListener: function() {} }, postMessage: function() {} }; },
+          sendMessage: function() {}
+        };
+      }
+    }
+  } catch(e) {}
+
+  // ── Chromium Client Hints (navigator.userAgentData) ──
+  ${!isIos ? `
+  try {
+    const brandsList = [
+      { brand: 'Chromium', version: ${JSON.stringify(brandVersion)} },
+      { brand: 'Google Chrome', version: ${JSON.stringify(brandVersion)} },
+      { brand: 'Not_A Brand', version: '24' }
+    ];
+    const fullVersionList = [
+      { brand: 'Chromium', version: ${JSON.stringify(nav.browserVersion || '131.0.0.0')} },
+      { brand: 'Google Chrome', version: ${JSON.stringify(nav.browserVersion || '131.0.0.0')} },
+      { brand: 'Not_A Brand', version: '24.0.0.0' }
+    ];
+
+    const uaDataObj = {
+      brands: Object.freeze(brandsList),
+      mobile: ${isMobile ? 'true' : 'false'},
+      platform: ${JSON.stringify(clientPlatform)},
+      getHighEntropyValues: function(hints) {
+        return Promise.resolve({
+          brands: brandsList,
+          mobile: ${isMobile ? 'true' : 'false'},
+          platform: ${JSON.stringify(clientPlatform)},
+          architecture: ${JSON.stringify(nav.cpuArchitecture || 'x86')},
+          bitness: '64',
+          model: ${JSON.stringify(isMobile ? ((nav as any).deviceModelCode || (nav as any).deviceModel || '') : '')},
+          platformVersion: ${JSON.stringify(clientPlatform === 'Windows' ? '15.0.0' : clientPlatform === 'macOS' ? '14.5.0' : '6.5.0')},
+          fullVersionList: fullVersionList,
+          uaFullVersion: ${JSON.stringify(nav.browserVersion || '131.0.0.0')}
+        });
+      },
+      toJSON: function() {
+        return {
+          brands: brandsList,
+          mobile: ${isMobile ? 'true' : 'false'},
+          platform: ${JSON.stringify(clientPlatform)}
+        };
+      }
+    };
+
+    Object.defineProperty(Navigator.prototype, 'userAgentData', {
+      get: function() { return uaDataObj; },
+      enumerable: true,
+      configurable: true
+    });
+  } catch(e) {}
+  ` : ''}
+
+  // ── Desktop Chromium Plugins Emulation ──
   if (!${isMobile ? 'true' : 'false'} && typeof navigator !== 'undefined' && (!navigator.plugins || navigator.plugins.length === 0)) {
     try {
       const pluginDefs = [
@@ -132,24 +237,6 @@ export function buildNavigatorScript(nav: NavigatorFingerprint): string {
       }
     } catch(e) {}
   }
-
-  // ── Standard window.chrome Object for Chrome/Chromium Profiles ──
-  try {
-    if (typeof window !== 'undefined') {
-      if (!window.chrome) {
-        window.chrome = {};
-      }
-      if (!window.chrome.app) {
-        window.chrome.app = {
-          isInstalled: false,
-          InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
-          RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
-          getDetails: function() { return null; },
-          getIsInstalled: function() { return false; },
-          runningState: function() { return 'cannot_run'; }
-        };
-      }
-    }
-  } catch(e) {}
+  `}
 })();`
 }

@@ -510,27 +510,23 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   return args
 }
 
-function normalizeFingerprint(raw: any, osType: string): Fingerprint {
-  const fallback = createDefaultFingerprint({ osType: (osType as any) || 'windows-10' })
-  if (!raw || typeof raw !== 'object') return fallback
+import { recalculateDependentFields } from '../fingerprint/generator'
+import { validateConsistency } from '../fingerprint/consistency'
 
-  return {
-    ...fallback,
-    ...raw,
-    screen: { ...fallback.screen, ...(raw.screen || {}) },
-    navigator: { ...fallback.navigator, ...(raw.navigator || {}) },
-    browser: { ...fallback.browser, ...(raw.browser || {}) },
-    timezone: { ...fallback.timezone, ...(raw.timezone || {}) },
-    geolocation: { ...fallback.geolocation, ...(raw.geolocation || {}) },
-    webrtc: { ...fallback.webrtc, ...(raw.webrtc || {}) },
-    canvas: { ...fallback.canvas, ...(raw.canvas || {}) },
-    webgl: { ...fallback.webgl, ...(raw.webgl || {}) },
-    audio: { ...fallback.audio, ...(raw.audio || {}) },
-    clientRects: { ...fallback.clientRects, ...(raw.clientRects || {}) },
-    fonts: { ...fallback.fonts, ...(raw.fonts || {}) },
-    locale: { ...fallback.locale, ...(raw.locale || {}) },
-    mediaDevices: { ...fallback.mediaDevices, ...(raw.mediaDevices || {}) }
-  }
+function normalizeFingerprint(raw: any, osType: string, browserType?: 'chrome' | 'firefox', browserVersion?: string): Fingerprint {
+  const targetOs = (osType as any) || 'windows-10'
+  const targetBrowser: 'chrome' | 'firefox' =
+    browserType || raw?.browser?.type || (raw?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+  const targetVer =
+    browserVersion || raw?.browser?.version || raw?.navigator?.browserVersion || (targetBrowser === 'firefox' ? '129.0' : '131.0.0.0')
+
+  const base = raw && typeof raw === 'object' ? raw : createDefaultFingerprint()
+  return recalculateDependentFields(base, {
+    osType: targetOs,
+    browserType: targetBrowser,
+    browserVersion: targetVer,
+    seed: base.seed || 'stable-seed'
+  })
 }
 
 /**
@@ -543,25 +539,38 @@ export async function launchBrowser(
 ): Promise<LaunchResult> {
   const userDataDir = ensureProfileDataDir(profile.id)
 
-  // Parse fingerprint from profile or use default
-  let fingerprint: Fingerprint
+  // Determine browser type from profile / fingerprint if not specified
+  let rawFp: any = null
   try {
-    const raw = profile.fingerprint
+    rawFp = profile.fingerprint
       ? (typeof profile.fingerprint === 'string'
         ? JSON.parse(profile.fingerprint)
         : profile.fingerprint)
       : null
-    fingerprint = normalizeFingerprint(raw, profile.osType || 'windows-10')
-  } catch {
-    fingerprint = createDefaultFingerprint({ osType: (profile.osType as any) || 'windows-10' })
-  }
+  } catch {}
 
-  // Determine browser type from profile / fingerprint if not specified
   const effectiveBrowserType: 'chrome' | 'firefox' =
     browserType ||
     (profile as any).browserType ||
-    fingerprint?.browser?.type ||
-    (fingerprint?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+    rawFp?.browser?.type ||
+    (rawFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+
+  const effectiveBrowserVer =
+    (profile as any).browserVersion ||
+    rawFp?.browser?.version ||
+    rawFp?.navigator?.browserVersion ||
+    (effectiveBrowserType === 'firefox' ? '129.0' : '131.0.0.0')
+
+  // Enforce consistent fingerprint normalization
+  const fingerprint: Fingerprint = normalizeFingerprint(
+    rawFp,
+    profile.osType || 'windows-10',
+    effectiveBrowserType,
+    effectiveBrowserVer
+  )
+
+  // Validate consistency before launching
+  const consistencyReport = validateConsistency(fingerprint, (profile.osType as any) || 'windows-10', effectiveBrowserType, effectiveBrowserVer)
 
   // Resolve proxy
   let proxy: Proxy | null = null
@@ -594,6 +603,32 @@ export async function launchBrowser(
     }
   }
 
+  // ── Segregated Diagnostic Logging: Profile Config vs Runtime Config vs Network Config ──
+  logger.info('profile', `[ProfileConfig] Initializing profile "${profile.name}" (${profile.id})`, {
+    profileId: profile.id,
+    osType: profile.osType || 'windows-10',
+    browserEngine: effectiveBrowserType,
+    browserVersion: effectiveBrowserVer,
+    platform: fingerprint.navigator?.platform,
+    screen: `${fingerprint.screen?.width}x${fingerprint.screen?.height} @${fingerprint.screen?.devicePixelRatio}x`,
+    hardwareConcurrency: fingerprint.navigator?.hardwareConcurrency,
+    deviceMemory: fingerprint.navigator?.deviceMemory,
+    gpuRenderer: fingerprint.webgl?.unmaskedRenderer,
+    consistencyScore: consistencyReport.score,
+    warnings: consistencyReport.warnings,
+    contradictions: consistencyReport.contradictions
+  })
+
+  logger.info('network', `[NetworkConfig] Network identity isolation state for profile "${profile.name}"`, {
+    profileId: profile.id,
+    hasProxy: !!proxy,
+    proxyType: proxy?.type || 'direct',
+    proxyHost: proxy?.host || 'none',
+    webrtcPolicy: fingerprint.webrtc?.ipPolicy || 'default_public_interface_only',
+    dnsMode: fingerprint.browser?.dnsMode || 'system',
+    networkNote: 'Fingerprint masking isolates browser and hardware characteristics; it does not alter public IP address without a proxy.'
+  })
+
   // Determine start URLs
   let startUrls: string[] = []
   if (profile.startUrl) {
@@ -607,6 +642,7 @@ export async function launchBrowser(
 
   // ── Dispatch to Firefox Launcher if Firefox is Selected ──
   if (effectiveBrowserType === 'firefox') {
+    logger.info('browser', `[RuntimeConfig] Launching Firefox Quantum Gecko Engine runtime for profile "${profile.name}"`)
     return launchFirefox(profile, executablePath, fingerprint, launchProxy, startUrls)
   }
 
@@ -618,14 +654,13 @@ export async function launchBrowser(
 
   const args = buildLaunchArgs(profile, fingerprint, launchProxy)
 
-  logger.info('browser', `Launching Chromium for profile "${profile.name}"`, JSON.stringify({
+  logger.info('browser', `[RuntimeConfig] Launching Chromium Blink Engine runtime for profile "${profile.name}"`, {
     profileId: profile.id,
     osType: profile.osType || 'windows-10',
     userDataDir,
     argCount: args.length,
-    hasProxy: !!proxy,
-    hasFingerprint: !!profile.fingerprint
-  }))
+    executablePath
+  })
 
   try {
     const browser = await puppeteer.launch({

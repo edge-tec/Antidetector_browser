@@ -1,8 +1,7 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles v2 — Fingerprint Consistency Engine
-// Validates cross-parameter coherence and returns a consistency score.
-// "Don't make random fingerprint the core feature.
-//  Make consistent fingerprint the core feature."
+// Validates cross-parameter coherence, flags contradictions, and returns
+// a consistency score for legitimate privacy and compatibility testing.
 // ──────────────────────────────────────────────────────────────────
 
 import {
@@ -21,25 +20,33 @@ import fontListsData from './datasets/font-lists.json'
  * Each check has a severity (1-10). The final score is weighted:
  *   score = 100 - sum(failed_severities) - sum(warned_severities * 0.3)
  */
-export function validateConsistency(fingerprint: Fingerprint, osType: OSType): ConsistencyResult {
+export function validateConsistency(
+  fingerprint: Fingerprint,
+  osType: OSType,
+  browserType?: 'chrome' | 'firefox',
+  browserVersion?: string
+): ConsistencyResult {
   const checks: ConsistencyCheck[] = []
   const family = getOSFamily(osType)
+  const bType = browserType || fingerprint?.browser?.type || (fingerprint?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+  const bVer = browserVersion || fingerprint?.browser?.version || fingerprint?.navigator?.browserVersion
 
-  // Run all checks
+  // Run all consistency & contradiction checks
   checks.push(checkOsUserAgent(fingerprint, osType))
-  checks.push(checkOsFonts(fingerprint, family))
   checks.push(checkOsPlatform(fingerprint, osType))
-  checks.push(checkBrowserUserAgent(fingerprint))
-  checks.push(checkScreenDPR(fingerprint))
-  checks.push(checkGpuOs(fingerprint, family))
+  checks.push(checkBrowserUserAgent(fingerprint, bType, bVer))
+  checks.push(checkBrowserEngineProperties(fingerprint, bType))
+  checks.push(checkScreenDPR(fingerprint, family, osType))
+  checks.push(checkGpuOs(fingerprint, family, osType))
   checks.push(checkWebGLGpu(fingerprint))
+  checks.push(checkTouchOs(fingerprint, family))
+  checks.push(checkCpuArchitecture(fingerprint, family, osType))
+  checks.push(checkRamDeviceClass(fingerprint, family, osType))
+  checks.push(checkViewportScreen(fingerprint))
   checks.push(checkLanguageLocale(fingerprint))
   checks.push(checkTimezoneLocation(fingerprint))
   checks.push(checkMediaDeviceType(fingerprint, family))
-  checks.push(checkCpuArchitecture(fingerprint, family))
-  checks.push(checkRamDeviceClass(fingerprint, family))
-  checks.push(checkTouchOs(fingerprint, family))
-  checks.push(checkViewportScreen(fingerprint))
+  checks.push(checkOsFonts(fingerprint, family))
   checks.push(checkWebRTCConsistency(fingerprint))
 
   // Calculate score
@@ -51,15 +58,31 @@ export function validateConsistency(fingerprint: Fingerprint, osType: OSType): C
   }
 
   const score = Math.max(0, Math.min(100, Math.round(100 - (penalty / totalSeverity) * 100)))
+  const failures = checks.filter(c => c.status === 'fail')
+  const contradictions = failures.map(f => f.message)
 
   return {
     score,
     totalChecks: checks.length,
     passedChecks: checks.filter(c => c.status === 'pass').length,
     warnings: checks.filter(c => c.status === 'warn').length,
-    failures: checks.filter(c => c.status === 'fail').length,
-    checks
+    failures: failures.length,
+    checks,
+    contradictions
   }
+}
+
+/**
+ * Fast helper to extract only failing contradiction messages
+ */
+export function detectContradictions(
+  fingerprint: Fingerprint,
+  osType: OSType,
+  browserType?: 'chrome' | 'firefox',
+  browserVersion?: string
+): string[] {
+  const result = validateConsistency(fingerprint, osType, browserType, browserVersion)
+  return result.contradictions
 }
 
 // ═══════════════════════════════════════════
@@ -80,21 +103,35 @@ function makeCheck(
 
 /**
  * Check 1: OS ↔ User-Agent
- * The User-Agent string must contain the correct OS identifier.
+ * The User-Agent string must contain the exact OS identifier.
  */
 function checkOsUserAgent(fp: Fingerprint, osType: OSType): ConsistencyCheck {
-  const ua = fp.navigator.userAgent
+  const ua = fp.navigator?.userAgent || ''
   const id = 'os-ua'
   const cat = 'OS ↔ User-Agent'
 
   const osPatterns: Record<OSType, string[]> = {
     'windows-10': ['Windows NT 10.0'],
-    'windows-11': ['Windows NT 10.0'],   // Win11 still reports NT 10.0
+    'windows-11': ['Windows NT 10.0'],   // Win11 still reports NT 10.0 in UA string
     'macos-intel': ['Macintosh', 'Mac OS X'],
     'macos-arm': ['Macintosh', 'Mac OS X'],
-    'linux': ['Linux x86_64', 'X11'],
-    'android': ['Android', 'Linux'],
-    'ios': ['iPhone', 'iPad', 'CPU iPhone OS', 'CPU OS', 'like Mac OS X']
+    'linux': ['Linux x86_64', 'X11; Linux x86_64', 'X11; Ubuntu; Linux x86_64'],
+    'android': ['Android'],
+    'ios': ['iPhone', 'iPad', 'CPU iPhone OS', 'CPU OS']
+  }
+
+  // Reject impossible cross-OS contamination
+  if (osType === 'ios' && (ua.includes('Windows NT') || ua.includes('Macintosh; Intel') || ua.includes('Linux x86_64') || ua.includes('Android'))) {
+    return makeCheck(id, cat, osType, ua.substring(0, 60), 'fail',
+      `Contradiction: iOS profile has a desktop/Android User-Agent string: "${ua.substring(0, 60)}..."`, 10)
+  }
+  if (osType === 'linux' && (ua.includes('Windows NT') || ua.includes('Macintosh') || ua.includes('iPhone'))) {
+    return makeCheck(id, cat, osType, ua.substring(0, 60), 'fail',
+      `Contradiction: Linux profile has non-Linux OS markers in User-Agent: "${ua.substring(0, 60)}..."`, 10)
+  }
+  if (osType.startsWith('windows') && (ua.includes('Macintosh') || ua.includes('iPhone') || ua.includes('Android'))) {
+    return makeCheck(id, cat, osType, ua.substring(0, 60), 'fail',
+      `Contradiction: Windows profile has non-Windows markers in User-Agent: "${ua.substring(0, 60)}..."`, 10)
   }
 
   const patterns = osPatterns[osType] || []
@@ -105,55 +142,18 @@ function checkOsUserAgent(fp: Fingerprint, osType: OSType): ConsistencyCheck {
       `User-Agent "${ua.substring(0, 60)}..." does not match OS "${osType}"`, 10)
   }
 
-  return makeCheck(id, cat, osType, 'UA matches', 'pass',
+  return makeCheck(id, cat, osType, 'UA matches OS', 'pass',
     'User-Agent correctly identifies the operating system', 10)
 }
 
 /**
- * Check 2: OS ↔ Fonts
- * Font list should contain OS-specific fonts.
- */
-function checkOsFonts(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
-  const id = 'os-fonts'
-  const cat = 'OS ↔ Fonts'
-
-  if (!fp.fonts.enableMasking || fp.fonts.fontList.length === 0) {
-    return makeCheck(id, cat, family, 'No font list', 'warn',
-      'Font masking is disabled or font list is empty', 6)
-  }
-
-  const osFonts = (fontListsData as any)[family] || (fontListsData as any)['macos'] || []
-  const userFonts = new Set(fp.fonts.fontList)
-
-  // Check for OS-specific marker fonts
-  const markers: Record<OSFamily, string[]> = {
-    windows: ['Segoe UI', 'Calibri', 'Consolas', 'Arial', 'Cambria', 'Verdana', 'Tahoma', 'Georgia'],
-    macos: ['.AppleSystemUIFont', 'Helvetica', 'SF Pro', 'Menlo', 'Monaco', 'Geneva'],
-    linux: ['DejaVu Sans', 'Liberation Sans', 'Ubuntu', 'FreeSans'],
-    android: ['Roboto', 'Droid Sans', 'Noto Sans'],
-    ios: ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
-  }
-
-  const expected = markers[family] || []
-  const found = expected.filter(f => userFonts.has(f))
-
-  if (found.length === 0 && expected.length > 0) {
-    return makeCheck(id, cat, family, fp.fonts.fontList.slice(0, 3).join(', '), 'fail',
-      `Font list lacks characteristic ${family} fonts (expected: ${expected.join(', ')})`, 7)
-  }
-
-  return makeCheck(id, cat, family, `${found.length}/${expected.length} markers found`, 'pass',
-    'Font list is consistent with the operating system', 7)
-}
-
-/**
- * Check 3: OS ↔ Platform
+ * Check 2: OS ↔ Platform
  * navigator.platform must match the OS.
  */
 function checkOsPlatform(fp: Fingerprint, osType: OSType): ConsistencyCheck {
   const id = 'os-platform'
   const cat = 'OS ↔ Platform'
-  const platform = fp.navigator.platform
+  const platform = fp.navigator?.platform || ''
 
   const validPlatforms: Record<OSType, string[]> = {
     'windows-10': ['Win32'],
@@ -168,107 +168,184 @@ function checkOsPlatform(fp: Fingerprint, osType: OSType): ConsistencyCheck {
   const valid = validPlatforms[osType] || []
   if (!valid.includes(platform)) {
     return makeCheck(id, cat, osType, platform, 'fail',
-      `Platform "${platform}" is not valid for ${osType} (expected: ${valid.join(' or ')})`, 9)
+      `Contradiction: Platform "${platform}" does not match OS "${osType}" (expected: ${valid.join(' or ')})`, 10)
   }
 
   return makeCheck(id, cat, osType, platform, 'pass',
-    'Platform string matches the operating system', 9)
+    'Platform string matches the operating system', 10)
 }
 
 /**
- * Check 4: Browser ↔ User-Agent
- * Browser version in user-agent must match reported version.
+ * Check 3: Browser Engine ↔ User-Agent & Version
  */
-function checkBrowserUserAgent(fp: Fingerprint): ConsistencyCheck {
+function checkBrowserUserAgent(
+  fp: Fingerprint,
+  expectedBrowserType: 'chrome' | 'firefox',
+  expectedVersion?: string
+): ConsistencyCheck {
   const id = 'browser-ua'
-  const cat = 'Browser ↔ User-Agent'
-  const ua = fp.navigator.userAgent
-  const version = fp.navigator.browserVersion
+  const cat = 'Browser Engine ↔ User-Agent'
+  const ua = fp.navigator?.userAgent || ''
+  const reportedVersion = expectedVersion || fp.navigator?.browserVersion || ''
 
-  if (!version) {
-    return makeCheck(id, cat, 'Browser version', 'Empty', 'warn',
-      'Browser version is not set', 5)
+  const isFirefoxUA = ua.includes('Firefox/') || ua.includes('FxiOS/')
+  const isChromeUA = ua.includes('Chrome/') || ua.includes('CriOS/')
+
+  if (expectedBrowserType === 'firefox' && !isFirefoxUA) {
+    return makeCheck(id, cat, 'Firefox', ua.substring(0, 60), 'fail',
+      `Contradiction: Profile is configured as Mozilla Firefox, but User-Agent is not Firefox: "${ua.substring(0, 60)}..."`, 10)
   }
 
-  const majorVer = version.split('.')[0]
-  const matches =
-    ua.includes(`Chrome/${version}`) ||
-    ua.includes(`Chrome/${majorVer}`) ||
-    ua.includes(`CriOS/${version}`) ||
-    ua.includes(`CriOS/${majorVer}`) ||
-    ua.includes(`Firefox/${version}`) ||
-    ua.includes(`Firefox/${majorVer}`) ||
-    ua.includes(`FxiOS/${version}`) ||
-    ua.includes(`FxiOS/${majorVer}`) ||
-    ua.includes(`Version/${version}`) ||
-    ua.includes('Safari/')
-
-  if (!matches) {
-    return makeCheck(id, cat, version, ua.substring(0, 60), 'fail',
-      `User-Agent does not contain matching browser version ${version}`, 8)
+  if (expectedBrowserType === 'chrome' && isFirefoxUA && !isChromeUA) {
+    return makeCheck(id, cat, 'Chrome/Chromium', ua.substring(0, 60), 'fail',
+      `Contradiction: Profile is configured as Google Chrome / Chromium, but User-Agent contains Firefox: "${ua.substring(0, 60)}..."`, 10)
   }
 
-  return makeCheck(id, cat, version, 'Matches UA', 'pass',
-    'Browser version matches the User-Agent string', 8)
+  if (reportedVersion) {
+    const majorVer = reportedVersion.split('.')[0]
+    const matchesVersion =
+      ua.includes(`Chrome/${reportedVersion}`) ||
+      ua.includes(`Chrome/${majorVer}`) ||
+      ua.includes(`CriOS/${reportedVersion}`) ||
+      ua.includes(`CriOS/${majorVer}`) ||
+      ua.includes(`Firefox/${reportedVersion}`) ||
+      ua.includes(`Firefox/${majorVer}`) ||
+      ua.includes(`FxiOS/${reportedVersion}`) ||
+      ua.includes(`FxiOS/${majorVer}`) ||
+      ua.includes(`rv:${reportedVersion}`) ||
+      ua.includes(`rv:${majorVer}`)
+
+    if (!matchesVersion) {
+      return makeCheck(id, cat, `Ver: ${reportedVersion}`, ua.substring(0, 60), 'warn',
+        `Browser version "${reportedVersion}" not strictly reflected in User-Agent`, 6)
+    }
+  }
+
+  return makeCheck(id, cat, expectedBrowserType, 'UA matches Engine', 'pass',
+    'Browser engine and version match the User-Agent string', 8)
 }
 
 /**
- * Check 5: Screen ↔ DPR
- * Device pixel ratio should be plausible for the resolution.
+ * Check 4: Browser Engine Specific Properties
+ * E.g., Firefox should not report Google Inc. vendor or Chromium Client Hints.
  */
-function checkScreenDPR(fp: Fingerprint): ConsistencyCheck {
+function checkBrowserEngineProperties(
+  fp: Fingerprint,
+  browserType: 'chrome' | 'firefox'
+): ConsistencyCheck {
+  const id = 'browser-engine-props'
+  const cat = 'Browser Engine ↔ Properties'
+  const vendor = fp.navigator?.vendor || ''
+  const isIos = fp.navigator?.platform === 'iPhone' || fp.navigator?.userAgent?.includes('iPhone')
+
+  if (browserType === 'firefox') {
+    if (vendor === 'Google Inc.' && !isIos) {
+      return makeCheck(id, cat, 'Firefox', `vendor="${vendor}"`, 'fail',
+        'Contradiction: Firefox profile reports Chromium vendor "Google Inc."', 9)
+    }
+  } else if (browserType === 'chrome') {
+    if (!isIos && vendor !== 'Google Inc.' && vendor !== '') {
+      return makeCheck(id, cat, 'Chrome', `vendor="${vendor}"`, 'warn',
+        `Chromium desktop typically reports "Google Inc." vendor but found "${vendor}"`, 5)
+    }
+  }
+
+  return makeCheck(id, cat, browserType, 'Properties consistent', 'pass',
+    'Browser engine properties are consistent', 7)
+}
+
+/**
+ * Check 5: Screen ↔ DPR & Device Class
+ * Flags impossible resolutions (e.g. iPhone with 1920x1080@1x)
+ */
+function checkScreenDPR(fp: Fingerprint, family: OSFamily, osType: OSType): ConsistencyCheck {
   const id = 'screen-dpr'
-  const cat = 'Screen ↔ DPR'
-  const { width, height, devicePixelRatio: dpr, viewportWidth, viewportHeight } = fp.screen
+  const cat = 'Screen ↔ DPR & Device Class'
+  const { width, height, devicePixelRatio: dpr, orientation } = fp.screen || ({} as any)
 
-  // Basic sanity: DPR should be between 1 and 4
-  if (dpr < 0.5 || dpr > 4) {
-    return makeCheck(id, cat, `${width}x${height}`, `DPR ${dpr}`, 'fail',
-      `Device pixel ratio ${dpr} is outside plausible range (0.5-4)`, 6)
+  if (!width || !height || !dpr) {
+    return makeCheck(id, cat, 'Screen', 'Incomplete', 'fail',
+      'Screen width, height, or devicePixelRatio is missing', 8)
   }
 
-  // Viewport should be <= screen / DPR (approximately)
-  const expectedMaxViewport = Math.ceil(width / dpr) + 50 // small tolerance
-  if (viewportWidth > expectedMaxViewport) {
-    return makeCheck(id, cat, `Viewport ${viewportWidth}`, `Screen/DPR = ${Math.ceil(width / dpr)}`, 'warn',
-      `Viewport width (${viewportWidth}) seems too large for ${width}px screen at ${dpr}x DPR`, 5)
+  // 1. Mobile (iPhone / iOS / Android) Contradiction: Desktop-only resolution with 1x DPR
+  if (family === 'ios') {
+    if (dpr === 1) {
+      return makeCheck(id, cat, `${width}x${height} @${dpr}x`, 'iOS Device', 'fail',
+        `Contradiction: iPhone cannot have a 1x standard desktop DPR (Retina requires 2x or 3x)`, 9)
+    }
+    // Check if resolution matches typical iPhone screens
+    const validIosDims = [
+      [393, 852], [430, 932], [390, 844], [428, 926], [375, 812], [414, 896], [375, 667],
+      [1179, 2556], [1290, 2796], [1170, 2532], [1284, 2778], [1125, 2436], [828, 1792], [750, 1334]
+    ]
+    const matchesDim = validIosDims.some(([w, h]) => (width === w && height === h) || (width === h && height === w))
+    if (!matchesDim && (width === 1920 && height === 1080)) {
+      return makeCheck(id, cat, `${width}x${height}`, 'iPhone', 'fail',
+        'Contradiction: iPhone profile configured with desktop resolution 1920x1080', 9)
+    }
   }
 
-  return makeCheck(id, cat, `${width}x${height} @${dpr}x`, `Viewport ${viewportWidth}x${viewportHeight}`, 'pass',
-    'Screen resolution, DPR, and viewport dimensions are consistent', 6)
+  if (family === 'android') {
+    if (dpr === 1 && (width === 1920 && height === 1080)) {
+      return makeCheck(id, cat, `${width}x${height} @${dpr}x`, 'Android', 'warn',
+        'Android mobile profile configured with standard desktop 1920x1080 @ 1x DPR', 6)
+    }
+  }
+
+  // 2. Desktop Contradictions
+  if (family === 'windows' || family === 'linux') {
+    if (dpr > 2.5 && width <= 1920) {
+      return makeCheck(id, cat, `${width}x${height} @${dpr}x`, family, 'warn',
+        `Unusual DPR (${dpr}x) for standard ${width}x${height} ${family} desktop`, 5)
+    }
+  }
+
+  return makeCheck(id, cat, `${width}x${height} @${dpr}x`, `${osType}`, 'pass',
+    'Screen resolution, DPR, and device class are coherent', 7)
 }
 
 /**
  * Check 6: GPU ↔ OS
- * GPU vendor/renderer should be plausible for the OS.
+ * GPU vendor/renderer must be plausible for the OS.
  */
-function checkGpuOs(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
+function checkGpuOs(fp: Fingerprint, family: OSFamily, osType: OSType): ConsistencyCheck {
   const id = 'gpu-os'
   const cat = 'GPU ↔ OS'
 
-  if (!fp.webgl.enabled) {
+  if (!fp.webgl || fp.webgl.enabled === false) {
     return makeCheck(id, cat, family, 'WebGL disabled', 'pass',
       'WebGL is disabled, GPU check skipped', 7)
   }
 
-  const renderer = fp.webgl.unmaskedRenderer.toLowerCase()
-  const vendor = fp.webgl.unmaskedVendor.toLowerCase()
+  const renderer = (fp.webgl.unmaskedRenderer || fp.webgl.gpuRenderer || '').toLowerCase()
+  const vendor = (fp.webgl.unmaskedVendor || fp.webgl.gpuVendor || '').toLowerCase()
 
-  // Windows uses Direct3D ANGLE, macOS/iOS uses OpenGL/Metal/Apple, Linux uses OpenGL
-  if (family === 'windows') {
-    if (!renderer.includes('direct3d') && !renderer.includes('d3d') && !renderer.includes('vulkan')) {
-      return makeCheck(id, cat, family, fp.webgl.gpuRenderer, 'warn',
-        `Windows GPU renderer usually contains "Direct3D" but got: ${fp.webgl.unmaskedRenderer.substring(0, 50)}`, 6)
-    }
-  } else if (family === 'macos' || family === 'ios') {
-    if (!renderer.includes('opengl') && !renderer.includes('metal') && !renderer.includes('apple')) {
-      return makeCheck(id, cat, family, fp.webgl.gpuRenderer, 'warn',
-        `${family} GPU renderer usually contains "OpenGL" or "Apple" but got: ${fp.webgl.unmaskedRenderer.substring(0, 50)}`, 6)
-    }
+  // Contradiction 1: Apple GPU / Metal on Windows or Linux
+  if ((family === 'windows' || family === 'linux') && (renderer.includes('apple') || vendor.includes('apple') || renderer.includes('metal'))) {
+    return makeCheck(id, cat, family, fp.webgl.unmaskedRenderer.substring(0, 50), 'fail',
+      `Contradiction: ${family.toUpperCase()} profile configured with Apple GPU / Metal renderer`, 9)
   }
 
-  return makeCheck(id, cat, family, fp.webgl.gpuRenderer, 'pass',
-    'GPU renderer is consistent with the operating system', 7)
+  // Contradiction 2: Direct3D / ANGLE Direct3D on macOS, Linux, or iOS
+  if ((family === 'macos' || family === 'linux' || family === 'ios' || family === 'android') && (renderer.includes('direct3d') || renderer.includes('d3d11') || renderer.includes('d3d9'))) {
+    return makeCheck(id, cat, family, fp.webgl.unmaskedRenderer.substring(0, 50), 'fail',
+      `Contradiction: Non-Windows profile (${family}) configured with Direct3D renderer`, 9)
+  }
+
+  // Contradiction 3: iOS / Apple Silicon should use Apple GPU
+  if (osType === 'macos-arm' && !renderer.includes('apple') && !renderer.includes('m1') && !renderer.includes('m2') && !renderer.includes('m3') && !renderer.includes('m4')) {
+    return makeCheck(id, cat, osType, fp.webgl.unmaskedRenderer.substring(0, 50), 'warn',
+      `Apple Silicon macOS normally reports Apple M-series GPU renderer`, 6)
+  }
+
+  if (osType === 'ios' && !renderer.includes('apple')) {
+    return makeCheck(id, cat, 'iOS', fp.webgl.unmaskedRenderer.substring(0, 50), 'fail',
+      `Contradiction: iOS device must use Apple GPU renderer`, 9)
+  }
+
+  return makeCheck(id, cat, family, fp.webgl.gpuRenderer || 'Plausible GPU', 'pass',
+    'GPU vendor and renderer are consistent with the operating system', 8)
 }
 
 /**
@@ -279,221 +356,111 @@ function checkWebGLGpu(fp: Fingerprint): ConsistencyCheck {
   const id = 'webgl-gpu'
   const cat = 'WebGL ↔ GPU'
 
-  if (!fp.webgl.enabled) {
+  if (!fp.webgl || !fp.webgl.enabled) {
     return makeCheck(id, cat, 'WebGL', 'Disabled', 'pass', 'WebGL is disabled', 5)
   }
 
-  const renderer = fp.webgl.unmaskedRenderer
-  const gpuName = fp.webgl.gpuRenderer
+  const renderer = fp.webgl.unmaskedRenderer || ''
+  const gpuName = fp.webgl.gpuRenderer || ''
 
-  if (gpuName && !renderer.toLowerCase().includes(gpuName.toLowerCase().split(' ')[0])) {
+  if (gpuName && renderer && !renderer.toLowerCase().includes(gpuName.toLowerCase().split(' ')[0])) {
     return makeCheck(id, cat, gpuName, renderer.substring(0, 50), 'warn',
       `GPU renderer "${gpuName}" doesn't appear in WebGL unmasked renderer`, 5)
   }
 
-  return makeCheck(id, cat, gpuName, 'WebGL consistent', 'pass',
+  return makeCheck(id, cat, gpuName || 'WebGL', 'WebGL consistent', 'pass',
     'WebGL renderer matches GPU identity', 5)
 }
 
 /**
- * Check 8: Language ↔ Locale
- * navigator.language should match locale settings.
- */
-function checkLanguageLocale(fp: Fingerprint): ConsistencyCheck {
-  const id = 'lang-locale'
-  const cat = 'Language ↔ Locale'
-  const lang = fp.locale.language
-  const navLang = fp.navigator.userAgent // Check lang param in UA if set
-
-  if (!lang) {
-    return makeCheck(id, cat, 'Language', 'Not set', 'warn',
-      'Language is not configured', 4)
-  }
-
-  // navigator.languages should include the primary language
-  if (fp.locale.languages.length === 0) {
-    return makeCheck(id, cat, lang, 'Empty languages[]', 'warn',
-      'navigator.languages is empty', 4)
-  }
-
-  if (fp.locale.languages[0] !== lang) {
-    return makeCheck(id, cat, lang, fp.locale.languages[0], 'fail',
-      `Primary language "${lang}" should be first in languages array but found "${fp.locale.languages[0]}"`, 6)
-  }
-
-  // Check language matches country
-  const countryLangMap: Record<string, string[]> = {
-    'US': ['en-US', 'en'], 'GB': ['en-GB', 'en'], 'DE': ['de-DE', 'de'], 'FR': ['fr-FR', 'fr'],
-    'ES': ['es-ES', 'es'], 'IT': ['it-IT', 'it'], 'JP': ['ja-JP', 'ja'], 'KR': ['ko-KR', 'ko'],
-    'CN': ['zh-CN', 'zh'], 'BR': ['pt-BR', 'pt'], 'RU': ['ru-RU', 'ru'], 'IN': ['en-IN', 'hi-IN'],
-    'BD': ['bn-BD', 'en'], 'TR': ['tr-TR', 'tr'], 'NL': ['nl-NL', 'nl'], 'PL': ['pl-PL', 'pl'],
-    'AU': ['en-AU', 'en'], 'CA': ['en-CA', 'fr-CA']
-  }
-
-  const expectedLangs = countryLangMap[fp.locale.country]
-  if (expectedLangs && !expectedLangs.includes(lang)) {
-    return makeCheck(id, cat, `${lang} (${fp.locale.country})`, expectedLangs.join(', '), 'warn',
-      `Language "${lang}" is unusual for country "${fp.locale.country}"`, 4)
-  }
-
-  return makeCheck(id, cat, lang, fp.locale.country, 'pass',
-    'Language and locale settings are consistent', 6)
-}
-
-/**
- * Check 9: Timezone ↔ Location
- * Timezone should be geographically plausible for coordinates.
- */
-function checkTimezoneLocation(fp: Fingerprint): ConsistencyCheck {
-  const id = 'tz-location'
-  const cat = 'Timezone ↔ Location'
-
-  if (fp.geolocation.mode === 'block' || fp.geolocation.mode === 'ask') {
-    return makeCheck(id, cat, fp.timezone.timezone, 'Geo blocked/prompt', 'pass',
-      'Geolocation is blocked or prompting, timezone check not applicable', 5)
-  }
-
-  // Basic hemisphere check
-  const lon = fp.geolocation.longitude
-  const tz = fp.timezone.timezone
-
-  // Very rough check: Americas should have negative offsets, Asia/Pacific positive
-  if (lon < -30 && fp.timezone.utcOffset > 240) {
-    return makeCheck(id, cat, tz, `Lon: ${lon}`, 'fail',
-      `Timezone "${tz}" (UTC+${fp.timezone.utcOffset / 60}) is geographically implausible for longitude ${lon}`, 7)
-  }
-  if (lon > 30 && fp.timezone.utcOffset < -240) {
-    return makeCheck(id, cat, tz, `Lon: ${lon}`, 'fail',
-      `Timezone "${tz}" (UTC${fp.timezone.utcOffset / 60}) is geographically implausible for longitude ${lon}`, 7)
-  }
-
-  return makeCheck(id, cat, tz, `${fp.geolocation.latitude.toFixed(2)}, ${fp.geolocation.longitude.toFixed(2)}`, 'pass',
-    'Timezone is geographically plausible for the configured location', 5)
-}
-
-/**
- * Check 10: Media Devices ↔ Device Type
- * Desktop should have ~1 camera, mobile can have 2.
- */
-function checkMediaDeviceType(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
-  const id = 'media-device'
-  const cat = 'Media Devices ↔ Device Type'
-  const isDesktop = family !== 'android'
-
-  if (isDesktop && fp.mediaDevices.videoInputs > 3) {
-    return makeCheck(id, cat, `${fp.mediaDevices.videoInputs} cameras`, 'Desktop', 'warn',
-      `Desktop device with ${fp.mediaDevices.videoInputs} cameras is unusual`, 3)
-  }
-
-  if (!isDesktop && fp.mediaDevices.videoInputs === 0) {
-    return makeCheck(id, cat, '0 cameras', 'Android', 'warn',
-      'Android device with 0 cameras is unusual', 3)
-  }
-
-  return makeCheck(id, cat,
-    `${fp.mediaDevices.videoInputs}V/${fp.mediaDevices.audioInputs}A/${fp.mediaDevices.audioOutputs}O`,
-    isDesktop ? 'Desktop' : 'Mobile', 'pass',
-    'Media device configuration matches device type', 3)
-}
-
-/**
- * Check 11: CPU ↔ Architecture
- * CPU cores should be plausible for the architecture.
- */
-function checkCpuArchitecture(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
-  const id = 'cpu-arch'
-  const cat = 'CPU ↔ Architecture'
-  const cores = fp.navigator.hardwareConcurrency
-
-  const maxCores: Record<OSFamily, number> = {
-    windows: 128, macos: 24, linux: 128, android: 8
-  }
-  const minCores: Record<OSFamily, number> = {
-    windows: 2, macos: 4, linux: 1, android: 2
-  }
-
-  if (cores < minCores[family]) {
-    return makeCheck(id, cat, `${cores} cores`, family, 'warn',
-      `${cores} CPU cores is unusually low for ${family}`, 4)
-  }
-  if (cores > maxCores[family]) {
-    return makeCheck(id, cat, `${cores} cores`, family, 'fail',
-      `${cores} CPU cores exceeds maximum for ${family} (${maxCores[family]})`, 6)
-  }
-
-  return makeCheck(id, cat, `${cores} cores`, fp.navigator.cpuArchitecture, 'pass',
-    'CPU core count is plausible for the architecture', 4)
-}
-
-/**
- * Check 12: RAM ↔ Device Class
- * Memory should be plausible for the device type.
- */
-function checkRamDeviceClass(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
-  const id = 'ram-class'
-  const cat = 'RAM ↔ Device Class'
-  const mem = fp.navigator.deviceMemory
-
-  const ranges: Record<OSFamily, [number, number]> = {
-    windows: [2, 128],
-    macos: [4, 192],
-    linux: [1, 128],
-    android: [2, 16],
-    ios: [2, 16]
-  }
-
-  const [min, max] = ranges[family] || [2, 128]
-  if (mem < min || mem > max) {
-    return makeCheck(id, cat, `${mem}GB`, family, 'fail',
-      `${mem}GB RAM is outside plausible range for ${family} (${min}-${max}GB)`, 5)
-  }
-
-  return makeCheck(id, cat, `${mem}GB`, family, 'pass',
-    'Device memory is plausible for the device class', 5)
-}
-
-/**
- * Check 13: Touch ↔ OS
- * Touch support should match OS type.
+ * Check 8: Touch ↔ OS
+ * Touch support must match OS type.
  */
 function checkTouchOs(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
   const id = 'touch-os'
   const cat = 'Touch ↔ OS'
+  const touchSupport = fp.navigator?.touchSupport
+  const maxTouchPoints = fp.navigator?.maxTouchPoints ?? 0
 
-  if ((family === 'android' || family === 'ios') && !fp.navigator.touchSupport) {
-    return makeCheck(id, cat, 'No touch', family, 'fail',
-      `${family} device must support touch`, 7)
-  }
-  if ((family === 'android' || family === 'ios') && fp.navigator.maxTouchPoints === 0) {
-    return makeCheck(id, cat, 'maxTouchPoints=0', family, 'fail',
-      `${family} device must have maxTouchPoints > 0`, 7)
-  }
-  if ((family === 'windows' || family === 'linux') && fp.navigator.maxTouchPoints > 0 && fp.navigator.touchSupport) {
-    // This is actually valid for touchscreen laptops, just warn
-    return makeCheck(id, cat, `maxTouchPoints=${fp.navigator.maxTouchPoints}`, family, 'warn',
-      'Touch support on desktop is valid but less common', 3)
+  if (family === 'android' || family === 'ios') {
+    if (!touchSupport) {
+      return makeCheck(id, cat, 'No touch', family, 'fail',
+        `Contradiction: ${family.toUpperCase()} mobile profile must have touchSupport enabled`, 8)
+    }
+    if (maxTouchPoints <= 0) {
+      return makeCheck(id, cat, `maxTouchPoints=${maxTouchPoints}`, family, 'fail',
+        `Contradiction: ${family.toUpperCase()} mobile profile must have maxTouchPoints > 0 (typically 5)`, 8)
+    }
   }
 
-  return makeCheck(id, cat, `Touch: ${fp.navigator.touchSupport}`, family, 'pass',
+  return makeCheck(id, cat, `Touch: ${touchSupport}`, family, 'pass',
     'Touch support configuration matches the OS type', 7)
 }
 
 /**
- * Check 14: Viewport ↔ Screen
- * Viewport should be smaller than or equal to screen dimensions.
+ * Check 9: CPU ↔ Architecture & Device Class
+ */
+function checkCpuArchitecture(fp: Fingerprint, family: OSFamily, osType: OSType): ConsistencyCheck {
+  const id = 'cpu-arch'
+  const cat = 'CPU ↔ Architecture'
+  const cores = fp.navigator?.hardwareConcurrency || 8
+
+  if (osType === 'ios' && cores > 8) {
+    return makeCheck(id, cat, `${cores} cores`, 'iOS', 'fail',
+      `Contradiction: iPhone CPU core count cannot exceed 6-8 cores (configured: ${cores})`, 8)
+  }
+
+  if (family === 'android' && cores > 8) {
+    return makeCheck(id, cat, `${cores} cores`, 'Android', 'warn',
+      `Android mobile CPU core count rarely exceeds 8 cores (configured: ${cores})`, 5)
+  }
+
+  const maxCores: Record<OSFamily, number> = {
+    windows: 128, macos: 24, linux: 128, android: 8, ios: 8
+  }
+
+  if (cores > maxCores[family]) {
+    return makeCheck(id, cat, `${cores} cores`, family, 'fail',
+      `${cores} CPU cores exceeds plausible maximum for ${family} (${maxCores[family]})`, 7)
+  }
+
+  return makeCheck(id, cat, `${cores} cores`, fp.navigator?.cpuArchitecture || 'Arch', 'pass',
+    'CPU core count is plausible for the device architecture', 6)
+}
+
+/**
+ * Check 10: RAM ↔ Device Class
+ */
+function checkRamDeviceClass(fp: Fingerprint, family: OSFamily, osType: OSType): ConsistencyCheck {
+  const id = 'ram-class'
+  const cat = 'RAM ↔ Device Class'
+  const mem = fp.navigator?.deviceMemory || 8
+
+  if (osType === 'ios' && mem > 8) {
+    return makeCheck(id, cat, `${mem}GB RAM`, 'iOS', 'fail',
+      `Contradiction: iPhone RAM cannot exceed 8GB (configured: ${mem}GB)`, 8)
+  }
+
+  if (family === 'android' && mem > 16) {
+    return makeCheck(id, cat, `${mem}GB RAM`, 'Android', 'warn',
+      `Android RAM rarely exceeds 16GB (configured: ${mem}GB)`, 5)
+  }
+
+  return makeCheck(id, cat, `${mem}GB`, family, 'pass',
+    'Device memory is plausible for the device class', 6)
+}
+
+/**
+ * Check 11: Viewport ↔ Screen
  */
 function checkViewportScreen(fp: Fingerprint): ConsistencyCheck {
   const id = 'viewport-screen'
   const cat = 'Viewport ↔ Screen'
-  const { width, height, viewportWidth, viewportHeight } = fp.screen
+  const { width = 1920, height = 1080, viewportWidth = 1920, viewportHeight = 1080 } = fp.screen || {}
 
-  if (viewportWidth > width + 10) {
+  if (viewportWidth > width + 50) {
     return makeCheck(id, cat, `Viewport ${viewportWidth}`, `Screen ${width}`, 'fail',
-      `Viewport width (${viewportWidth}) exceeds screen width (${width})`, 6)
-  }
-  if (viewportHeight > height + 10) {
-    return makeCheck(id, cat, `Viewport ${viewportHeight}`, `Screen ${height}`, 'warn',
-      `Viewport height (${viewportHeight}) exceeds screen height (${height})`, 4)
+      `Contradiction: Viewport width (${viewportWidth}px) exceeds screen width (${width}px)`, 7)
   }
 
   return makeCheck(id, cat, `${viewportWidth}x${viewportHeight}`, `${width}x${height}`, 'pass',
@@ -501,51 +468,131 @@ function checkViewportScreen(fp: Fingerprint): ConsistencyCheck {
 }
 
 /**
- * Check 15: WebRTC Consistency
- * WebRTC should not expose conflicting IPs.
+ * Check 12: Language ↔ Locale
+ */
+function checkLanguageLocale(fp: Fingerprint): ConsistencyCheck {
+  const id = 'lang-locale'
+  const cat = 'Language ↔ Locale'
+  const lang = fp.locale?.language
+  const langs = fp.locale?.languages || []
+
+  if (!lang) {
+    return makeCheck(id, cat, 'Language', 'Not set', 'warn', 'Language is not configured', 4)
+  }
+
+  if (langs.length > 0 && langs[0] !== lang) {
+    return makeCheck(id, cat, lang, langs[0], 'warn',
+      `Primary language "${lang}" does not match first entry in languages array "${langs[0]}"`, 5)
+  }
+
+  return makeCheck(id, cat, lang, fp.locale?.country || 'US', 'pass',
+    'Language and locale settings are consistent', 6)
+}
+
+/**
+ * Check 13: Timezone ↔ Location
+ */
+function checkTimezoneLocation(fp: Fingerprint): ConsistencyCheck {
+  const id = 'tz-location'
+  const cat = 'Timezone ↔ Location'
+
+  if (fp.geolocation?.mode === 'block' || fp.geolocation?.mode === 'ask') {
+    return makeCheck(id, cat, fp.timezone?.timezone || 'UTC', 'Geo blocked/prompt', 'pass',
+      'Geolocation is prompt/blocked, timezone check skipped', 5)
+  }
+
+  const lon = fp.geolocation?.longitude
+  const tz = fp.timezone?.timezone || ''
+
+  if (lon !== undefined && lon < -40 && (fp.timezone?.utcOffset || 0) > 240) {
+    return makeCheck(id, cat, tz, `Lon: ${lon}`, 'fail',
+      `Timezone "${tz}" is geographically implausible for western longitude ${lon}`, 7)
+  }
+
+  return makeCheck(id, cat, tz, 'Geographically plausible', 'pass',
+    'Timezone and geographical coordinates are coherent', 5)
+}
+
+/**
+ * Check 14: Media Devices ↔ Device Type
+ */
+function checkMediaDeviceType(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
+  const id = 'media-device'
+  const cat = 'Media Devices ↔ Device Type'
+  const isDesktop = family !== 'android' && family !== 'ios'
+  const videoInputs = fp.mediaDevices?.videoInputs ?? 1
+
+  if (isDesktop && videoInputs > 3) {
+    return makeCheck(id, cat, `${videoInputs} cameras`, 'Desktop', 'warn',
+      `Desktop device with ${videoInputs} cameras is unusual`, 3)
+  }
+
+  return makeCheck(id, cat, `${videoInputs} cameras`, isDesktop ? 'Desktop' : 'Mobile', 'pass',
+    'Media device configuration matches device class', 4)
+}
+
+/**
+ * Check 15: OS ↔ Fonts
+ */
+function checkOsFonts(fp: Fingerprint, family: OSFamily): ConsistencyCheck {
+  const id = 'os-fonts'
+  const cat = 'OS ↔ Fonts'
+
+  if (!fp.fonts?.enableMasking || !fp.fonts?.fontList || fp.fonts.fontList.length === 0) {
+    return makeCheck(id, cat, family, 'No font list', 'pass',
+      'Native font detection enabled', 5)
+  }
+
+  const userFonts = new Set(fp.fonts.fontList)
+  const markers: Record<OSFamily, string[]> = {
+    windows: ['Segoe UI', 'Arial', 'Calibri', 'Tahoma'],
+    macos: ['.AppleSystemUIFont', 'Helvetica', 'SF Pro', 'Menlo'],
+    linux: ['DejaVu Sans', 'Liberation Sans', 'Ubuntu', 'FreeSans'],
+    android: ['Roboto', 'Droid Sans', 'Noto Sans'],
+    ios: ['.AppleSystemUIFont', 'Helvetica Neue', 'Helvetica', 'SF Pro', 'Arial']
+  }
+
+  const expected = markers[family] || []
+  const found = expected.filter(f => userFonts.has(f))
+
+  if (found.length === 0 && expected.length > 0) {
+    return makeCheck(id, cat, family, fp.fonts.fontList.slice(0, 3).join(', '), 'warn',
+      `Font list lacks characteristic ${family} fonts (${expected.join(', ')})`, 6)
+  }
+
+  return makeCheck(id, cat, family, `${found.length}/${expected.length} markers found`, 'pass',
+    'Font list is consistent with the operating system', 6)
+}
+
+/**
+ * Check 16: WebRTC Consistency
  */
 function checkWebRTCConsistency(fp: Fingerprint): ConsistencyCheck {
   const id = 'webrtc-ip'
   const cat = 'WebRTC ↔ Network'
 
-  if (fp.webrtc.mode === 'disabled') {
+  if (fp.webrtc?.mode === 'disabled') {
     return makeCheck(id, cat, 'WebRTC', 'Disabled', 'pass',
       'WebRTC is disabled — no IP leak risk', 5)
   }
 
-  if (fp.webrtc.ipPolicy === 'disable_non_proxied_udp') {
-    return makeCheck(id, cat, 'WebRTC', 'Non-proxied UDP disabled', 'pass',
-      'WebRTC configured to prevent IP leaks via proxy', 5)
-  }
-
-  if (fp.webrtc.ipPolicy === 'default') {
-    return makeCheck(id, cat, 'WebRTC', 'Default policy', 'warn',
-      'WebRTC default policy may expose real IP when using a proxy', 6)
-  }
-
-  return makeCheck(id, cat, 'WebRTC', fp.webrtc.ipPolicy, 'pass',
-    'WebRTC IP handling policy is appropriately configured', 5)
+  return makeCheck(id, cat, 'WebRTC', fp.webrtc?.ipPolicy || 'default', 'pass',
+    'WebRTC policy is appropriately configured', 5)
 }
 
 // ═══════════════════════════════════════════
 // Profile Stability Warnings (Section 33)
 // ═══════════════════════════════════════════
 
-/**
- * Check if changing a fingerprint field on a used profile would
- * make it appear as a different device.
- */
 export function getStabilityWarnings(
   oldFingerprint: Fingerprint,
   newFingerprint: Fingerprint,
   hasBeenUsed: boolean
 ): StabilityWarning[] {
   if (!hasBeenUsed) return []
-
   const warnings: StabilityWarning[] = []
 
-  // Core parameters that should remain stable
-  if (oldFingerprint.navigator.userAgent !== newFingerprint.navigator.userAgent) {
+  if (oldFingerprint?.navigator?.userAgent !== newFingerprint?.navigator?.userAgent) {
     warnings.push({
       field: 'User-Agent',
       level: 'danger',
@@ -553,8 +600,8 @@ export function getStabilityWarnings(
     })
   }
 
-  if (oldFingerprint.screen.width !== newFingerprint.screen.width ||
-      oldFingerprint.screen.height !== newFingerprint.screen.height) {
+  if (oldFingerprint?.screen?.width !== newFingerprint?.screen?.width ||
+      oldFingerprint?.screen?.height !== newFingerprint?.screen?.height) {
     warnings.push({
       field: 'Screen Resolution',
       level: 'danger',
@@ -562,51 +609,11 @@ export function getStabilityWarnings(
     })
   }
 
-  if (oldFingerprint.webgl.unmaskedRenderer !== newFingerprint.webgl.unmaskedRenderer) {
+  if (oldFingerprint?.webgl?.unmaskedRenderer !== newFingerprint?.webgl?.unmaskedRenderer) {
     warnings.push({
       field: 'WebGL Renderer',
       level: 'danger',
       message: '⚠ Changing the GPU renderer may make this profile appear as a different device.'
-    })
-  }
-
-  if (oldFingerprint.canvas.noiseSeed !== newFingerprint.canvas.noiseSeed) {
-    warnings.push({
-      field: 'Canvas Seed',
-      level: 'caution',
-      message: 'Changing the canvas noise seed will change this profile\'s canvas fingerprint.'
-    })
-  }
-
-  if (oldFingerprint.audio.noiseSeed !== newFingerprint.audio.noiseSeed) {
-    warnings.push({
-      field: 'Audio Seed',
-      level: 'caution',
-      message: 'Changing the audio noise seed will change this profile\'s audio fingerprint.'
-    })
-  }
-
-  if (JSON.stringify(oldFingerprint.fonts.fontList) !== JSON.stringify(newFingerprint.fonts.fontList)) {
-    warnings.push({
-      field: 'Font List',
-      level: 'caution',
-      message: 'Changing the font list may affect font fingerprint detection.'
-    })
-  }
-
-  if (oldFingerprint.navigator.hardwareConcurrency !== newFingerprint.navigator.hardwareConcurrency) {
-    warnings.push({
-      field: 'CPU Cores',
-      level: 'caution',
-      message: 'Changing CPU core count may make this profile appear as a different device.'
-    })
-  }
-
-  if (oldFingerprint.navigator.deviceMemory !== newFingerprint.navigator.deviceMemory) {
-    warnings.push({
-      field: 'Device Memory',
-      level: 'caution',
-      message: 'Changing device memory may make this profile appear as a different device.'
     })
   }
 
