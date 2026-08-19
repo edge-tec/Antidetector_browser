@@ -11,6 +11,7 @@ import { launchBrowser } from './launcher'
 import { processTracker } from './process-tracker'
 import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
 import { ensureBrowserRuntime } from './runtime-provisioner'
+import { resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { logger } from '../logging/logger'
 import { getDatabase } from '../database/connection'
 
@@ -72,6 +73,14 @@ class ProfileManager {
       (rawFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
 
     const targetEngine: 'chromium' | 'firefox' = browserType === 'firefox' ? 'firefox' : 'chromium'
+
+    // Validate Firefox Profile Coherence if targetEngine is firefox
+    if (targetEngine === 'firefox') {
+      const resolved = resolveFirefoxProfile(profile)
+      if (resolved.unsupportedAtRuntime) {
+        throw new Error(`PROFILE_RUNTIME_MISMATCH: ${resolved.unsupportedReasons.join('; ')}`)
+      }
+    }
 
     // ── Auto-Provision & Verify AntiProfiles-Managed Browser Runtime ──
     logger.info('browser', `[BrowserLaunch] Ensuring standalone managed ${targetEngine.toUpperCase()} runtime for profile "${profile.name}" (${profileId})...`)

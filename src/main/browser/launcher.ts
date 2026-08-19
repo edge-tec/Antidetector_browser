@@ -16,6 +16,9 @@ import { setupBrowserInjection } from './injection/injector'
 import { startProxyBridge } from '../network/proxy-bridge'
 import { logger } from '../logging/logger'
 
+import { ResolvedFirefoxProfile, resolveFirefoxProfile } from './firefox/firefox-resolver'
+import { installFirefoxRuntimeExtension } from './firefox/firefox-extension-builder'
+
 export interface LaunchResult {
   browser: Browser | any
   pid: number
@@ -28,7 +31,7 @@ export interface LaunchResult {
 function setupFirefoxProfilePrefs(
   userDataDir: string,
   profile: Profile,
-  fingerprint: Fingerprint,
+  resolvedProfile: ResolvedFirefoxProfile,
   proxy: Proxy | null
 ): void {
   const resolvedDir = path.resolve(userDataDir)
@@ -72,6 +75,8 @@ function setupFirefoxProfilePrefs(
     } catch {}
   }
 
+  const fp = resolvedProfile.fingerprint
+
   const prefs: string[] = [
     '// AntiProfiles Generated Firefox Preferences',
     'user_pref("browser.shell.checkDefaultBrowser", false);',
@@ -85,75 +90,80 @@ function setupFirefoxProfilePrefs(
     'user_pref("browser.discovery.enabled", false);',
     'user_pref("extensions.pocket.enabled", false);',
     'user_pref("privacy.resistFingerprinting", false);',
-    'user_pref("toolkit.startup.max_resumed_crashes", -1);'
+    'user_pref("toolkit.startup.max_resumed_crashes", -1);',
+    'user_pref("extensions.autoDisableScopes", 0);',
+    'user_pref("xpinstall.signatures.required", false);',
+    'user_pref("extensions.experiments.enabled", true);'
   ]
 
-  // User-Agent & Platform Overrides
-  if (fingerprint?.navigator?.userAgent) {
-    prefs.push(`user_pref("general.useragent.override", ${JSON.stringify(fingerprint.navigator.userAgent)});`)
+  // User-Agent, AppVersion, Platform, and OSCPU Overrides
+  if (resolvedProfile.userAgent) {
+    prefs.push(`user_pref("general.useragent.override", ${JSON.stringify(resolvedProfile.userAgent)});`)
   }
-  if (fingerprint?.navigator?.appVersion) {
-    prefs.push(`user_pref("general.appversion.override", ${JSON.stringify(fingerprint.navigator.appVersion)});`)
+  if (resolvedProfile.appVersion) {
+    prefs.push(`user_pref("general.appversion.override", ${JSON.stringify(resolvedProfile.appVersion)});`)
   }
-  if (fingerprint?.navigator?.platform) {
-    prefs.push(`user_pref("general.platform.override", ${JSON.stringify(fingerprint.navigator.platform)});`)
-    prefs.push(`user_pref("general.oscpu.override", ${JSON.stringify(fingerprint.navigator.platform)});`)
+  if (resolvedProfile.platform) {
+    prefs.push(`user_pref("general.platform.override", ${JSON.stringify(resolvedProfile.platform)});`)
+  }
+  if (resolvedProfile.oscpu) {
+    prefs.push(`user_pref("general.oscpu.override", ${JSON.stringify(resolvedProfile.oscpu)});`)
   }
 
-  // Languages
-  const langList = fingerprint?.locale?.languages?.join(',') || fingerprint?.locale?.language || 'en-US,en'
+  // Languages & Locale
+  const langList = resolvedProfile.languages.join(',') || resolvedProfile.language || 'en-US,en'
   prefs.push(`user_pref("intl.accept_languages", ${JSON.stringify(langList)});`)
-  prefs.push(`user_pref("general.useragent.locale", ${JSON.stringify(fingerprint?.locale?.language || 'en-US')});`)
+  prefs.push(`user_pref("general.useragent.locale", ${JSON.stringify(resolvedProfile.language || 'en-US')});`)
 
   // WebRTC
-  if (fingerprint?.webrtc?.mode === 'disabled' || profile.webrtcMode === 'disabled' || (profile.webrtcMode as string) === 'off') {
+  if (fp?.webrtc?.mode === 'disabled' || profile.webrtcMode === 'disabled' || (profile.webrtcMode as string) === 'off') {
     prefs.push('user_pref("media.peerconnection.enabled", false);')
   } else {
     prefs.push('user_pref("media.peerconnection.enabled", true);')
-    if (fingerprint?.webrtc?.ipPolicy === 'disable_non_proxied_udp') {
+    if (resolvedProfile.webrtcPolicy === 'disable_non_proxied_udp') {
       prefs.push('user_pref("media.peerconnection.ice.proxy_only", true);')
     }
   }
 
   // CPU Threads (Hardware Concurrency)
-  if (fingerprint?.navigator?.hardwareConcurrency) {
-    prefs.push(`user_pref("dom.maxHardwareConcurrency", ${fingerprint.navigator.hardwareConcurrency});`)
+  if (resolvedProfile.hardwareConcurrency) {
+    prefs.push(`user_pref("dom.maxHardwareConcurrency", ${resolvedProfile.hardwareConcurrency});`)
   }
 
   // Device Memory
-  if (fingerprint?.navigator?.deviceMemory) {
+  if (resolvedProfile.deviceMemory) {
     prefs.push('user_pref("dom.deviceMemory.enabled", true);')
   }
 
   // Do Not Track
-  if (fingerprint?.navigator?.doNotTrack) {
-    prefs.push(`user_pref("privacy.donottrackheader.enabled", ${fingerprint.navigator.doNotTrack === '1'});`)
+  if (resolvedProfile.doNotTrack) {
+    prefs.push(`user_pref("privacy.donottrackheader.enabled", ${resolvedProfile.doNotTrack === '1'});`)
   }
 
   // WebGL Vendor & Renderer Spoofing
-  if (fingerprint?.webgl?.unmaskedRenderer) {
-    prefs.push(`user_pref("webgl.renderer-string-override", ${JSON.stringify(fingerprint.webgl.unmaskedRenderer)});`)
+  if (resolvedProfile.unmaskedRenderer) {
+    prefs.push(`user_pref("webgl.renderer-string-override", ${JSON.stringify(resolvedProfile.unmaskedRenderer)});`)
   }
-  if (fingerprint?.webgl?.unmaskedVendor) {
-    prefs.push(`user_pref("webgl.vendor-string-override", ${JSON.stringify(fingerprint.webgl.unmaskedVendor)});`)
+  if (resolvedProfile.unmaskedVendor) {
+    prefs.push(`user_pref("webgl.vendor-string-override", ${JSON.stringify(resolvedProfile.unmaskedVendor)});`)
   }
 
   // Geolocation Spoofing
-  if (fingerprint?.geolocation && fingerprint.geolocation.mode !== 'disabled') {
-    const lat = fingerprint.geolocation.latitude || 40.7128
-    const lng = fingerprint.geolocation.longitude || -74.006
+  if (fp?.geolocation && fp.geolocation.mode !== 'disabled') {
+    const lat = fp.geolocation.latitude || 40.7128
+    const lng = fp.geolocation.longitude || -74.006
     prefs.push('user_pref("geo.enabled", true);')
     prefs.push(`user_pref("geo.provider.network.url", "data:application/json,{\\"location\\":{\\"lat\\":${lat},\\"lng\\":${lng}},\\"accuracy\\":50}");`)
   }
 
   // Keep Firefox UI & font scaling user-friendly, sleek, compact, and responsive
   prefs.push('user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);')
-  prefs.push('user_pref("layout.css.devPixelsPerPx", "-1.0");')
+  prefs.push(`user_pref("layout.css.devPixelsPerPx", "${resolvedProfile.devicePixelRatio.toFixed(1)}");`)
   prefs.push('user_pref("browser.compactmode.show", true);')
   prefs.push('user_pref("browser.uidensity", 1);')
   prefs.push('user_pref("font.size.systemFontScale", 100);')
-  prefs.push(`user_pref("browser.window.width", ${fingerprint?.screen?.width || 1200});`)
-  prefs.push(`user_pref("browser.window.height", ${fingerprint?.screen?.height || 780});`)
+  prefs.push(`user_pref("browser.window.width", ${resolvedProfile.screenWidth || 1200});`)
+  prefs.push(`user_pref("browser.window.height", ${resolvedProfile.screenHeight || 780});`)
   prefs.push('user_pref("browser.toolbars.bookmarks.visibility", "never");')
   prefs.push('user_pref("browser.tabs.tabmanager.enabled", false);')
   prefs.push('user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);')
@@ -189,6 +199,9 @@ function setupFirefoxProfilePrefs(
   if (!fs.existsSync(prefsJsPath)) {
     fs.writeFileSync(prefsJsPath, content, 'utf8')
   }
+
+  // Install runtime isolation WebExtension into the profile
+  installFirefoxRuntimeExtension(resolvedDir, resolvedProfile)
 
   // Pre-seed chrome/userChrome.css and chrome/userContent.css for sleek modern UI proportions
   const chromeDir = path.join(resolvedDir, 'chrome')
@@ -293,29 +306,38 @@ function setupFirefoxProfilePrefs(
 export async function launchFirefox(
   profile: Profile,
   firefoxPath: string,
-  fingerprint: Fingerprint,
+  fingerprintOrResolved: Fingerprint | ResolvedFirefoxProfile,
   launchProxy: Proxy | null,
   startUrls: string[]
 ): Promise<LaunchResult> {
+  const resolvedProfile: ResolvedFirefoxProfile =
+    (fingerprintOrResolved as any)?.operatingSystem
+      ? (fingerprintOrResolved as ResolvedFirefoxProfile)
+      : resolveFirefoxProfile(profile)
+
   const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
-  setupFirefoxProfilePrefs(userDataDir, profile, fingerprint, launchProxy)
+  setupFirefoxProfilePrefs(userDataDir, profile, resolvedProfile, launchProxy)
 
   // Use standard -no-remote, -profile, and responsive user-friendly dimensions
+  const isMobile = resolvedProfile.operatingSystem === 'ios' || resolvedProfile.operatingSystem === 'android'
+  const winWidth = isMobile ? String(resolvedProfile.screenWidth || 430) : '1200'
+  const winHeight = isMobile ? String(resolvedProfile.screenHeight || 932) : '780'
+
   const args: string[] = [
     '-no-remote',
     '-profile',
     userDataDir,
     '-width',
-    '1200',
+    winWidth,
     '-height',
-    '780'
+    winHeight
   ]
 
   if (startUrls.length > 0) {
     args.push(...startUrls)
   }
 
-  const tz = fingerprint?.timezone?.timezone
+  const tz = resolvedProfile.timezone
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     MOZ_NO_REMOTE: '1',
@@ -323,15 +345,16 @@ export async function launchFirefox(
   }
 
   // Custom launch args (allowlisted)
-  if (fingerprint?.browser?.customLaunchArgs && Array.isArray(fingerprint.browser.customLaunchArgs)) {
-    for (const arg of fingerprint.browser.customLaunchArgs) {
+  const customArgs = resolvedProfile.fingerprint?.browser?.customLaunchArgs
+  if (customArgs && Array.isArray(customArgs)) {
+    for (const arg of customArgs) {
       if (arg.startsWith('-') && !args.includes(arg)) {
         args.push(arg)
       }
     }
   }
 
-  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) with -profile ${userDataDir} at: ${firefoxPath}`)
+  logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) [OS: ${resolvedProfile.osType}, Ver: ${resolvedProfile.browserVersion}] with -profile ${userDataDir} at: ${firefoxPath}`)
 
   let child: ChildProcess
   let pid = 0
@@ -688,7 +711,8 @@ export async function launchBrowser(
   // ── Dispatch to Firefox Launcher if Firefox is Selected ──
   if (effectiveBrowserType === 'firefox') {
     logger.info('browser', `[RuntimeConfig] Launching Firefox Quantum Gecko Engine runtime for profile "${profile.name}"`)
-    return launchFirefox(profile, executablePath, fingerprint, launchProxy, startUrls)
+    const resolvedFf = resolveFirefoxProfile(profile)
+    return launchFirefox(profile, executablePath, resolvedFf, launchProxy, startUrls)
   }
 
   // ── Otherwise Launch Chromium Engine ──

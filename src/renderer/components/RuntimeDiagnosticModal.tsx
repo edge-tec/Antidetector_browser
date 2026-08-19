@@ -232,6 +232,66 @@ export const RuntimeDiagnosticModal: React.FC<Props> = ({
                 </div>
               )}
 
+              {/* ── Firefox Runtime Verification (Configured vs Effective Runtime) ── */}
+              {(report as any)?.firefoxValidation && (
+                <div style={{
+                  backgroundColor: '#1C1C28',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  borderRadius: '10px',
+                  padding: '18px 20px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '18px' }}>🦊</span>
+                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#818CF8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Firefox Runtime Verification (Configured vs Runtime)
+                      </h3>
+                    </div>
+                    <span style={{
+                      padding: '3px 12px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      backgroundColor: (report as any).firefoxValidation.status === 'PASS' ? 'rgba(52, 211, 153, 0.15)' : (report as any).firefoxValidation.status === 'WARNING' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: (report as any).firefoxValidation.status === 'PASS' ? '#34D399' : (report as any).firefoxValidation.status === 'WARNING' ? '#FBBF24' : '#F87171'
+                    }}>
+                      Status: {(report as any).firefoxValidation.status}
+                    </span>
+                  </div>
+
+                  {/* Diagnostics Table */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {((report as any).firefoxValidation.diagnostics || []).map((diag: any, idx: number) => (
+                      <div key={idx} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        backgroundColor: '#14141F',
+                        borderRadius: '6px',
+                        border: '1px solid #2C2C3E',
+                        fontSize: '12px'
+                      }}>
+                        <div style={{ width: '180px', fontWeight: 600, color: '#CBD5E1' }}>{diag.field}</div>
+                        <div style={{ flex: 1, color: '#94A3B8', fontFamily: 'monospace', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '12px' }}>
+                          <span style={{ color: '#64748B' }}>Config:</span> {String(diag.configured)} <span style={{ color: '#64748B' }}>→ Runtime:</span> {String(diag.runtime)}
+                        </div>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          backgroundColor: diag.status === 'PASS' ? 'rgba(52, 211, 153, 0.15)' : diag.status === 'HOST-CONTROLLED' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: diag.status === 'PASS' ? '#34D399' : diag.status === 'HOST-CONTROLLED' ? '#FBBF24' : '#F87171'
+                        }}>
+                          {diag.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* ── 2. Effective Browser Runtime ── */}
               {(activeSection === 'all' || activeSection === 'runtime') && (
                 <div style={{

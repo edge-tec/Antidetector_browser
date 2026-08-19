@@ -209,6 +209,7 @@ const api = {
     ipcRenderer.invoke('fingerprint:detectContradictions', fingerprint, osType, browserType, browserVersion),
   getProfileTemplates: () => ipcRenderer.invoke('fingerprint:getTemplates'),
   getDiagnosticReport: (profileId: string) => ipcRenderer.invoke('fingerprint:getDiagnosticReport', profileId),
+  validateFirefoxProfile: (profileOrId: any) => ipcRenderer.invoke('fingerprint:validateFirefoxProfile', profileOrId),
   getStabilityWarnings: (oldFp: any, newFp: any, hasBeenUsed: boolean) =>
     ipcRenderer.invoke('fingerprint:stability-warnings', oldFp, newFp, hasBeenUsed),
 

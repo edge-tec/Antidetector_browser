@@ -24,8 +24,10 @@ import {
   OSType, Fingerprint, ConsistencyResult, StabilityWarning,
   RuntimeDiagnosticReport, DeviceSelection, ResolvedRuntimeProfile
 } from '../fingerprint/types'
-import { proxyRepo } from '../database/repositories/proxy.repo'
 import { profileRepo } from '../database/repositories/profile.repo'
+import { proxyRepo } from '../database/repositories/proxy.repo'
+import { FirefoxRuntimeDiagnostics, validateFirefoxProfile } from '../browser/firefox/firefox-diagnostics'
+import { resolveFirefoxProfile } from '../browser/firefox/firefox-resolver'
 import { logger } from '../logging/logger'
 
 export function registerFingerprintIPC(): void {
@@ -134,12 +136,6 @@ export function registerFingerprintIPC(): void {
       const browserEngine = (profile as any).browserType || rawFp?.browser?.type || (rawFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
       const browserVersion = (profile as any).browserVersion || rawFp?.browser?.version || rawFp?.navigator?.browserVersion || (browserEngine === 'firefox' ? '129.0' : '131.0.0.0')
 
-      const fp = recalculateDependentFields(rawFp, {
-        osType,
-        browserType: browserEngine,
-        browserVersion
-      })
-
       let proxy: any = null
       if (profile.proxyId) {
         proxy = proxyRepo.getById(profile.proxyId)
@@ -147,6 +143,68 @@ export function registerFingerprintIPC(): void {
 
       const isFirefox = browserEngine === 'firefox'
       const isMobile = osType === 'android' || osType === 'ios'
+
+      if (isFirefox) {
+        const ffDiagnostics = FirefoxRuntimeDiagnostics.inspect(profile)
+        const resolvedFf = resolveFirefoxProfile(profile)
+        const fp = resolvedFf.fingerprint
+
+        const report: RuntimeDiagnosticReport & { firefoxValidation?: any } = {
+          profileConfig: {
+            osType,
+            browserEngine: 'firefox',
+            browserVersion,
+            platform: resolvedFf.platform,
+            userAgent: resolvedFf.userAgent,
+            screenResolution: `${resolvedFf.screenWidth}×${resolvedFf.screenHeight}`,
+            devicePixelRatio: resolvedFf.devicePixelRatio,
+            cpuCores: resolvedFf.hardwareConcurrency,
+            memoryGb: resolvedFf.deviceMemory,
+            gpuVendor: resolvedFf.gpuVendor,
+            gpuRenderer: resolvedFf.gpuRenderer,
+            unmaskedRenderer: resolvedFf.unmaskedRenderer,
+            timezone: resolvedFf.timezone,
+            language: resolvedFf.language,
+            languages: resolvedFf.languages,
+            webrtcPolicy: resolvedFf.webrtcPolicy,
+            touchSupport: resolvedFf.touchSupport,
+            maxTouchPoints: resolvedFf.maxTouchPoints
+          },
+          effectiveRuntime: {
+            navigatorPlatform: resolvedFf.platform,
+            navigatorUserAgent: resolvedFf.userAgent,
+            navigatorVendor: resolvedFf.vendor,
+            navigatorAppVersion: resolvedFf.appVersion,
+            hardwareConcurrency: resolvedFf.hardwareConcurrency,
+            deviceMemory: resolvedFf.deviceMemory,
+            screenDimensions: `${resolvedFf.screenWidth}×${resolvedFf.screenHeight}`,
+            windowDpr: resolvedFf.devicePixelRatio,
+            webglVendor: resolvedFf.unmaskedVendor,
+            webglRenderer: resolvedFf.unmaskedRenderer,
+            resolvedTimezone: resolvedFf.timezone,
+            resolvedLanguages: resolvedFf.languages,
+            clientHintsActive: false,
+            windowChromePresent: false,
+            webrtcStatus: fp.webrtc.mode === 'disabled' ? 'Disabled (Protected)' : `Active (${resolvedFf.webrtcPolicy})`
+          },
+          networkIdentity: {
+            hasProxy: !!proxy && proxy.type !== 'direct',
+            proxyType: proxy?.type || 'direct',
+            proxyHost: proxy?.host || 'Direct connection',
+            proxyPort: proxy?.port || undefined,
+            webrtcIpPolicy: resolvedFf.webrtcPolicy,
+            disclaimer: 'Notice: Fingerprint configuration isolates observable hardware & browser identifiers. Changing browser fingerprint settings alone does NOT alter the user\'s public IP address or network identity without an active proxy.'
+          },
+          firefoxValidation: ffDiagnostics
+        }
+        return { success: true, data: report }
+      }
+
+      const fp = recalculateDependentFields(rawFp, {
+        osType,
+        browserType: browserEngine,
+        browserVersion
+      })
 
       const report: RuntimeDiagnosticReport = {
         profileConfig: {
@@ -197,6 +255,18 @@ export function registerFingerprintIPC(): void {
       }
 
       return { success: true, data: report }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Validate Firefox Profile Runtime Coherence ──
+  ipcMain.handle('fingerprint:validateFirefoxProfile', async (_event, profileOrId: any) => {
+    try {
+      const profile = typeof profileOrId === 'string' ? profileRepo.getById(profileOrId) : profileOrId
+      if (!profile) return { success: false, error: 'Profile not found' }
+      const validation = validateFirefoxProfile(profile)
+      return { success: true, data: validation }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
