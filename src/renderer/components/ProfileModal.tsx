@@ -279,6 +279,16 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
   if (isAndroid) {
     const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
     const matchedDev = (existingModelCode ? getDeviceById(existingModelCode) : null) || ANDROID_DEVICES[0]
+    const rawUa = typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : ''
+    const isMatchingEngine = bType === 'firefox'
+      ? (rawUa.includes('Firefox') || rawUa.includes('FxiOS')) && !rawUa.includes('Chrome')
+      : (rawUa.includes('Chrome') || rawUa.includes('CriOS')) && !rawUa.includes('Firefox')
+    const isMatchingOs = rawUa.includes('Android')
+
+    const userAgent = isMatchingEngine && isMatchingOs
+      ? rawUa
+      : generateAndroidUserAgent(matchedDev, bType, bVer)
+
     return {
       version: fp.version || 2,
       seed: fp.seed || 'default-seed',
@@ -288,11 +298,9 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         version: bVer
       },
       navigator: {
-        userAgent: typeof fp.navigator?.userAgent === 'string' && fp.navigator.userAgent.includes('Android')
-          ? fp.navigator.userAgent
-          : generateAndroidUserAgent(matchedDev, bType, bVer),
-        browserVersion: fp.navigator?.browserVersion || bVer,
-        chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
+        userAgent,
+        browserVersion: bVer,
+        chromiumVersion: bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0',
         platform: 'Linux armv8l',
         vendor: bType === 'firefox' ? '' : 'Google Inc.',
         deviceBrand: fp.navigator?.deviceBrand || matchedDev.brand,
@@ -390,6 +398,15 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
   if (isIos) {
     const existingModelCode = fp.navigator?.deviceModelCode || fp.navigator?.deviceModel || ''
     const matchedDev = (existingModelCode ? getIosDeviceById(existingModelCode) : null) || IOS_DEVICES[0]
+    const rawUa = typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : ''
+    const isMatchingEngine = bType === 'firefox'
+      ? rawUa.includes('FxiOS')
+      : rawUa.includes('CriOS') || (rawUa.includes('Safari') && !rawUa.includes('FxiOS') && !rawUa.includes('Firefox'))
+    const isMatchingOs = rawUa.includes('iPhone') || rawUa.includes('iPad')
+
+    const userAgent = isMatchingEngine && isMatchingOs
+      ? rawUa
+      : generateIosUserAgent(matchedDev, bType, bVer)
 
     return {
       version: fp.version || 2,
@@ -400,11 +417,9 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         version: bVer
       },
       navigator: {
-        userAgent: typeof fp.navigator?.userAgent === 'string' && fp.navigator.userAgent.includes('iPhone')
-          ? fp.navigator.userAgent
-          : generateIosUserAgent(matchedDev, bType, bVer),
-        browserVersion: fp.navigator?.browserVersion || bVer,
-        chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
+        userAgent,
+        browserVersion: bVer,
+        chromiumVersion: bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0',
         platform: 'iPhone',
         vendor: 'Apple Computer, Inc.',
         deviceBrand: 'Apple',
@@ -501,7 +516,7 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
   // 3. Desktop OS Defaults (Windows, macOS, Linux)
   const defaultPlatform = isWindows ? 'Win32' : isLinux ? 'Linux x86_64' : 'MacIntel'
   const defaultVendor = bType === 'firefox' ? '' : 'Google Inc.'
-  const defaultGpuVendor = isWindows ? 'NVIDIA' : isMac ? 'Apple' : 'Intel'
+  const defaultGpuVendor = isWindows ? 'NVIDIA' : isMac ? (targetOs === 'macos-arm' ? 'Apple' : 'Intel') : 'Intel'
   const defaultGpuRenderer = isWindows
     ? 'ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11)'
     : isMac
@@ -513,6 +528,20 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
     : isMac
     ? (targetOs === 'macos-arm' ? 'Google Inc. (Apple)' : 'Google Inc. (Intel)')
     : 'Google Inc. (Intel)'
+
+  const rawUa = typeof fp.navigator?.userAgent === 'string' ? fp.navigator.userAgent : ''
+  const isMatchingEngine = bType === 'firefox'
+    ? (rawUa.includes('Firefox/') || rawUa.includes('rv:')) && !rawUa.includes('Chrome/')
+    : rawUa.includes('Chrome/') && !rawUa.includes('Firefox/') && !rawUa.includes('rv:') && !rawUa.includes('Gecko/20100101')
+  const isMatchingOs = isWindows
+    ? rawUa.includes('Windows NT')
+    : isMac
+    ? rawUa.includes('Macintosh')
+    : rawUa.includes('Linux')
+
+  const userAgent = isMatchingEngine && isMatchingOs
+    ? rawUa
+    : generateUAForOS(targetOs, bVer, bType)
 
   const defaultFonts = isWindows
     ? ['Segoe UI', 'Arial', 'Calibri', 'Tahoma', 'Consolas', 'Verdana']
@@ -529,16 +558,12 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       version: bVer
     },
     navigator: {
-      userAgent: typeof fp.navigator?.userAgent === 'string' && (isWindows ? fp.navigator.userAgent.includes('Windows') : isMac ? fp.navigator.userAgent.includes('Macintosh') : fp.navigator.userAgent.includes('Linux'))
-        ? fp.navigator.userAgent
-        : generateUAForOS(targetOs, bVer, bType),
-      browserVersion: fp.navigator?.browserVersion || bVer,
-      chromiumVersion: fp.navigator?.chromiumVersion || (bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0'),
-      platform: fp.navigator?.platform && (isWindows ? fp.navigator.platform === 'Win32' : isMac ? fp.navigator.platform === 'MacIntel' : fp.navigator.platform.includes('Linux'))
-        ? fp.navigator.platform
-        : defaultPlatform,
-      vendor: fp.navigator?.vendor !== undefined ? fp.navigator.vendor : defaultVendor,
-      hardwareConcurrency: fp.navigator?.hardwareConcurrency || 8,
+      userAgent,
+      browserVersion: bVer,
+      chromiumVersion: bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0',
+      platform: defaultPlatform,
+      vendor: defaultVendor,
+      hardwareConcurrency: fp.navigator?.hardwareConcurrency || (isMac ? 8 : 8),
       deviceMemory: fp.navigator?.deviceMemory || (isMac ? 16 : 16),
       maxTouchPoints: 0,
       touchSupport: false,
@@ -1138,7 +1163,7 @@ export const ProfileModal: React.FC<Props> = ({
 
   const handleBrowserTypeChange = async (newBrowser: 'chrome' | 'firefox') => {
     setBrowserType(newBrowser)
-    const defaultVer = newBrowser === 'firefox' ? '129.0' : '131.0.6778.86'
+    const defaultVer = newBrowser === 'firefox' ? '129.0' : (CHROME_VERSIONS_CATALOG[0]?.version || '128.0.6613.120')
     setBrowserVersion(defaultVer)
     try {
       if ((window as any).api?.recalculateFingerprint) {
@@ -1492,7 +1517,7 @@ export const ProfileModal: React.FC<Props> = ({
     setIsSaving(true)
 
     try {
-      const finalFp = ensureFpStructure(fp, osType)
+      const finalFp = ensureFpStructure(fp, osType, browserType, browserVersion)
 
       // Update timezone, geolocation & WebRTC in fingerprint object
       finalFp.timezone.mode = autoTimezone ? 'auto' : 'manual'
@@ -4472,7 +4497,7 @@ export const ProfileModal: React.FC<Props> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div><strong style={{ color: '#94A3B8' }}>Profile Name:</strong> {name || getNextProfileName(existingProfiles)}</div>
               <div><strong style={{ color: '#94A3B8' }}>Proxy:</strong> {activeProxyName}</div>
-              <div><strong style={{ color: '#94A3B8' }}>Browser:</strong> <span style={{ color: browserType === 'firefox' ? '#F97316' : '#2DD4BF', fontWeight: 600 }}>{browserType === 'firefox' ? 'Firefox Quantum' : 'Google Chrome'}</span> ({browserVersion})</div>
+              <div><strong style={{ color: '#94A3B8' }}>Browser:</strong> <span style={{ color: browserType === 'firefox' ? '#F97316' : '#2DD4BF', fontWeight: 600 }}>{browserType === 'firefox' ? 'Firefox Quantum' : 'Google Chrome'}</span> ({safeFp.navigator.browserVersion || browserVersion})</div>
               <div><strong style={{ color: '#94A3B8' }}>OS:</strong> {osType.startsWith('macos') ? 'mac' : osType.startsWith('win') ? 'win' : osType}</div>
               {osType === 'android' && (
                 <div><strong style={{ color: '#94A3B8' }}>Device:</strong> <span style={{ color: '#2DD4BF', fontWeight: 600 }}>{safeFp.navigator.deviceModel || safeFp.navigator.deviceBrand || selectedAndroidDevice?.modelName || 'Samsung Galaxy S24 Ultra'}</span></div>

@@ -87,15 +87,25 @@ export function validateConsistency(
     else if (check.status === 'warn') penalty += check.severity * 0.3
   }
 
-  const score = Math.max(0, Math.min(100, Math.round(100 - (penalty / totalSeverity) * 100)))
   const failures = checks.filter(c => c.status === 'fail')
+  const warnings = checks.filter(c => c.status === 'warn')
   const contradictions = failures.map(f => f.message)
 
+  let calculatedScore = Math.max(0, Math.min(100, Math.round(100 - (penalty / totalSeverity) * 100)))
+  // If there are critical failures / contradictions, cap the score below pass threshold (max 50%)
+  if (failures.length > 0) {
+    calculatedScore = Math.min(calculatedScore, Math.max(0, 50 - (failures.length - 1) * 10))
+  }
+
+  const status: 'pass' | 'warn' | 'fail' =
+    failures.length > 0 ? 'fail' : (warnings.length > 0 || calculatedScore < 90 ? 'warn' : 'pass')
+
   return {
-    score,
+    score: calculatedScore,
+    status,
     totalChecks: checks.length,
     passedChecks: checks.filter(c => c.status === 'pass').length,
-    warnings: checks.filter(c => c.status === 'warn').length,
+    warnings: warnings.length,
     failures: failures.length,
     checks,
     contradictions

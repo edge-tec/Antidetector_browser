@@ -28,13 +28,15 @@ interface Props {
 export const ConsistencyBadge: React.FC<Props> = ({ score: propScore, result, onRecheck }) => {
   const [showModal, setShowModal] = useState(false)
   const score = typeof propScore === 'number' ? propScore : (typeof result?.score === 'number' ? result.score : 100)
+  const hasFailures = !!(result && (result.failures > 0 || (result.contradictions && result.contradictions.length > 0)))
+  const hasWarnings = !!(result && result.warnings > 0)
 
   let badgeColor = '#10B981' // Green
   let badgeLabel = 'Pass'
-  if (score < 70) {
+  if (hasFailures || score < 70) {
     badgeColor = '#EF4444' // Red
     badgeLabel = 'Fail'
-  } else if (score < 90) {
+  } else if (hasWarnings || score < 90) {
     badgeColor = '#F59E0B' // Yellow
     badgeLabel = 'Warning'
   }

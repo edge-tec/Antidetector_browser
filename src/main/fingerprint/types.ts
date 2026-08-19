@@ -413,6 +413,7 @@ export interface ConsistencyCheck {
 
 export interface ConsistencyResult {
   score: number                 // 0-100
+  status: 'pass' | 'warn' | 'fail'
   totalChecks: number
   passedChecks: number
   warnings: number

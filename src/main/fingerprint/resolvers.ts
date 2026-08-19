@@ -24,7 +24,7 @@ import {
   getNavigatorPlatform, buildAppVersion, getNotABrandVersion,
   validateBrowserCompat
 } from './browser-compat-matrix'
-import { SeededRandom } from './generator'
+import { SeededRandom, recalculateDependentFields } from './generator'
 
 // ═══════════════════════════════════════════
 // Master Resolver — Single Entry Point
@@ -600,4 +600,70 @@ export function applyUserOverrides(
   }
 
   return { ...profile, fingerprint: fp }
+}
+
+// ═══════════════════════════════════════════
+// Canonical Profile Resolver — Authoritative Source of Truth
+// ═══════════════════════════════════════════
+
+export interface CanonicalProfileInput {
+  osType: OSType
+  browserType: 'chrome' | 'firefox'
+  browserVersion: string
+  deviceTemplateId?: string
+  deviceModelId?: string
+  seed?: string
+  existingFp?: Partial<Fingerprint>
+}
+
+/**
+ * Resolves a User-Agent strictly from canonical parameters.
+ * Guarantees that Chrome never contains Firefox tokens and Firefox never contains Chrome tokens.
+ */
+export function resolveUserAgent(
+  osType: OSType,
+  browserType: 'chrome' | 'firefox',
+  browserVersion: string,
+  deviceModel?: string
+): string {
+  return buildConsistentUA({
+    osType,
+    browserType,
+    browserVersion,
+    deviceModel
+  })
+}
+
+/**
+ * Resolves navigator.platform strictly matching the OS.
+ */
+export function resolvePlatform(osType: OSType): string {
+  return getNavigatorPlatform(osType)
+}
+
+/**
+ * Single authoritative profile resolver.
+ * Enforces 100% coherence across OS, Platform, Browser, Version, User-Agent, Display, and Hardware.
+ */
+export function resolveCanonicalProfile(input: CanonicalProfileInput): Fingerprint {
+  const { osType, browserType, browserVersion, deviceTemplateId, deviceModelId, seed, existingFp } = input
+  const masterSeed = seed || (existingFp as any)?.seed || crypto.randomBytes(16).toString('hex')
+  const rng = new SeededRandom(masterSeed)
+
+  if (deviceTemplateId) {
+    const template = getDeviceTemplateById(deviceTemplateId)
+    if (template) {
+      const engine = getEngineForBrowser(osType, browserType)
+      return buildFingerprintFromTemplate(template, browserType, browserVersion, engine, masterSeed, rng)
+    }
+  }
+
+  const baseFp = existingFp && typeof existingFp === 'object' ? (existingFp as Fingerprint) : createDefaultFingerprint()
+  return recalculateDependentFields(baseFp, {
+    osType,
+    browserType,
+    browserVersion,
+    deviceModelId,
+    seed: masterSeed
+  })
 }
