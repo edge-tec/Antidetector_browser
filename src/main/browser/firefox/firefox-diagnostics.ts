@@ -113,7 +113,7 @@ export class FirefoxRuntimeDiagnostics {
       configured: resolved.devicePixelRatio,
       runtime: resolved.devicePixelRatio,
       status: 'PASS',
-      detail: `layout.css.devPixelsPerPx override active`
+      detail: `WebExtension Content-Bridge DOM injection active (@${resolved.devicePixelRatio}x DPR)`
     })
 
     // 8. Hardware Concurrency (CPU Cores) Diagnostic

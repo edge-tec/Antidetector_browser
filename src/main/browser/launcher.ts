@@ -158,9 +158,10 @@ function setupFirefoxProfilePrefs(
 
   // Keep Firefox UI & font scaling user-friendly, sleek, compact, and responsive
   prefs.push('user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);')
-  prefs.push(`user_pref("layout.css.devPixelsPerPx", "${resolvedProfile.devicePixelRatio.toFixed(1)}");`)
+  // Use natural system DPI scaling (-1.0 = auto) to prevent 2.0x double-scaling on Retina / high-DPI displays
+  prefs.push('user_pref("layout.css.devPixelsPerPx", "-1.0");')
   prefs.push('user_pref("browser.compactmode.show", true);')
-  prefs.push('user_pref("browser.uidensity", 1);')
+  prefs.push('user_pref("browser.uidensity", 0);')
   prefs.push('user_pref("font.size.systemFontScale", 100);')
   prefs.push(`user_pref("browser.window.width", ${resolvedProfile.screenWidth || 1200});`)
   prefs.push(`user_pref("browser.window.height", ${resolvedProfile.screenHeight || 780});`)
@@ -210,39 +211,61 @@ function setupFirefoxProfilePrefs(
       fs.mkdirSync(chromeDir, { recursive: true, mode: 0o700 })
     }
     const userChromeCss = `
-/* AntiProfiles Sleek Compact Modern Firefox Desktop UI */
+/* AntiProfiles Sleek Compact Modern Responsive Firefox Desktop UI */
 :root {
-  --tab-min-height: 32px !important;
+  --tab-min-height: 36px !important;
   --tab-border-radius: 6px !important;
-  --urlbar-min-height: 30px !important;
+  --urlbar-min-height: 32px !important;
+  --urlbar-height: 32px !important;
   --toolbarbutton-outer-padding: 2px !important;
+  --toolbarbutton-inner-padding: 4px !important;
 }
+
 #nav-bar {
   padding-top: 2px !important;
   padding-bottom: 2px !important;
-  max-height: 38px !important;
+  min-height: 38px !important;
 }
+
 #urlbar-container {
-  max-height: 32px !important;
+  min-height: 32px !important;
   padding-top: 1px !important;
   padding-bottom: 1px !important;
 }
+
 #urlbar {
-  min-height: 30px !important;
-  border-radius: 6px !important;
+  min-height: 32px !important;
+  border-radius: 8px !important;
   font-size: 13px !important;
 }
-.tabbrowser-tab {
-  min-height: 32px !important;
-  font-size: 12.5px !important;
+
+#urlbar-background {
+  border-radius: 8px !important;
 }
+
+.tabbrowser-tab {
+  min-height: 36px !important;
+  font-size: 13px !important;
+}
+
 .tab-background {
   border-radius: 6px 6px 0 0 !important;
   margin-block: 1px !important;
 }
+
+.toolbarbutton-1 {
+  padding: 4px !important;
+}
+
+.toolbarbutton-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+
 #PersonalToolbar {
   max-height: 28px !important;
 }
+
 #browser {
   flex-grow: 1 !important;
 }
@@ -261,18 +284,22 @@ function setupFirefoxProfilePrefs(
     font-size: 28px !important;
   }
   .search-wrapper {
-    margin-bottom: 24px !important;
+    margin-bottom: 20px !important;
     max-width: 600px !important;
   }
+  .search-inner-wrapper {
+    min-height: 40px !important;
+    height: 40px !important;
+  }
   .top-sites-list {
-    gap: 16px !important;
+    gap: 14px !important;
   }
   .top-site-outer {
-    padding: 8px !important;
+    padding: 6px !important;
   }
   .top-site-inner .tile {
-    width: 56px !important;
-    height: 56px !important;
+    width: 52px !important;
+    height: 52px !important;
   }
 }
 `
