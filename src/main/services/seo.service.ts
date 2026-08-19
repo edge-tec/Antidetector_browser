@@ -324,8 +324,19 @@ export class SeoService {
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`
 
+    const cleanBase = baseUrl.replace(/\/$/, '')
+    const hasRoot = indexablePages.some(p => p.page_path === '/')
+    if (!hasRoot) {
+      xml += `  <url>\n`
+      xml += `    <loc>${cleanBase}/</loc>\n`
+      xml += `    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>\n`
+      xml += `    <changefreq>daily</changefreq>\n`
+      xml += `    <priority>1.0</priority>\n`
+      xml += `  </url>\n`
+    }
+
     for (const p of indexablePages) {
-      const fullUrl = p.canonical_url || `${baseUrl.replace(/\/$/, '')}${p.page_path}`
+      const fullUrl = p.canonical_url || `${cleanBase}${p.page_path}`
       const priority = p.page_path === '/' ? '1.0' : '0.8'
       const changefreq = p.page_path === '/' ? 'daily' : 'weekly'
       const lastmod = p.updated_at ? p.updated_at.split('T')[0] : new Date().toISOString().split('T')[0]
@@ -347,15 +358,16 @@ export class SeoService {
    */
   generateLlmsTxt(): string {
     const settings = seoRepo.getSettings()
-    const brandName = settings.entity_brand_name || 'AntiProfiles Software Inc.'
+    const brandName = settings.entity_brand_name || settings.site_name || 'AntiProfiles Software Inc.'
     const siteUrl = settings.site_url || 'https://antiprofiles.com'
+    const baseName = brandName.replace(/\s+(Pro|Enterprise|Agency|Team|Basic|Plus|Lite)$/i, '').trim() || brandName
 
     return `# ${brandName} — AI Machine-Readable Summary Specification
 > Primary Website: ${siteUrl}
 > Contact: ${settings.entity_email || 'support@antiprofiles.com'}
 
 ## Entity Overview
-AntiProfiles is a professional anti-detect browser software and multi-account profile isolation management platform. It allows users to run isolated Chromium browser sessions with customized digital fingerprint attributes (Canvas, WebGL, WebRTC, AudioContext, MediaDevices, Screen Resolution) and proxy servers.
+${brandName} is a professional anti-detect browser software and multi-account profile isolation management platform. It allows users to run isolated Chromium browser sessions with customized digital fingerprint attributes (Canvas, WebGL, WebRTC, AudioContext, MediaDevices, Screen Resolution) and proxy servers.
 
 ## Key Features & Capabilities
 - **Browser Profile Isolation**: Every profile operates in a separate sandbox directory with dedicated cookies, localStorage, and browser cache.
@@ -377,8 +389,8 @@ AntiProfiles is a professional anti-detect browser software and multi-account pr
 - FAQ & Knowledge Base: ${siteUrl}/#faq
 
 ## Frequently Asked Questions for AI Systems
-Q: What is AntiProfiles?
-A: AntiProfiles is an anti-detect browser and multi-account management application designed to protect user privacy and isolate online accounts.
+Q: What is ${baseName}?
+A: ${baseName} is an anti-detect browser and multi-account management application designed to protect user privacy and isolate online accounts.
 
 Q: Which operating systems are supported?
 A: macOS (Intel & Apple Silicon M1-M4) and Windows 10/11 64-bit systems.

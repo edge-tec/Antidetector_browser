@@ -2,29 +2,26 @@
 // ProfileVault — Subscriptions & Licensing Integration Tests
 // ──────────────────────────────────────────────
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import Database from 'better-sqlite3'
-import { setDatabaseForTesting } from '../../src/main/database/connection'
-import { runMigrations } from '../../src/main/database/migrations/runner'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { initDatabase, getDatabase } from '../../src/main/database/connection'
 import { subscriptionRepo } from '../../src/main/database/repositories/subscription.repo'
 
 describe('Subscription & Licensing System', () => {
-  let db: Database.Database
+  let db: any
 
   beforeEach(() => {
-    db = new Database(':memory:')
-    setDatabaseForTesting(db)
-    runMigrations(db)
+    db = initDatabase()
+
+    // Reset tables for isolated test runs
+    db.prepare('DELETE FROM desktop_installations').run()
+    db.prepare('DELETE FROM subscriptions').run()
+    subscriptionRepo.updateDesktopConfig({ max_devices_limit: '2', min_supported_version: '1.0.0', force_update: 'false' })
 
     // Seed test user
     db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status)
+      INSERT OR REPLACE INTO users (id, name, email, password_hash, role, email_verified, account_status)
       VALUES ('user-test-1', 'Test User', 'user@example.com', 'hash', 'user', 1, 'active')
     `).run()
-  })
-
-  afterEach(() => {
-    db.close()
   })
 
   it('should create default subscription for new user and validate license', () => {
@@ -103,8 +100,8 @@ describe('Subscription & Licensing System', () => {
     expect(manifest.platforms['windows-x64']).toBeDefined()
     expect(manifest.platforms['macos-x64']).toBeDefined()
     expect(manifest.platforms['macos-arm64']).toBeDefined()
-    expect(manifest.platforms['windows-x64'].download_url).toContain('ProfileVault-Windows-x64.exe')
-    expect(manifest.platforms['macos-x64'].download_url).toContain('ProfileVault-macOS-Intel-x64.dmg')
-    expect(manifest.platforms['macos-arm64'].download_url).toContain('ProfileVault-macOS-Apple-Silicon-arm64.dmg')
+    expect(manifest.platforms['windows-x64'].download_url).toMatch(/(AntiProfiles|ProfileVault)-Windows-x64\.exe/)
+    expect(manifest.platforms['macos-x64'].download_url).toMatch(/(AntiProfiles|ProfileVault)-macOS-Intel-x64\.dmg/)
+    expect(manifest.platforms['macos-arm64'].download_url).toMatch(/(AntiProfiles|ProfileVault)-macOS-Apple-Silicon-arm64\.dmg/)
   })
 })

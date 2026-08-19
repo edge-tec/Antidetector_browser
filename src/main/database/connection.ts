@@ -64,6 +64,7 @@ export function initDatabase(): any {
   } catch (err: any) {
     console.warn('[Database] Native better-sqlite3 driver unavailable (e.g. cross-arch Mach-O slice). Using fault-tolerant storage:', err?.message || err)
     db = new FallbackDatabase(dbPath)
+    runMigrations(db as any)
   }
 
   try {

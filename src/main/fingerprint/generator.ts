@@ -265,7 +265,7 @@ export function recalculateDependentFields(
   let memory = isIos ? (iosDev?.memory || 8) : isAndroid ? (androidDev?.memory || 12) : currentFp?.navigator?.deviceMemory || rng.pick(OS_MEMORY_RANGES[family])
   if (isIos && memory > 8) memory = 8
 
-  const vendor = isIos ? (browserType === 'firefox' ? '' : 'Apple Computer, Inc.') : browserType === 'firefox' ? '' : 'Google Inc.'
+  const vendor = isIos ? 'Apple Computer, Inc.' : browserType === 'firefox' ? '' : 'Google Inc.'
 
   const navigator: NavigatorFingerprint = {
     ...(currentFp?.navigator || {}),

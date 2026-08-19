@@ -280,8 +280,8 @@ export function getNotABrandVersion(chromeVersion: string): string {
  * Get the navigator.vendor value for a given browser.
  */
 export function getNavigatorVendor(browserType: 'chrome' | 'firefox', osType: OSType): string {
-  if (browserType === 'firefox') return ''
   if (osType === 'ios') return 'Apple Computer, Inc.'
+  if (browserType === 'firefox') return ''
   return 'Google Inc.'
 }
 

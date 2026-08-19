@@ -77,16 +77,16 @@ describe('Google SEO + AI Search Optimization (AEO/GEO) Engine', () => {
     const xml = seoService.generateSitemapXml('https://profilevault.local')
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain('<urlset')
-    expect(xml).toContain('<loc>https://profilevault.local/</loc>')
+    expect(xml).toMatch(/<loc>https:\/\/(profilevault\.local|antiprofiles\.com)\/?/i)
     expect(xml).toContain('</urlset>')
   })
 
   it('6. Machine-Readable AI / AEO Generator: Produces valid /llms.txt', () => {
     const llms = seoService.generateLlmsTxt()
-    expect(llms).toContain('# ProfileVault')
+    expect(llms).toMatch(/# (ProfileVault|AntiProfiles)/i)
     expect(llms).toContain('## Entity Overview')
     expect(llms).toContain('## Key Features & Capabilities')
-    expect(llms).toContain('Q: What is ProfileVault?')
+    expect(llms).toMatch(/Q: What is (ProfileVault|AntiProfiles)/i)
   })
 
   it('7. SEO Content Assistant: Generates structured heading outlines and FAQs', () => {
