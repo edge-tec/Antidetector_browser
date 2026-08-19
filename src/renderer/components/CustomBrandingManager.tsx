@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import defaultChromeImg from '../assets/antiprofiles-chrome.png'
 import defaultFirefoxImg from '../assets/antiprofiles-firefox.png'
+import defaultLogoImg from '../assets/logo.png'
 
 interface BrandingTargetConfig {
   isCustom: boolean
@@ -288,7 +289,7 @@ export const CustomBrandingManager: React.FC = () => {
           'Application Master Logo',
           'app',
           'Desktop Launcher & Main Window',
-          defaultChromeImg,
+          defaultLogoImg,
           '#8B5CF6'
         )}
       </div>
