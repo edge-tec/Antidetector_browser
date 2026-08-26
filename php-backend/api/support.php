@@ -151,6 +151,24 @@ try {
                 $visitorToken = 'vis_' . bin2hex(random_bytes(12));
             }
 
+            // Tag priority and support routing according to user plan tier
+            $supportLevel = 'community';
+            $supportPlanName = 'Free';
+            if ($userId) {
+                $subStmt = $db->prepare("SELECT s.plan_id FROM subscriptions s WHERE s.user_id = ? AND s.status = 'active' ORDER BY s.created_at DESC LIMIT 1");
+                $subStmt->execute([$userId]);
+                $activePlanId = $subStmt->fetchColumn() ?: 'plan_free';
+                $matrix = resolvePlanFeatureMatrix($activePlanId, $user['role'] ?? 'user');
+                $supportLevel = $matrix['support_level'];
+                $supportPlanName = $matrix['plan_name'];
+
+                if ($matrix['support_level'] === 'priority_24_7') {
+                    $priority = 'urgent';
+                } elseif ($matrix['support_level'] === 'dedicated_manager') {
+                    $priority = 'vip';
+                }
+            }
+
             $convId = 'conv_' . bin2hex(random_bytes(8));
             $msgId = 'msg_' . bin2hex(random_bytes(8));
 

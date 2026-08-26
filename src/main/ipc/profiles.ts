@@ -4,12 +4,62 @@
 
 import { ipcMain } from 'electron'
 import { profileRepo } from '../database/repositories/profile.repo'
+import { proxyRepo } from '../database/repositories/proxy.repo'
 import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { profileManager } from '../browser/profile-manager'
 import { validateProfileName, validateId } from '../security/validators'
 import { authorizeUser, normalizeUserRole } from '../security/session'
 import { centralApi } from '../services/api-client.service'
 import { logger } from '../logging/logger'
+
+function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string } {
+  const normalized = normalizeUserRole(role)
+  const isAdmin = (normalized === 'admin' || normalized === 'super_admin')
+  if (isAdmin) return { allowed: true, current: 0, max: 1000 }
+
+  const currentCount = profileRepo.getAll(userId).length
+  let maxAllowed = 3
+  const liveLicense = centralApi.getCurrentLicense()
+  if (liveLicense?.limits?.profiles && typeof liveLicense.limits.profiles === 'number' && liveLicense.limits.profiles > 0) {
+    maxAllowed = liveLicense.limits.profiles
+  } else {
+    try {
+      const localLicense = subscriptionRepo.validateLicense(userId)
+      if (localLicense?.limits?.profiles && typeof localLicense.limits.profiles === 'number' && localLicense.limits.profiles > 0) {
+        maxAllowed = localLicense.limits.profiles
+      }
+    } catch {}
+  }
+
+  if (currentCount >= maxAllowed) {
+    return {
+      allowed: false,
+      current: currentCount,
+      max: maxAllowed,
+      error: `Profile limit reached (${currentCount}/${maxAllowed}). Your account is allowed a maximum of ${maxAllowed} profile${maxAllowed === 1 ? '' : 's'}. Please upgrade your plan in the Web Control Center to create more profiles.`
+    }
+  }
+
+  return { allowed: true, current: currentCount, max: maxAllowed }
+}
+
+function checkProxyPermission(proxyId: string | undefined, userId: string): { allowed: boolean; error?: string; minPlan?: string } {
+  if (!proxyId) return { allowed: true }
+  const proxy = proxyRepo.getById(proxyId)
+  if (!proxy || proxy.type === 'direct') return { allowed: true }
+
+  const reqType = proxy.type.toLowerCase()
+  const license = centralApi.getCurrentLicense() || subscriptionRepo.validateLicense(userId)
+  if (license?.features?.allowed_proxy_types && !license.features.allowed_proxy_types.includes(reqType)) {
+    return {
+      allowed: false,
+      error: `Selected proxy "${proxy.name}" (${reqType.toUpperCase()}) requires Starter plan ($19/mo) or higher. Your Free plan includes Basic HTTP proxy support only.`,
+      minPlan: 'Starter ($19/mo)'
+    }
+  }
+
+  return { allowed: true }
+}
 
 export function registerProfileHandlers(): void {
   ipcMain.handle('profiles:getAll', async (_event, sessionToken?: string, search?: string, groupId?: string, status?: string) => {
@@ -103,33 +153,21 @@ export function registerProfileHandlers(): void {
       validateProfileName(input.name)
 
       // ── Quota Check: Enforce Profile Limit ──
-      const role = normalizeUserRole(auth.user.role)
-      const isAdmin = (role === 'admin' || role === 'super_admin')
-      if (!isAdmin) {
-        // Count existing profiles owned by this user
-        const userProfiles = profileRepo.getAll(auth.user.id)
-        const currentCount = userProfiles.length
+      const quota = checkUserQuota(auth.user.id, auth.user.role)
+      if (!quota.allowed) {
+        logger.warn('profile', `[PROFILE_LIMIT_BLOCKED] User ${auth.user.id} reached quota (${quota.current}/${quota.max})`)
+        return { success: false, error: quota.error }
+      }
 
-        // Retrieve authoritative profile limit: Server License > Local Subscription License > Default 3
-        let maxAllowed = 3
-        const liveLicense = centralApi.getCurrentLicense()
-        if (liveLicense && liveLicense.limits && typeof liveLicense.limits.profiles === 'number' && liveLicense.limits.profiles > 0) {
-          maxAllowed = liveLicense.limits.profiles
-        } else {
-          try {
-            const localLicense = subscriptionRepo.validateLicense(auth.user.id)
-            if (localLicense && localLicense.limits && typeof localLicense.limits.profiles === 'number' && localLicense.limits.profiles > 0) {
-              maxAllowed = localLicense.limits.profiles
-            }
-          } catch {}
-        }
-
-        if (currentCount >= maxAllowed) {
-          logger.warn('profile', `[PROFILE_LIMIT_BLOCKED] User ${auth.user.id} reached quota (${currentCount}/${maxAllowed})`)
-          return {
-            success: false,
-            error: `Profile limit reached (${currentCount}/${maxAllowed}). Your account is allowed a maximum of ${maxAllowed} profile${maxAllowed === 1 ? '' : 's'}. Please upgrade your plan in the Web Control Center to create more profiles.`
-          }
+      // ── Proxy Type Check: Enforce Plan Allowed Proxy Types ──
+      const proxyCheck = checkProxyPermission(input.proxyId, auth.user.id)
+      if (!proxyCheck.allowed) {
+        return {
+          success: false,
+          error: proxyCheck.error,
+          lockedFeature: 'proxy_support',
+          minPlan: proxyCheck.minPlan,
+          upgradeUrl: '#pricing'
         }
       }
 
@@ -191,6 +229,21 @@ export function registerProfileHandlers(): void {
       }
 
       if (input.name) validateProfileName(input.name)
+
+      // Proxy check on update
+      if (input.proxyId) {
+        const proxyCheck = checkProxyPermission(input.proxyId, auth.user.id)
+        if (!proxyCheck.allowed) {
+          return {
+            success: false,
+            error: proxyCheck.error,
+            lockedFeature: 'proxy_support',
+            minPlan: proxyCheck.minPlan,
+            upgradeUrl: '#pricing'
+          }
+        }
+      }
+
       const profile = profileRepo.update(id, input)
       if (!profile) return { success: false, error: 'Profile not found' }
 
@@ -244,6 +297,12 @@ export function registerProfileHandlers(): void {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
+      // Quota check before duplicating
+      const quota = checkUserQuota(auth.user.id, auth.user.role)
+      if (!quota.allowed) {
+        return { success: false, error: quota.error }
+      }
+
       const profile = profileManager.duplicateProfile(id, auth.user.id)
       if (!profile) return { success: false, error: 'Profile not found' }
       return { success: true, data: profile }
@@ -276,6 +335,12 @@ export function registerProfileHandlers(): void {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user) return { success: false, error: auth.error }
+
+      // Quota check before importing
+      const quota = checkUserQuota(auth.user.id, auth.user.role)
+      if (!quota.allowed) {
+        return { success: false, error: quota.error }
+      }
 
       const profile = profileManager.importProfile(data, auth.user.id)
       return { success: true, data: profile }

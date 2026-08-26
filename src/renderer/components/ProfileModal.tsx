@@ -28,6 +28,8 @@ interface Props {
   proxies: any[]
   groups: any[]
   existingProfiles?: any[]
+  licenseInfo?: any
+  onUpgrade?: () => void
 }
 
 export function getNextProfileName(existingProfiles?: { name?: string }[]): string {
@@ -765,8 +767,11 @@ export const ProfileModal: React.FC<Props> = ({
   initialProfile,
   proxies,
   groups,
-  existingProfiles
+  existingProfiles,
+  licenseInfo,
+  onUpgrade
 }) => {
+  const isFreePlan = licenseInfo?.features?.proxy_support === 'basic' || licenseInfo?.plan?.id === 'plan_free' || (licenseInfo?.limits?.profiles === 3 && !licenseInfo?.features?.advanced_fingerprint)
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [name, setName] = useState(() => getNextProfileName(existingProfiles))
   const [folder, setFolder] = useState('')
@@ -2595,12 +2600,12 @@ export const ProfileModal: React.FC<Props> = ({
                         <select
                           value={customProxyType}
                           onChange={e => setCustomProxyType(e.target.value)}
-                          style={{ width: '130px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
+                          style={{ width: '150px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
                         >
                           <option value="http">HTTP</option>
-                          <option value="https">HTTPS</option>
-                          <option value="socks4">SOCKS4</option>
-                          <option value="socks5">SOCKS5</option>
+                          <option value="https" disabled={isFreePlan}>HTTPS {isFreePlan ? '🔒 ($19/mo)' : ''}</option>
+                          <option value="socks4" disabled={isFreePlan}>SOCKS4 {isFreePlan ? '🔒 ($19/mo)' : ''}</option>
+                          <option value="socks5" disabled={isFreePlan}>SOCKS5 {isFreePlan ? '🔒 ($19/mo)' : ''}</option>
                         </select>
                         <input
                           type="text"
@@ -2653,6 +2658,17 @@ export const ProfileModal: React.FC<Props> = ({
                           style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
                         />
                       </div>
+
+                      {isFreePlan && (
+                        <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#F59E0B', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                          <span>🔒 <strong>Free Plan:</strong> Basic HTTP proxy support included. HTTPS & SOCKS proxies require Starter ($19/mo) or higher.</span>
+                          {onUpgrade && (
+                            <button type="button" onClick={onUpgrade} style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#F59E0B', color: '#000', border: 'none', fontWeight: 700, fontSize: '11px', cursor: 'pointer', flexShrink: 0 }}>
+                              ⚡ Upgrade Plan
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       {/* Proxy Connection Check & Result Info Card */}
                       <ProxyInfoCard
@@ -3627,6 +3643,25 @@ export const ProfileModal: React.FC<Props> = ({
               {/* ── TAB: ADVANCED ── */}
               {activeTab === 'advanced' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+                  {isFreePlan && (
+                    <div style={{ padding: '14px 18px', borderRadius: '10px', backgroundColor: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.4)', color: '#C7D2FE', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#FFF', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>🔒</span>
+                          <span>Standard Fingerprint Controls (Free Plan)</span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#94A3B8' }}>
+                          Standard noise & basic fingerprint spoofing are active. Advanced controls (custom WebGL vendor/renderer, audio buffer noise, custom CPU/RAM) require Starter ($19/mo) or Professional ($49/mo).
+                        </div>
+                      </div>
+                      {onUpgrade && (
+                        <button type="button" onClick={onUpgrade} style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: '#818CF8', color: '#FFF', border: 'none', fontWeight: 700, fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>
+                          ⚡ Upgrade Plan
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Navigator Section */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

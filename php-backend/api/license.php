@@ -203,11 +203,10 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
         }
     }
 
-    $hasApiAccess = $plan['api_limit'] !== '—' && $plan['api_limit'] !== 'Disabled';
-    $isProOrBusiness = (float)$plan['monthly_price'] >= 49 || $user['role'] === 'admin';
+    $matrix = resolvePlanFeatureMatrix($plan['id'], $user['role']);
 
-    // Authoritative Profile Limit (Subscription override > User override > Plan limit > Default 3)
-    $userProfileLimit = 3;
+    // Authoritative Profile Limit (Subscription override > User override > Plan limit > Matrix default)
+    $userProfileLimit = $matrix['profile_limit'];
     if (!empty($sub['profile_limit']) && (int)$sub['profile_limit'] > 0) {
         $userProfileLimit = (int)$sub['profile_limit'];
     } elseif (!empty($user['profile_limit']) && (int)$user['profile_limit'] > 0) {
@@ -216,13 +215,21 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
         $userProfileLimit = (int)$plan['profile_limit'];
     }
 
+    // Team / Device Limit (Subscription override > Plan limit > Matrix default)
+    $userTeamLimit = $matrix['team_limit'];
+    if (!empty($sub['device_limit']) && (int)$sub['device_limit'] > 0) {
+        $userTeamLimit = (int)$sub['device_limit'];
+    } elseif (!empty($plan['team_limit']) && (int)$plan['team_limit'] > 0) {
+        $userTeamLimit = (int)$plan['team_limit'];
+    }
+
     return [
         'valid' => true,
         'account_status' => $user['account_status'],
         'subscription_status' => $currentSubStatus,
         'plan' => [
             'id' => $plan['id'],
-            'name' => $plan['name'],
+            'name' => $matrix['plan_name'] ?: $plan['name'],
             'monthly_price' => (float)$plan['monthly_price'],
             'yearly_price' => (float)$plan['yearly_price']
         ],
@@ -230,21 +237,31 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
         'grace_period_active' => $isGraceActive,
         'features' => [
             'browser_profiles' => true,
-            'advanced_fingerprint' => $isProOrBusiness,
+            'proxy_support' => $matrix['proxy_support'],
+            'allowed_proxy_types' => $matrix['allowed_proxy_types'],
+            'fingerprint_level' => $matrix['fingerprint_level'],
+            'advanced_fingerprint' => $matrix['has_advanced_fingerprint'],
+            'full_hardware_spoofing' => $matrix['has_full_hardware_spoofing'],
             'proxy_manager' => true,
             'profile_templates' => true,
-            'team_management' => (int)$plan['team_limit'] > 1 || $user['role'] === 'admin',
-            'api_access' => $hasApiAccess
+            'team_management' => $matrix['can_access_team'] || $user['role'] === 'admin',
+            'api_access' => $matrix['api_access'],
+            'has_api' => $matrix['has_api'],
+            'has_driver_api' => $matrix['has_driver_api'],
+            'support_level' => $matrix['support_level']
         ],
         'limits' => [
             'profiles' => $user['role'] === 'admin' ? 1000 : $userProfileLimit,
-            'team_members' => $user['role'] === 'admin' ? 50 : (int)($plan['team_limit'] ?? 2),
-            'api_access' => $hasApiAccess
+            'team_members' => $user['role'] === 'admin' ? 50 : $userTeamLimit,
+            'proxy_types' => $matrix['allowed_proxy_types'],
+            'api_access' => $matrix['api_access'],
+            'fingerprint_level' => $matrix['fingerprint_level'],
+            'support_level' => $matrix['support_level']
         ],
         'device' => [
             'installation_id' => $installationId ?: '',
             'device_count' => $activeDevicesCount,
-            'max_devices' => $maxDevicesLimit
+            'max_devices' => $user['role'] === 'admin' ? 50 : $userTeamLimit
         ],
         'app_version_status' => [
             'force_update' => false,

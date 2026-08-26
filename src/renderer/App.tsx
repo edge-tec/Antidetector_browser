@@ -364,7 +364,7 @@ function ProfileListRowComponent({ profile, proxies, onStart, onStop, onEdit, on
 // Profiles Page
 // ═══════════════════════════════════════════
 
-function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['type'], msg: string) => void; confirm: (c: Omit<ConfirmState, 'show'>) => void }) {
+function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast: (type: ToastItem['type'], msg: string) => void; confirm: (c: Omit<ConfirmState, 'show'>) => void; licenseInfo?: any; onUpgrade?: () => void }) {
   const { sessionToken, isAdmin } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [licenseLimits, setLicenseLimits] = useState<{ profiles: number } | null>(null)
@@ -757,6 +757,8 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           proxies={proxies}
           groups={groups}
           existingProfiles={profiles}
+          licenseInfo={licenseInfo}
+          onUpgrade={onUpgrade}
         />
       </ErrorBoundary>
 
@@ -901,7 +903,8 @@ function GroupsPage({ showToast, confirm }: { showToast: (type: ToastItem['type'
 // Proxies Page
 // ═══════════════════════════════════════════
 
-function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type'], msg: string) => void; confirm: (c: Omit<ConfirmState, 'show'>) => void }) {
+function ProxiesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast: (type: ToastItem['type'], msg: string) => void; confirm: (c: Omit<ConfirmState, 'show'>) => void; licenseInfo?: any; onUpgrade: () => void }) {
+  const isFreePlan = licenseInfo?.features?.proxy_support === 'basic' || licenseInfo?.plan?.id === 'plan_free' || (licenseInfo?.limits?.profiles === 3 && !licenseInfo?.features?.advanced_fingerprint)
   const [proxies, setProxies] = useState<ProxyDisplay[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
@@ -917,9 +920,19 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
 
   const handleCreate = async () => {
     if (!form.name.trim()) return
+    if (isFreePlan && form.type !== 'http') {
+      showToast('error', `Proxy type "${form.type.toUpperCase()}" requires Starter plan ($19/mo) or higher. Your Free plan includes Basic HTTP proxy support only.`)
+      onUpgrade()
+      return
+    }
     const r = await window.api.createProxy(form)
     if (r.success) { showToast('success', 'Proxy created'); setShowCreate(false); setForm({ name: '', type: 'http', host: '', port: 8080, username: '', password: '' }); load() }
-    else showToast('error', r.error || 'Failed to create proxy')
+    else {
+      showToast('error', r.error || 'Failed to create proxy')
+      if (r.lockedFeature === 'proxy_support') {
+        onUpgrade()
+      }
+    }
   }
 
   const handleTest = async (id: string) => {
@@ -1039,8 +1052,8 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
                     <label className="form-label">Type</label>
                     <select className="form-select" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
                       <option value="http">HTTP</option>
-                      <option value="https">HTTPS</option>
-                      <option value="socks5">SOCKS5</option>
+                      <option value="https" disabled={isFreePlan}>HTTPS {isFreePlan ? '🔒 (Starter $19/mo)' : ''}</option>
+                      <option value="socks5" disabled={isFreePlan}>SOCKS5 {isFreePlan ? '🔒 (Starter $19/mo)' : ''}</option>
                     </select>
                   </div>
                   <div className="form-group">
@@ -1048,6 +1061,12 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
                     <input className="form-input" type="number" value={form.port} onChange={(e) => setForm({ ...form, port: parseInt(e.target.value) || 0 })} />
                   </div>
                 </div>
+                {isFreePlan && (
+                  <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#F59E0B', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span>🔒 Free plan includes Basic HTTP proxies. SOCKS & HTTPS require Starter ($19/mo).</span>
+                    <button type="button" onClick={() => { setShowCreate(false); onUpgrade() }} style={{ padding: '3px 8px', borderRadius: '4px', backgroundColor: '#F59E0B', color: '#000', border: 'none', fontWeight: 700, fontSize: '11px', cursor: 'pointer', flexShrink: 0 }}>Upgrade</button>
+                  </div>
+                )}
                 <div className="form-group">
                   <label className="form-label">Host</label>
                   <input className="form-input" placeholder="proxy.example.com or 1.2.3.4" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
@@ -1079,10 +1098,13 @@ function ProxiesPage({ showToast, confirm }: { showToast: (type: ToastItem['type
 // Automation Page
 // ═══════════════════════════════════════════
 
-function AutomationPage({ showToast }: { showToast: (type: ToastItem['type'], msg: string) => void }) {
+function AutomationPage({ showToast, licenseInfo, onUpgrade }: { showToast: (type: ToastItem['type'], msg: string) => void; licenseInfo?: any; onUpgrade: () => void }) {
   const [apiRunning, setApiRunning] = useState(false)
   const [token, setToken] = useState('')
   const [showToken, setShowToken] = useState(false)
+
+  const isApiLocked = licenseInfo?.features?.has_api === false || licenseInfo?.features?.api_access === 'none' || licenseInfo?.plan?.id === 'plan_free'
+  const apiTier = licenseInfo?.features?.api_access || (isApiLocked ? 'none' : 'basic')
 
   useEffect(() => {
     window.api.isApiRunning().then((r) => { if (r.success) setApiRunning(r.data!) })
@@ -1090,6 +1112,11 @@ function AutomationPage({ showToast }: { showToast: (type: ToastItem['type'], ms
   }, [])
 
   const toggleApi = async () => {
+    if (isApiLocked) {
+      showToast('error', 'Automation API is locked on the Free plan. Upgrade to Starter ($19/mo) or higher.')
+      onUpgrade()
+      return
+    }
     if (apiRunning) {
       await window.api.stopApi()
       setApiRunning(false)
@@ -1122,13 +1149,72 @@ function AutomationPage({ showToast }: { showToast: (type: ToastItem['type'], ms
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Automation API</h1>
-          <p className="page-subtitle">Control profiles programmatically via REST API</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h1 className="page-title">Automation API</h1>
+            {isApiLocked ? (
+              <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(239, 68, 68, 0.15)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '2px 8px', borderRadius: '10px' }}>🔒 LOCKED (FREE PLAN)</span>
+            ) : apiTier === 'basic' ? (
+              <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(59, 130, 246, 0.15)', color: '#60A5FA', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 8px', borderRadius: '10px' }}>⚡ BASIC API (60 req/min)</span>
+            ) : apiTier === 'full' ? (
+              <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(45, 212, 191, 0.15)', color: '#2DD4BF', border: '1px solid rgba(45, 212, 191, 0.3)', padding: '2px 8px', borderRadius: '10px' }}>🚀 FULL REST & DRIVER API</span>
+            ) : (
+              <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(129, 140, 248, 0.15)', color: '#818CF8', border: '1px solid rgba(129, 140, 248, 0.3)', padding: '2px 8px', borderRadius: '10px' }}>💎 UNLIMITED API</span>
+            )}
+          </div>
+          <p className="page-subtitle">Control profiles programmatically via REST & Driver Automation APIs</p>
         </div>
-        <button className={`btn ${apiRunning ? 'btn-danger' : 'btn-success'}`} onClick={toggleApi}>
-          {apiRunning ? '● Stop API' : '○ Start API'}
+        <button className={`btn ${apiRunning ? 'btn-danger' : isApiLocked ? 'btn-secondary' : 'btn-success'}`} onClick={toggleApi}>
+          {apiRunning ? '● Stop API' : isApiLocked ? '🔒 Start API' : '○ Start API'}
         </button>
       </div>
+
+      {isApiLocked && (
+        <div className="card" style={{ padding: '32px', textAlign: 'center', background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%)', border: '1px solid rgba(129, 140, 248, 0.3)', borderRadius: '16px', marginBottom: '24px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#FFF', marginBottom: '8px' }}>Automation API is Locked on Free Plan</h2>
+          <p style={{ color: '#94A3B8', fontSize: '14px', maxWidth: '560px', margin: '0 auto 20px', lineHeight: 1.6 }}>
+            Control and automate your browser profiles programmatically with Puppeteer, Playwright, Selenium, and REST API. Upgrade to Starter ($19/mo) or higher to unlock API automation.
+          </p>
+          <div style={{ display: 'inline-flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '24px' }}>
+            <div style={{ background: '#1E293B', padding: '14px 18px', borderRadius: '10px', border: '1px solid #334155', textAlign: 'left', fontSize: '12px' }}>
+              <div style={{ fontWeight: 700, color: '#CBD5E1', marginBottom: '4px' }}>Starter Plan ($19/mo)</div>
+              <div style={{ color: '#94A3B8' }}>• Basic API (60 req/min)</div>
+              <div style={{ color: '#94A3B8' }}>• Profile start/stop/status</div>
+            </div>
+            <div style={{ background: '#1E293B', padding: '14px 18px', borderRadius: '10px', border: '1px solid #2DD4BF', textAlign: 'left', fontSize: '12px', position: 'relative' }}>
+              <span style={{ position: 'absolute', top: '-10px', right: '10px', background: '#2DD4BF', color: '#000', fontSize: '9px', fontWeight: 800, padding: '1px 6px', borderRadius: '6px' }}>MOST POPULAR</span>
+              <div style={{ fontWeight: 700, color: '#2DD4BF', marginBottom: '4px' }}>Professional Plan ($49/mo)</div>
+              <div style={{ color: '#CBD5E1' }}>• Full REST & Driver API (300 req/min)</div>
+              <div style={{ color: '#CBD5E1' }}>• Puppeteer / Playwright CDP wsEndpoint</div>
+            </div>
+            <div style={{ background: '#1E293B', padding: '14px 18px', borderRadius: '10px', border: '1px solid #818CF8', textAlign: 'left', fontSize: '12px' }}>
+              <div style={{ fontWeight: 700, color: '#818CF8', marginBottom: '4px' }}>Business Plan ($99/mo)</div>
+              <div style={{ color: '#CBD5E1' }}>• Unlimited / High-Limit API</div>
+              <div style={{ color: '#CBD5E1' }}>• Dedicated Account Manager</div>
+            </div>
+          </div>
+          <div>
+            <button 
+              type="button" 
+              onClick={onUpgrade} 
+              className="btn btn-primary"
+              style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 800, background: 'linear-gradient(135deg, #2DD4BF, #06B6D4)', color: '#000', cursor: 'pointer' }}
+            >
+              ⚡ Pay & Upgrade Plan to Unlock API
+            </button>
+          </div>
+        </div>
+      )}
+
+      {apiTier === 'basic' && (
+        <div style={{ padding: '12px 18px', borderRadius: '10px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#93C5FD', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div>
+            <span style={{ fontWeight: 700, color: '#FFF' }}>Basic API Active (Starter Plan):</span> Rate limited to 60 req/min.
+            <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>Need Puppeteer / Playwright CDP Driver API (wsEndpoint)? Upgrade to Professional ($49/mo).</div>
+          </div>
+          <button type="button" onClick={onUpgrade} style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#3B82F6', color: '#FFF', border: 'none', fontWeight: 700, fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>Upgrade</button>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 24 }}>
         <h3 className="section-title"><span style={{ width: 16, height: 16, display: 'inline-flex' }}>{Icons.key}</span> API Token</h3>
@@ -2464,10 +2550,10 @@ function AppContent() {
           ) : (
             <>
               {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} />}
-              {currentPage === 'profiles' && <ProfilesPage showToast={showToast} confirm={showConfirm} />}
+              {currentPage === 'profiles' && <ProfilesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
-              {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} />}
-              {currentPage === 'automation' && <AutomationPage showToast={showToast} />}
+              {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
+              {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'settings' && <SettingsPage theme={theme} setTheme={setTheme} showToast={showToast} />}
               {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'affiliate' && <ReferralDashboard />}
@@ -2590,7 +2676,7 @@ function AppContent() {
             <div style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
               <div>
                 <div style={{ fontSize: '11px', color: '#94A3B8' }}>CURRENT PLAN</div>
-                <div style={{ fontWeight: 800, color: '#2DD4BF', fontSize: '16px' }}>{licenseInfo?.plan?.name || 'Starter'}</div>
+                <div style={{ fontWeight: 800, color: '#2DD4BF', fontSize: '16px' }}>{licenseInfo?.plan?.name || 'Free'}</div>
               </div>
               <div>
                 <div style={{ fontSize: '11px', color: '#94A3B8' }}>EXPIRATION DATE</div>
@@ -2598,11 +2684,19 @@ function AppContent() {
               </div>
               <div>
                 <div style={{ fontSize: '11px', color: '#94A3B8' }}>PROFILE LIMIT</div>
-                <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.limits?.profiles || 25} Profiles</div>
+                <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.limits?.profiles || 3} Profiles</div>
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#94A3B8' }}>DEVICE LIMIT</div>
-                <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.device?.device_count || 1} / {licenseInfo?.device?.max_devices || 2} Allowed</div>
+                <div style={{ fontSize: '11px', color: '#94A3B8' }}>TEAM MEMBERS / DEVICES</div>
+                <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.device?.device_count || 1} / {licenseInfo?.device?.max_devices || licenseInfo?.limits?.team_members || 1} Allowed</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#94A3B8' }}>PROXY SUPPORT</div>
+                <div style={{ fontWeight: 600, color: '#CBD5E1' }}>{licenseInfo?.features?.proxy_support === 'socks5' ? 'HTTP/HTTPS/SOCKS5' : licenseInfo?.features?.proxy_support === 'socks' ? 'HTTP/HTTPS/SOCKS' : 'Basic HTTP'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#94A3B8' }}>AUTOMATION API</div>
+                <div style={{ fontWeight: 600, color: '#CBD5E1' }}>{licenseInfo?.features?.api_access === 'unlimited' ? 'Unlimited API' : licenseInfo?.features?.api_access === 'full' ? 'Full REST & Driver' : licenseInfo?.features?.api_access === 'basic' ? 'Basic API' : '— (No API)'}</div>
               </div>
             </div>
 

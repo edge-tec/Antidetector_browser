@@ -4,6 +4,7 @@
 
 import { ipcMain } from 'electron'
 import { proxyRepo } from '../database/repositories/proxy.repo'
+import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { testProxyConnection, testRawProxyConnection } from '../network/proxy-tester'
 import { lookupGeoIP, getCountryFlag } from '../network/geo-lookup'
 import { validateId, validateNonEmpty, validatePort } from '../security/validators'
@@ -39,6 +40,24 @@ export function registerProxyHandlers(): void {
       if (input.type !== 'direct') {
         validateNonEmpty(input.host, 'Host')
         validatePort(input.port)
+      }
+
+      // Check Plan Proxy Restriction
+      const reqType = (input.type || 'http').toLowerCase()
+      if (reqType !== 'direct') {
+        const license = subscriptionRepo.getActiveUserLicense()
+        if (license && license.features?.allowed_proxy_types) {
+          if (!license.features.allowed_proxy_types.includes(reqType)) {
+            logger.warn('proxy', `User attempted to configure restricted proxy type "${reqType}" under plan "${license.plan.name}"`)
+            return {
+              success: false,
+              error: `Proxy type "${reqType.toUpperCase()}" requires Starter plan ($19/mo) or higher. Your Free plan includes Basic HTTP proxy support only.`,
+              lockedFeature: 'proxy_support',
+              minPlan: 'Starter ($19/mo)',
+              upgradeUrl: '#pricing'
+            }
+          }
+        }
       }
 
       const proxy = proxyRepo.create({
@@ -83,6 +102,24 @@ export function registerProxyHandlers(): void {
 
       if (input.name !== undefined) validateNonEmpty(input.name, 'Proxy name')
       if (input.port !== undefined && input.type !== 'direct') validatePort(input.port)
+
+      // Check Plan Proxy Restriction on Update
+      if (input.type && input.type !== 'direct') {
+        const reqType = input.type.toLowerCase()
+        const license = subscriptionRepo.getActiveUserLicense()
+        if (license && license.features?.allowed_proxy_types) {
+          if (!license.features.allowed_proxy_types.includes(reqType)) {
+            logger.warn('proxy', `User attempted to update proxy to restricted type "${reqType}" under plan "${license.plan.name}"`)
+            return {
+              success: false,
+              error: `Proxy type "${reqType.toUpperCase()}" requires Starter plan ($19/mo) or higher. Your Free plan includes Basic HTTP proxy support only.`,
+              lockedFeature: 'proxy_support',
+              minPlan: 'Starter ($19/mo)',
+              upgradeUrl: '#pricing'
+            }
+          }
+        }
+      }
 
       const updated = proxyRepo.update(id, {
         name: input.name?.trim(),

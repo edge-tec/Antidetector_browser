@@ -4,6 +4,121 @@
 
 import { getDatabase } from '../connection'
 
+export interface PlanFeatureMatrix {
+  plan_id: string
+  plan_name: string
+  profile_limit: number
+  team_limit: number
+  proxy_support: 'basic' | 'socks' | 'socks5'
+  allowed_proxy_types: string[]
+  fingerprint_level: 'standard' | 'advanced' | 'advanced_controls' | 'full_hardware'
+  has_advanced_fingerprint: boolean
+  has_full_hardware_spoofing: boolean
+  api_access: 'none' | 'basic' | 'full' | 'unlimited'
+  has_api: boolean
+  has_driver_api: boolean
+  support_level: 'community' | 'email' | 'priority_24_7' | 'dedicated_manager'
+  can_access_team: boolean
+}
+
+export function resolveLocalPlanFeatureMatrix(planId?: string, role: string = 'user'): PlanFeatureMatrix {
+  const isAdmin = role === 'admin' || role === 'super_admin'
+  if (isAdmin) {
+    return {
+      plan_id: 'plan_business',
+      plan_name: 'System Admin',
+      profile_limit: 1000,
+      team_limit: 50,
+      proxy_support: 'socks5',
+      allowed_proxy_types: ['direct', 'http', 'https', 'socks4', 'socks5'],
+      fingerprint_level: 'full_hardware',
+      has_advanced_fingerprint: true,
+      has_full_hardware_spoofing: true,
+      api_access: 'unlimited',
+      has_api: true,
+      has_driver_api: true,
+      support_level: 'dedicated_manager',
+      can_access_team: true
+    }
+  }
+
+  const normalized = (planId || 'free').toLowerCase()
+  if (normalized.includes('business')) {
+    return {
+      plan_id: 'plan_business',
+      plan_name: 'Business',
+      profile_limit: 500,
+      team_limit: 25,
+      proxy_support: 'socks5',
+      allowed_proxy_types: ['direct', 'http', 'https', 'socks4', 'socks5'],
+      fingerprint_level: 'full_hardware',
+      has_advanced_fingerprint: true,
+      has_full_hardware_spoofing: true,
+      api_access: 'unlimited',
+      has_api: true,
+      has_driver_api: true,
+      support_level: 'dedicated_manager',
+      can_access_team: true
+    }
+  }
+
+  if (normalized.includes('pro')) {
+    return {
+      plan_id: 'plan_pro',
+      plan_name: 'Professional',
+      profile_limit: 100,
+      team_limit: 10,
+      proxy_support: 'socks5',
+      allowed_proxy_types: ['direct', 'http', 'https', 'socks4', 'socks5'],
+      fingerprint_level: 'advanced_controls',
+      has_advanced_fingerprint: true,
+      has_full_hardware_spoofing: false,
+      api_access: 'full',
+      has_api: true,
+      has_driver_api: true,
+      support_level: 'priority_24_7',
+      can_access_team: true
+    }
+  }
+
+  if (normalized.includes('starter')) {
+    return {
+      plan_id: 'plan_starter',
+      plan_name: 'Starter',
+      profile_limit: 25,
+      team_limit: 2,
+      proxy_support: 'socks',
+      allowed_proxy_types: ['direct', 'http', 'https', 'socks4', 'socks5'],
+      fingerprint_level: 'advanced',
+      has_advanced_fingerprint: true,
+      has_full_hardware_spoofing: false,
+      api_access: 'basic',
+      has_api: true,
+      has_driver_api: false,
+      support_level: 'email',
+      can_access_team: true
+    }
+  }
+
+  // Free default
+  return {
+    plan_id: 'plan_free',
+    plan_name: 'Free',
+    profile_limit: 3,
+    team_limit: 1,
+    proxy_support: 'basic',
+    allowed_proxy_types: ['direct', 'http'],
+    fingerprint_level: 'standard',
+    has_advanced_fingerprint: false,
+    has_full_hardware_spoofing: false,
+    api_access: 'none',
+    has_api: false,
+    has_driver_api: false,
+    support_level: 'community',
+    can_access_team: false
+  }
+}
+
 export interface LicenseValidationResult {
   valid: boolean
   account_status: string
@@ -16,11 +131,29 @@ export interface LicenseValidationResult {
   }
   expires_at: string
   grace_period_active: boolean
-  features: Record<string, boolean>
+  features: {
+    browser_profiles?: boolean
+    proxy_support?: 'basic' | 'socks' | 'socks5'
+    allowed_proxy_types?: string[]
+    fingerprint_level?: 'standard' | 'advanced' | 'advanced_controls' | 'full_hardware'
+    advanced_fingerprint?: boolean
+    full_hardware_spoofing?: boolean
+    proxy_manager?: boolean
+    profile_templates?: boolean
+    team_management?: boolean
+    api_access?: 'none' | 'basic' | 'full' | 'unlimited'
+    has_api?: boolean
+    has_driver_api?: boolean
+    support_level?: 'community' | 'email' | 'priority_24_7' | 'dedicated_manager'
+    [key: string]: any
+  }
   limits: {
     profiles: number
     team_members: number
-    api_access: boolean
+    api_access: boolean | string
+    proxy_types?: string[]
+    fingerprint_level?: string
+    support_level?: string
   }
   device: {
     installation_id: string
@@ -239,8 +372,7 @@ export class SubscriptionRepository {
 
     // E. Assemble Authoritative Feature Permissions
     const plan = sub.plan
-    const hasApiAccess = plan.api_limit !== '—' && plan.api_limit !== 'Disabled'
-    const isProOrBusiness = plan.monthly_price >= 49 || user.role === 'admin'
+    const matrix = resolveLocalPlanFeatureMatrix(plan?.id || plan?.slug, user.role)
 
     const userProfileLimit = (sub.profile_limit && sub.profile_limit > 0)
       ? sub.profile_limit
@@ -248,7 +380,9 @@ export class SubscriptionRepository {
         ? user.profile_limit
         : (plan && plan.profile_limit && plan.profile_limit > 0)
           ? plan.profile_limit
-          : 3
+          : matrix.profile_limit
+
+    const userTeamLimit = user.role === 'admin' ? 50 : (sub.device_limit || plan?.team_limit || matrix.team_limit)
 
     return {
       valid: true,
@@ -256,7 +390,7 @@ export class SubscriptionRepository {
       subscription_status: currentSubStatus,
       plan: {
         id: plan.id,
-        name: plan.name,
+        name: matrix.plan_name || plan.name,
         monthly_price: plan.monthly_price,
         yearly_price: plan.yearly_price
       },
@@ -264,21 +398,31 @@ export class SubscriptionRepository {
       grace_period_active: isGraceActive,
       features: {
         browser_profiles: true,
-        advanced_fingerprint: isProOrBusiness,
+        proxy_support: matrix.proxy_support,
+        allowed_proxy_types: matrix.allowed_proxy_types,
+        fingerprint_level: matrix.fingerprint_level,
+        advanced_fingerprint: matrix.has_advanced_fingerprint,
+        full_hardware_spoofing: matrix.has_full_hardware_spoofing,
         proxy_manager: true,
         profile_templates: true,
-        team_management: plan.team_limit > 1 || user.role === 'admin',
-        api_access: hasApiAccess
+        team_management: matrix.can_access_team || user.role === 'admin',
+        api_access: matrix.api_access,
+        has_api: matrix.has_api,
+        has_driver_api: matrix.has_driver_api,
+        support_level: matrix.support_level
       },
       limits: {
         profiles: user.role === 'admin' ? 1000 : userProfileLimit,
-        team_members: user.role === 'admin' ? 50 : (plan.team_limit || 2),
-        api_access: hasApiAccess
+        team_members: userTeamLimit,
+        proxy_types: matrix.allowed_proxy_types,
+        api_access: matrix.api_access,
+        fingerprint_level: matrix.fingerprint_level,
+        support_level: matrix.support_level
       },
       device: {
         installation_id: installationId || '',
         device_count: activeDevicesCount,
-        max_devices: maxDevicesLimit
+        max_devices: userTeamLimit
       },
       app_version_status: {
         force_update: false,
@@ -286,6 +430,18 @@ export class SubscriptionRepository {
         current_version: appVersion || '1.0.0',
         is_supported: true
       }
+    }
+  }
+
+  // ── Helper to retrieve active user license synchronously ──
+  getActiveUserLicense(): LicenseValidationResult | null {
+    try {
+      const db = getDatabase()
+      const user = db.prepare('SELECT id FROM users LIMIT 1').get() as { id: string } | undefined
+      if (!user) return null
+      return this.validateLicense(user.id)
+    } catch {
+      return null
     }
   }
 

@@ -92,10 +92,19 @@ function ensureDatabaseTablesExist() {
             INSERT INTO `pricing_plans` (`id`, `name`, `slug`, `description`, `monthly_price`, `yearly_price`, `profile_limit`, `team_limit`, `api_limit`, `badge`, `button_text`, `button_url`, `is_popular`, `sort_order`)
             VALUES
             ('plan_free', 'Free', 'free', 'Ideal for testing & personal profile management', 0.00, 0.00, 3, 1, '—', '', 'Start Free', '#register', 0, 1),
-            ('plan_starter', 'Starter', 'starter', 'Essential features for solo operators & small tasks', 19.00, 15.00, 25, 2, 'Basic API', '', 'Start Trial', '#register', 0, 2),
-            ('plan_pro', 'Professional', 'professional', 'Advanced fingerprint controls & team features', 49.00, 39.00, 100, 10, 'Full API', 'Most Popular', 'Get Started', '#register', 1, 3),
-            ('plan_business', 'Business', 'business', 'Maximum power for large scale multi-profile teams', 99.00, 79.00, 500, 25, 'High Limit API', 'Best Value', 'Contact Sales', '#contact', 0, 4)
-            ON DUPLICATE KEY UPDATE `id`=`id`;
+            ('plan_starter', 'Starter', 'starter', 'Essential features for solo operators & small tasks', 19.00, 15.00, 25, 2, 'Basic API', '', 'Pay & Upgrade ($19)', '#pricing', 0, 2),
+            ('plan_pro', 'Professional', 'professional', 'Advanced fingerprint controls & team features', 49.00, 39.00, 100, 10, 'Full REST & Driver API', 'Most Popular', 'Pay & Upgrade ($49)', '#pricing', 1, 3),
+            ('plan_business', 'Business', 'business', 'Maximum power for large scale multi-profile teams', 99.00, 79.00, 500, 25, 'Unlimited API', 'Best Value', 'Pay & Upgrade ($99)', '#pricing', 0, 4)
+            ON DUPLICATE KEY UPDATE 
+                `name`=VALUES(`name`),
+                `monthly_price`=VALUES(`monthly_price`),
+                `yearly_price`=VALUES(`yearly_price`),
+                `profile_limit`=VALUES(`profile_limit`),
+                `team_limit`=VALUES(`team_limit`),
+                `api_limit`=VALUES(`api_limit`),
+                `badge`=VALUES(`badge`),
+                `button_text`=VALUES(`button_text`),
+                `is_popular`=VALUES(`is_popular`);
         ");
 
         // 3. Subscriptions Table
@@ -2035,6 +2044,115 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
     } catch (Throwable $e) {
         error_log("[AntiProfiles] Error in ensureUserFreeSubscription: " . $e->getMessage());
         return [];
+    }
+}
+
+/**
+ * Authoritative Plan Feature Matrix according to AntiProfiles Pricing Specification:
+ * - Free ($0): 3 Profiles, Basic Proxy (Direct/HTTP), Standard Fingerprint, 1 Team User, No API, Community Support.
+ * - Starter ($19): 25 Profiles, HTTP/HTTPS/SOCKS, Advanced Fingerprint, 2 Team Users, Basic API, Email Support.
+ * - Professional ($49 - Most Popular): 100 Profiles, HTTP/HTTPS/SOCKS5, Advanced Controls, 10 Team Users, Full REST & Driver API, Priority 24/7.
+ * - Business ($99 - Best Value): 500 Profiles, HTTP/HTTPS/SOCKS5, Full Hardware Spoofing, 25 Team Users, Unlimited API, Dedicated Account Manager.
+ */
+function resolvePlanFeatureMatrix(string $planId, string $role = 'user'): array {
+    $isAdmin = ($role === 'admin' || $role === 'super_admin');
+    if ($isAdmin) {
+        return [
+            'plan_id' => 'plan_business',
+            'plan_name' => 'System Admin',
+            'profile_limit' => 1000,
+            'team_limit' => 50,
+            'proxy_support' => 'socks5',
+            'allowed_proxy_types' => ['direct', 'http', 'https', 'socks4', 'socks5'],
+            'fingerprint_level' => 'full_hardware',
+            'has_advanced_fingerprint' => true,
+            'has_full_hardware_spoofing' => true,
+            'api_access' => 'unlimited',
+            'has_api' => true,
+            'has_driver_api' => true,
+            'support_level' => 'dedicated_manager',
+            'can_access_team' => true
+        ];
+    }
+
+    $normalizedPlan = strtolower(trim($planId));
+    switch ($normalizedPlan) {
+        case 'plan_business':
+        case 'business':
+            return [
+                'plan_id' => 'plan_business',
+                'plan_name' => 'Business',
+                'profile_limit' => 500,
+                'team_limit' => 25,
+                'proxy_support' => 'socks5',
+                'allowed_proxy_types' => ['direct', 'http', 'https', 'socks4', 'socks5'],
+                'fingerprint_level' => 'full_hardware',
+                'has_advanced_fingerprint' => true,
+                'has_full_hardware_spoofing' => true,
+                'api_access' => 'unlimited',
+                'has_api' => true,
+                'has_driver_api' => true,
+                'support_level' => 'dedicated_manager',
+                'can_access_team' => true
+            ];
+
+        case 'plan_pro':
+        case 'professional':
+            return [
+                'plan_id' => 'plan_pro',
+                'plan_name' => 'Professional',
+                'profile_limit' => 100,
+                'team_limit' => 10,
+                'proxy_support' => 'socks5',
+                'allowed_proxy_types' => ['direct', 'http', 'https', 'socks4', 'socks5'],
+                'fingerprint_level' => 'advanced_controls',
+                'has_advanced_fingerprint' => true,
+                'has_full_hardware_spoofing' => false,
+                'api_access' => 'full',
+                'has_api' => true,
+                'has_driver_api' => true,
+                'support_level' => 'priority_24_7',
+                'can_access_team' => true
+            ];
+
+        case 'plan_starter':
+        case 'starter':
+            return [
+                'plan_id' => 'plan_starter',
+                'plan_name' => 'Starter',
+                'profile_limit' => 25,
+                'team_limit' => 2,
+                'proxy_support' => 'socks',
+                'allowed_proxy_types' => ['direct', 'http', 'https', 'socks4', 'socks5'],
+                'fingerprint_level' => 'advanced',
+                'has_advanced_fingerprint' => true,
+                'has_full_hardware_spoofing' => false,
+                'api_access' => 'basic',
+                'has_api' => true,
+                'has_driver_api' => false,
+                'support_level' => 'email',
+                'can_access_team' => true
+            ];
+
+        case 'plan_free':
+        case 'free':
+        default:
+            return [
+                'plan_id' => 'plan_free',
+                'plan_name' => 'Free',
+                'profile_limit' => 3,
+                'team_limit' => 1,
+                'proxy_support' => 'basic',
+                'allowed_proxy_types' => ['direct', 'http'],
+                'fingerprint_level' => 'standard',
+                'has_advanced_fingerprint' => false,
+                'has_full_hardware_spoofing' => false,
+                'api_access' => 'none',
+                'has_api' => false,
+                'has_driver_api' => false,
+                'support_level' => 'community',
+                'can_access_team' => false
+            ];
     }
 }
 
