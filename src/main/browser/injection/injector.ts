@@ -23,6 +23,8 @@ import { buildNetworkInfoScript } from './scripts/network-info'
 import { buildPermissionsScript } from './scripts/permissions'
 import { buildFontsScript } from './scripts/fonts'
 import { buildGeolocationScript } from './scripts/geolocation'
+import { buildGoogleRedirectBypassScript } from './scripts/google-redirect-bypass'
+import { setupGoogleRedirectInterceptor } from './google-redirect-interceptor'
 
 /**
  * Build the complete injection script from all sub-scripts.
@@ -42,7 +44,8 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     buildNetworkInfoScript(fingerprint.networkInfo),
     buildPermissionsScript(fingerprint.permissions),
     buildFontsScript(fingerprint.fonts),
-    buildGeolocationScript(fingerprint.geolocation)
+    buildGeolocationScript(fingerprint.geolocation),
+    buildGoogleRedirectBypassScript()
   ]
 
   // Wrap all scripts in a single IIFE with error isolation
@@ -167,8 +170,38 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     await page.setViewport(null)
   } catch {}
 
+  // Setup Google redirect interception (CDP Fetch layer)
+  try {
+    await setupGoogleRedirectInterceptor(page)
+  } catch (err: any) {
+    logger.warn('browser', `Could not setup Google redirect interceptor: ${err.message}`)
+  }
+
   try {
     const client = await page.target().createCDPSession()
+
+    // Remove Puppeteer/ChromeDriver CDP markers that Google uses for bot detection
+    try {
+      await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+          // Remove cdc_ properties from document that Puppeteer/ChromeDriver inject
+          try {
+            Object.defineProperty(document, '$cdc_asdjflasutopfhvcZLmcfl_', { get: () => undefined, configurable: true });
+            for (const prop of Object.getOwnPropertyNames(document)) {
+              if (/^\\$cdc_/.test(prop)) {
+                try { delete document[prop]; } catch(e) {}
+              }
+            }
+          } catch(e) {}
+          // Ensure navigator.webdriver is false
+          try {
+            Object.defineProperty(Navigator.prototype, 'webdriver', {
+              get: () => false, configurable: true, enumerable: true
+            });
+          } catch(e) {}
+        `
+      })
+    } catch {}
 
     // Apply authoritative device metrics override (Desktop & Mobile) to prevent host screen/DPR leakage
     const scr = fingerprint.screen || { width: 1920, height: 1080, devicePixelRatio: 1 }

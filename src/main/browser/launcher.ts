@@ -501,6 +501,8 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--use-mock-keychain',
     '--disable-blink-features=AutomationControlled',
     '--disable-infobars',
+    '--disable-features=IsolateOrigins,site-per-process',
+    '--disable-site-isolation-trials',
     `--lang=${lang}`
   ]
 
