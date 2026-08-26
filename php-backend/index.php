@@ -6602,16 +6602,15 @@ try {
         let _cryptoPollTimer = null;
 
         async function loadPaymentGatewaysTable() {
-            const token = localStorage.getItem('sessionToken');
-            if (!token) return;
+            const token = localStorage.getItem('sessionToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
             const container = document.getElementById('gatewayCardsContainer');
             if (!container) return;
 
             container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 40px; color: var(--text-muted);">Loading payment gateway providers...</div>';
 
             try {
-                const res = await fetch('/api/admin/get-payment-gateways', {
-                    headers: { 'Authorization': 'Bearer ' + token }
+                const res = await fetch('/api/admin/get-payment-gateways' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
                 });
                 const data = await res.json();
                 const list = (data.data && Array.isArray(data.data)) ? data.data : (data.gateways && Array.isArray(data.gateways) ? data.gateways : null);
@@ -6725,9 +6724,8 @@ try {
 
         async function saveGatewayConfig(e) {
             if (e && e.preventDefault) e.preventDefault();
-            const token = localStorage.getItem('sessionToken');
+            const token = getAdminSessionToken();
             if (!token) return false;
-
             const gatewayKey = document.getElementById('gwEditKey').value;
             const isCrypto = gatewayKey === 'crypto';
 
@@ -6751,11 +6749,12 @@ try {
             };
 
             try {
-                const res = await fetch('/api/admin/save-payment-gateway', {
+                const res = await fetch('/api/admin/save-payment-gateway' + (token ? '?token=' + encodeURIComponent(token) : ''), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Auth-Token': token
                     },
                     body: JSON.stringify(payload)
                 });
@@ -6781,15 +6780,16 @@ try {
         }
 
         async function toggleGateway(gatewayKey, enable) {
-            const token = localStorage.getItem('sessionToken');
+            const token = getAdminSessionToken();
             if (!token) return;
 
             try {
-                const res = await fetch('/api/admin/toggle-payment-gateway', {
+                const res = await fetch('/api/admin/toggle-payment-gateway' + (token ? '?token=' + encodeURIComponent(token) : ''), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Auth-Token': token
                     },
                     body: JSON.stringify({ gateway_key: gatewayKey, is_enabled: enable ? 1 : 0 })
                 });
@@ -6805,17 +6805,18 @@ try {
         }
 
         async function testGatewayConnection(gatewayKey) {
-            const token = localStorage.getItem('sessionToken');
+            const token = getAdminSessionToken();
             if (!token) return;
 
             alert('Testing live API connection with ' + gatewayKey.toUpperCase() + ' servers... Please wait.');
 
             try {
-                const res = await fetch('/api/admin/test-gateway-connection', {
+                const res = await fetch('/api/admin/test-gateway-connection' + (token ? '?token=' + encodeURIComponent(token) : ''), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Auth-Token': token
                     },
                     body: JSON.stringify({ gateway_key: gatewayKey })
                 });
@@ -6832,7 +6833,7 @@ try {
         }
 
         async function loadPaymentsTable() {
-            const token = localStorage.getItem('sessionToken');
+            const token = getAdminSessionToken();
             if (!token) return;
             const tbody = document.getElementById('paymentsTableBody');
             if (!tbody) return;
@@ -6843,7 +6844,9 @@ try {
 
             tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--text-muted);">Loading payment transactions...</td></tr>';
             try {
-                const res = await fetch('/api/admin/get-payment-transactions', { headers: { 'Authorization': 'Bearer ' + token } });
+                const res = await fetch('/api/admin/get-payment-transactions' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data) && data.data.length > 0) {
                     let filtered = data.data.filter(p => {
