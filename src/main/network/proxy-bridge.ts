@@ -1,5 +1,7 @@
 // ──────────────────────────────────────────────
-// AntiProfiles — Local SOCKS5 Auth Tunnel Bridge
+// AntiProfiles — Local Universal Proxy Auth Bridge
+// Transparent HTTP, HTTPS, SOCKS4, and SOCKS5 Authentication Tunnel
+// Handles all proxy authentication at the network layer without browser login popups
 // ──────────────────────────────────────────────
 
 import net from 'net'
@@ -16,7 +18,8 @@ interface BridgeServer {
 const activeBridges = new Map<string, BridgeServer>()
 
 /**
- * Start a local HTTP-to-SOCKS5 authentication tunnel bridge for a profile.
+ * Start a local proxy authentication tunnel bridge for a profile.
+ * Supports HTTP, HTTPS, SOCKS4, and SOCKS5 upstream proxies with automatic credential injection.
  */
 export async function startProxyBridge(profileId: string, proxy: Proxy): Promise<string> {
   // Stop existing bridge if running
@@ -37,6 +40,11 @@ export async function startProxyBridge(profileId: string, proxy: Proxy): Promise
     }
   }
 
+  const isSocks = proxy.type.startsWith('socks')
+  const authHeaderValue = proxy.username
+    ? `Basic ${Buffer.from(`${proxy.username}:${password}`).toString('base64')}`
+    : null
+
   return new Promise((resolve, reject) => {
     const server = net.createServer(clientSocket => {
       let isHeaderParsed = false
@@ -47,14 +55,18 @@ export async function startProxyBridge(profileId: string, proxy: Proxy): Promise
         buffer = Buffer.concat([buffer, chunk])
 
         const headerEnd = buffer.indexOf('\r\n\r\n')
-        if (headerEnd === -1) return
+        const headerEndAlt = headerEnd === -1 ? buffer.indexOf('\n\n') : headerEnd
+        if (headerEndAlt === -1) return
 
         isHeaderParsed = true
         clientSocket.removeListener('data', onClientData)
         clientSocket.pause()
 
-        const headerStr = buffer.slice(0, headerEnd).toString('latin1')
-        const firstLine = headerStr.split('\r\n')[0] || ''
+        const actualEndIndex = headerEnd !== -1 ? headerEnd + 4 : headerEndAlt + 2
+        const headerStr = buffer.slice(0, headerEnd !== -1 ? headerEnd : headerEndAlt).toString('latin1')
+        const leftoverClientData = buffer.slice(actualEndIndex)
+
+        const firstLine = headerStr.split(/\r?\n/)[0] || ''
         const parts = firstLine.split(' ')
         const method = parts[0] ? parts[0].toUpperCase() : ''
         const target = parts[1] || ''
@@ -92,115 +104,59 @@ export async function startProxyBridge(profileId: string, proxy: Proxy): Promise
           return
         }
 
-        // Connect to remote SOCKS5 proxy with timeout
-        const proxySocket = net.connect({ host: proxy.host, port: proxy.port, timeout: 15000 }, () => {
-          // Send SOCKS5 Greeting: 0x00 (No Auth), 0x02 (Username/Password)
-          proxySocket.write(Buffer.from([0x05, 0x02, 0x00, 0x02]))
-        })
+        // Connect to remote upstream proxy
+        const proxySocket = net.connect({ host: proxy.host, port: proxy.port, timeout: 20000 })
 
         proxySocket.on('timeout', () => {
-          logger.warn('proxy', `SOCKS5 connection to ${proxy.host}:${proxy.port} timed out`)
-          sendHttpError(clientSocket, 504, 'SOCKS5 Proxy Connection Timeout')
+          logger.warn('proxy', `Upstream proxy connection to ${proxy.host}:${proxy.port} timed out`)
+          sendHttpError(clientSocket, 504, 'Gateway Timeout — Upstream Proxy Not Responding')
           proxySocket.destroy()
-        })
-
-        let socksStage = 0 // 0: greeting sent, 1: auth sent, 2: connect sent, 3: connected
-
-        const onProxyData = (data: Buffer) => {
-          if (socksStage === 0) {
-            // SOCKS5 Greeting Response: [0x05, method]
-            if (data[0] !== 0x05) {
-              sendHttpError(clientSocket, 502, 'SOCKS5 Proxy Invalid Handshake')
-              proxySocket.destroy()
-              return
-            }
-            const authMethod = data[1]
-            if (authMethod === 0x02 && proxy.username) {
-              // Username / Password Auth RFC 1929
-              const uBuf = Buffer.from(proxy.username, 'utf8')
-              const pBuf = Buffer.from(password, 'utf8')
-              const authReq = Buffer.concat([
-                Buffer.from([0x01, uBuf.length]),
-                uBuf,
-                Buffer.from([pBuf.length]),
-                pBuf
-              ])
-              socksStage = 1
-              proxySocket.write(authReq)
-            } else if (authMethod === 0x00) {
-              // No Auth Required, send Connect Request
-              sendSocks5Connect(proxySocket, targetHost, targetPort)
-              socksStage = 2
-            } else {
-              sendHttpError(clientSocket, 502, 'SOCKS5 Proxy Auth Failed')
-              proxySocket.destroy()
-            }
-          } else if (socksStage === 1) {
-            // SOCKS5 Auth Response: [0x01, status]
-            if (data[1] === 0x00) {
-              sendSocks5Connect(proxySocket, targetHost, targetPort)
-              socksStage = 2
-            } else {
-              sendHttpError(clientSocket, 502, 'SOCKS5 Proxy Authentication Failed (401)')
-              proxySocket.destroy()
-            }
-          } else if (socksStage === 2) {
-            // SOCKS5 Connect Response: [0x05, status, 0x00, addressType, ...]
-            if (data[1] === 0x00) {
-              socksStage = 3
-              proxySocket.removeListener('data', onProxyData)
-
-              let headerLen = 10
-              if (data[3] === 0x03) { // Domain name
-                headerLen = 7 + data[4]
-              } else if (data[3] === 0x04) { // IPv6
-                headerLen = 22
-              }
-
-              const leftoverData = data.slice(headerLen)
-
-              if (method === 'CONNECT') {
-                clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
-              } else {
-                // Rewrite absolute URL to relative path for origin HTTP requests
-                let rawReq = buffer.toString('latin1')
-                rawReq = rawReq.replace(/^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+https?:\/\/[^\/]+/i, '$1 ')
-                proxySocket.write(Buffer.from(rawReq, 'latin1'))
-              }
-
-              if (leftoverData.length > 0) {
-                clientSocket.write(leftoverData)
-              }
-
-              clientSocket.resume()
-              clientSocket.pipe(proxySocket)
-              proxySocket.pipe(clientSocket)
-            } else {
-              sendHttpError(clientSocket, 502, `SOCKS5 Target ${targetHost}:${targetPort} Unreachable (Status: ${data[1]})`)
-              proxySocket.destroy()
-            }
-          }
-        }
-
-        proxySocket.on('data', onProxyData)
-
-        proxySocket.on('error', err => {
-          logger.error('proxy', `SOCKS5 Proxy Socket error: ${err.message}`)
-          sendHttpError(clientSocket, 502, `SOCKS5 Proxy Connection Error: ${err.message}`)
         })
 
         clientSocket.on('error', () => {
           proxySocket.destroy()
         })
+
+        proxySocket.on('error', err => {
+          logger.error('proxy', `Upstream proxy connection error (${proxy.host}:${proxy.port}): ${err.message}`)
+          sendHttpError(clientSocket, 502, `Bad Gateway — Proxy Connection Error: ${err.message}`)
+        })
+
+        if (isSocks) {
+          // ── Upstream is SOCKS5 / SOCKS4 ──
+          handleSocksUpstream(
+            proxySocket,
+            clientSocket,
+            proxy,
+            password,
+            targetHost,
+            targetPort,
+            method,
+            buffer,
+            leftoverClientData
+          )
+        } else {
+          // ── Upstream is HTTP / HTTPS ──
+          handleHttpUpstream(
+            proxySocket,
+            clientSocket,
+            proxy,
+            authHeaderValue,
+            targetHost,
+            targetPort,
+            method,
+            headerStr,
+            leftoverClientData
+          )
+        }
       }
 
       clientSocket.on('data', onClientData)
     })
 
     server.on('error', (err: any) => {
-      // Handle Windows-specific binding errors
       if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
-        logger.error('proxy', `SOCKS5 Bridge port binding failed (${err.code}): ${err.message}`)
+        logger.error('proxy', `Proxy Bridge port binding failed (${err.code}): ${err.message}`)
       }
       reject(err)
     })
@@ -216,15 +172,203 @@ export async function startProxyBridge(profileId: string, proxy: Proxy): Promise
         server,
         port: localPort,
         close: () => {
-          server.close()
+          try { server.close() } catch {}
           activeBridges.delete(profileId)
         }
       })
 
-      logger.info('proxy', `SOCKS5 Tunnel Bridge started on ${localProxyUrl} (bound to ${bindHost}) for profile ${profileId}`)
+      logger.info('proxy', `Proxy Auth Bridge [${proxy.type.toUpperCase()}] running on ${localProxyUrl} for profile "${profileId}" -> upstream ${proxy.host}:${proxy.port}`)
       resolve(localProxyUrl)
     })
   })
+}
+
+/**
+ * Handle HTTP/HTTPS upstream proxy with automatic Proxy-Authorization injection.
+ */
+function handleHttpUpstream(
+  proxySocket: net.Socket,
+  clientSocket: net.Socket,
+  proxy: Proxy,
+  authHeaderValue: string | null,
+  targetHost: string,
+  targetPort: number,
+  method: string,
+  rawHeaderStr: string,
+  leftoverClientData: Buffer
+) {
+  if (method === 'CONNECT') {
+    // ── HTTPS / WebSocket CONNECT Tunnel ──
+    let connectReq = `CONNECT ${targetHost}:${targetPort} HTTP/1.1\r\nHost: ${targetHost}:${targetPort}\r\n`
+    if (authHeaderValue) {
+      connectReq += `Proxy-Authorization: ${authHeaderValue}\r\n`
+    }
+    connectReq += `Proxy-Connection: Keep-Alive\r\nUser-Agent: AntiProfiles/1.0\r\n\r\n`
+
+    let upstreamResponse = Buffer.alloc(0)
+    let handshakeDone = false
+
+    const onProxyConnectData = (chunk: Buffer) => {
+      if (handshakeDone) return
+      upstreamResponse = Buffer.concat([upstreamResponse, chunk])
+
+      const endIdx = upstreamResponse.indexOf('\r\n\r\n')
+      const endIdxAlt = endIdx === -1 ? upstreamResponse.indexOf('\n\n') : endIdx
+      if (endIdxAlt === -1) return
+
+      handshakeDone = true
+      proxySocket.removeListener('data', onProxyConnectData)
+
+      const headerLen = endIdx !== -1 ? endIdx + 4 : endIdxAlt + 2
+      const resHeader = upstreamResponse.slice(0, endIdx !== -1 ? endIdx : endIdxAlt).toString('latin1')
+      const leftoverUpstreamData = upstreamResponse.slice(headerLen)
+
+      const statusLine = resHeader.split(/\r?\n/)[0] || ''
+      const statusCodeMatch = statusLine.match(/HTTP\/\d\.\d\s+(\d+)/i)
+      const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1], 10) : 0
+
+      if (statusCode >= 200 && statusCode < 300) {
+        // Success: Tell browser the tunnel is established
+        clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
+
+        if (leftoverUpstreamData.length > 0) {
+          clientSocket.write(leftoverUpstreamData)
+        }
+        if (leftoverClientData.length > 0) {
+          proxySocket.write(leftoverClientData)
+        }
+
+        clientSocket.resume()
+        clientSocket.pipe(proxySocket)
+        proxySocket.pipe(clientSocket)
+      } else {
+        logger.warn('proxy', `Upstream HTTP proxy ${proxy.host}:${proxy.port} rejected CONNECT to ${targetHost}:${targetPort}: ${statusLine}`)
+        if (statusCode === 407) {
+          sendHttpError(clientSocket, 502, `Proxy Authentication Failed at Upstream Proxy (${proxy.host}:${proxy.port}). Please check proxy username and password.`)
+        } else {
+          sendHttpError(clientSocket, statusCode || 502, `Upstream Proxy Error: ${statusLine}`)
+        }
+        proxySocket.destroy()
+      }
+    }
+
+    proxySocket.on('data', onProxyConnectData)
+    proxySocket.write(Buffer.from(connectReq, 'latin1'))
+  } else {
+    // ── Plain HTTP Request ──
+    // Inject Proxy-Authorization header if not present
+    let modifiedHeader = rawHeaderStr
+    if (authHeaderValue && !/Proxy-Authorization:/i.test(modifiedHeader)) {
+      modifiedHeader = modifiedHeader.replace(/(\r?\n)/, `$1Proxy-Authorization: ${authHeaderValue}\r\n`)
+    }
+
+    const forwardBuffer = Buffer.concat([
+      Buffer.from(modifiedHeader + '\r\n\r\n', 'latin1'),
+      leftoverClientData
+    ])
+
+    proxySocket.write(forwardBuffer)
+    clientSocket.resume()
+    clientSocket.pipe(proxySocket)
+    proxySocket.pipe(clientSocket)
+  }
+}
+
+/**
+ * Handle SOCKS5 / SOCKS4 upstream proxy with handshake & auth.
+ */
+function handleSocksUpstream(
+  proxySocket: net.Socket,
+  clientSocket: net.Socket,
+  proxy: Proxy,
+  password: string,
+  targetHost: string,
+  targetPort: number,
+  method: string,
+  rawBuffer: Buffer,
+  leftoverClientData: Buffer
+) {
+  let socksStage = 0 // 0: greeting sent, 1: auth sent, 2: connect sent, 3: connected
+
+  const onProxyData = (data: Buffer) => {
+    if (socksStage === 0) {
+      if (data[0] !== 0x05) {
+        sendHttpError(clientSocket, 502, 'SOCKS5 Proxy Invalid Handshake')
+        proxySocket.destroy()
+        return
+      }
+      const authMethod = data[1]
+      if (authMethod === 0x02 && proxy.username) {
+        // Username / Password Auth RFC 1929
+        const uBuf = Buffer.from(proxy.username, 'utf8')
+        const pBuf = Buffer.from(password, 'utf8')
+        const authReq = Buffer.concat([
+          Buffer.from([0x01, uBuf.length]),
+          uBuf,
+          Buffer.from([pBuf.length]),
+          pBuf
+        ])
+        socksStage = 1
+        proxySocket.write(authReq)
+      } else if (authMethod === 0x00) {
+        // No Auth Required, send Connect Request
+        sendSocks5Connect(proxySocket, targetHost, targetPort)
+        socksStage = 2
+      } else {
+        sendHttpError(clientSocket, 502, 'SOCKS5 Proxy Auth Failed')
+        proxySocket.destroy()
+      }
+    } else if (socksStage === 1) {
+      if (data[1] === 0x00) {
+        sendSocks5Connect(proxySocket, targetHost, targetPort)
+        socksStage = 2
+      } else {
+        sendHttpError(clientSocket, 502, 'SOCKS5 Proxy Authentication Failed (401)')
+        proxySocket.destroy()
+      }
+    } else if (socksStage === 2) {
+      if (data[1] === 0x00) {
+        socksStage = 3
+        proxySocket.removeListener('data', onProxyData)
+
+        let headerLen = 10
+        if (data[3] === 0x03) { // Domain name
+          headerLen = 7 + data[4]
+        } else if (data[3] === 0x04) { // IPv6
+          headerLen = 22
+        }
+
+        const leftoverUpstreamData = data.slice(headerLen)
+
+        if (method === 'CONNECT') {
+          clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
+        } else {
+          let rawReq = rawBuffer.toString('latin1')
+          rawReq = rawReq.replace(/^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+https?:\/\/[^\/]+/i, '$1 ')
+          proxySocket.write(Buffer.from(rawReq, 'latin1'))
+        }
+
+        if (leftoverUpstreamData.length > 0) {
+          clientSocket.write(leftoverUpstreamData)
+        }
+        if (leftoverClientData.length > 0) {
+          proxySocket.write(leftoverClientData)
+        }
+
+        clientSocket.resume()
+        clientSocket.pipe(proxySocket)
+        proxySocket.pipe(clientSocket)
+      } else {
+        sendHttpError(clientSocket, 502, `SOCKS5 Target ${targetHost}:${targetPort} Unreachable (Status: ${data[1]})`)
+        proxySocket.destroy()
+      }
+    }
+  }
+
+  proxySocket.on('data', onProxyData)
+
+  // Send SOCKS5 Greeting: 0x00 (No Auth), 0x02 (Username/Password)
+  proxySocket.write(Buffer.from([0x05, 0x02, 0x00, 0x02]))
 }
 
 function sendSocks5Connect(socket: net.Socket, host: string, port: number) {
@@ -244,10 +388,10 @@ function sendHttpError(socket: net.Socket, statusCode: number, message: string) 
   if (socket.writable) {
     const body = `HTTP/1.1 ${statusCode} ${message}\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n${message}\r\n`
     socket.write(body, () => {
-      socket.destroy()
+      try { socket.destroy() } catch {}
     })
   } else {
-    socket.destroy()
+    try { socket.destroy() } catch {}
   }
 }
 

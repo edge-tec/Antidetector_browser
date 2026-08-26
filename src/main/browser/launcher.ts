@@ -794,8 +794,8 @@ export async function launchBrowser(
   const effectiveProxy = proxy
   let launchProxy = proxy
 
-  // If SOCKS proxy, start local proxy bridge
-  if (launchProxy && launchProxy.type.startsWith('socks')) {
+  // If proxy requires authentication (HTTP/HTTPS/SOCKS) or is a SOCKS proxy, start local proxy auth bridge
+  if (launchProxy && (launchProxy.type.startsWith('socks') || !!launchProxy.username)) {
     try {
       const localBridgeUrl = await startProxyBridge(profile.id, launchProxy)
       const localPort = Number(localBridgeUrl.split(':').pop())
@@ -808,7 +808,7 @@ export async function launchBrowser(
         encryptedPassword: null
       }
     } catch (err: any) {
-      logger.error('browser', `Could not start SOCKS proxy bridge for profile "${profile.name}": ${err.message}`)
+      logger.error('browser', `Could not start proxy authentication bridge for profile "${profile.name}": ${err.message}`)
       throw new Error(`Proxy failed to initialize: ${err.message}`)
     }
   }
