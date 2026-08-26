@@ -151,6 +151,92 @@ if (isset($_GET['download']) && $_GET['download'] == '1') {
         }
     }
 
+    /**
+     * Memory-safe binary streamer with HTTP Range (resumable) and anti-buffering support.
+     * Prevents PHP memory exhaustion and network connection drop on large installer files.
+     */
+    function streamBinaryFile(string $filePath, string $downloadFilename): void {
+        if (!file_exists($filePath) || !is_file($filePath)) {
+            header('HTTP/1.1 404 Not Found');
+            echo "Error: Requested installer binary not found on server.";
+            exit;
+        }
+
+        $fileSize = filesize($filePath);
+        if ($fileSize === false || $fileSize <= 0) {
+            header('HTTP/1.1 404 Not Found');
+            echo "Error: File is empty or inaccessible.";
+            exit;
+        }
+
+        // 1. Remove all PHP memory & execution time constraints
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+        @ini_set('zlib.output_compression', 'Off');
+
+        // 2. Clear and close all existing output buffers so chunks stream directly to socket
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+
+        $fp = fopen($filePath, 'rb');
+        if (!$fp) {
+            header('HTTP/1.1 500 Internal Server Error');
+            echo "Error: Could not open binary file for reading.";
+            exit;
+        }
+
+        // 3. Handle HTTP Range Requests (for Chrome/Safari/Edge resumable downloads)
+        $start = 0;
+        $end = $fileSize - 1;
+
+        if (isset($_SERVER['HTTP_RANGE'])) {
+            if (preg_match('/bytes=\h*(\d+)-(\d*)[\D.*]?/i', $_SERVER['HTTP_RANGE'], $matches)) {
+                $start = floatval($matches[1]);
+                if (!empty($matches[2])) {
+                    $end = floatval($matches[2]);
+                }
+            }
+            header('HTTP/1.1 206 Partial Content');
+            header("Content-Range: bytes {$start}-{$end}/{$fileSize}");
+        } else {
+            header('HTTP/1.1 200 OK');
+        }
+
+        // 4. Set anti-buffering and file transfer headers
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . addslashes($downloadFilename) . '"; filename*=UTF-8\'\'' . rawurlencode($downloadFilename));
+        header('Accept-Ranges: bytes');
+        header('Content-Length: ' . ($end - $start + 1));
+        header('X-Accel-Buffering: no'); // Tell Nginx NOT to buffer into temp files
+        header('Cache-Control: public, must-revalidate, max-age=0');
+        header('Pragma: public');
+        header('Expires: 0');
+
+        // 5. Seek to range offset
+        if ($start > 0) {
+            fseek($fp, (int)$start);
+        }
+
+        // 6. Stream in 64 KB chunks with zero memory footprint
+        $bytesRemaining = $end - $start + 1;
+        $chunkSize = 64 * 1024; // 64 KB safe chunk buffer
+
+        while (!feof($fp) && $bytesRemaining > 0 && !connection_aborted()) {
+            $readSize = ($bytesRemaining > $chunkSize) ? $chunkSize : $bytesRemaining;
+            $data = fread($fp, (int)$readSize);
+            if ($data === false) {
+                break;
+            }
+            echo $data;
+            @flush();
+            $bytesRemaining -= strlen($data);
+        }
+
+        fclose($fp);
+        exit;
+    }
+
     $activeRel = getActiveReleaseForPlatform($db, $platformKey);
 
     if ($activeRel) {
@@ -164,53 +250,43 @@ if (isset($_GET['download']) && $_GET['download'] == '1') {
         if (!empty($activeRel['file_path'])) {
             $baseDir = realpath(__DIR__ . '/..');
             $requestedPath = __DIR__ . '/../' . ltrim($activeRel['file_path'], '/');
-            $realFile = realpath($requestedPath);
+            $realFile = file_exists($requestedPath) ? realpath($requestedPath) : false;
 
-            // Ensure the file is inside the project root and inside releases or uploads directory
+            if (!$realFile) {
+                $altPath = __DIR__ . '/../releases/' . basename($activeRel['file_path']);
+                if (file_exists($altPath)) {
+                    $realFile = realpath($altPath);
+                }
+            }
+
+            // Ensure the file is inside the project root and is a valid file
             if ($realFile && $baseDir && strpos($realFile, $baseDir) === 0 && is_file($realFile)) {
                 $filename = $activeRel['original_filename'] ?: basename($realFile);
-                header('Content-Description: File Transfer');
-                header('Content-Type: application/octet-stream');
-                header('Content-Disposition: attachment; filename="' . $filename . '"');
-                header('Expires: 0');
-                header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-                header('Pragma: public');
-                header('Content-Length: ' . filesize($realFile));
-                if (ob_get_length()) ob_clean();
-                flush();
-                readfile($realFile);
-                exit;
+                streamBinaryFile($realFile, $filename);
             }
         }
     }
 
     // Default release file fallback from releases directory
     $defaultFilenameMap = [
-        'windows-x64' => 'ProfileVault-Windows-x64.exe',
-        'macos-arm64' => 'ProfileVault-macOS-AppleSilicon-arm64.dmg',
-        'macos-x64' => 'ProfileVault-macOS-Intel-x64.dmg',
-        'linux-x64' => 'ProfileVault-Linux-x86_64.AppImage'
+        'windows-x64' => 'AntiProfiles-Windows-x64.exe',
+        'macos-arm64' => 'AntiProfiles-macOS-arm64.dmg',
+        'macos-x64' => 'AntiProfiles-macOS-Intel-x64.dmg',
+        'linux-x64' => 'AntiProfiles-Linux-x86_64.AppImage'
     ];
 
-    $filename = $defaultFilenameMap[$platformKey] ?? 'ProfileVault-Installer.exe';
+    $filename = $defaultFilenameMap[$platformKey] ?? 'AntiProfiles-Installer.exe';
     $localFile = __DIR__ . '/../releases/' . $filename;
+    $legacyLocalFile = __DIR__ . '/../releases/' . str_replace('AntiProfiles-', 'ProfileVault-', $filename);
 
     if (file_exists($localFile) && is_file($localFile)) {
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-        header('Pragma: public');
-        header('Content-Length: ' . filesize($localFile));
-        if (ob_get_length()) ob_clean();
-        flush();
-        readfile($localFile);
-        exit;
+        streamBinaryFile($localFile, $filename);
+    } elseif (file_exists($legacyLocalFile) && is_file($legacyLocalFile)) {
+        streamBinaryFile($legacyLocalFile, $filename);
     }
 
-    // Text placeholder fallback
-    $placeholderContent = "ProfileVault Anti-Detect Browser Installer Package\n"
+    // Text placeholder fallback if no binary is uploaded yet
+    $placeholderContent = "AntiProfiles Anti-Detect Browser Installer Package\n"
         . "Platform: " . $platformKey . "\n"
         . "Version: " . ($activeRel['version'] ?? '1.0.0') . "\n"
         . "Status: Active Published Release\n"
