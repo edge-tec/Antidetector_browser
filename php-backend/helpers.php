@@ -500,6 +500,129 @@ function ensureDatabaseTablesExist() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
+        // 14. CPA Affiliate System Tables
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `affiliate_offers` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `title` VARCHAR(255) NOT NULL,
+              `description` TEXT DEFAULT NULL,
+              `target_url` VARCHAR(500) NOT NULL,
+              `payout_type` VARCHAR(20) NOT NULL DEFAULT 'revshare',
+              `revshare_percent` DECIMAL(5,2) NOT NULL DEFAULT 15.00,
+              `fixed_payout_usd` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
+              `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_tracking_links` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL,
+              `affiliate_id` VARCHAR(50) NOT NULL,
+              `offer_id` VARCHAR(50) NOT NULL,
+              `slug` VARCHAR(100) DEFAULT NULL,
+              `sub_id1` VARCHAR(100) DEFAULT NULL,
+              `sub_id2` VARCHAR(100) DEFAULT NULL,
+              `full_url` TEXT NOT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_clicks` (
+              `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              `click_id` VARCHAR(64) NOT NULL UNIQUE,
+              `affiliate_id` VARCHAR(50) NOT NULL,
+              `offer_id` VARCHAR(50) NOT NULL,
+              `ip_address` VARCHAR(45) DEFAULT NULL,
+              `user_agent` TEXT DEFAULT NULL,
+              `referrer` TEXT DEFAULT NULL,
+              `sub_id1` VARCHAR(100) DEFAULT NULL,
+              `sub_id2` VARCHAR(100) DEFAULT NULL,
+              `converted` TINYINT(1) NOT NULL DEFAULT 0,
+              `conversion_id` VARCHAR(64) DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_conversions` (
+              `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              `conversion_id` VARCHAR(64) NOT NULL UNIQUE,
+              `click_id` VARCHAR(64) NOT NULL,
+              `affiliate_id` VARCHAR(50) NOT NULL,
+              `offer_id` VARCHAR(50) NOT NULL,
+              `user_id` VARCHAR(36) DEFAULT NULL,
+              `order_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `payout_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
+              `status` VARCHAR(20) NOT NULL DEFAULT 'approved',
+              `idempotency_key` VARCHAR(100) DEFAULT NULL UNIQUE,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_postback_configs` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL,
+              `affiliate_id` VARCHAR(50) NOT NULL UNIQUE,
+              `postback_url` TEXT NOT NULL,
+              `http_method` VARCHAR(10) NOT NULL DEFAULT 'GET',
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_postbacks` (
+              `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              `conversion_id` VARCHAR(64) NOT NULL,
+              `click_id` VARCHAR(64) NOT NULL,
+              `affiliate_id` VARCHAR(50) NOT NULL,
+              `url` TEXT NOT NULL,
+              `http_method` VARCHAR(10) NOT NULL DEFAULT 'GET',
+              `request_payload` TEXT DEFAULT NULL,
+              `http_status` INT DEFAULT NULL,
+              `response_body` TEXT DEFAULT NULL,
+              `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+              `retry_count` INT NOT NULL DEFAULT 0,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_withdrawals` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL,
+              `amount` DECIMAL(10,2) NOT NULL,
+              `payout_method` VARCHAR(50) NOT NULL,
+              `payout_details_json` TEXT DEFAULT NULL,
+              `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+              `admin_note` TEXT DEFAULT NULL,
+              `payout_reference` VARCHAR(255) DEFAULT NULL,
+              `processed_by` VARCHAR(36) DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_audit_logs` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `action_type` VARCHAR(50) NOT NULL,
+              `target_type` VARCHAR(50) NOT NULL,
+              `target_id` VARCHAR(100) NOT NULL,
+              `actor_id` VARCHAR(36) NOT NULL,
+              `details_json` TEXT DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `affiliate_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `referral_code` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `affiliate_status` VARCHAR(20) DEFAULT 'active'"); } catch (Throwable $e) {}
+
+        // Seed default CPA offer if empty
+        try {
+            $db->exec("
+                INSERT INTO `affiliate_offers` (`id`, `title`, `description`, `target_url`, `payout_type`, `revshare_percent`, `fixed_payout_usd`, `status`)
+                VALUES ('offer_main_saas', 'AntiProfiles Pro & Team Subscription Plan', 'Earn 15% lifetime recurring commissions on all AntiProfiles browser subscription renewals.', '/#pricing', 'revshare', 15.00, 0.00, 'active')
+                ON DUPLICATE KEY UPDATE `id`=`id`;
+            ");
+        } catch (Throwable $e) {}
+
         try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `retry_count` INT DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `last_attempt_at` DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `html_body` LONGTEXT DEFAULT NULL"); } catch (Throwable $e) {}

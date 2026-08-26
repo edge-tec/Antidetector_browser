@@ -172,6 +172,30 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
         exit();
     }
 
+    // CPA Affiliate APIs (/api/affiliate, /api/affiliate/*)
+    if (strpos($requestUri, '/api/affiliate') === 0) {
+        $action = str_replace('/api/affiliate/', '', $requestUri);
+        $action = str_replace('/api/affiliate', '', $action);
+        $action = trim($action, '/');
+        if (!empty($action)) {
+            $_GET['action'] = $action;
+        }
+        require_once __DIR__ . '/api/affiliate.php';
+        exit();
+    }
+
+    // Public Click Tracking Redirect (/track)
+    if ($requestUri === '/track' || strpos($requestUri, '/track?') === 0) {
+        require_once __DIR__ . '/api/track.php';
+        exit();
+    }
+
+    // Server-to-Server Postback Ingestion (/postback)
+    if ($requestUri === '/postback' || strpos($requestUri, '/postback?') === 0 || strpos($requestUri, '/api/postback') === 0) {
+        require_once __DIR__ . '/api/postback.php';
+        exit();
+    }
+
     // Profile Management APIs (/api/profiles, /api/profiles/*)
     if (strpos($requestUri, '/api/profiles') === 0) {
         $action = str_replace('/api/profiles/', '', $requestUri);
@@ -2067,12 +2091,14 @@ try {
                     <div class="admin-sidebar-header" style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">MY ACCOUNT PORTAL</div>
                     <button class="admin-sidebar-btn active" id="btnTabMyProfile" onclick="switchAdminTab('my-profile', this)">👤 My Profile & Password</button>
                     <button class="admin-sidebar-btn" id="btnTabMySubscription" onclick="switchAdminTab('my-subscription', this)">💳 My Subscription & Quota</button>
+                    <button class="admin-sidebar-btn" id="btnTabMyAffiliate" onclick="switchAdminTab('my-affiliate', this)">🤝 My Affiliate & CPA Portal</button>
                     <button class="admin-sidebar-btn" id="btnTabUserDownloads" onclick="switchAdminTab('user-downloads', this)">🚀 Desktop App Downloads</button>
                     <button class="admin-sidebar-btn" id="btnTabUserSupport" onclick="switchAdminTab('user-support', this)">💬 Help & Live Support</button>
 
                     <!-- Admin Control Sections (Hidden for regular users, visible ONLY for admins) -->
                     <div class="admin-sidebar-header admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN CONTROL PANEL</div>
                     <button class="admin-sidebar-btn admin-only-section" id="btnTabUsers" onclick="switchAdminTab('users', this)">👥 All Users & Accounts</button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabAdminAffiliates" onclick="switchAdminTab('admin-affiliates', this)">🤝 Affiliate & CPA Control</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('subscriptions', this)">💳 Subscription Manager</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('gateways', this)">⚡ Payment Gateways</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('payments', this)">💰 Payments & Invoices</button>
@@ -2212,6 +2238,197 @@ try {
                                         <span style="font-size: 11px; color: var(--text-muted);">AES-256 GCM</span>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USER TAB 2B: MY AFFILIATE & CPA PORTAL -->
+                    <div id="tab-my-affiliate" class="admin-tab-content" style="display: none;">
+                        <!-- Header Banner -->
+                        <div style="background: linear-gradient(135deg, rgba(45,212,191,0.1), rgba(129,140,248,0.1)); border: 1px solid rgba(45,212,191,0.25); border-radius: 16px; padding: 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                                    <h3 style="font-size: 20px; color: #FFF; margin: 0;">🤝 CPA Affiliate & Referral Partner Portal</h3>
+                                    <span id="userAffStatusBadge" style="background: rgba(16,185,129,0.2); color: #10B981; border: 1px solid rgba(16,185,129,0.4); font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 20px;">ACTIVE</span>
+                                </div>
+                                <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
+                                    Affiliate ID: <strong id="userAffIdDisplay" style="color: #2DD4BF; font-family: monospace;">AFF-...</strong> • 
+                                    Referral Code: <strong id="userRefCodeDisplay" style="color: #818CF8; font-family: monospace;">REF_...</strong>
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="btn btn-primary" onclick="openUserWithdrawalModal()" style="font-weight: 700;">💳 Request Payout</button>
+                                <button class="btn btn-outline" onclick="loadMyAffiliatePortal()">🔄 Refresh Stats</button>
+                            </div>
+                        </div>
+
+                        <!-- KPI Metrics Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Clicks</span>
+                                <h3 style="font-size: 24px; color: #FFF; margin: 6px 0 2px 0;" id="userAffTotalClicks">0</h3>
+                                <span style="font-size: 12px; color: #818CF8;"><span id="userAffUniqueClicks">0</span> unique IPs</span>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Conversions</span>
+                                <h3 style="font-size: 24px; color: #FFF; margin: 6px 0 2px 0;" id="userAffTotalConv">0</h3>
+                                <span style="font-size: 12px; color: #10B981;"><span id="userAffCrRate">0</span>% CR</span>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Lifetime Earnings</span>
+                                <h3 style="font-size: 24px; color: #2DD4BF; margin: 6px 0 2px 0;">$<span id="userAffLifetimeEarn">0.00</span></h3>
+                                <span style="font-size: 12px; color: var(--text-muted);">Gross attributed</span>
+                            </div>
+                            <div style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(45,212,191,0.05)); border: 1px solid rgba(16,185,129,0.3); border-radius: 14px; padding: 18px;">
+                                <span style="font-size: 11px; color: #10B981; font-weight: 800; text-transform: uppercase;">Available Balance</span>
+                                <h3 style="font-size: 24px; color: #10B981; margin: 6px 0 2px 0;">$<span id="userAffAvailableBal">0.00</span></h3>
+                                <span style="font-size: 12px; color: var(--text-muted);">Ready for withdrawal</span>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Grid: Link Builder + Postback Webhook -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 24px;">
+                            
+                            <!-- CPA Link Builder Card -->
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px;">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <span>🔗 CPA Campaign Link Generator</span>
+                                </h4>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                                    Select an offer and attach sub-tracking IDs to track conversions from different traffic sources (Google Ads, Facebook, TikTok).
+                                </p>
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Select Offer / Campaign</label>
+                                        <select id="userLinkOfferSelect" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;" onchange="generateCustomAffiliateLink()">
+                                            <option value="offer_main_saas">AntiProfiles Pro & Team Subscription Plan (15% Recurring RevShare)</option>
+                                        </select>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <div>
+                                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Sub ID 1 (e.g. google_ad1)</label>
+                                            <input type="text" id="userLinkSubId1" placeholder="google_camp_1" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;" oninput="generateCustomAffiliateLink()">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Sub ID 2 (Optional)</label>
+                                            <input type="text" id="userLinkSubId2" placeholder="fb_retarget" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;" oninput="generateCustomAffiliateLink()">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: #2DD4BF; font-weight: 700;">Your Generated Tracking Link</label>
+                                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                            <input type="text" id="userGeneratedTrackingUrl" readonly style="flex: 1; background: #0A0B10; border: 1px solid #2DD4BF; border-radius: 8px; padding: 10px; color: #2DD4BF; font-family: monospace; font-size: 12px;">
+                                            <button class="btn btn-primary" onclick="copyAffiliateLink()" style="padding: 0 16px; font-weight: 700;">📋 Copy</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Server-to-Server Postback Webhook Card -->
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px;">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <span>⚡ Server-to-Server (S2S) Postback Webhook</span>
+                                </h4>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+                                    Forward conversion data into your tracking platform (Voluum, Keitaro, RedTrack, Binom). Macros are dynamically replaced on approved orders.
+                                </p>
+                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Postback URL</label>
+                                        <input type="url" id="userPostbackUrlInput" placeholder="https://your-tracker.com/postback?click_id={CLICK_ID}&payout={PAYOUT}&status={STATUS}" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px; font-family: monospace; font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Click to Insert Dynamic Macro:</label>
+                                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{CLICK_ID}')">{CLICK_ID}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{PAYOUT}')">{PAYOUT}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{STATUS}')">{STATUS}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{OFFER_ID}')">{OFFER_ID}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{CONVERSION_ID}')">{CONVERSION_ID}</button>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <label style="font-size: 12px; color: var(--text-muted);">Method:</label>
+                                            <select id="userPostbackMethod" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: #FFF; font-size: 12px;">
+                                                <option value="GET">GET</option>
+                                                <option value="POST">POST</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn btn-primary" onclick="saveUserPostbackConfig()" style="padding: 6px 16px; font-size: 13px; font-weight: 700;">💾 Save Postback</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clicks & Conversions Stream -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 24px;">
+                            
+                            <!-- Clicks Table -->
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">📡 Live Click Stream</h4>
+                                <div style="overflow-x: auto;">
+                                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                        <thead>
+                                            <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                                <th style="padding: 8px;">Click ID</th>
+                                                <th style="padding: 8px;">Offer</th>
+                                                <th style="padding: 8px;">SubID</th>
+                                                <th style="padding: 8px;">Converted</th>
+                                                <th style="padding: 8px;">Time</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="userAffClicksBody">
+                                            <tr><td colspan="5" style="padding: 14px; text-align: center; color: var(--text-muted);">No clicks tracked yet. Share your link to start tracking!</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Conversions Table -->
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">💰 Recent Conversions</h4>
+                                <div style="overflow-x: auto;">
+                                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                        <thead>
+                                            <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                                <th style="padding: 8px;">Conversion ID</th>
+                                                <th style="padding: 8px;">Order Value</th>
+                                                <th style="padding: 8px;">Payout</th>
+                                                <th style="padding: 8px;">Status</th>
+                                                <th style="padding: 8px;">Time</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="userAffConvBody">
+                                            <tr><td colspan="5" style="padding: 14px; text-align: center; color: var(--text-muted);">No conversions recorded yet.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Withdrawal History Table -->
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="font-size: 15px; color: #FFF; margin: 0;">📜 Withdrawal & Payout History</h4>
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="openUserWithdrawalModal()">➕ New Withdrawal</button>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 10px 14px;">Payout ID</th>
+                                            <th style="padding: 10px 14px;">Amount</th>
+                                            <th style="padding: 10px 14px;">Method</th>
+                                            <th style="padding: 10px 14px;">Status</th>
+                                            <th style="padding: 10px 14px;">TX Reference</th>
+                                            <th style="padding: 10px 14px;">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="userAffWithdrawalsBody">
+                                        <tr><td colspan="6" style="padding: 16px; text-align: center; color: var(--text-muted);">No withdrawal requests submitted yet.</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -2447,6 +2664,196 @@ try {
                                     <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user records...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- ADMIN TAB: AFFILIATE & CPA CONTROL CENTER -->
+                    <div id="tab-admin-affiliates" class="admin-tab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">🤝 Affiliate Control & CPA Campaign Manager</h3>
+                                <p style="color: var(--text-muted); font-size: 13px; margin: 0;">Manage CPA offers, affiliate statuses, click traffic, conversions, server-to-server postbacks, and payout settlements.</p>
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-outline" style="border-color: #818CF8; color: #A5B4FC;" onclick="openAdminAffiliateSettingsModal()">⚙️ Global Settings</button>
+                                <button class="btn btn-primary" onclick="openAdminCpaOfferModal()">➕ Create CPA Offer</button>
+                                <button class="btn btn-outline" onclick="loadAdminAffiliateControl()">🔄 Refresh</button>
+                            </div>
+                        </div>
+
+                        <!-- High-Level Overview Cards Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700;">TOTAL AFFILIATES</span>
+                                <h3 style="font-size: 22px; color: #FFF; margin: 4px 0 0 0;" id="adminAffTotalCount">0</h3>
+                                <span style="font-size: 11px; color: #10B981;"><span id="adminAffActiveCount">0</span> active</span>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700;">TOTAL CLICKS</span>
+                                <h3 style="font-size: 22px; color: #818CF8; margin: 4px 0 0 0;" id="adminAffTotalClicks">0</h3>
+                                <span style="font-size: 11px; color: var(--text-muted);">Incoming traffic</span>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700;">CONVERSIONS</span>
+                                <h3 style="font-size: 22px; color: #10B981; margin: 4px 0 0 0;" id="adminAffTotalConv">0</h3>
+                                <span style="font-size: 11px; color: #10B981;"><span id="adminAffCrRate">0</span>% CR</span>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700;">COMMISSIONS GENERATED</span>
+                                <h3 style="font-size: 22px; color: #2DD4BF; margin: 4px 0 0 0;">$<span id="adminAffTotalCommission">0.00</span></h3>
+                                <span style="font-size: 11px; color: var(--text-muted);">From $<span id="adminAffTotalRev">0.00</span> orders</span>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700;">TOTAL PAID OUT</span>
+                                <h3 style="font-size: 22px; color: #FFF; margin: 4px 0 0 0;">$<span id="adminAffTotalPaidOut">0.00</span></h3>
+                                <span style="font-size: 11px; color: var(--text-muted);">Settled payouts</span>
+                            </div>
+                            <div style="background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.05)); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; padding: 16px;">
+                                <span style="font-size: 11px; color: #F59E0B; font-weight: 800;">PENDING WITHDRAWALS</span>
+                                <h3 style="font-size: 22px; color: #F59E0B; margin: 4px 0 0 0;">$<span id="adminAffPendingAmount">0.00</span></h3>
+                                <span style="font-size: 11px; color: var(--text-muted);"><span id="adminAffPendingCount">0</span> pending requests</span>
+                            </div>
+                        </div>
+
+                        <!-- Sub-Navigation Horizontal Bar -->
+                        <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; overflow-x: auto;">
+                            <button class="btn btn-outline admin-aff-subtab active" id="btnAffSubOffers" onclick="switchAdminAffSubTab('offers', this)">🎯 CPA Offers</button>
+                            <button class="btn btn-outline admin-aff-subtab" id="btnAffSubDirectory" onclick="switchAdminAffSubTab('directory', this)">👥 Affiliates Directory</button>
+                            <button class="btn btn-outline admin-aff-subtab" id="btnAffSubClicks" onclick="switchAdminAffSubTab('clicks', this)">📡 Live Traffic Stream</button>
+                            <button class="btn btn-outline admin-aff-subtab" id="btnAffSubConversions" onclick="switchAdminAffSubTab('conversions', this)">💰 Conversions & Orders</button>
+                            <button class="btn btn-outline admin-aff-subtab" id="btnAffSubPostbacks" onclick="switchAdminAffSubTab('postbacks', this)">⚡ S2S Postback Logs</button>
+                            <button class="btn btn-outline admin-aff-subtab" id="btnAffSubWithdrawals" onclick="switchAdminAffSubTab('withdrawals', this)">💳 Withdrawal Settlements</button>
+                        </div>
+
+                        <!-- SUB-TAB 1: CPA OFFERS -->
+                        <div id="affSubPanel-offers" class="admin-aff-subpanel">
+                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 12px 16px;">Offer / Campaign Title</th>
+                                            <th style="padding: 12px 16px;">Payout Model</th>
+                                            <th style="padding: 12px 16px;">Commission / Bounty</th>
+                                            <th style="padding: 12px 16px;">Target URL</th>
+                                            <th style="padding: 12px 16px;">Status</th>
+                                            <th style="padding: 12px 16px; text-align: right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminAffOffersBody">
+                                        <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading CPA offers...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- SUB-TAB 2: AFFILIATES DIRECTORY -->
+                        <div id="affSubPanel-directory" class="admin-aff-subpanel" style="display: none;">
+                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 12px 16px;">Affiliate / User</th>
+                                            <th style="padding: 12px 16px;">Affiliate ID</th>
+                                            <th style="padding: 12px 16px;">Clicks</th>
+                                            <th style="padding: 12px 16px;">Conversions</th>
+                                            <th style="padding: 12px 16px;">Total Earned</th>
+                                            <th style="padding: 12px 16px;">Status</th>
+                                            <th style="padding: 12px 16px; text-align: right;">Controls</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminAffDirectoryBody">
+                                        <tr><td colspan="7" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading affiliates...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- SUB-TAB 3: CLICKS STREAM -->
+                        <div id="affSubPanel-clicks" class="admin-aff-subpanel" style="display: none;">
+                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 10px 14px;">Click ID</th>
+                                            <th style="padding: 10px 14px;">Offer</th>
+                                            <th style="padding: 10px 14px;">Affiliate ID</th>
+                                            <th style="padding: 10px 14px;">IP Address</th>
+                                            <th style="padding: 10px 14px;">Sub ID 1</th>
+                                            <th style="padding: 10px 14px;">Converted</th>
+                                            <th style="padding: 10px 14px;">Logged At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminAffClicksBody">
+                                        <tr><td colspan="7" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading live traffic stream...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- SUB-TAB 4: CONVERSIONS -->
+                        <div id="affSubPanel-conversions" class="admin-aff-subpanel" style="display: none;">
+                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 10px 14px;">Conversion ID</th>
+                                            <th style="padding: 10px 14px;">Click ID</th>
+                                            <th style="padding: 10px 14px;">Affiliate</th>
+                                            <th style="padding: 10px 14px;">Order Value</th>
+                                            <th style="padding: 10px 14px;">Payout Amount</th>
+                                            <th style="padding: 10px 14px;">Status</th>
+                                            <th style="padding: 10px 14px;">Timestamp</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminAffConvBody">
+                                        <tr><td colspan="7" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading conversions...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- SUB-TAB 5: POSTBACK LOGS -->
+                        <div id="affSubPanel-postbacks" class="admin-aff-subpanel" style="display: none;">
+                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 10px 14px;">Postback ID</th>
+                                            <th style="padding: 10px 14px;">Affiliate</th>
+                                            <th style="padding: 10px 14px;">Dispatched URL</th>
+                                            <th style="padding: 10px 14px;">HTTP Status</th>
+                                            <th style="padding: 10px 14px;">Status</th>
+                                            <th style="padding: 10px 14px; text-align: right;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminAffPostbacksBody">
+                                        <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading postback webhook logs...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- SUB-TAB 6: WITHDRAWALS -->
+                        <div id="affSubPanel-withdrawals" class="admin-aff-subpanel" style="display: none;">
+                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                            <th style="padding: 12px 16px;">Request ID</th>
+                                            <th style="padding: 12px 16px;">Affiliate / Email</th>
+                                            <th style="padding: 12px 16px;">Amount</th>
+                                            <th style="padding: 12px 16px;">Payment Method</th>
+                                            <th style="padding: 12px 16px;">Details</th>
+                                            <th style="padding: 12px 16px;">Status</th>
+                                            <th style="padding: 12px 16px;">TX Hash / Reference</th>
+                                            <th style="padding: 12px 16px; text-align: right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminAffWithdrawalsBody">
+                                        <tr><td colspan="8" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading withdrawal requests...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -3578,6 +3985,162 @@ try {
 
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: USER WITHDRAWAL REQUEST -->
+    <div id="modalUserWithdrawal" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
+        <div class="modal-card" style="max-width: 500px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; color: #FFF;">💳 Request Affiliate Payout</h3>
+                <button onclick="closeUserWithdrawalModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+            <form onsubmit="return submitUserWithdrawal(event)">
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Available Balance ($ USD)</label>
+                    <input type="text" id="userWithAvailBal" readonly value="$0.00" style="width: 100%; background: #0A0B10; border: 1px solid #10B981; border-radius: 8px; padding: 10px; color: #10B981; font-weight: 800;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Withdrawal Amount ($ USD)</label>
+                    <input type="number" step="0.01" min="10" id="userWithAmount" required placeholder="50.00" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Payout Method</label>
+                    <select id="userWithMethod" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;" onchange="updateWithdrawalFields()">
+                        <option value="crypto_usdt_trc20">USDT (TRC-20) - Instant / Lowest Fee</option>
+                        <option value="crypto_usdt_erc20">USDT (ERC-20)</option>
+                        <option value="crypto_btc">Bitcoin (BTC)</option>
+                        <option value="wise">Wise (TransferWise)</option>
+                        <option value="payoneer">Payoneer</option>
+                        <option value="bank">Direct Bank Wire (IBAN / SWIFT)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;" id="userWithAddressLabel">Wallet Address / Account Details</label>
+                    <input type="text" id="userWithAddress" required placeholder="Enter USDT TRC-20 Address (starts with T...)" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-outline" onclick="closeUserWithdrawalModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: 700;">Submit Withdrawal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN CREATE/EDIT CPA OFFER -->
+    <div id="modalAdminCpaOffer" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
+        <div class="modal-card" style="max-width: 550px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; color: #FFF;" id="adminOfferModalTitle">Create CPA Campaign Offer</h3>
+                <button onclick="closeAdminCpaOfferModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+            <form onsubmit="return saveAdminCpaOffer(event)">
+                <input type="hidden" id="adminOfferEditId">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Offer Title</label>
+                    <input type="text" id="adminOfferTitle" required placeholder="e.g. AntiProfiles Pro Annual Campaign" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Target Landing URL</label>
+                    <input type="text" id="adminOfferTargetUrl" required placeholder="/#pricing or https://antiprofiles.com/deal" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Payout Model</label>
+                        <select id="adminOfferPayoutType" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                            <option value="revshare">RevShare (% of order)</option>
+                            <option value="fixed">Fixed Bounty ($ USD)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Commission Rate / Amount</label>
+                        <input type="number" step="0.01" id="adminOfferRate" required placeholder="15.00" value="15.00" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Status</label>
+                    <select id="adminOfferStatus" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <option value="active">Active (Visible in Link Generator)</option>
+                        <option value="paused">Paused</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Offer Description (Optional)</label>
+                    <textarea id="adminOfferDesc" rows="2" placeholder="Explain the offer details to affiliates..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-outline" onclick="closeAdminCpaOfferModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: 700;">Save Offer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN WITHDRAWAL SETTLEMENT ACTION -->
+    <div id="modalAdminWithdrawalAction" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
+        <div class="modal-card" style="max-width: 500px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; color: #FFF;">⚙️ Update Withdrawal Settlement</h3>
+                <button onclick="closeAdminWithdrawalModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+            <form onsubmit="return submitAdminWithdrawalUpdate(event)">
+                <input type="hidden" id="adminWithActId">
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Set Settlement Status</label>
+                    <select id="adminWithActStatus" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                        <option value="approved">Approved (KYC & balance verified)</option>
+                        <option value="processing">Processing (Funds being transferred)</option>
+                        <option value="paid">Paid (Settled on blockchain/bank)</option>
+                        <option value="rejected">Rejected (Refund balance to affiliate)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Payout Transaction Reference / Hash</label>
+                    <input type="text" id="adminWithActRef" placeholder="0x... or TRX hash or Bank wire ref" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Admin Note (Internal or visible to affiliate)</label>
+                    <textarea id="adminWithActNote" rows="2" placeholder="Notes regarding payment execution..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-outline" onclick="closeAdminWithdrawalModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: 700;">Save Settlement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN GLOBAL AFFILIATE SETTINGS -->
+    <div id="modalAdminAffiliateSettings" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
+        <div class="modal-card" style="max-width: 500px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; color: #FFF;">⚙️ Global CPA Affiliate System Settings</h3>
+                <button onclick="closeAdminAffiliateSettingsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+            <form onsubmit="return saveAdminAffiliateSettings(event)">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: flex; align-items: center; gap: 10px; color: #FFF; font-size: 14px; font-weight: 700; cursor: pointer;">
+                        <input type="checkbox" id="adminAffSetEnabled" style="transform: scale(1.3);"> Enable Global CPA Affiliate System
+                    </label>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Default RevShare Commission (%)</label>
+                    <input type="number" step="0.5" id="adminAffSetRate" required value="15" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Minimum Payout Threshold ($ USD)</label>
+                    <input type="number" step="5" id="adminAffSetMinPayout" required value="50" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Cookie Tracking Lifetime (Days)</label>
+                    <input type="number" id="adminAffSetCookieDays" required value="30" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-outline" onclick="closeAdminAffiliateSettingsModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: 700;">Save Settings</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -4872,6 +5435,8 @@ try {
             if (target) target.style.display = 'block';
 
             if (tabName === 'user-downloads') initDownloadOsDetection();
+            if (tabName === 'my-affiliate') loadMyAffiliatePortal();
+            if (tabName === 'admin-affiliates') loadAdminAffiliateControl();
             if (tabName === 'users') loadUsersTable();
             if (tabName === 'subscriptions') loadSubscriptionsTable();
             if (tabName === 'gateways') loadPaymentGatewaysTable();
@@ -8185,6 +8750,739 @@ try {
             } catch(err) {
                 console.warn('WebSync setup failed:', err);
             }
+        }
+
+        // ──────────────────────────────────────────────
+        // CPA Affiliate Portal & Admin Control Controller
+        // ──────────────────────────────────────────────
+
+        let _userAffiliateData = null;
+        let _adminAffOverview = null;
+
+        async function loadMyAffiliatePortal() {
+            const token = getAdminSessionToken();
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/affiliate/get-summary' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const resData = await res.json();
+                if (!resData.success || !resData.data) return;
+
+                const d = resData.data;
+                _userAffiliateData = d;
+
+                // 1. Identity
+                document.getElementById('userAffIdDisplay').innerText = d.affiliateId || 'AFF-...';
+                document.getElementById('userRefCodeDisplay').innerText = d.referralCode || 'REF_...';
+                const statusBadge = document.getElementById('userAffStatusBadge');
+                if (statusBadge) {
+                    statusBadge.innerText = (d.status || 'active').toUpperCase();
+                    statusBadge.style.color = d.status === 'active' ? '#10B981' : '#F87171';
+                }
+
+                // 2. KPI Metrics
+                document.getElementById('userAffTotalClicks').innerText = d.totalClicks || 0;
+                document.getElementById('userAffUniqueClicks').innerText = d.uniqueClicks || 0;
+                document.getElementById('userAffTotalConv').innerText = d.totalConversions || 0;
+                document.getElementById('userAffCrRate').innerText = d.conversionRate || 0;
+                document.getElementById('userAffLifetimeEarn').innerText = Number(d.lifetimeEarnings || 0).toFixed(2);
+                document.getElementById('userAffAvailableBal').innerText = Number(d.availableBalance || 0).toFixed(2);
+                const availInput = document.getElementById('userWithAvailBal');
+                if (availInput) availInput.value = '$' + Number(d.availableBalance || 0).toFixed(2);
+
+                // 3. Postback Config
+                if (d.postbackConfig) {
+                    document.getElementById('userPostbackUrlInput').value = d.postbackConfig.postback_url || '';
+                    document.getElementById('userPostbackMethod').value = d.postbackConfig.http_method || 'GET';
+                }
+
+                // 4. Load Offers in Link Generator Dropdown
+                loadOffersDropdown();
+                generateCustomAffiliateLink();
+
+                // 5. Clicks Stream
+                const clicksTbody = document.getElementById('userAffClicksBody');
+                if (clicksTbody) {
+                    if (!d.recentClicks || d.recentClicks.length === 0) {
+                        clicksTbody.innerHTML = '<tr><td colspan="5" style="padding: 14px; text-align: center; color: var(--text-muted);">No clicks tracked yet. Share your link to start tracking!</td></tr>';
+                    } else {
+                        clicksTbody.innerHTML = d.recentClicks.map(c => `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                <td style="padding: 8px; font-family: monospace; color: #818CF8;">${escapeHtml(c.click_id)}</td>
+                                <td style="padding: 8px;">${escapeHtml(c.offer_id)}</td>
+                                <td style="padding: 8px; color: var(--text-muted);">${escapeHtml(c.sub_id1 || '—')}</td>
+                                <td style="padding: 8px;">
+                                    <span style="background:${c.converted == 1 ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.1)'}; color:${c.converted == 1 ? '#10B981' : '#94A3B8'}; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">
+                                        ${c.converted == 1 ? 'CONVERTED' : 'UNCONVERTED'}
+                                    </span>
+                                </td>
+                                <td style="padding: 8px; color: var(--text-muted);">${new Date(c.created_at).toLocaleString()}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+
+                // 6. Conversions Table
+                const convTbody = document.getElementById('userAffConvBody');
+                if (convTbody) {
+                    if (!d.recentConversions || d.recentConversions.length === 0) {
+                        convTbody.innerHTML = '<tr><td colspan="5" style="padding: 14px; text-align: center; color: var(--text-muted);">No conversions recorded yet.</td></tr>';
+                    } else {
+                        convTbody.innerHTML = d.recentConversions.map(v => `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                <td style="padding: 8px; font-family: monospace; color: #2DD4BF;">${escapeHtml(v.conversion_id)}</td>
+                                <td style="padding: 8px; font-weight: 600;">$${Number(v.order_amount || 0).toFixed(2)}</td>
+                                <td style="padding: 8px; font-weight: 700; color: #10B981;">+$${Number(v.payout_amount || 0).toFixed(2)}</td>
+                                <td style="padding: 8px;">
+                                    <span style="background:rgba(16,185,129,0.15); color:#10B981; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">
+                                        ${escapeHtml((v.status || 'approved').toUpperCase())}
+                                    </span>
+                                </td>
+                                <td style="padding: 8px; color: var(--text-muted);">${new Date(v.created_at).toLocaleString()}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+
+                // 7. Withdrawals Table
+                const withTbody = document.getElementById('userAffWithdrawalsBody');
+                if (withTbody) {
+                    if (!d.withdrawals || d.withdrawals.length === 0) {
+                        withTbody.innerHTML = '<tr><td colspan="6" style="padding: 16px; text-align: center; color: var(--text-muted);">No withdrawal requests submitted yet.</td></tr>';
+                    } else {
+                        withTbody.innerHTML = d.withdrawals.map(w => {
+                            const statusColor = w.status === 'paid' ? '#10B981' : (w.status === 'rejected' ? '#F87171' : '#F59E0B');
+                            return `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                    <td style="padding: 10px 14px; font-family: monospace; color: #818CF8;">${escapeHtml(w.id)}</td>
+                                    <td style="padding: 10px 14px; font-weight: 700; color: #FFF;">$${Number(w.amount).toFixed(2)}</td>
+                                    <td style="padding: 10px 14px; text-transform: uppercase; font-size: 12px;">${escapeHtml(w.payout_method)}</td>
+                                    <td style="padding: 10px 14px;">
+                                        <span style="background: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor}40; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 800;">
+                                            ${escapeHtml(w.status.toUpperCase())}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 10px 14px; font-family: monospace; font-size: 11px; color: var(--text-muted);">${escapeHtml(w.payout_reference || '—')}</td>
+                                    <td style="padding: 10px 14px; color: var(--text-muted); font-size: 12px;">${new Date(w.created_at).toLocaleDateString()}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
+
+            } catch(e) {}
+        }
+
+        async function loadOffersDropdown() {
+            const token = getAdminSessionToken();
+            try {
+                const res = await fetch('/api/affiliate/get-offers' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    const sel = document.getElementById('userLinkOfferSelect');
+                    if (sel) {
+                        sel.innerHTML = data.data.map(o => {
+                            const rateTxt = o.payout_type === 'revshare' ? (o.revshare_percent + '% RevShare') : ('$' + o.fixed_payout_usd + ' Fixed Bounty');
+                            return `<option value="${escapeHtml(o.id)}">${escapeHtml(o.title)} (${rateTxt})</option>`;
+                        }).join('');
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function generateCustomAffiliateLink() {
+            if (!_userAffiliateData) return;
+            const affId = _userAffiliateData.affiliateId;
+            const offerSelect = document.getElementById('userLinkOfferSelect');
+            const offerId = offerSelect ? offerSelect.value : 'offer_main_saas';
+            const subId1 = document.getElementById('userLinkSubId1') ? document.getElementById('userLinkSubId1').value.trim() : '';
+            const subId2 = document.getElementById('userLinkSubId2') ? document.getElementById('userLinkSubId2').value.trim() : '';
+
+            const origin = window.location.origin;
+            let link = `${origin}/track?aff_id=${encodeURIComponent(affId)}&offer_id=${encodeURIComponent(offerId)}`;
+            if (subId1) link += `&sub_id1=${encodeURIComponent(subId1)}`;
+            if (subId2) link += `&sub_id2=${encodeURIComponent(subId2)}`;
+
+            const targetInput = document.getElementById('userGeneratedTrackingUrl');
+            if (targetInput) targetInput.value = link;
+        }
+
+        function copyAffiliateLink() {
+            const el = document.getElementById('userGeneratedTrackingUrl');
+            if (!el || !el.value) return;
+            navigator.clipboard.writeText(el.value).then(() => {
+                alert('✓ Tracking link copied to clipboard!\n\n' + el.value);
+            }).catch(() => {
+                el.select();
+                document.execCommand('copy');
+                alert('✓ Link copied!');
+            });
+        }
+
+        function insertPostbackMacro(macro) {
+            const input = document.getElementById('userPostbackUrlInput');
+            if (!input) return;
+            input.value += (input.value.includes('?') ? '&' : '?') + macro.replace(/[{}]/g, '').toLowerCase() + '=' + macro;
+            input.focus();
+        }
+
+        async function saveUserPostbackConfig() {
+            const token = getAdminSessionToken();
+            if (!token) return;
+            const url = document.getElementById('userPostbackUrlInput').value.trim();
+            const method = document.getElementById('userPostbackMethod').value;
+
+            try {
+                const res = await fetch('/api/affiliate/save-postback-config' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ postback_url: url, http_method: method, is_active: 1 })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✓ Postback webhook configuration successfully saved!');
+                } else {
+                    alert('⚠️ Error saving postback: ' + (data.error || 'Failed'));
+                }
+            } catch(e) {
+                alert('Network error saving postback.');
+            }
+        }
+
+        function openUserWithdrawalModal() {
+            document.getElementById('modalUserWithdrawal').style.display = 'flex';
+            if (_userAffiliateData) {
+                document.getElementById('userWithAvailBal').value = '$' + Number(_userAffiliateData.availableBalance || 0).toFixed(2);
+            }
+        }
+
+        function closeUserWithdrawalModal() {
+            document.getElementById('modalUserWithdrawal').style.display = 'none';
+        }
+
+        function updateWithdrawalFields() {
+            const method = document.getElementById('userWithMethod').value;
+            const label = document.getElementById('userWithAddressLabel');
+            const input = document.getElementById('userWithAddress');
+            if (method.startsWith('crypto_usdt_trc20')) {
+                label.innerText = 'USDT (TRC-20) Receiving Address';
+                input.placeholder = 'e.g. TRX Wallet Address (T...)';
+            } else if (method.startsWith('crypto_usdt_erc20')) {
+                label.innerText = 'USDT (ERC-20) Receiving Address';
+                input.placeholder = 'e.g. 0x...';
+            } else if (method.startsWith('crypto_btc')) {
+                label.innerText = 'Bitcoin (BTC) Receiving Address';
+                input.placeholder = 'e.g. bc1... or 1...';
+            } else if (method === 'wise') {
+                label.innerText = 'Wise Email Address or Account Name';
+                input.placeholder = 'your-wise-email@example.com';
+            } else if (method === 'payoneer') {
+                label.innerText = 'Payoneer Email Address';
+                input.placeholder = 'your-payoneer@example.com';
+            } else {
+                label.innerText = 'Bank Details (IBAN, SWIFT, Account Holder)';
+                input.placeholder = 'IBAN: ..., SWIFT: ..., Name: ...';
+            }
+        }
+
+        async function submitUserWithdrawal(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const token = getAdminSessionToken();
+            if (!token) return false;
+
+            const amount = parseFloat(document.getElementById('userWithAmount').value);
+            const method = document.getElementById('userWithMethod').value;
+            const address = document.getElementById('userWithAddress').value.trim();
+
+            if (!amount || amount <= 0 || !address) {
+                alert('Please fill in all required fields.');
+                return false;
+            }
+
+            try {
+                const res = await fetch('/api/affiliate/request-withdrawal' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ amount, payout_method: method, payout_details: { address, method } })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('🎉 ' + (data.message || 'Withdrawal request submitted!'));
+                    closeUserWithdrawalModal();
+                    loadMyAffiliatePortal();
+                } else {
+                    alert('⚠️ Withdrawal Failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch(err) {
+                alert('Network error submitting withdrawal.');
+            }
+            return false;
+        }
+
+        // ── Admin Affiliate Control Handlers ──
+
+        function switchAdminAffSubTab(subTab, btn) {
+            document.querySelectorAll('.admin-aff-subtab').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.querySelectorAll('.admin-aff-subpanel').forEach(p => p.style.display = 'none');
+            const target = document.getElementById('affSubPanel-' + subTab);
+            if (target) target.style.display = 'block';
+        }
+
+        async function loadAdminAffiliateControl() {
+            const token = getAdminSessionToken();
+            if (!token) return;
+
+            try {
+                // 1. Overview stats
+                const res = await fetch('/api/affiliate/admin-get-overview' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const d = await res.json();
+                if (d.success && d.data) {
+                    const stats = d.data;
+                    _adminAffOverview = stats;
+                    document.getElementById('adminAffTotalCount').innerText = stats.totalAffiliates || 0;
+                    document.getElementById('adminAffActiveCount').innerText = stats.activeAffiliates || 0;
+                    document.getElementById('adminAffTotalClicks').innerText = stats.totalClicks || 0;
+                    document.getElementById('adminAffTotalConv').innerText = stats.totalConversions || 0;
+                    document.getElementById('adminAffCrRate').innerText = stats.conversionRate || 0;
+                    document.getElementById('adminAffTotalCommission').innerText = Number(stats.totalCommissionGenerated || 0).toFixed(2);
+                    document.getElementById('adminAffTotalRev').innerText = Number(stats.totalRevenue || 0).toFixed(2);
+                    document.getElementById('adminAffTotalPaidOut').innerText = Number(stats.totalPaidOut || 0).toFixed(2);
+                    document.getElementById('adminAffPendingAmount').innerText = Number(stats.pendingWithdrawalsAmount || 0).toFixed(2);
+                    document.getElementById('adminAffPendingCount').innerText = stats.pendingWithdrawalsCount || 0;
+                }
+
+                // 2. Load Offers
+                loadAdminAffOffersTable();
+                // 3. Load Affiliates Directory
+                loadAdminAffiliatesDirectory();
+                // 4. Load Clicks
+                loadAdminAffClicksTable();
+                // 5. Load Conversions
+                loadAdminAffConversionsTable();
+                // 6. Load Postbacks
+                loadAdminAffPostbacksTable();
+                // 7. Load Withdrawals
+                loadAdminAffWithdrawalsTable();
+
+            } catch(e) {}
+        }
+
+        async function loadAdminAffOffersTable() {
+            const token = getAdminSessionToken();
+            const tbody = document.getElementById('adminAffOffersBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-get-offers' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const d = await res.json();
+                if (d.success && Array.isArray(d.data)) {
+                    tbody.innerHTML = d.data.map(o => `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 12px 16px;">
+                                <strong style="color:#FFF;">${escapeHtml(o.title)}</strong>
+                                <div style="font-size:11px; color:var(--text-muted); font-family:monospace;">ID: ${escapeHtml(o.id)}</div>
+                            </td>
+                            <td style="padding: 12px 16px; text-transform:uppercase; font-size:12px;">${escapeHtml(o.payout_type)}</td>
+                            <td style="padding: 12px 16px; font-weight:700; color:#2DD4BF;">
+                                ${o.payout_type === 'revshare' ? (o.revshare_percent + '% RevShare') : ('$' + Number(o.fixed_payout_usd).toFixed(2) + ' Fixed')}
+                            </td>
+                            <td style="padding: 12px 16px; font-family:monospace; font-size:12px; color:var(--text-muted);">${escapeHtml(o.target_url)}</td>
+                            <td style="padding: 12px 16px;">
+                                <span style="background:${o.status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${o.status === 'active' ? '#10B981' : '#F87171'}; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">
+                                    ${escapeHtml(o.status.toUpperCase())}
+                                </span>
+                            </td>
+                            <td style="padding: 12px 16px; text-align:right;">
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick='openAdminCpaOfferModal("${escapeHtml(o.id)}", ${JSON.stringify(o)})'>✏️ Edit</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {}
+        }
+
+        async function loadAdminAffiliatesDirectory() {
+            const token = getAdminSessionToken();
+            const tbody = document.getElementById('adminAffDirectoryBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-get-affiliates' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const d = await res.json();
+                if (d.success && Array.isArray(d.data)) {
+                    tbody.innerHTML = d.data.map(a => `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 12px 16px;">
+                                <strong style="color:#FFF;">${escapeHtml(a.name || 'Affiliate User')}</strong>
+                                <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(a.email)}</div>
+                            </td>
+                            <td style="padding: 12px 16px; font-family:monospace; color:#818CF8; font-weight:700;">${escapeHtml(a.affiliate_id)}</td>
+                            <td style="padding: 12px 16px;">${a.total_clicks || 0}</td>
+                            <td style="padding: 12px 16px; font-weight:600; color:#10B981;">${a.total_conversions || 0}</td>
+                            <td style="padding: 12px 16px; font-weight:700; color:#2DD4BF;">$${Number(a.total_earnings || 0).toFixed(2)}</td>
+                            <td style="padding: 12px 16px;">
+                                <span style="background:${a.affiliate_status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${a.affiliate_status === 'active' ? '#10B981' : '#F87171'}; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">
+                                    ${escapeHtml((a.affiliate_status || 'active').toUpperCase())}
+                                </span>
+                            </td>
+                            <td style="padding: 12px 16px; text-align:right;">
+                                <select onchange="updateAdminAffiliateStatus('${escapeHtml(a.affiliate_id)}', this.value)" style="background:var(--bg-card); border:1px solid var(--border); border-radius:6px; color:#FFF; font-size:11px; padding:3px 6px;">
+                                    <option value="active" ${a.affiliate_status === 'active' ? 'selected' : ''}>Active</option>
+                                    <option value="suspended" ${a.affiliate_status === 'suspended' ? 'selected' : ''}>Suspend</option>
+                                    <option value="disabled" ${a.affiliate_status === 'disabled' ? 'selected' : ''}>Disable</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {}
+        }
+
+        async function updateAdminAffiliateStatus(affId, status) {
+            const token = getAdminSessionToken();
+            if (!token) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-update-affiliate-status' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ affiliate_id: affId, status })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert('✓ ' + d.message);
+                    loadAdminAffiliatesDirectory();
+                } else {
+                    alert('⚠️ ' + (d.error || 'Failed'));
+                }
+            } catch(e) {}
+        }
+
+        async function loadAdminAffClicksTable() {
+            const token = getAdminSessionToken();
+            const tbody = document.getElementById('adminAffClicksBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-get-clicks' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const d = await res.json();
+                if (d.success && Array.isArray(d.data)) {
+                    tbody.innerHTML = d.data.map(c => `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 10px 14px; font-family:monospace; color:#818CF8;">${escapeHtml(c.click_id)}</td>
+                            <td style="padding: 10px 14px;">${escapeHtml(c.offer_title || c.offer_id)}</td>
+                            <td style="padding: 10px 14px; font-family:monospace; color:#2DD4BF;">${escapeHtml(c.affiliate_id)}</td>
+                            <td style="padding: 10px 14px; font-family:monospace; color:var(--text-muted);">${escapeHtml(c.ip_address || '—')}</td>
+                            <td style="padding: 10px 14px; color:var(--text-muted);">${escapeHtml(c.sub_id1 || '—')}</td>
+                            <td style="padding: 10px 14px;">
+                                <span style="background:${c.converted == 1 ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.1)'}; color:${c.converted == 1 ? '#10B981' : '#94A3B8'}; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">
+                                    ${c.converted == 1 ? 'CONVERTED' : 'VISITED'}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 14px; color:var(--text-muted); font-size:11px;">${new Date(c.created_at).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {}
+        }
+
+        async function loadAdminAffConversionsTable() {
+            const token = getAdminSessionToken();
+            const tbody = document.getElementById('adminAffConvBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-get-conversions' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const d = await res.json();
+                if (d.success && Array.isArray(d.data)) {
+                    tbody.innerHTML = d.data.map(v => `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 10px 14px; font-family:monospace; color:#2DD4BF;">${escapeHtml(v.conversion_id)}</td>
+                            <td style="padding: 10px 14px; font-family:monospace; color:#818CF8;">${escapeHtml(v.click_id)}</td>
+                            <td style="padding: 10px 14px;">${escapeHtml(v.affiliate_email || v.affiliate_id)}</td>
+                            <td style="padding: 10px 14px; font-weight:600;">$${Number(v.order_amount || 0).toFixed(2)}</td>
+                            <td style="padding: 10px 14px; font-weight:700; color:#10B981;">+$${Number(v.payout_amount || 0).toFixed(2)}</td>
+                            <td style="padding: 10px 14px;">
+                                <span style="background:rgba(16,185,129,0.15); color:#10B981; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">
+                                    ${escapeHtml((v.status || 'approved').toUpperCase())}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 14px; color:var(--text-muted); font-size:11px;">${new Date(v.created_at).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {}
+        }
+
+        async function loadAdminAffPostbacksTable() {
+            const token = getAdminSessionToken();
+            const tbody = document.getElementById('adminAffPostbacksBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-get-postbacks' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const d = await res.json();
+                if (d.success && Array.isArray(d.data)) {
+                    tbody.innerHTML = d.data.map(p => {
+                        const isSuccess = p.http_status >= 200 && p.http_status < 300;
+                        return `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                <td style="padding: 10px 14px; font-family:monospace; color:#818CF8;">${escapeHtml(p.id)}</td>
+                                <td style="padding: 10px 14px; font-size:12px;">${escapeHtml(p.affiliate_email || p.affiliate_id)}</td>
+                                <td style="padding: 10px 14px; font-family:monospace; font-size:11px; color:var(--text-muted); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${escapeHtml(p.url)}
+                                </td>
+                                <td style="padding: 10px 14px; font-family:monospace; font-weight:700; color:${isSuccess ? '#10B981' : '#F87171'};">
+                                    HTTP ${p.http_status || '—'}
+                                </td>
+                                <td style="padding: 10px 14px;">
+                                    <span style="background:${p.status === 'delivered' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${p.status === 'delivered' ? '#10B981' : '#F87171'}; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">
+                                        ${escapeHtml(p.status.toUpperCase())} (${p.retry_count} retries)
+                                    </span>
+                                </td>
+                                <td style="padding: 10px 14px; text-align:right;">
+                                    <button class="btn btn-outline" style="padding:3px 8px; font-size:11px;" onclick="retryAdminPostback('${escapeHtml(p.id)}')">🔁 Retry</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(e) {}
+        }
+
+        async function retryAdminPostback(postbackId) {
+            const token = getAdminSessionToken();
+            if (!token) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-retry-postback' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ postback_id: postbackId })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert('✓ ' + d.message);
+                    loadAdminAffPostbacksTable();
+                } else {
+                    alert('⚠️ ' + (d.error || 'Failed'));
+                }
+            } catch(e) {}
+        }
+
+        async function loadAdminAffWithdrawalsTable() {
+            const token = getAdminSessionToken();
+            const tbody = document.getElementById('adminAffWithdrawalsBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/affiliate/admin-get-withdrawals' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const d = await res.json();
+                if (d.success && Array.isArray(d.data)) {
+                    tbody.innerHTML = d.data.map(w => {
+                        const statusColor = w.status === 'paid' ? '#10B981' : (w.status === 'rejected' ? '#F87171' : (w.status === 'processing' ? '#38BDF8' : '#F59E0B'));
+                        let detailsStr = '';
+                        try {
+                            const parsed = JSON.parse(w.payout_details_json || '{}');
+                            detailsStr = parsed.address || JSON.stringify(parsed);
+                        } catch(e) { detailsStr = w.payout_details_json || ''; }
+
+                        return `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                <td style="padding: 12px 16px; font-family:monospace; color:#818CF8;">${escapeHtml(w.id)}</td>
+                                <td style="padding: 12px 16px;">
+                                    <strong style="color:#FFF;">${escapeHtml(w.user_name || 'Affiliate')}</strong>
+                                    <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(w.user_email)}</div>
+                                </td>
+                                <td style="padding: 12px 16px; font-weight:800; color:#FFF;">$${Number(w.amount).toFixed(2)}</td>
+                                <td style="padding: 12px 16px; text-transform:uppercase; font-size:11px;">${escapeHtml(w.payout_method)}</td>
+                                <td style="padding: 12px 16px; font-family:monospace; font-size:11px; color:#2DD4BF; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${escapeHtml(detailsStr)}
+                                </td>
+                                <td style="padding: 12px 16px;">
+                                    <span style="background:${statusColor}20; color:${statusColor}; border:1px solid ${statusColor}40; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:800;">
+                                        ${escapeHtml(w.status.toUpperCase())}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px 16px; font-family:monospace; font-size:11px; color:var(--text-muted);">${escapeHtml(w.payout_reference || '—')}</td>
+                                <td style="padding: 12px 16px; text-align:right;">
+                                    <button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick='openAdminWithdrawalModal("${escapeHtml(w.id)}", "${escapeHtml(w.status)}", "${escapeHtml(w.payout_reference || '')}", "${escapeHtml(w.admin_note || '')}")'>⚙️ Update</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(e) {}
+        }
+
+        function openAdminCpaOfferModal(offerId, offerData) {
+            document.getElementById('modalAdminCpaOffer').style.display = 'flex';
+            if (offerData) {
+                document.getElementById('adminOfferModalTitle').innerText = 'Edit CPA Campaign Offer';
+                document.getElementById('adminOfferEditId').value = offerData.id || '';
+                document.getElementById('adminOfferTitle').value = offerData.title || '';
+                document.getElementById('adminOfferTargetUrl').value = offerData.target_url || '';
+                document.getElementById('adminOfferPayoutType').value = offerData.payout_type || 'revshare';
+                document.getElementById('adminOfferRate').value = offerData.payout_type === 'revshare' ? (offerData.revshare_percent || 15) : (offerData.fixed_payout_usd || 0);
+                document.getElementById('adminOfferStatus').value = offerData.status || 'active';
+                document.getElementById('adminOfferDesc').value = offerData.description || '';
+            } else {
+                document.getElementById('adminOfferModalTitle').innerText = 'Create CPA Campaign Offer';
+                document.getElementById('adminOfferEditId').value = '';
+                document.getElementById('adminOfferTitle').value = '';
+                document.getElementById('adminOfferTargetUrl').value = '/#pricing';
+                document.getElementById('adminOfferPayoutType').value = 'revshare';
+                document.getElementById('adminOfferRate').value = '15.00';
+                document.getElementById('adminOfferStatus').value = 'active';
+                document.getElementById('adminOfferDesc').value = '';
+            }
+        }
+
+        function closeAdminCpaOfferModal() {
+            document.getElementById('modalAdminCpaOffer').style.display = 'none';
+        }
+
+        async function saveAdminCpaOffer(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const token = getAdminSessionToken();
+            if (!token) return false;
+
+            const id = document.getElementById('adminOfferEditId').value;
+            const title = document.getElementById('adminOfferTitle').value.trim();
+            const target_url = document.getElementById('adminOfferTargetUrl').value.trim();
+            const payout_type = document.getElementById('adminOfferPayoutType').value;
+            const rate = parseFloat(document.getElementById('adminOfferRate').value) || 0;
+            const status = document.getElementById('adminOfferStatus').value;
+            const description = document.getElementById('adminOfferDesc').value.trim();
+
+            const payload = {
+                id,
+                title,
+                target_url,
+                payout_type,
+                revshare_percent: payout_type === 'revshare' ? rate : 0,
+                fixed_payout_usd: payout_type === 'fixed' ? rate : 0,
+                status,
+                description
+            };
+
+            try {
+                const res = await fetch('/api/affiliate/admin-save-offer' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify(payload)
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert('✓ ' + d.message);
+                    closeAdminCpaOfferModal();
+                    loadAdminAffOffersTable();
+                } else {
+                    alert('⚠️ ' + (d.error || 'Failed'));
+                }
+            } catch(err) {
+                alert('Network error saving offer.');
+            }
+            return false;
+        }
+
+        function openAdminWithdrawalModal(withId, currStatus, currRef, currNote) {
+            document.getElementById('modalAdminWithdrawalAction').style.display = 'flex';
+            document.getElementById('adminWithActId').value = withId;
+            document.getElementById('adminWithActStatus').value = currStatus || 'approved';
+            document.getElementById('adminWithActRef').value = currRef || '';
+            document.getElementById('adminWithActNote').value = currNote || '';
+        }
+
+        function closeAdminWithdrawalModal() {
+            document.getElementById('modalAdminWithdrawalAction').style.display = 'none';
+        }
+
+        async function submitAdminWithdrawalUpdate(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const token = getAdminSessionToken();
+            if (!token) return false;
+
+            const id = document.getElementById('adminWithActId').value;
+            const status = document.getElementById('adminWithActStatus').value;
+            const payout_reference = document.getElementById('adminWithActRef').value.trim();
+            const admin_note = document.getElementById('adminWithActNote').value.trim();
+
+            try {
+                const res = await fetch('/api/affiliate/admin-update-withdrawal' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ id, status, payout_reference, admin_note })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert('✓ ' + d.message);
+                    closeAdminWithdrawalModal();
+                    loadAdminAffWithdrawalsTable();
+                    loadAdminAffiliateControl();
+                } else {
+                    alert('⚠️ ' + (d.error || 'Failed'));
+                }
+            } catch(err) {
+                alert('Network error updating withdrawal.');
+            }
+            return false;
+        }
+
+        function openAdminAffiliateSettingsModal() {
+            document.getElementById('modalAdminAffiliateSettings').style.display = 'flex';
+            if (_adminAffOverview && _adminAffOverview.settings) {
+                const s = _adminAffOverview.settings;
+                document.getElementById('adminAffSetEnabled').checked = s.enabled !== false;
+                document.getElementById('adminAffSetRate').value = s.defaultRate || 15;
+                document.getElementById('adminAffSetMinPayout').value = s.minPayout || 50;
+                document.getElementById('adminAffSetCookieDays').value = s.cookieDays || 30;
+            }
+        }
+
+        function closeAdminAffiliateSettingsModal() {
+            document.getElementById('modalAdminAffiliateSettings').style.display = 'none';
+        }
+
+        async function saveAdminAffiliateSettings(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const token = getAdminSessionToken();
+            if (!token) return false;
+
+            const enabled = document.getElementById('adminAffSetEnabled').checked;
+            const default_commission_rate = parseFloat(document.getElementById('adminAffSetRate').value) || 15;
+            const min_payout_usd = parseFloat(document.getElementById('adminAffSetMinPayout').value) || 50;
+            const cookie_duration_days = parseInt(document.getElementById('adminAffSetCookieDays').value, 10) || 30;
+
+            try {
+                const res = await fetch('/api/affiliate/admin-save-settings' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ enabled, default_commission_rate, min_payout_usd, cookie_duration_days })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert('✓ ' + d.message);
+                    closeAdminAffiliateSettingsModal();
+                    loadAdminAffiliateControl();
+                } else {
+                    alert('⚠️ ' + (d.error || 'Failed'));
+                }
+            } catch(err) {
+                alert('Network error saving settings.');
+            }
+            return false;
         }
 
         // Auto-verify email token if present in URL
