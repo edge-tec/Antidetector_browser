@@ -855,14 +855,21 @@ export async function launchBrowser(
     await setupBrowserInjection(browser, fingerprint)
 
     // Set standard normal centered Chromium window bounds via CDP
+    // Use fingerprint viewport dimensions (screen / DPR) for consistent sizing
     try {
       const pages = await browser.pages()
       if (pages.length > 0) {
         const client = await pages[0].target().createCDPSession()
         const { windowId } = await client.send('Browser.getWindowForTarget')
+        const dpr = fingerprint.screen?.devicePixelRatio || 1
+        const boundsWidth = Math.round((fingerprint.screen?.width || 1280) / dpr)
+        const boundsHeight = Math.round((fingerprint.screen?.height || 800) / dpr)
+        // Clamp to reasonable maximums to avoid windows exceeding physical screen
+        const finalWidth = Math.min(boundsWidth, 1920)
+        const finalHeight = Math.min(boundsHeight, 1080)
         await client.send('Browser.setWindowBounds', {
           windowId,
-          bounds: { windowState: 'normal', width: 1280, height: 800, left: 100, top: 60 }
+          bounds: { windowState: 'normal', width: finalWidth, height: finalHeight, left: 100, top: 60 }
         })
       }
     } catch (err: any) {

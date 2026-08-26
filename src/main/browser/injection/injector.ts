@@ -191,16 +191,13 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
         maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
       })
     } else {
-      await client.send('Emulation.setDeviceMetricsOverride', {
-        width: scr.width || 1920,
-        height: scr.height || 1080,
-        deviceScaleFactor: scr.devicePixelRatio || (isMac ? 2 : 1),
-        mobile: false,
-        screenOrientation: {
-          angle: scr.orientationAngle || 0,
-          type: (scr.orientation === 'portrait-primary' ? 'portraitPrimary' : 'landscapePrimary') as any
-        }
-      })
+      // Desktop: Do NOT use Emulation.setDeviceMetricsOverride.
+      // It creates a fixed virtual viewport (e.g. 1920×1080) that is larger than
+      // the physical Chromium window (1280×800), causing page content to render
+      // offset to the right with a large gray/blank area on the left side.
+      // The JavaScript-level screen.ts injection already spoofs window.screen.*
+      // and devicePixelRatio for fingerprint masking without breaking CSS layout.
+      await client.send('Emulation.clearDeviceMetricsOverride')
       await client.send('Emulation.setTouchEmulationEnabled', {
         enabled: false,
         maxTouchPoints: 0

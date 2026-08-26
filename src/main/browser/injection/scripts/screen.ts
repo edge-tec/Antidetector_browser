@@ -61,5 +61,17 @@ export function buildScreenScript(screen: ScreenFingerprint): string {
     }
   } catch(e) {}
 
+  // Spoof outerWidth/outerHeight to match screen dimensions
+  try {
+    Object.defineProperty(window, 'outerWidth', {
+      get: function() { return ${safe.width}; },
+      configurable: true
+    });
+    Object.defineProperty(window, 'outerHeight', {
+      get: function() { return ${safe.height}; },
+      configurable: true
+    });
+  } catch(e) {}
+
 })();`
 }
