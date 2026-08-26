@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import chromeIconImg from '../assets/antiprofiles-chrome.png'
-import firefoxIconImg from '../assets/antiprofiles-firefox.png'
+import { ChromeLogo, FirefoxLogo } from './BrowserLogos'
 import { CustomBrandingManager } from './CustomBrandingManager'
 
 interface RuntimeInfo {
@@ -283,14 +282,14 @@ export const BrowserRuntimeManager: React.FC = () => {
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
         {renderEngineCard(
           'Google Chromium Engine',
-          <img src={chromeIconImg} alt="Antiprofile Chromium" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />,
+          <ChromeLogo size={36} />,
           'chromium',
           data?.chromium,
           '#38BDF8'
         )}
         {renderEngineCard(
           'Mozilla Firefox Quantum Engine',
-          <img src={firefoxIconImg} alt="Antiprofile Firefox" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />,
+          <FirefoxLogo size={36} />,
           'firefox',
           data?.firefox,
           '#FB923C'

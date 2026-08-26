@@ -774,6 +774,7 @@ export function getDevicesByBrand(brand: string): AndroidDeviceSpec[] {
 export function getDeviceById(idOrCode: string): AndroidDeviceSpec | undefined {
   return ANDROID_DEVICES.find(d => d.id === idOrCode || d.modelCode === idOrCode || d.modelName === idOrCode)
 }
+export const getAndroidDeviceById = getDeviceById
 
 export function generateAndroidUserAgent(device: AndroidDeviceSpec, browser: 'chrome' | 'firefox' = 'chrome', version = '128.0.0.0'): string {
   if (browser === 'firefox') {

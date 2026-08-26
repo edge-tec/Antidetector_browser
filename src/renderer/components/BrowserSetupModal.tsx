@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import chromeIconImg from '../assets/antiprofiles-chrome.png'
-import firefoxIconImg from '../assets/antiprofiles-firefox.png'
+import { ChromeLogo, FirefoxLogo } from './BrowserLogos'
 
 interface BrowserSetupModalProps {
   isOpen: boolean
@@ -327,9 +326,9 @@ export function BrowserSetupModal({
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {isFirefoxSelected ? (
-                    <img src={firefoxIconImg} alt="Antiprofile Firefox" style={{ width: '24px', height: '24px', borderRadius: '6px', objectFit: 'cover' }} />
+                    <FirefoxLogo size={24} />
                   ) : (
-                    <img src={chromeIconImg} alt="Antiprofile Chromium" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
+                    <ChromeLogo size={24} />
                   )}
                   <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
                     {isFirefoxSelected ? (

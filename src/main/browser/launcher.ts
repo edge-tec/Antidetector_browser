@@ -725,6 +725,21 @@ function normalizeFingerprint(
     if (profile.timezone) baseFp.timezone.timezone = profile.timezone
   }
 
+  // 4. Enforce strict device/OS coherence to prevent host hardware leaks
+  const family = targetOs === 'android' ? 'android' : targetOs === 'ios' ? 'ios' : 'desktop'
+  if (family === 'android') {
+    baseFp.navigator.platform = 'Linux armv8l'
+    baseFp.navigator.maxTouchPoints = 5
+    baseFp.navigator.touchSupport = true
+    if (baseFp.navigator.hardwareConcurrency > 8) baseFp.navigator.hardwareConcurrency = 8
+  } else if (family === 'ios') {
+    baseFp.navigator.platform = 'iPhone'
+    baseFp.navigator.maxTouchPoints = 5
+    baseFp.navigator.touchSupport = true
+    if (baseFp.navigator.hardwareConcurrency > 8) baseFp.navigator.hardwareConcurrency = 6
+    if (baseFp.navigator.deviceMemory > 8) baseFp.navigator.deviceMemory = 8
+  }
+
   return baseFp
 }
 

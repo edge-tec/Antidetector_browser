@@ -246,20 +246,38 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     }
 
     // ── Universal User-Agent & Client Hints Override for ALL Platforms ──
-    // v3: Use browser-compat-matrix to determine if Client Hints should be sent
+    const osType: OSType = (fingerprint as any).osType || (fingerprint.navigator as any)?.osType || (isAndroid ? 'android' : isIOS ? 'ios' : 'windows-10')
     const browserType: 'chrome' | 'firefox' = isFirefox ? 'firefox' : 'chrome'
     const engine = getEngineForBrowser(osType, browserType)
     const shouldSendClientHints = engine === 'blink' && hasFeatureFlag(osType, browserType, 'client-hints')
 
     const userAgentMetadata = buildUserAgentMetadata(fingerprint)
     const acceptLanguage = (fingerprint.locale?.languages || ['en-US', 'en']).join(',')
+    const uaString = fingerprint.navigator?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
+    // Also inject the complete anti-detect script directly into CDP Page domain for instant execution
+    try {
+      await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: script
+      })
+    } catch {}
+
+    // Override at both Network and Emulation CDP domains
     await client.send('Network.setUserAgentOverride', {
-      userAgent: fingerprint.navigator?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      userAgent: uaString,
       acceptLanguage,
       platform: userAgentMetadata.platform,
       userAgentMetadata: shouldSendClientHints ? userAgentMetadata : undefined
     })
+
+    try {
+      await client.send('Emulation.setUserAgentOverride', {
+        userAgent: uaString,
+        acceptLanguage,
+        platform: userAgentMetadata.platform,
+        userAgentMetadata: shouldSendClientHints ? userAgentMetadata : undefined
+      })
+    } catch {}
   } catch (err: any) {
     logger.warn('browser', `Could not apply CDP page emulation: ${err.message}`)
   }

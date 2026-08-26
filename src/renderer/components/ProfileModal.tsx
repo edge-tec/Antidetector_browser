@@ -17,8 +17,7 @@ import { parseCookies, CookieItem } from '../utils/cookie-parser'
 import { ProxyInfoCard } from './ProxyInfoCard'
 import { ConsistencyBadge, ConsistencyResult } from './ConsistencyBadge'
 import { ProxyTestResult } from '../types'
-import chromeIconImg from '../assets/antiprofiles-chrome.png'
-import firefoxIconImg from '../assets/antiprofiles-firefox.png'
+import { ChromeLogo, FirefoxLogo } from './BrowserLogos'
 
 interface Props {
   isOpen: boolean
@@ -316,19 +315,21 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         chromiumVersion: bType === 'firefox' ? bVer.split('.')[0] : '128.0.0.0',
         platform: 'Linux armv8l',
         vendor: bType === 'firefox' ? '' : 'Google Inc.',
-        deviceBrand: fp.navigator?.deviceBrand || matchedDev.brand,
-        deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
-        deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.modelCode,
-        hardwareConcurrency: Math.min(fp.navigator?.hardwareConcurrency || matchedDev.cores, 8),
-        deviceMemory: Math.min(fp.navigator?.deviceMemory || matchedDev.memory, 16),
+        deviceBrand: matchedDev.brand,
+        deviceModel: matchedDev.modelName,
+        deviceModelCode: matchedDev.modelCode,
+        hardwareConcurrency: matchedDev.cores,
+        deviceMemory: matchedDev.memory,
         maxTouchPoints: 5,
         touchSupport: true,
         doNotTrack: fp.navigator?.doNotTrack || null
       },
       screen: {
-        width: fp.screen?.width && fp.screen.width < 1000 ? fp.screen.width : matchedDev.screenWidth,
-        height: fp.screen?.height && fp.screen.height < 1500 ? fp.screen.height : matchedDev.screenHeight,
-        devicePixelRatio: fp.screen?.devicePixelRatio && fp.screen.devicePixelRatio >= 2 ? fp.screen.devicePixelRatio : matchedDev.dpr,
+        width: matchedDev.screenWidth,
+        height: matchedDev.screenHeight,
+        availWidth: matchedDev.screenWidth,
+        availHeight: matchedDev.screenHeight,
+        devicePixelRatio: matchedDev.dpr,
         viewportWidth: matchedDev.screenWidth,
         viewportHeight: Math.floor(matchedDev.screenHeight * 0.9),
         colorDepth: 24,
@@ -436,20 +437,22 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
         platform: 'iPhone',
         vendor: 'Apple Computer, Inc.',
         deviceBrand: 'Apple',
-        deviceModel: fp.navigator?.deviceModel || matchedDev.modelName,
-        deviceModelCode: fp.navigator?.deviceModelCode || matchedDev.id,
-        hardwareConcurrency: Math.min(fp.navigator?.hardwareConcurrency || matchedDev.cores, 6),
-        deviceMemory: Math.min(fp.navigator?.deviceMemory || matchedDev.memory, 8),
+        deviceModel: matchedDev.modelName,
+        deviceModelCode: matchedDev.id,
+        hardwareConcurrency: matchedDev.cpuCores,
+        deviceMemory: matchedDev.ramGb,
         maxTouchPoints: 5,
         touchSupport: true,
         doNotTrack: fp.navigator?.doNotTrack || null
       },
       screen: {
-        width: fp.screen?.width && fp.screen.width < 1000 ? fp.screen.width : matchedDev.screenWidth,
-        height: fp.screen?.height && fp.screen.height < 1500 ? fp.screen.height : matchedDev.screenHeight,
-        devicePixelRatio: fp.screen?.devicePixelRatio && fp.screen.devicePixelRatio >= 2 ? fp.screen.devicePixelRatio : matchedDev.dpr,
-        viewportWidth: matchedDev.screenWidth,
-        viewportHeight: Math.floor(matchedDev.screenHeight * 0.9),
+        width: matchedDev.width,
+        height: matchedDev.height,
+        availWidth: matchedDev.width,
+        availHeight: matchedDev.height,
+        devicePixelRatio: matchedDev.dpr,
+        viewportWidth: matchedDev.width,
+        viewportHeight: Math.floor(matchedDev.height * 0.9),
         colorDepth: 32,
         pixelDepth: 32,
         orientation: 'portrait-primary',
@@ -509,12 +512,12 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       battery: {
         enabled: true,
         charging: fp.battery?.charging ?? false,
-        level: fp.battery?.level ?? 0.90
+        level: fp.battery?.level ?? 0.85
       },
       networkInfo: {
         effectiveType: fp.networkInfo?.effectiveType || '4g',
-        downlink: fp.networkInfo?.downlink || 20,
-        rtt: fp.networkInfo?.rtt || 40
+        downlink: fp.networkInfo?.downlink || 15,
+        rtt: fp.networkInfo?.rtt || 50
       },
       permissions: fp.permissions || {
         camera: 'prompt',
@@ -579,6 +582,35 @@ function ensureFpStructure(rawFp: any, targetOs = 'macos-intel', bType: 'chrome'
       finalUnmaskedRenderer = defaultGpuRenderer
       finalGpuVendor = 'Apple'
       finalUnmaskedVendor = 'Google Inc. (Apple)'
+    }
+  } else if (isWindows) {
+    const isInvalidWinGpu = finalUnmaskedRenderer.toLowerCase().includes('apple') ||
+      finalUnmaskedRenderer.toLowerCase().includes('metal') ||
+      finalUnmaskedRenderer.toLowerCase().includes('mesa')
+    if (isInvalidWinGpu) {
+      finalGpuRenderer = defaultGpuRenderer
+      finalUnmaskedRenderer = defaultGpuRenderer
+      finalGpuVendor = 'NVIDIA'
+      finalUnmaskedVendor = 'Google Inc. (NVIDIA)'
+    }
+  } else if (isLinux) {
+    const isInvalidLinuxGpu = finalUnmaskedRenderer.toLowerCase().includes('apple') ||
+      finalUnmaskedRenderer.toLowerCase().includes('direct3d') ||
+      finalUnmaskedRenderer.toLowerCase().includes('metal')
+    if (isInvalidLinuxGpu) {
+      finalGpuRenderer = defaultGpuRenderer
+      finalUnmaskedRenderer = defaultGpuRenderer
+      finalGpuVendor = 'Intel'
+      finalUnmaskedVendor = 'Google Inc. (Intel)'
+    }
+  } else if (targetOs === 'macos-intel') {
+    const isInvalidMacIntelGpu = finalUnmaskedRenderer.toLowerCase().includes('direct3d') ||
+      finalUnmaskedRenderer.toLowerCase().includes('mesa')
+    if (isInvalidMacIntelGpu) {
+      finalGpuRenderer = defaultGpuRenderer
+      finalUnmaskedRenderer = defaultGpuRenderer
+      finalGpuVendor = 'Intel'
+      finalUnmaskedVendor = 'Google Inc. (Intel)'
     }
   }
 
@@ -2016,7 +2048,7 @@ export const ProfileModal: React.FC<Props> = ({
                           textAlign: 'left'
                         }}
                       >
-                        <img src={chromeIconImg} alt="Antiprofile Chrome" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                        <ChromeLogo size={28} />
                         <div>
                           <div style={{ color: browserType === 'chrome' ? '#FFF' : '#CBD5E1', fontWeight: 600 }}>Google Chrome / Chromium</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>Blink Engine • Full Client Hints</div>
@@ -2042,7 +2074,7 @@ export const ProfileModal: React.FC<Props> = ({
                           textAlign: 'left'
                         }}
                       >
-                        <img src={firefoxIconImg} alt="Antiprofile Firefox" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} />
+                        <FirefoxLogo size={28} />
                         <div>
                           <div style={{ color: browserType === 'firefox' ? '#FFF' : '#CBD5E1', fontWeight: 600 }}>Mozilla Firefox</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>Gecko Engine • Firefox Quantum</div>
