@@ -147,7 +147,7 @@ export function getManagedChromiumStatus(): ManagedChromiumStatus {
     if (process.platform === 'win32') {
       try {
         const stat = fs.statSync(execPath)
-        if (stat.size > 100 * 1024) {
+        if (stat.size > 4096) {
           return {
             installed: true,
             executablePath: execPath,

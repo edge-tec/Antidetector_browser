@@ -284,8 +284,8 @@ export function verifyManagedExecutable(executablePath: string): { valid: boolea
   try {
     const stat = fs.statSync(executablePath)
 
-    // Basic sanity: executable must be > 100KB (real browser binaries are 1MB+)
-    if (stat.size < 100 * 1024) {
+    // Basic sanity: executable must be > 4KB (on Windows, chrome.exe is a ~68KB launcher stub, chrome.dll contains the engine)
+    if (stat.size < 4096) {
       return { valid: false, version: '', error: `Executable file is too small (${stat.size} bytes). Likely corrupt or incomplete.` }
     }
 
@@ -304,7 +304,7 @@ export function verifyManagedExecutable(executablePath: string): { valid: boolea
 
         if (headerBuf[0] === 0x4D && headerBuf[1] === 0x5A) {
           // Valid PE (MZ) header — file is a real Windows executable
-          logger.info('browser', `[RuntimeProvisioner] Windows PE verification passed for: ${executablePath} (${Math.round(stat.size / 1048576)} MB)`)
+          logger.info('browser', `[RuntimeProvisioner] Windows PE verification passed for: ${executablePath} (${Math.round(stat.size / 1024)} KB)`)
           return { valid: true, version: 'verified-pe' }
         } else {
           return { valid: false, version: '', error: 'File is not a valid Windows executable (missing MZ header).' }
