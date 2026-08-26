@@ -203,38 +203,33 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
       })
     } catch {}
 
-    // Apply authoritative device metrics override (Desktop & Mobile) to prevent host screen/DPR leakage
-    const scr = fingerprint.screen || { width: 1920, height: 1080, devicePixelRatio: 1 }
-    const osType: OSType = (fingerprint as any).osType || (fingerprint.navigator as any)?.osType || 'windows-10'
-    const isMac = osType.includes('macos')
+    // ── Fluid Responsive Viewport & Touch Configuration ──
+    // Always clear fixed device metrics overrides so the browsing area fluidly fills 100% of the window
+    // without letterboxing or black void offsets. Screen properties (screen.width/height, DPR, orientation)
+    // are faithfully spoofed via JavaScript prototype descriptors in scripts/screen.ts.
+    await client.send('Emulation.clearDeviceMetricsOverride')
 
     if (isAndroid || isIOS) {
-      await client.send('Emulation.setDeviceMetricsOverride', {
-        width: scr.width || 393,
-        height: scr.height || 852,
-        deviceScaleFactor: scr.devicePixelRatio || 3,
-        mobile: true,
-        screenOrientation: {
-          angle: scr.orientationAngle || 0,
-          type: (scr.orientation === 'portrait-primary' ? 'portraitPrimary' : 'landscapePrimary') as any
-        }
-      })
       await client.send('Emulation.setTouchEmulationEnabled', {
         enabled: true,
         maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
       })
+      try {
+        await client.send('Emulation.setEmitTouchEventsForMouse', {
+          enabled: true,
+          configuration: 'mobile'
+        })
+      } catch {}
     } else {
-      // Desktop: Do NOT use Emulation.setDeviceMetricsOverride.
-      // It creates a fixed virtual viewport (e.g. 1920×1080) that is larger than
-      // the physical Chromium window (1280×800), causing page content to render
-      // offset to the right with a large gray/blank area on the left side.
-      // The JavaScript-level screen.ts injection already spoofs window.screen.*
-      // and devicePixelRatio for fingerprint masking without breaking CSS layout.
-      await client.send('Emulation.clearDeviceMetricsOverride')
       await client.send('Emulation.setTouchEmulationEnabled', {
         enabled: false,
         maxTouchPoints: 0
       })
+      try {
+        await client.send('Emulation.setEmitTouchEventsForMouse', {
+          enabled: false
+        })
+      } catch {}
     }
 
     // Geolocation CDP Override
