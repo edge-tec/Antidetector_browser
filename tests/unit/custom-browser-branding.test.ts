@@ -89,8 +89,8 @@ describe('Custom Browser Branding & Profile Icon Architecture', () => {
       }
 
       const args = BrowserIconManager.getChromiumBrandingArgs(mockProfile)
-      expect(args.some(a => a.startsWith('--app-id='))).toBe(true)
-      expect(args.some(a => a.startsWith('--class='))).toBe(true)
+      // On non-Windows platforms it returns empty or valid safe args without --app-id
+      expect(args.every(a => !a.startsWith('--app-id='))).toBe(true)
     })
   })
 

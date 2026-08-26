@@ -420,18 +420,16 @@ export class BrowserIconManager {
   }
 
   /**
-   * Get Chromium launch arguments for custom branding / window class / AppUserModelID.
+   * Get Chromium launch arguments for custom branding / Windows AppUserModelID.
+   * Note: Never pass --app-id (reserved for installed PWAs which crashes Chromium if not found)
+   * or non-standard --window-icon / --class flags.
    */
   public static getChromiumBrandingArgs(profile: Profile): string[] {
-    const resolvedIcon = this.resolveIcon('chromium', profile)
-    const args: string[] = [
-      `--app-id=antiprofiles.browser.${profile.id}`,
-      `--class=antiprofiles-chromium`,
-      `--app-name=AntiProfiles Chromium`
-    ]
+    const args: string[] = []
 
-    if (process.platform === 'win32' && resolvedIcon.icoPath) {
-      args.push(`--window-icon=${resolvedIcon.icoPath}`)
+    // Set Windows AppUserModelID for taskbar grouping without triggering PWA app-mode crash
+    if (process.platform === 'win32' && profile?.id) {
+      args.push(`--app-user-model-id=antiprofiles.browser.${profile.id}`)
     }
 
     return args
