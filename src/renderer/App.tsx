@@ -2406,69 +2406,6 @@ function AppContent() {
               </button>
             )}
 
-            {/* Real-Time Central Synchronization Pill */}
-            <div
-              onClick={async () => {
-                try {
-                  showToast('info', '⚡ Refreshing authoritative synchronization...')
-                  await (window as any).api?.resyncAuthoritativeState?.()
-                } catch {}
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                backgroundColor: syncStatus.status === 'connected'
-                  ? '#10B98115'
-                  : (syncStatus.status === 'error'
-                    ? '#EF444415'
-                    : (syncStatus.status === 'disconnected'
-                      ? 'rgba(148, 163, 184, 0.12)'
-                      : '#F59E0B15')),
-                border: `1px solid ${
-                  syncStatus.status === 'connected'
-                    ? '#10B98150'
-                    : (syncStatus.status === 'error'
-                      ? '#EF444450'
-                      : (syncStatus.status === 'disconnected'
-                        ? 'rgba(148, 163, 184, 0.25)'
-                        : '#F59E0B50'))
-                }`,
-                cursor: 'pointer',
-                fontSize: '11px',
-                whiteSpace: 'nowrap'
-              }}
-              title={`Central Sync: ${syncStatus.status.toUpperCase()} | Version: v${syncStatus.authVersion} | Click to Force Resync`}
-            >
-              <span style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                backgroundColor: syncStatus.status === 'connected'
-                  ? '#10B981'
-                  : (syncStatus.status === 'error'
-                    ? '#EF4444'
-                    : (syncStatus.status === 'disconnected'
-                      ? '#94A3B8'
-                      : '#F59E0B')),
-                boxShadow: syncStatus.status === 'connected' ? '0 0 6px #10B981' : 'none'
-              }} />
-              <span style={{
-                fontWeight: 700,
-                color: syncStatus.status === 'connected'
-                  ? '#10B981'
-                  : (syncStatus.status === 'error'
-                    ? '#F87171'
-                    : (syncStatus.status === 'disconnected'
-                      ? '#94A3B8'
-                      : '#F59E0B'))
-              }}>
-                {syncStatus.status === 'connected' ? `Live Sync (v${syncStatus.authVersion})` : (syncStatus.status === 'syncing' ? 'Syncing...' : (syncStatus.status === 'reconnecting' ? 'Reconnecting...' : 'Offline'))}
-              </span>
-            </div>
-
             {/* Subscription & Plan Status Pill */}
             {licenseInfo && (
               <div

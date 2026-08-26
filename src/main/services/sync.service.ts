@@ -146,7 +146,6 @@ class RealtimeSyncService {
   public async resyncAuthoritativeState(): Promise<AuthoritativeUserState | null> {
     if (!this.sessionToken) return null
 
-    this.setStatus('syncing')
     try {
       const url = `${this.serverUrl}/api/auth/authorization`
       const data = await this.httpGetJson(url, this.sessionToken)
