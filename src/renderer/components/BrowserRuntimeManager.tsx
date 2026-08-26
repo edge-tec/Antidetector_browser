@@ -142,7 +142,9 @@ export const BrowserRuntimeManager: React.FC = () => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Architecture:</span>
-              <span style={{ textTransform: 'uppercase' }}>{data?.platform || process.platform} ({data?.arch || process.arch})</span>
+              <span style={{ textTransform: 'uppercase' }}>
+                {data?.platform || (typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'darwin' : typeof navigator !== 'undefined' && navigator.userAgent.includes('Win') ? 'win32' : 'linux')} ({data?.arch || 'arm64'})
+              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Integrity Status:</span>
