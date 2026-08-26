@@ -30,6 +30,7 @@ interface AdminAffiliateData {
   clicks: any[]
   conversions: any[]
   postbacks: any[]
+  postbackConfigs: any[]
   withdrawals: any[]
   auditLogs: any[]
 }
@@ -89,6 +90,28 @@ export const AdminAffiliateManager: React.FC = () => {
     txRef: ''
   })
   const [processingAction, setProcessingAction] = useState(false)
+
+  // S2S Postback Edit & Test Modal State
+  const [postbackModal, setPostbackModal] = useState<{
+    open: boolean
+    userId: string
+    userName?: string
+    userEmail?: string
+    affiliateId: string
+    postbackUrl: string
+    httpMethod: 'GET' | 'POST'
+    isActive: boolean
+  }>({
+    open: false,
+    userId: '',
+    affiliateId: '',
+    postbackUrl: '',
+    httpMethod: 'GET',
+    isActive: true
+  })
+  const [savingPostback, setSavingPostback] = useState(false)
+  const [testingPostback, setTestingPostback] = useState(false)
+  const [testPostbackResult, setTestPostbackResult] = useState<{ statusCode: number; responseTimeMs: number; error?: string } | null>(null)
 
   const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -228,6 +251,80 @@ export const AdminAffiliateManager: React.FC = () => {
       }
     } catch (err: any) {
       showToast('error', err.message)
+    }
+  }
+
+  const handleOpenEditPostback = (cfg: any) => {
+    setPostbackModal({
+      open: true,
+      userId: cfg.user_id,
+      userName: cfg.user_name,
+      userEmail: cfg.user_email,
+      affiliateId: cfg.affiliate_id,
+      postbackUrl: cfg.postback_url || '',
+      httpMethod: cfg.http_method || 'GET',
+      isActive: cfg.is_active !== 0
+    })
+    setTestPostbackResult(null)
+  }
+
+  const handleSavePostbackConfig = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!postbackModal.userId) return
+    setSavingPostback(true)
+    try {
+      const token = localStorage.getItem('pv_session_token') || ''
+      if ((window as any).api?.affiliateAdminSavePostbackConfig) {
+        const res = await (window as any).api.affiliateAdminSavePostbackConfig(
+          token,
+          postbackModal.userId,
+          postbackModal.postbackUrl,
+          postbackModal.httpMethod,
+          postbackModal.isActive
+        )
+        if (res?.success) {
+          showToast('success', 'User S2S Postback Configuration updated successfully!')
+          setPostbackModal(prev => ({ ...prev, open: false }))
+          loadData()
+        } else {
+          showToast('error', res?.error || 'Failed to update postback config')
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    } finally {
+      setSavingPostback(false)
+    }
+  }
+
+  const handleTestPostback = async () => {
+    if (!postbackModal.postbackUrl.trim()) {
+      showToast('error', 'Please enter a postback URL first')
+      return
+    }
+    setTestingPostback(true)
+    setTestPostbackResult(null)
+    try {
+      const token = localStorage.getItem('pv_session_token') || ''
+      if ((window as any).api?.affiliateAdminTestPostback) {
+        const res = await (window as any).api.affiliateAdminTestPostback(
+          token,
+          postbackModal.postbackUrl,
+          postbackModal.httpMethod
+        )
+        if (res?.success && res.data) {
+          setTestPostbackResult(res.data)
+          if (res.data.statusCode >= 200 && res.data.statusCode < 300) {
+            showToast('success', `✓ Server returned HTTP ${res.data.statusCode} in ${res.data.responseTimeMs}ms!`)
+          } else {
+            showToast('error', `Server returned HTTP ${res.data.statusCode || 'ERR'}: ${res.data.error || 'Check endpoint'}`)
+          }
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    } finally {
+      setTestingPostback(false)
     }
   }
 
@@ -688,52 +785,136 @@ export const AdminAffiliateManager: React.FC = () => {
         </div>
       )}
 
-      {/* ── TAB 6: POSTBACK LOGS ── */}
+      {/* ── TAB 6: POSTBACK CONFIGS & DELIVERY LOGS ── */}
       {activeSubTab === 'postbacks' && (
-        <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#FFF' }}>Server-to-Server Postback Delivery Logs</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 12px' }}>TIME</th>
-                  <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
-                  <th style={{ padding: '10px 12px' }}>TARGET URL</th>
-                  <th style={{ padding: '10px 12px' }}>HTTP CODE</th>
-                  <th style={{ padding: '10px 12px' }}>ATTEMPTS</th>
-                  <th style={{ padding: '10px 12px' }}>STATUS</th>
-                  <th style={{ padding: '10px 12px' }}>ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.postbacks?.map(pb => (
-                  <tr key={pb.id} style={{ borderBottom: '1px solid #1E293B' }}>
-                    <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(pb.created_at).toLocaleTimeString()}</td>
-                    <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{pb.affiliate_id}</td>
-                    <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {pb.url}
-                    </td>
-                    <td style={{ padding: '10px 12px', fontWeight: 700, color: pb.http_status === 200 ? '#4ADE80' : '#F87171' }}>
-                      {pb.http_status ? `${pb.http_status}` : 'ERR'}
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>{pb.attempt_count}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: pb.status === 'confirmed' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: pb.status === 'confirmed' ? '#4ADE80' : '#F87171' }}>
-                        {pb.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <button
-                        onClick={() => handleRetryPostback(pb.id)}
-                        style={{ padding: '4px 8px', borderRadius: '4px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', cursor: 'pointer' }}
-                      >
-                        Retry
-                      </button>
-                    </td>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Section 1: User S2S Postback Webhook Configurations */}
+          <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#FFF' }}>⚡ User S2S Postback Webhook Configurations</h3>
+                <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
+                  Live postback webhook endpoints configured by affiliates for automated conversion tracking.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 12px' }}>AFFILIATE / USER</th>
+                    <th style={{ padding: '10px 12px' }}>METHOD</th>
+                    <th style={{ padding: '10px 12px' }}>POSTBACK URL & MACROS</th>
+                    <th style={{ padding: '10px 12px' }}>STATUS</th>
+                    <th style={{ padding: '10px 12px' }}>UPDATED</th>
+                    <th style={{ padding: '10px 12px' }}>ACTIONS</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(!data?.postbackConfigs || data.postbackConfigs.length === 0) ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                        No user S2S postback webhooks configured yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    data.postbackConfigs.map(cfg => (
+                      <tr key={cfg.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                        <td style={{ padding: '10px 12px' }}>
+                          <div style={{ color: '#FFF', fontWeight: 600 }}>{cfg.user_name || cfg.user_email || cfg.user_id}</div>
+                          <div style={{ color: '#38BDF8', fontSize: '11px', fontFamily: 'monospace' }}>{cfg.affiliate_id}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ padding: '3px 6px', borderRadius: '4px', background: '#1E293B', color: '#CBD5E1', fontSize: '10px', fontWeight: 700 }}>
+                            {cfg.http_method || 'GET'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {cfg.postback_url}
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{
+                            padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700,
+                            background: cfg.is_active !== 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                            color: cfg.is_active !== 0 ? '#4ADE80' : '#F87171'
+                          }}>
+                            {cfg.is_active !== 0 ? 'ACTIVE' : 'INACTIVE'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8', fontSize: '11px' }}>
+                          {new Date(cfg.updated_at || cfg.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <button
+                            onClick={() => handleOpenEditPostback(cfg)}
+                            style={{ padding: '4px 10px', borderRadius: '6px', background: '#2563EB', color: '#FFF', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            ✏️ Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 2: Postback Delivery History Logs */}
+          <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#FFF' }}>📜 Server-to-Server Postback Delivery Logs</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 12px' }}>TIME</th>
+                    <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
+                    <th style={{ padding: '10px 12px' }}>TARGET URL</th>
+                    <th style={{ padding: '10px 12px' }}>HTTP CODE</th>
+                    <th style={{ padding: '10px 12px' }}>ATTEMPTS</th>
+                    <th style={{ padding: '10px 12px' }}>STATUS</th>
+                    <th style={{ padding: '10px 12px' }}>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(!data?.postbacks || data.postbacks.length === 0) ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                        No postback delivery history yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    data.postbacks.map(pb => (
+                      <tr key={pb.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(pb.created_at).toLocaleTimeString()}</td>
+                        <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{pb.affiliate_id}</td>
+                        <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {pb.url}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 700, color: pb.http_status === 200 ? '#4ADE80' : '#F87171' }}>
+                          {pb.http_status ? `${pb.http_status}` : 'ERR'}
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>{pb.attempt_count}</td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: pb.status === 'confirmed' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: pb.status === 'confirmed' ? '#4ADE80' : '#F87171' }}>
+                            {pb.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <button
+                            onClick={() => handleRetryPostback(pb.id)}
+                            style={{ padding: '4px 8px', borderRadius: '4px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', cursor: 'pointer' }}
+                          >
+                            Retry
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1046,6 +1227,131 @@ export const AdminAffiliateManager: React.FC = () => {
                   style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#059669', color: '#FFF', fontWeight: 700, border: 'none', cursor: 'pointer' }}
                 >
                   {processingAction ? 'Updating...' : 'Confirm Update'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT S2S POSTBACK MODAL ── */}
+      {postbackModal.open && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999
+        }}>
+          <div style={{
+            background: '#131826', border: '1px solid #334155', borderRadius: '16px',
+            padding: '24px', width: '100%', maxWidth: '580px', color: '#FFF'
+          }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px' }}>
+              Edit S2S Postback Configuration
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#94A3B8' }}>
+              Affiliate: <strong style={{ color: '#38BDF8' }}>{postbackModal.userName || postbackModal.userEmail || postbackModal.userId}</strong> ({postbackModal.affiliateId})
+            </p>
+
+            <form onSubmit={handleSavePostbackConfig} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>POSTBACK ENDPOINT URL</label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://tracker.partner.com/postback?click_id={CLICK_ID}&payout={PAYOUT}"
+                  value={postbackModal.postbackUrl}
+                  onChange={e => setPostbackModal({ ...postbackModal, postbackUrl: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#38BDF8', fontSize: '12px', fontFamily: 'monospace' }}
+                />
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginBottom: '6px' }}>Insert Dynamic Macro Tags:</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {['{CLICK_ID}', '{PAYOUT}', '{COMMISSION}', '{STATUS}', '{OFFER_ID}', '{CONVERSION_ID}', '{AMOUNT}'].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setPostbackModal(prev => ({ ...prev, postbackUrl: prev.postbackUrl + (prev.postbackUrl.includes('?') ? '&' : '?') + tag.replace(/[{}]/g, '').toLowerCase() + '=' + tag }))}
+                      style={{ padding: '3px 8px', borderRadius: '4px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '10px', cursor: 'pointer', fontFamily: 'monospace' }}
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>HTTP METHOD</label>
+                  <select
+                    value={postbackModal.httpMethod}
+                    onChange={e => setPostbackModal({ ...postbackModal, httpMethod: e.target.value as any })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  >
+                    <option value="GET">GET (Standard Query Params)</option>
+                    <option value="POST">POST (Webhook Payload)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '20px' }}>
+                  <input
+                    type="checkbox"
+                    id="pb_is_active"
+                    checked={postbackModal.isActive}
+                    onChange={e => setPostbackModal({ ...postbackModal, isActive: e.target.checked })}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="pb_is_active" style={{ fontSize: '12px', color: '#FFF', fontWeight: 600, cursor: 'pointer' }}>
+                    Active & Receiving Webhooks
+                  </label>
+                </div>
+              </div>
+
+              {/* Test Postback Ping */}
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#FFF' }}>Verify Endpoint Connection</div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>Sends a simulated conversion ping to test responsiveness.</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTestPostback}
+                  disabled={testingPostback || !postbackModal.postbackUrl}
+                  style={{ padding: '6px 14px', borderRadius: '6px', background: '#334155', color: '#38BDF8', border: '1px solid #475569', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {testingPostback ? 'Testing...' : '🚀 Test Ping'}
+                </button>
+              </div>
+
+              {testPostbackResult && (
+                <div style={{
+                  padding: '8px 12px', borderRadius: '6px', fontSize: '11px',
+                  background: testPostbackResult.statusCode >= 200 && testPostbackResult.statusCode < 300 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                  color: testPostbackResult.statusCode >= 200 && testPostbackResult.statusCode < 300 ? '#4ADE80' : '#F87171',
+                  border: `1px solid ${testPostbackResult.statusCode >= 200 && testPostbackResult.statusCode < 300 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
+                }}>
+                  {testPostbackResult.statusCode >= 200 && testPostbackResult.statusCode < 300
+                    ? `✓ Status ${testPostbackResult.statusCode} OK — Received in ${testPostbackResult.responseTimeMs}ms`
+                    : `⚠️ HTTP ${testPostbackResult.statusCode || 'ERR'}: ${testPostbackResult.error || 'Connection failed'}`
+                  }
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPostbackModal(prev => ({ ...prev, open: false }))}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#1E293B', color: '#CBD5E1', border: '1px solid #334155', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPostback}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#2563EB', color: '#FFF', fontWeight: 700, border: 'none', cursor: 'pointer' }}
+                >
+                  {savingPostback ? 'Saving...' : '💾 Save Postback Config'}
                 </button>
               </div>
             </form>

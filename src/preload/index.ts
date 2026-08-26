@@ -397,6 +397,12 @@ const api = {
     ipcRenderer.invoke('affiliate:adminReverseCommission', token, commissionId, reason),
   affiliateAdminAdjustBalance: (token: string, userId: string, amount: number, reason: string) =>
     ipcRenderer.invoke('affiliate:adminAdjustBalance', token, userId, amount, reason),
+  affiliateAdminGetPostbackConfigs: (token?: string) =>
+    ipcRenderer.invoke('affiliate:adminGetPostbackConfigs', token),
+  affiliateAdminSavePostbackConfig: (token: string, userId: string, postbackUrl: string, method?: 'GET' | 'POST', isActive?: boolean) =>
+    ipcRenderer.invoke('affiliate:adminSavePostbackConfig', token, userId, postbackUrl, method, isActive),
+  affiliateAdminTestPostback: (token: string, postbackUrl: string, method?: 'GET' | 'POST') =>
+    ipcRenderer.invoke('affiliate:adminTestPostback', token, postbackUrl, method),
   onAffiliateCommissionEarned: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('ui:affiliate-commission-earned', callback)
     return () => ipcRenderer.removeListener('ui:affiliate-commission-earned', callback)

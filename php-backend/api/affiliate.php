@@ -481,17 +481,116 @@ switch ($action) {
     case 'admin-get-postbacks':
         $admin = requireAdmin();
 
-        $stmt = $db->prepare("
+        $stmtConfigs = $db->prepare("
+            SELECT p.*, u.name as user_name, u.email as user_email
+            FROM affiliate_postback_configs p
+            LEFT JOIN users u ON u.id = p.user_id
+            ORDER BY p.updated_at DESC
+        ");
+        $stmtConfigs->execute();
+        $configs = $stmtConfigs->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtLogs = $db->prepare("
             SELECT p.*, u.email as affiliate_email
             FROM affiliate_postbacks p
             LEFT JOIN users u ON u.affiliate_id = p.affiliate_id
             ORDER BY p.created_at DESC
             LIMIT 100
         ");
-        $stmt->execute();
-        $postbacks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmtLogs->execute();
+        $postbacks = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
 
-        respondJson(['success' => true, 'data' => $postbacks]);
+        respondJson(['success' => true, 'configs' => $configs, 'data' => $postbacks]);
+        break;
+
+    case 'admin-get-postback-configs':
+        $admin = requireAdmin();
+        $stmt = $db->prepare("
+            SELECT p.*, u.name as user_name, u.email as user_email
+            FROM affiliate_postback_configs p
+            LEFT JOIN users u ON u.id = p.user_id
+            ORDER BY p.updated_at DESC
+        ");
+        $stmt->execute();
+        $configs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        respondJson(['success' => true, 'data' => $configs]);
+        break;
+
+    case 'admin-save-postback-config':
+        $admin = requireAdmin();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $userId = trim($input['user_id'] ?? '');
+        $postbackUrl = trim($input['postback_url'] ?? '');
+        $httpMethod = strtoupper(trim($input['http_method'] ?? 'GET'));
+        if (!in_array($httpMethod, ['GET', 'POST'])) $httpMethod = 'GET';
+        $isActive = isset($input['is_active']) ? ($input['is_active'] ? 1 : 0) : 1;
+
+        if (empty($userId)) {
+            respondJson(['success' => false, 'error' => 'User ID is required.'], 400);
+        }
+
+        // Get user affiliate ID
+        $uStmt = $db->prepare("SELECT id, affiliate_id FROM users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $targetUser = $uStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$targetUser) {
+            respondJson(['success' => false, 'error' => 'Target user not found.'], 404);
+        }
+
+        $affId = $targetUser['affiliate_id'] ?: 'AFF-' . strtoupper(substr(md5($userId), 0, 6));
+        $configId = 'pbcfg_' . bin2hex(random_bytes(8));
+
+        $stmt = $db->prepare("
+            INSERT INTO affiliate_postback_configs (id, user_id, affiliate_id, postback_url, http_method, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE postback_url = VALUES(postback_url), http_method = VALUES(http_method), is_active = VALUES(is_active), updated_at = NOW()
+        ");
+        $stmt->execute([$configId, $userId, $affId, $postbackUrl, $httpMethod, $isActive]);
+
+        respondJson(['success' => true, 'message' => 'S2S Postback configuration updated successfully.']);
+        break;
+
+    case 'admin-test-postback':
+        $admin = requireAdmin();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $postbackUrl = trim($input['postback_url'] ?? '');
+        $httpMethod = strtoupper(trim($input['http_method'] ?? 'GET'));
+
+        if (empty($postbackUrl)) {
+            respondJson(['success' => false, 'error' => 'Postback URL is required.'], 400);
+        }
+
+        $renderedUrl = str_replace(
+            ['{CLICK_ID}', '{AFFILIATE_ID}', '{OFFER_ID}', '{CONVERSION_ID}', '{STATUS}', '{PAYOUT}', '{COMMISSION}', '{AMOUNT}'],
+            ['test_click_123456', 'AFF-TEST', 'offer_main_saas', 'test_conv_987654', 'approved', '15.00', '15.00', '100.00'],
+            $postbackUrl
+        );
+
+        $start = microtime(true);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $renderedUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        if ($httpMethod === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['event' => 'test_ping', 'click_id' => 'test_click_123456', 'payout' => 15.00]));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        }
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+
+        $elapsed = round((microtime(true) - $start) * 1000);
+        respondJson([
+            'success' => true,
+            'data' => [
+                'statusCode' => $code ?: 0,
+                'responseTimeMs' => $elapsed,
+                'error' => $err ?: null
+            ]
+        ]);
         break;
 
     case 'admin-retry-postback':

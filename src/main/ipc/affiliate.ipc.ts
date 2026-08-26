@@ -223,4 +223,44 @@ export function registerAffiliateHandlers(): void {
       return { success: false, error: err.message }
     }
   })
+
+  // ── 16. Admin: Get All Users' Postback Configurations ──
+  ipcMain.handle('affiliate:adminGetPostbackConfigs', async (_event, token?: string) => {
+    try {
+      if (!verifyAdminSession(token)) {
+        return { success: false, error: 'Unauthorized. Admin access required.' }
+      }
+      const configs = affiliateService.getAllPostbackConfigs()
+      return { success: true, data: configs }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 17. Admin: Save / Edit Any User's S2S Postback Configuration ──
+  ipcMain.handle('affiliate:adminSavePostbackConfig', async (_event, token: string, userId: string, postbackUrl: string, method?: 'GET' | 'POST', isActive?: boolean) => {
+    try {
+      if (!verifyAdminSession(token)) {
+        return { success: false, error: 'Unauthorized. Admin access required.' }
+      }
+      const adminId = getAdminUserId(token)
+      const saved = affiliateService.adminSavePostbackConfig(userId, postbackUrl, method || 'GET', isActive !== false, adminId)
+      return { success: true, data: saved }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 18. Admin: Test S2S Postback Endpoint ──
+  ipcMain.handle('affiliate:adminTestPostback', async (_event, token: string, postbackUrl: string, method?: 'GET' | 'POST') => {
+    try {
+      if (!verifyAdminSession(token)) {
+        return { success: false, error: 'Unauthorized. Admin access required.' }
+      }
+      const res = await affiliateService.adminTestPostback(postbackUrl, method || 'GET')
+      return { success: true, data: res }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }

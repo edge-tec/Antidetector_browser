@@ -635,25 +635,64 @@ export class AffiliateService {
     return cfg || null
   }
 
-  public savePostbackConfig(userId: string, postbackUrl: string, httpMethod: 'GET' | 'POST' = 'GET'): AffiliatePostbackConfig {
+  public getAllPostbackConfigs(): any[] {
+    const db = getDatabase()
+    return db.prepare(`
+      SELECT p.*, u.name as user_name, u.email as user_email
+      FROM affiliate_postback_configs p
+      LEFT JOIN users u ON u.id = p.user_id
+      ORDER BY p.updated_at DESC
+    `).all()
+  }
+
+  public savePostbackConfig(userId: string, postbackUrl: string, httpMethod: 'GET' | 'POST' = 'GET', isActive: boolean = true): AffiliatePostbackConfig {
     const db = getDatabase()
     const { affiliateId } = this.getOrCreateAffiliateId(userId)
     const id = `pbcfg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    const activeVal = isActive ? 1 : 0
 
     db.prepare(`
       INSERT INTO affiliate_postback_configs (
         id, user_id, affiliate_id, postback_url, http_method, is_active, created_at, updated_at
       ) VALUES (
-        ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now')
+        ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now')
       )
       ON CONFLICT(user_id) DO UPDATE SET
         postback_url = excluded.postback_url,
         http_method = excluded.http_method,
-        is_active = 1,
+        is_active = excluded.is_active,
         updated_at = datetime('now')
-    `).run(id, userId, affiliateId, postbackUrl.trim(), httpMethod)
+    `).run(id, userId, affiliateId, postbackUrl.trim(), httpMethod, activeVal)
 
     return this.getPostbackConfig(userId)!
+  }
+
+  public adminSavePostbackConfig(userId: string, postbackUrl: string, httpMethod: 'GET' | 'POST' = 'GET', isActive: boolean = true, adminUserId: string = 'admin-default'): AffiliatePostbackConfig {
+    const saved = this.savePostbackConfig(userId, postbackUrl, httpMethod, isActive)
+    this.recordAuditLog('postback_admin_updated', adminUserId, userId, `Admin updated S2S postback config: ${postbackUrl} (${httpMethod}, active: ${isActive})`)
+    logger.info('affiliate', `[AffiliateService] Admin ${adminUserId} updated S2S postback for user ${userId}`)
+    return saved
+  }
+
+  public async adminTestPostback(postbackUrl: string, httpMethod: 'GET' | 'POST' = 'GET'): Promise<{ statusCode: number; responseTimeMs: number; error?: string }> {
+    const testUrl = postbackUrl
+      .replace(/{CLICK_ID}/gi, 'test_click_123456')
+      .replace(/{AFFILIATE_ID}/gi, 'AFF-TEST')
+      .replace(/{OFFER_ID}/gi, 'offer_main_saas')
+      .replace(/{CONVERSION_ID}/gi, 'test_conv_987654')
+      .replace(/{STATUS}/gi, 'approved')
+      .replace(/{PAYOUT}/gi, '15.00')
+      .replace(/{COMMISSION}/gi, '15.00')
+      .replace(/{AMOUNT}/gi, '100.00')
+
+    const start = Date.now()
+    const res = await this.executeHttpRequest(testUrl, httpMethod, 6000)
+    const elapsed = Date.now() - start
+    return {
+      statusCode: res.statusCode,
+      responseTimeMs: elapsed,
+      error: res.error
+    }
   }
 
   public async firePostback(conversionId: string): Promise<AffiliatePostbackLog | null> {
@@ -1144,6 +1183,7 @@ export class AffiliateService {
       clicks,
       conversions,
       postbacks,
+      postbackConfigs: this.getAllPostbackConfigs(),
       withdrawals,
       auditLogs
     }

@@ -2812,24 +2812,52 @@ try {
                             </div>
                         </div>
 
-                        <!-- SUB-TAB 5: POSTBACK LOGS -->
+                        <!-- SUB-TAB 5: POSTBACKS -->
                         <div id="affSubPanel-postbacks" class="admin-aff-subpanel" style="display: none;">
-                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
-                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
-                                    <thead>
-                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
-                                            <th style="padding: 10px 14px;">Postback ID</th>
-                                            <th style="padding: 10px 14px;">Affiliate</th>
-                                            <th style="padding: 10px 14px;">Dispatched URL</th>
-                                            <th style="padding: 10px 14px;">HTTP Status</th>
-                                            <th style="padding: 10px 14px;">Status</th>
-                                            <th style="padding: 10px 14px; text-align: right;">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="adminAffPostbacksBody">
-                                        <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading postback webhook logs...</td></tr>
-                                    </tbody>
-                                </table>
+                            <div style="display: flex; flex-direction: column; gap: 20px;">
+                                <!-- Section 1: User S2S Postback Webhook Configurations -->
+                                <div>
+                                    <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #FFF;">⚡ User S2S Postback Webhook Configurations</h4>
+                                    <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                            <thead>
+                                                <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                                    <th style="padding: 10px 14px;">User / Affiliate</th>
+                                                    <th style="padding: 10px 14px;">Method</th>
+                                                    <th style="padding: 10px 14px;">Postback URL & Macros</th>
+                                                    <th style="padding: 10px 14px;">Status</th>
+                                                    <th style="padding: 10px 14px;">Updated</th>
+                                                    <th style="padding: 10px 14px; text-align: right;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="adminAffPostbackConfigsBody">
+                                                <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading postback configurations...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Section 2: Postback Delivery History Logs -->
+                                <div>
+                                    <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #FFF;">📜 Server-to-Server Postback Delivery Logs</h4>
+                                    <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
+                                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                            <thead>
+                                                <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                                    <th style="padding: 10px 14px;">Postback ID</th>
+                                                    <th style="padding: 10px 14px;">Affiliate</th>
+                                                    <th style="padding: 10px 14px;">Dispatched URL</th>
+                                                    <th style="padding: 10px 14px;">HTTP Status</th>
+                                                    <th style="padding: 10px 14px;">Status</th>
+                                                    <th style="padding: 10px 14px; text-align: right;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="adminAffPostbacksBody">
+                                                <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading postback webhook logs...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -4139,6 +4167,64 @@ try {
                 <div style="display: flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-outline" onclick="closeAdminAffiliateSettingsModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary" style="font-weight: 700;">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN EDIT USER S2S POSTBACK -->
+    <div id="modalAdminEditPostback" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
+        <div class="modal-card" style="max-width: 580px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 18px; color: #FFF;">✏️ Edit S2S Postback Configuration</h3>
+                <button onclick="closeAdminEditPostbackModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 16px 0;">
+                Affiliate User: <strong id="adminEditPbUser" style="color: #38BDF8;">—</strong>
+            </p>
+            <form onsubmit="return saveAdminEditPostback(event)">
+                <input type="hidden" id="adminEditPbUserId">
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">POSTBACK ENDPOINT URL</label>
+                    <input type="url" id="adminEditPbUrl" required placeholder="https://tracker.domain.com/postback?click_id={CLICK_ID}&payout={PAYOUT}" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #38BDF8; font-family: monospace; font-size: 12px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Insert Macro Tags:</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 10px; font-family: monospace;" onclick="appendAdminPostbackTag('{CLICK_ID}')">+{CLICK_ID}</button>
+                        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 10px; font-family: monospace;" onclick="appendAdminPostbackTag('{PAYOUT}')">+{PAYOUT}</button>
+                        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 10px; font-family: monospace;" onclick="appendAdminPostbackTag('{COMMISSION}')">+{COMMISSION}</button>
+                        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 10px; font-family: monospace;" onclick="appendAdminPostbackTag('{STATUS}')">+{STATUS}</button>
+                        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 10px; font-family: monospace;" onclick="appendAdminPostbackTag('{OFFER_ID}')">+{OFFER_ID}</button>
+                        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 10px; font-family: monospace;" onclick="appendAdminPostbackTag('{CONVERSION_ID}')">+{CONVERSION_ID}</button>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">HTTP METHOD</label>
+                        <select id="adminEditPbMethod" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                            <option value="GET">GET (Query String)</option>
+                            <option value="POST">POST (Webhook Payload)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; padding-top: 18px;">
+                        <input type="checkbox" id="adminEditPbActive" style="transform: scale(1.2);">
+                        <label for="adminEditPbActive" style="color: #FFF; font-size: 13px; font-weight: 600; cursor: pointer;">Active & Receiving Webhooks</label>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 12px; font-weight: 600; color: #FFF;">Verify Postback Endpoint</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Send a live test conversion ping to check HTTP response code.</div>
+                    </div>
+                    <button type="button" id="btnAdminTestPb" class="btn btn-outline" style="padding: 6px 12px; font-size: 11px; font-weight: 700;" onclick="testAdminPostbackPing()">🚀 Test Ping</button>
+                </div>
+                <div id="adminPbTestResult" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: 11px; margin-bottom: 16px;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-outline" onclick="closeAdminEditPostbackModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: 700;">💾 Save Postback</button>
                 </div>
             </form>
         </div>
@@ -9226,39 +9312,178 @@ try {
 
         async function loadAdminAffPostbacksTable() {
             const token = getAdminSessionToken();
-            const tbody = document.getElementById('adminAffPostbacksBody');
-            if (!tbody) return;
+            const tbodyLogs = document.getElementById('adminAffPostbacksBody');
+            const tbodyConfigs = document.getElementById('adminAffPostbackConfigsBody');
             try {
                 const res = await fetch('/api/affiliate/admin-get-postbacks' + (token ? '?token=' + encodeURIComponent(token) : ''), {
                     headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
                 });
                 const d = await res.json();
-                if (d.success && Array.isArray(d.data)) {
-                    tbody.innerHTML = d.data.map(p => {
-                        const isSuccess = p.http_status >= 200 && p.http_status < 300;
-                        return `
+                
+                // Render Configs
+                if (tbodyConfigs && d.success && Array.isArray(d.configs)) {
+                    if (d.configs.length === 0) {
+                        tbodyConfigs.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">No user S2S postback webhooks configured yet.</td></tr>';
+                    } else {
+                        tbodyConfigs.innerHTML = d.configs.map(cfg => `
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
-                                <td style="padding: 10px 14px; font-family:monospace; color:#818CF8;">${escapeHtml(p.id)}</td>
-                                <td style="padding: 10px 14px; font-size:12px;">${escapeHtml(p.affiliate_email || p.affiliate_id)}</td>
-                                <td style="padding: 10px 14px; font-family:monospace; font-size:11px; color:var(--text-muted); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                    ${escapeHtml(p.url)}
-                                </td>
-                                <td style="padding: 10px 14px; font-family:monospace; font-weight:700; color:${isSuccess ? '#10B981' : '#F87171'};">
-                                    HTTP ${p.http_status || '—'}
+                                <td style="padding: 10px 14px;">
+                                    <div style="font-weight: 600; color: #FFF;">${escapeHtml(cfg.user_name || cfg.user_email || cfg.user_id)}</div>
+                                    <div style="font-family: monospace; font-size: 11px; color: #38BDF8;">${escapeHtml(cfg.affiliate_id)}</div>
                                 </td>
                                 <td style="padding: 10px 14px;">
-                                    <span style="background:${p.status === 'delivered' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${p.status === 'delivered' ? '#10B981' : '#F87171'}; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">
-                                        ${escapeHtml(p.status.toUpperCase())} (${p.retry_count} retries)
+                                    <span style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">
+                                        ${escapeHtml(cfg.http_method || 'GET')}
                                     </span>
                                 </td>
-                                <td style="padding: 10px 14px; text-align:right;">
-                                    <button class="btn btn-outline" style="padding:3px 8px; font-size:11px;" onclick="retryAdminPostback('${escapeHtml(p.id)}')">🔁 Retry</button>
+                                <td style="padding: 10px 14px; font-family: monospace; font-size: 11px; color: #38BDF8; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${escapeHtml(cfg.postback_url)}
+                                </td>
+                                <td style="padding: 10px 14px;">
+                                    <span style="background:${cfg.is_active != 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${cfg.is_active != 0 ? '#10B981' : '#F87171'}; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                                        ${cfg.is_active != 0 ? 'ACTIVE' : 'INACTIVE'}
+                                    </span>
+                                </td>
+                                <td style="padding: 10px 14px; font-size: 11px; color: var(--text-muted);">
+                                    ${new Date(cfg.updated_at || cfg.created_at).toLocaleDateString()}
+                                </td>
+                                <td style="padding: 10px 14px; text-align: right;">
+                                    <button class="btn btn-outline" style="padding: 4px 10px; font-size: 11px; font-weight: 600;" onclick="openAdminEditPostbackModal('${escapeHtml(cfg.user_id)}', '${escapeHtml(cfg.user_name || cfg.user_email || cfg.user_id)}', '${escapeHtml(cfg.affiliate_id)}', '${escapeHtml(cfg.postback_url)}', '${escapeHtml(cfg.http_method || 'GET')}', ${cfg.is_active != 0 ? 'true' : 'false'})">✏️ Edit</button>
                                 </td>
                             </tr>
-                        `;
-                    }).join('');
+                        `).join('');
+                    }
+                }
+
+                // Render Logs
+                if (tbodyLogs && d.success && Array.isArray(d.data)) {
+                    if (d.data.length === 0) {
+                        tbodyLogs.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">No postback delivery history yet.</td></tr>';
+                    } else {
+                        tbodyLogs.innerHTML = d.data.map(p => {
+                            const isSuccess = p.http_status >= 200 && p.http_status < 300;
+                            return `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                    <td style="padding: 10px 14px; font-family:monospace; color:#818CF8;">${escapeHtml(p.id)}</td>
+                                    <td style="padding: 10px 14px; font-size:12px;">${escapeHtml(p.affiliate_email || p.affiliate_id)}</td>
+                                    <td style="padding: 10px 14px; font-family:monospace; font-size:11px; color:var(--text-muted); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                        ${escapeHtml(p.url)}
+                                    </td>
+                                    <td style="padding: 10px 14px; font-family:monospace; font-weight:700; color:${isSuccess ? '#10B981' : '#F87171'};">
+                                        HTTP ${p.http_status || '—'}
+                                    </td>
+                                    <td style="padding: 10px 14px;">
+                                        <span style="background:${p.status === 'delivered' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${p.status === 'delivered' ? '#10B981' : '#F87171'}; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">
+                                            ${escapeHtml(p.status.toUpperCase())} (${p.retry_count} retries)
+                                        </span>
+                                    </td>
+                                    <td style="padding: 10px 14px; text-align:right;">
+                                        <button class="btn btn-outline" style="padding:3px 8px; font-size:11px;" onclick="retryAdminPostback('${escapeHtml(p.id)}')">🔁 Retry</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
                 }
             } catch(e) {}
+        }
+
+        function openAdminEditPostbackModal(userId, displayName, affiliateId, postbackUrl, method, isActive) {
+            document.getElementById('adminEditPbUserId').value = userId || '';
+            document.getElementById('adminEditPbUser').innerText = displayName + ' (' + affiliateId + ')';
+            document.getElementById('adminEditPbUrl').value = postbackUrl || '';
+            document.getElementById('adminEditPbMethod').value = method || 'GET';
+            document.getElementById('adminEditPbActive').checked = isActive !== false;
+            document.getElementById('adminPbTestResult').style.display = 'none';
+            document.getElementById('modalAdminEditPostback').style.display = 'flex';
+        }
+
+        function closeAdminEditPostbackModal() {
+            document.getElementById('modalAdminEditPostback').style.display = 'none';
+        }
+
+        function appendAdminPostbackTag(tag) {
+            const input = document.getElementById('adminEditPbUrl');
+            const val = input.value;
+            const param = tag.replace(/[{}]/g, '').toLowerCase();
+            input.value = val + (val.includes('?') ? '&' : '?') + param + '=' + tag;
+        }
+
+        async function testAdminPostbackPing() {
+            const token = getAdminSessionToken();
+            const url = document.getElementById('adminEditPbUrl').value.trim();
+            const method = document.getElementById('adminEditPbMethod').value;
+            const resBox = document.getElementById('adminPbTestResult');
+            const btn = document.getElementById('btnAdminTestPb');
+            if (!url) { alert('Please enter a postback URL first'); return; }
+
+            btn.disabled = true;
+            btn.innerText = 'Testing...';
+            resBox.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/affiliate/admin-test-postback' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ postback_url: url, http_method: method })
+                });
+                const d = await res.json();
+                resBox.style.display = 'block';
+                if (d.success && d.data) {
+                    const isOk = d.data.statusCode >= 200 && d.data.statusCode < 300;
+                    resBox.style.background = isOk ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+                    resBox.style.color = isOk ? '#10B981' : '#F87171';
+                    resBox.style.border = '1px solid ' + (isOk ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)');
+                    resBox.innerText = isOk
+                        ? `✓ Endpoint responded with HTTP ${d.data.statusCode} OK in ${d.data.responseTimeMs}ms`
+                        : `⚠️ HTTP ${d.data.statusCode || 'ERR'}: ${d.data.error || 'Connection failed'}`;
+                } else {
+                    resBox.style.background = 'rgba(239,68,68,0.15)';
+                    resBox.style.color = '#F87171';
+                    resBox.innerText = '⚠️ ' + (d.error || 'Test failed');
+                }
+            } catch(e) {
+                resBox.style.display = 'block';
+                resBox.style.background = 'rgba(239,68,68,0.15)';
+                resBox.style.color = '#F87171';
+                resBox.innerText = '⚠️ Network error during postback test.';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🚀 Test Ping';
+            }
+        }
+
+        async function saveAdminEditPostback(e) {
+            e.preventDefault();
+            const token = getAdminSessionToken();
+            const userId = document.getElementById('adminEditPbUserId').value;
+            const postbackUrl = document.getElementById('adminEditPbUrl').value.trim();
+            const httpMethod = document.getElementById('adminEditPbMethod').value;
+            const isActive = document.getElementById('adminEditPbActive').checked;
+
+            try {
+                const res = await fetch('/api/affiliate/admin-save-postback-config' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        postback_url: postbackUrl,
+                        http_method: httpMethod,
+                        is_active: isActive
+                    })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert('✓ ' + (d.message || 'S2S Postback configuration updated successfully.'));
+                    closeAdminEditPostbackModal();
+                    loadAdminAffPostbacksTable();
+                } else {
+                    alert('⚠️ ' + (d.error || 'Failed to save configuration'));
+                }
+            } catch(e) {
+                alert('⚠️ Network error saving postback.');
+            }
+            return false;
         }
 
         async function retryAdminPostback(postbackId) {
