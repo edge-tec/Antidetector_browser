@@ -361,16 +361,36 @@ const api = {
     return () => ipcRenderer.removeListener('updater:download-progress', callback)
   },
 
-  // ── Referral & Affiliate Commission System ──
+  // ── Referral & CPA Affiliate Commission System ──
   affiliateGetUserSummary: (userId: string) => ipcRenderer.invoke('affiliate:getUserSummary', userId),
   affiliateRequestWithdrawal: (userId: string, amount: number, method: string, payoutDetails: any) =>
     ipcRenderer.invoke('affiliate:requestWithdrawal', userId, amount, method, payoutDetails),
   affiliateRecordAttribution: (userId: string, refCode: string) =>
     ipcRenderer.invoke('affiliate:recordAttribution', userId, refCode),
+  affiliateGetOffers: (onlyActive?: boolean) =>
+    ipcRenderer.invoke('affiliate:getOffers', onlyActive),
+  affiliateGenerateTrackingLink: (userId: string, offerId: string, customParams?: any) =>
+    ipcRenderer.invoke('affiliate:generateTrackingLink', userId, offerId, customParams),
+  affiliateRecordClick: (params: any) =>
+    ipcRenderer.invoke('affiliate:recordClick', params),
+  affiliateRecordConversion: (input: any) =>
+    ipcRenderer.invoke('affiliate:recordConversion', input),
+  affiliateGetPostbackConfig: (userId: string) =>
+    ipcRenderer.invoke('affiliate:getPostbackConfig', userId),
+  affiliateSavePostbackConfig: (userId: string, postbackUrl: string, method?: 'GET' | 'POST') =>
+    ipcRenderer.invoke('affiliate:savePostbackConfig', userId, postbackUrl, method),
+  affiliateRetryPostback: (postbackId: string, token?: string) =>
+    ipcRenderer.invoke('affiliate:retryPostback', postbackId, token),
   affiliateGetAdminOverview: (token?: string) =>
     ipcRenderer.invoke('affiliate:getAdminOverview', token),
   affiliateAdminSaveSettings: (token: string, settings: any) =>
     ipcRenderer.invoke('affiliate:adminSaveSettings', token, settings),
+  affiliateAdminSaveOffer: (token: string, offer: any) =>
+    ipcRenderer.invoke('affiliate:adminSaveOffer', token, offer),
+  affiliateAdminDeleteOffer: (token: string, offerId: string) =>
+    ipcRenderer.invoke('affiliate:adminDeleteOffer', token, offerId),
+  affiliateAdminUpdateStatus: (token: string, affiliateId: string, status: any) =>
+    ipcRenderer.invoke('affiliate:adminUpdateStatus', token, affiliateId, status),
   affiliateAdminUpdateWithdrawal: (token: string, withdrawalId: string, status: any, adminNotes?: string, txRef?: string) =>
     ipcRenderer.invoke('affiliate:adminUpdateWithdrawal', token, withdrawalId, status, adminNotes, txRef),
   affiliateAdminReverseCommission: (token: string, commissionId: string, reason: string) =>
@@ -392,3 +412,4 @@ const api = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
+

@@ -797,6 +797,128 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ──────────────────────────────────────────────
+-- CPA Affiliate Tracking, Offers, Postback & Withdrawal System
+-- ──────────────────────────────────────────────
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `affiliate_id` VARCHAR(50) DEFAULT NULL UNIQUE;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `affiliate_status` VARCHAR(20) DEFAULT 'active';
+
+CREATE TABLE IF NOT EXISTS `affiliate_offers` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `target_url` VARCHAR(1000) NOT NULL,
+  `payout_type` VARCHAR(20) NOT NULL DEFAULT 'percentage',
+  `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 10.00,
+  `fixed_payout_usd` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
+  `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+  `total_clicks` INT NOT NULL DEFAULT 0,
+  `total_conversions` INT NOT NULL DEFAULT 0,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_aff_offers_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_tracking_links` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `affiliate_id` VARCHAR(50) NOT NULL,
+  `user_id` VARCHAR(36) NOT NULL,
+  `offer_id` VARCHAR(50) NOT NULL,
+  `tracking_url` VARCHAR(1000) NOT NULL,
+  `custom_params` LONGTEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_aff_links_user` (`user_id`),
+  KEY `idx_aff_links_offer` (`offer_id`),
+  KEY `idx_aff_links_aff` (`affiliate_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_clicks` (
+  `click_id` VARCHAR(64) NOT NULL PRIMARY KEY,
+  `affiliate_id` VARCHAR(50) NOT NULL,
+  `offer_id` VARCHAR(50) NOT NULL,
+  `tracking_link_id` VARCHAR(50) DEFAULT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `user_agent` TEXT DEFAULT NULL,
+  `referrer` VARCHAR(1000) DEFAULT NULL,
+  `landing_url` VARCHAR(1000) NOT NULL,
+  `sub_id1` VARCHAR(100) DEFAULT NULL,
+  `sub_id2` VARCHAR(100) DEFAULT NULL,
+  `sub_id3` VARCHAR(100) DEFAULT NULL,
+  `sub_id4` VARCHAR(100) DEFAULT NULL,
+  `sub_id5` VARCHAR(100) DEFAULT NULL,
+  `converted` TINYINT(1) NOT NULL DEFAULT 0,
+  `conversion_id` VARCHAR(64) DEFAULT NULL,
+  `conversion_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_aff_clicks_aff` (`affiliate_id`),
+  KEY `idx_aff_clicks_offer` (`offer_id`),
+  KEY `idx_aff_clicks_converted` (`converted`),
+  KEY `idx_aff_clicks_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_conversions` (
+  `conversion_id` VARCHAR(64) NOT NULL PRIMARY KEY,
+  `click_id` VARCHAR(64) NOT NULL UNIQUE,
+  `affiliate_id` VARCHAR(50) NOT NULL,
+  `offer_id` VARCHAR(50) NOT NULL,
+  `user_id` VARCHAR(36) DEFAULT NULL,
+  `order_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `payout_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
+  `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+  `idempotency_key` VARCHAR(100) DEFAULT NULL UNIQUE,
+  `meta_json` LONGTEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_aff_conv_click` (`click_id`),
+  KEY `idx_aff_conv_aff` (`affiliate_id`),
+  KEY `idx_aff_conv_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_postback_configs` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL UNIQUE,
+  `affiliate_id` VARCHAR(50) NOT NULL UNIQUE,
+  `postback_url` VARCHAR(1000) NOT NULL,
+  `http_method` VARCHAR(10) NOT NULL DEFAULT 'GET',
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_aff_pbcfg_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_postbacks` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `conversion_id` VARCHAR(64) NOT NULL,
+  `click_id` VARCHAR(64) NOT NULL,
+  `affiliate_id` VARCHAR(50) NOT NULL,
+  `url` VARCHAR(1000) NOT NULL,
+  `http_method` VARCHAR(10) NOT NULL DEFAULT 'GET',
+  `http_status` INT DEFAULT NULL,
+  `response_body` TEXT DEFAULT NULL,
+  `attempt_count` INT NOT NULL DEFAULT 1,
+  `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+  `error_message` TEXT DEFAULT NULL,
+  `last_attempt_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_aff_pb_conv` (`conversion_id`),
+  KEY `idx_aff_pb_status` (`status`),
+  KEY `idx_aff_pb_aff` (`affiliate_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_audit_logs` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `action` VARCHAR(50) NOT NULL,
+  `performed_by` VARCHAR(50) NOT NULL,
+  `target_id` VARCHAR(50) NOT NULL,
+  `details` LONGTEXT NOT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_aff_audit_target` (`target_id`),
+  KEY `idx_aff_audit_action` (`action`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 

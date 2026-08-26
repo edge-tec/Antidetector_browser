@@ -144,10 +144,14 @@ export class FallbackDatabase {
         }
       })
 
-      // Check existing by id or key or other unique column
+      // Check existing by id, click_id, conversion_id, key or other unique column
       let existingIdx = -1
       if (row.id !== undefined && row.id !== null) {
         existingIdx = tbl.findIndex(r => String(r.id) === String(row.id))
+      } else if (row.click_id !== undefined && row.click_id !== null) {
+        existingIdx = tbl.findIndex(r => String(r.click_id) === String(row.click_id))
+      } else if (row.conversion_id !== undefined && row.conversion_id !== null) {
+        existingIdx = tbl.findIndex(r => String(r.conversion_id) === String(row.conversion_id))
       } else if (row.key !== undefined && row.key !== null) {
         existingIdx = tbl.findIndex(r => String(r.key) === String(row.key))
       } else if (row.email !== undefined && row.email !== null) {
@@ -266,6 +270,16 @@ export class FallbackDatabase {
       const aliasMatch = selectClause.match(/\s+as\s+([`"'\w]+)/i)
       const colName = aliasMatch ? aliasMatch[1] : 'count'
       return [{ [colName]: results.length }]
+    }
+
+    // Handle SUM / COALESCE(SUM) aggregates
+    if (/SUM\s*\(/i.test(selectClause)) {
+      const sumColMatch = selectClause.match(/SUM\s*\(\s*([`"'\w.]+)\s*\)/i)
+      const aliasMatch = selectClause.match(/\s+as\s+([`"'\w]+)/i)
+      const col = sumColMatch ? sumColMatch[1].replace(/[`"']/g, '').split('.').pop()! : ''
+      const alias = aliasMatch ? aliasMatch[1] : 'total'
+      const total = results.reduce((acc, r) => acc + (Number(r[col]) || 0), 0)
+      return [{ [alias]: total }]
     }
 
     // Handle Ordering

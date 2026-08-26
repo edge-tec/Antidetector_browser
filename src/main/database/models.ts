@@ -491,3 +491,110 @@ export function logFromRow(row: LogRow): LogEntry {
     createdAt: row.created_at
   }
 }
+
+// ── CPA Affiliate Types ──
+export type PayoutType = 'percentage' | 'fixed'
+export type OfferStatus = 'active' | 'paused' | 'archived'
+export type AffiliateAccountStatus = 'active' | 'suspended' | 'disabled'
+export type ConversionStatus = 'pending' | 'approved' | 'rejected'
+export type PostbackStatus = 'pending' | 'sent' | 'confirmed' | 'failed' | 'retrying'
+export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'processing' | 'paid' | 'failed' | 'cancelled'
+
+export interface AffiliateOffer {
+  id: string
+  title: string
+  description?: string
+  target_url: string
+  payout_type: PayoutType
+  commission_rate: number
+  fixed_payout_usd: number
+  currency: string
+  status: OfferStatus
+  total_clicks?: number
+  total_conversions?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AffiliateTrackingLink {
+  id: string
+  affiliate_id: string
+  user_id: string
+  offer_id: string
+  tracking_url: string
+  custom_params?: string
+  created_at?: string
+}
+
+export interface AffiliateClick {
+  click_id: string
+  affiliate_id: string
+  offer_id: string
+  tracking_link_id?: string
+  ip_address?: string
+  user_agent?: string
+  referrer?: string
+  landing_url: string
+  sub_id1?: string
+  sub_id2?: string
+  sub_id3?: string
+  sub_id4?: string
+  sub_id5?: string
+  converted: number
+  conversion_id?: string
+  conversion_at?: string
+  created_at: string
+}
+
+export interface AffiliateConversion {
+  conversion_id: string
+  click_id: string
+  affiliate_id: string
+  offer_id: string
+  user_id?: string
+  order_amount: number
+  payout_amount: number
+  currency: string
+  status: ConversionStatus
+  idempotency_key?: string
+  meta_json?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AffiliatePostbackConfig {
+  id: string
+  user_id: string
+  affiliate_id: string
+  postback_url: string
+  http_method: 'GET' | 'POST'
+  is_active: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AffiliatePostbackLog {
+  id: string
+  conversion_id: string
+  click_id: string
+  affiliate_id: string
+  url: string
+  http_method: string
+  http_status?: number
+  response_body?: string
+  attempt_count: number
+  status: PostbackStatus
+  error_message?: string
+  last_attempt_at: string
+  created_at: string
+}
+
+export interface AffiliateAuditLog {
+  id: string
+  action: string
+  performed_by: string
+  target_id: string
+  details: string
+  ip_address?: string
+  created_at: string
+}
