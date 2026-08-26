@@ -13,9 +13,27 @@ import { logger } from '../logging/logger'
 let server: Server | null = null
 
 /**
- * Auth middleware — requires Bearer token.
+ * Auth & DNS Rebinding protection middleware.
+ * Verifies Host header is strictly localhost/127.0.0.1 and requires valid Bearer token.
  */
 function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  // DNS Rebinding Protection: Verify Host header
+  const host = req.headers.host || ''
+  const hostname = host.split(':')[0]
+  if (hostname !== '127.0.0.1' && hostname !== 'localhost' && hostname !== '::1') {
+    logger.warn('api', `DNS rebinding or unauthorized Host header detected: ${host}`)
+    res.status(403).json({ error: 'Access denied. Invalid Host header.' })
+    return
+  }
+
+  // Loopback IP Protection
+  const remoteIp = req.socket.remoteAddress || ''
+  if (!remoteIp.includes('127.0.0.1') && !remoteIp.includes('::1') && !remoteIp.includes('::ffff:127.0.0.1')) {
+    logger.warn('api', `Non-loopback API connection rejected: ${remoteIp}`)
+    res.status(403).json({ error: 'Access denied. Only loopback connections permitted.' })
+    return
+  }
+
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Authentication required. Use Bearer token.' })

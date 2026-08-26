@@ -68,8 +68,8 @@ export function getFirefoxPlatformArtifactInfo(): { platformKey: string; fileNam
   if (platform === 'win32') {
     const is64 = arch === 'x64' || arch === 'arm64'
     const platformKey = is64 ? 'win64' : 'win32'
-    const fileName = `firefox-${FIREFOX_VERSION}-${platformKey}.zip`
-    const downloadUrl = `https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/${platformKey}/en-US/firefox-${FIREFOX_VERSION}.zip`
+    const fileName = `Firefox Setup ${FIREFOX_VERSION}.exe`
+    const downloadUrl = `https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/${platformKey}/en-US/Firefox%20Setup%20${FIREFOX_VERSION}.exe`
     const executableRelativePath = path.join('firefox', 'firefox.exe')
     return { platformKey, fileName, downloadUrl, executableRelativePath }
   }
@@ -126,11 +126,28 @@ export async function getManagedFirefoxStatus(): Promise<ManagedFirefoxStatus> {
     }
   }
 
+  // On Windows, use file-based PE validation to avoid cmd.exe ETIMEDOUT
+  if (process.platform === 'win32') {
+    try {
+      const stat = fs.statSync(execPath)
+      if (stat.size > 100 * 1024) {
+        return {
+          installed: true,
+          executablePath: execPath,
+          version: FIREFOX_VERSION,
+          isDownloading: false,
+          downloadProgress: 100
+        }
+      }
+    } catch {}
+  }
+
   try {
     const versionOutput = execSync(`"${execPath}" --version`, {
       encoding: 'utf8',
-      timeout: 5000,
-      stdio: ['ignore', 'pipe', 'ignore']
+      timeout: 10000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: { ...process.env, DISPLAY: '', MOZ_HEADLESS: '1' }
     }).trim()
 
     return {

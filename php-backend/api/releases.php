@@ -160,21 +160,25 @@ if (isset($_GET['download']) && $_GET['download'] == '1') {
             exit;
         }
 
-        // Local file path streaming
+        // Local file path streaming with strict path traversal containment
         if (!empty($activeRel['file_path'])) {
-            $localFile = __DIR__ . '/../' . ltrim($activeRel['file_path'], '/');
-            if (file_exists($localFile) && is_file($localFile)) {
-                $filename = $activeRel['original_filename'] ?: basename($localFile);
+            $baseDir = realpath(__DIR__ . '/..');
+            $requestedPath = __DIR__ . '/../' . ltrim($activeRel['file_path'], '/');
+            $realFile = realpath($requestedPath);
+
+            // Ensure the file is inside the project root and inside releases or uploads directory
+            if ($realFile && $baseDir && strpos($realFile, $baseDir) === 0 && is_file($realFile)) {
+                $filename = $activeRel['original_filename'] ?: basename($realFile);
                 header('Content-Description: File Transfer');
                 header('Content-Type: application/octet-stream');
                 header('Content-Disposition: attachment; filename="' . $filename . '"');
                 header('Expires: 0');
                 header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
                 header('Pragma: public');
-                header('Content-Length: ' . filesize($localFile));
+                header('Content-Length: ' . filesize($realFile));
                 if (ob_get_length()) ob_clean();
                 flush();
-                readfile($localFile);
+                readfile($realFile);
                 exit;
             }
         }

@@ -27,6 +27,7 @@ define('APP_URL', 'https://antiprofiles.com');
 define('APP_BASE_URL', 'https://antiprofiles.com');
 
 
-// Error reporting
+// Error reporting (disabled display in production to prevent stack trace leakage)
 error_reporting(E_ALL);
-ini_set('display_errors', '1');
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');

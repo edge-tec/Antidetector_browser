@@ -15,6 +15,7 @@ import { decryptPassword } from '../security/encryption'
 import { ensureProfileDataDir, ensureFirefoxProfileDataDir } from './chromium-resolver'
 import { setupBrowserInjection } from './injection/injector'
 import { startProxyBridge } from '../network/proxy-bridge'
+import { killProcessTree } from './process-tracker'
 import { logger } from '../logging/logger'
 
 import { ResolvedFirefoxProfile, resolveFirefoxProfile } from './firefox/firefox-resolver'
@@ -214,6 +215,8 @@ function setupFirefoxProfilePrefs(
   // Proxy Configuration
   if (proxy && proxy.type !== 'direct' && proxy.host) {
     prefs.push('user_pref("network.proxy.type", 1);')
+    prefs.push('user_pref("network.proxy.no_proxies_on", "");')
+    prefs.push('user_pref("network.proxy.share_proxy_settings", true);')
     if (proxy.type.startsWith('socks')) {
       prefs.push(`user_pref("network.proxy.socks", ${JSON.stringify(proxy.host)});`)
       prefs.push(`user_pref("network.proxy.socks_port", ${proxy.port});`)
@@ -224,7 +227,11 @@ function setupFirefoxProfilePrefs(
       prefs.push(`user_pref("network.proxy.http_port", ${proxy.port});`)
       prefs.push(`user_pref("network.proxy.ssl", ${JSON.stringify(proxy.host)});`)
       prefs.push(`user_pref("network.proxy.ssl_port", ${proxy.port});`)
+      prefs.push('user_pref("network.proxy.socks_remote_dns", true);')
     }
+  } else {
+    // Explicit Direct mode (prevents Firefox from falling back to Windows system proxy settings)
+    prefs.push('user_pref("network.proxy.type", 0);')
   }
 
   const userJsPath = path.join(resolvedDir, 'user.js')
@@ -454,7 +461,7 @@ export async function launchFirefox(
     pages: async () => [],
     close: async () => {
       try {
-        if (child.pid) process.kill(child.pid, 'SIGTERM')
+        if (child.pid) killProcessTree(child.pid)
       } catch {}
     },
     on: (event: string, cb: any) => {

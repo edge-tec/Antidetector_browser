@@ -22,11 +22,12 @@ class Database {
                     ]);
                 }
             } catch (PDOException $e) {
+                error_log('[Database] Connection failed: ' . $e->getMessage());
                 http_response_code(500);
                 header('Content-Type: application/json');
                 echo json_encode([
                     'success' => false,
-                    'error' => 'Database connection failed. Please verify MySQL / SQLite settings in config.php: ' . $e->getMessage()
+                    'error' => 'Database connection failed. Please check server logs or database configuration.'
                 ]);
                 exit();
             }

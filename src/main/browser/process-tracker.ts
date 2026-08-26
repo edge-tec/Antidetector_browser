@@ -2,10 +2,39 @@
 // AntiProfiles — Process Tracker
 // ──────────────────────────────────────────────
 
+import { execSync } from 'child_process'
 import type { Browser } from 'puppeteer-core'
 import { profileRepo } from '../database/repositories/profile.repo'
 import { stopProxyBridge } from '../network/proxy-bridge'
 import { logger } from '../logging/logger'
+
+/**
+ * Kill a process and all of its spawned child processes (process tree).
+ * On Windows, taskkill /pid <PID> /T /F terminates all renderers, GPU, and network processes.
+ * On POSIX, attempts process group termination or direct SIGKILL.
+ */
+export function killProcessTree(pid: number): void {
+  if (!pid || pid <= 0) return
+  try {
+    if (process.platform === 'win32') {
+      try {
+        execSync(`taskkill /pid ${pid} /T /F`, { stdio: ['ignore', 'ignore', 'ignore'], timeout: 5000, windowsHide: true })
+      } catch {
+        // Fallback to process.kill if taskkill fails or process already exited
+        try { process.kill(pid, 'SIGKILL') } catch {}
+      }
+    } else {
+      try {
+        // Try killing process group first
+        process.kill(-pid, 'SIGKILL')
+      } catch {
+        try { process.kill(pid, 'SIGKILL') } catch {}
+      }
+    }
+  } catch {
+    // Process already terminated
+  }
+}
 
 interface TrackedProcess {
   profileId: string
@@ -56,12 +85,8 @@ class ProcessTracker {
       }
     } catch (err) {
       logger.warn('browser', `Error closing browser for "${tracked.profileName}": ${err}`)
-      // Fallback: kill the process directly
-      try {
-        process.kill(tracked.pid, 'SIGTERM')
-      } catch {
-        // Process may already be dead
-      }
+      // Fallback: kill the process tree directly to prevent orphaned child processes
+      killProcessTree(tracked.pid)
     }
 
     this.processes.delete(profileId)

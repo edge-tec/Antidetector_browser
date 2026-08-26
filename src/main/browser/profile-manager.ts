@@ -186,6 +186,7 @@ class ProfileManager {
 
   /**
    * Duplicate a profile (config only, not browser data).
+   */
   duplicateProfile(profileId: string, userId?: string): Profile | null {
     const original = profileRepo.getById(profileId)
     if (!original) return null

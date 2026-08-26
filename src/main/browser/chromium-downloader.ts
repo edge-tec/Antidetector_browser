@@ -144,8 +144,23 @@ export function getManagedChromiumStatus(): ManagedChromiumStatus {
   let version: string | null = null
 
   if (execPath && fs.existsSync(execPath)) {
+    if (process.platform === 'win32') {
+      try {
+        const stat = fs.statSync(execPath)
+        if (stat.size > 100 * 1024) {
+          return {
+            installed: true,
+            executablePath: execPath,
+            version: CHROMIUM_VERSION,
+            isDownloading: false,
+            downloadProgress: 100
+          }
+        }
+      } catch {}
+    }
+
     try {
-      const out = execSync(`"${execPath}" --version`, { encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+      const out = execSync(`"${execPath}" --version`, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'ignore'] }).trim()
       const match = out.match(/[\d.]+/)
       version = match ? match[0] : CHROMIUM_VERSION
     } catch {

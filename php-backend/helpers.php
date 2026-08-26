@@ -564,7 +564,7 @@ function decodeSessionToken(string $jwt): ?string {
     $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, JWT_SECRET, true);
     $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
 
-    if ($base64UrlSignature !== $signatureProvided) return null;
+    if (!hash_equals($base64UrlSignature, $signatureProvided)) return null;
 
     $data = json_decode($payload, true);
     if (!$data || !isset($data['user_id'])) return null;

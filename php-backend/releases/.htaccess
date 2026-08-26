@@ -1,0 +1,21 @@
+# ──────────────────────────────────────────────
+# ProfileVault — Releases Directory Security Guard
+# Disables script execution and enforces octet-stream downloads
+# ──────────────────────────────────────────────
+
+# Disable PHP execution
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+# Prevent script handlers
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps .cgi .pl .py .sh
+SetHandler None
+
+# Allow binary downloads
+<FilesMatch "\.(exe|dmg|AppImage|zip|tar\.gz|tar\.bz2|deb|rpm|pkg|msi|7z)$">
+    Header set Content-Disposition "attachment"
+</FilesMatch>

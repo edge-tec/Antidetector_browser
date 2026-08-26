@@ -1801,7 +1801,13 @@ switch ($action) {
             'linux-x64' => 'ProfileVault-Linux-x86_64.AppImage'
         ];
 
-        $targetName = $filenameMap[$platform] ?? basename($_FILES['file']['name']);
+        $allowedExtensions = ['exe', 'dmg', 'appimage', 'zip', 'tar.gz', 'tar.bz2', 'deb', 'rpm', 'pkg', 'msi', '7z'];
+        $uploadedExt = strtolower(pathinfo($_FILES['file']['name'] ?? '', PATHINFO_EXTENSION));
+        if (!in_array($uploadedExt, $allowedExtensions)) {
+            respondJson(['success' => false, 'error' => "Invalid file format (.{$uploadedExt}). Allowed: " . implode(', ', $allowedExtensions)], 400);
+        }
+
+        $targetName = $filenameMap[$platform] ?? (preg_replace('/[^a-zA-Z0-9\._-]/', '', basename($_FILES['file']['name'])));
         $releasesDir = __DIR__ . '/../releases';
         if (!is_dir($releasesDir)) {
             mkdir($releasesDir, 0755, true);
@@ -1954,7 +1960,11 @@ switch ($action) {
                 mkdir($releasesDir, 0755, true);
             }
 
-            $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+            $allowedExtensions = ['exe', 'dmg', 'appimage', 'zip', 'tar.gz', 'tar.bz2', 'deb', 'rpm', 'pkg', 'msi', '7z'];
+            $ext = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowedExtensions)) {
+                respondJson(['success' => false, 'error' => "Invalid file format (.{$ext}). Allowed: " . implode(', ', $allowedExtensions)], 400);
+            }
             $cleanVersion = preg_replace('/[^a-zA-Z0-9\._-]/', '', $version);
             $targetFilename = "AntiProfiles-{$platform}-v{$cleanVersion}.{$ext}";
             $targetPath = $releasesDir . '/' . $targetFilename;
