@@ -25,6 +25,8 @@ import { RuntimeProvisioningModal, ProvisioningProgressData } from './components
 import { ProxyInfoCard } from './components/ProxyInfoCard'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
+import defaultChromeImg from './assets/antiprofiles-chrome.png'
+import defaultFirefoxImg from './assets/antiprofiles-firefox.png'
 
 // ═══════════════════════════════════════════
 // SVG Icons (inline for zero dependencies)
@@ -128,7 +130,7 @@ function ConfirmDialog({ state, onCancel }: { state: ConfirmState; onCancel: () 
 // Dashboard Page
 // ═══════════════════════════════════════════
 
-function DashboardPage({ onNavigate, showToast }: { onNavigate: (page: Page) => void; showToast: (type: ToastItem['type'], message: string) => void }) {
+function DashboardPage({ onNavigate, showToast, brandingConfig }: { onNavigate: (page: Page) => void; showToast: (type: ToastItem['type'], message: string) => void; brandingConfig?: any }) {
   const { sessionToken } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -190,7 +192,7 @@ function DashboardPage({ onNavigate, showToast }: { onNavigate: (page: Page) => 
           <h3 className="section-title">Recently Used Profiles</h3>
           <div className="grid-profiles">
             {stats.recentProfiles.map((profile) => (
-              <ProfileCardComponent key={profile.id} profile={profile} onStart={async () => {
+              <ProfileCardComponent key={profile.id} profile={profile} brandingConfig={brandingConfig} onStart={async () => {
                 const r = await window.api.startProfile(sessionToken || '', profile.id)
                 if (r.success) showToast('success', `Started "${profile.name}"`)
                 else showToast('error', r.error || 'Failed to start')
@@ -222,9 +224,10 @@ function DashboardPage({ onNavigate, showToast }: { onNavigate: (page: Page) => 
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, onStart, onStop, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onStop, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
+  brandingConfig?: any
   onStart?: () => void
   onStop?: () => void
   onEdit?: () => void
@@ -235,11 +238,37 @@ function ProfileCardComponent({ profile, proxies, onStart, onStop, onEdit, onDup
   const isLaunching = profile.status === 'launching'
   const matchedProxy = (proxies || []).find(p => p.id === profile.proxyId)
 
+  const isFirefox = profile.browserType === 'firefox' || profile.browserVersion?.toLowerCase().includes('firefox') || profile.userAgent?.includes('Firefox') || (profile.fingerprint as any)?.browser?.type === 'firefox'
+  const brandImg = isFirefox
+    ? (brandingConfig?.firefox?.previewUrl || defaultFirefoxImg)
+    : (brandingConfig?.chromium?.previewUrl || defaultChromeImg)
+
   return (
     <div className="profile-card">
       <div className="profile-card-header">
-        <div className="profile-card-icon" style={{ backgroundColor: `${profile.color}20`, color: profile.color, flexShrink: 0 }}>
-          {profile.icon === 'globe' ? '🌐' : profile.icon === 'work' ? '💼' : profile.icon === 'shopping' ? '🛒' : profile.icon === 'social' ? '💬' : '🌐'}
+        <div
+          className="profile-card-icon"
+          style={{
+            backgroundColor: `${profile.color}15`,
+            color: profile.color,
+            flexShrink: 0,
+            padding: 3,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden'
+          }}
+          title={isFirefox ? 'Mozilla Firefox Quantum Engine' : 'Google Chromium Blink Engine'}
+        >
+          <img
+            src={brandImg}
+            alt={isFirefox ? 'Firefox' : 'Chromium'}
+            style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+            onError={(e: any) => {
+              e.target.onerror = null
+              e.target.src = isFirefox ? defaultFirefoxImg : defaultChromeImg
+            }}
+          />
         </div>
         <div className="profile-card-info" style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
@@ -291,9 +320,10 @@ function ProfileCardComponent({ profile, proxies, onStart, onStop, onEdit, onDup
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, onStart, onStop, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, onStop, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
+  brandingConfig?: any
   onStart?: () => void
   onStop?: () => void
   onEdit?: () => void
@@ -304,11 +334,40 @@ function ProfileListRowComponent({ profile, proxies, onStart, onStop, onEdit, on
   const isLaunching = profile.status === 'launching'
   const matchedProxy = (proxies || []).find(p => p.id === profile.proxyId)
 
+  const isFirefox = profile.browserType === 'firefox' || profile.browserVersion?.toLowerCase().includes('firefox') || profile.userAgent?.includes('Firefox') || (profile.fingerprint as any)?.browser?.type === 'firefox'
+  const brandImg = isFirefox
+    ? (brandingConfig?.firefox?.previewUrl || defaultFirefoxImg)
+    : (brandingConfig?.chromium?.previewUrl || defaultChromeImg)
+
   return (
     <div className="profile-list-row">
       <div className="profile-list-cell-name">
-        <div className="profile-card-icon" style={{ backgroundColor: `${profile.color}20`, color: profile.color, width: 34, height: 34, fontSize: 16, flexShrink: 0 }}>
-          {profile.icon === 'globe' ? '🌐' : profile.icon === 'work' ? '💼' : profile.icon === 'shopping' ? '🛒' : profile.icon === 'social' ? '💬' : '🌐'}
+        <div
+          className="profile-card-icon"
+          style={{
+            backgroundColor: `${profile.color}15`,
+            color: profile.color,
+            width: 34,
+            height: 34,
+            fontSize: 16,
+            flexShrink: 0,
+            padding: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden'
+          }}
+          title={isFirefox ? 'Mozilla Firefox Quantum Engine' : 'Google Chromium Blink Engine'}
+        >
+          <img
+            src={brandImg}
+            alt={isFirefox ? 'Firefox' : 'Chromium'}
+            style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+            onError={(e: any) => {
+              e.target.onerror = null
+              e.target.src = isFirefox ? defaultFirefoxImg : defaultChromeImg
+            }}
+          />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
@@ -364,7 +423,7 @@ function ProfileListRowComponent({ profile, proxies, onStart, onStop, onEdit, on
 // Profiles Page
 // ═══════════════════════════════════════════
 
-function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast: (type: ToastItem['type'], msg: string) => void; confirm: (c: Omit<ConfirmState, 'show'>) => void; licenseInfo?: any; onUpgrade?: () => void }) {
+function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConfig }: { showToast: (type: ToastItem['type'], msg: string) => void; confirm: (c: Omit<ConfirmState, 'show'>) => void; licenseInfo?: any; onUpgrade?: () => void; brandingConfig?: any }) {
   const { sessionToken, isAdmin } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [licenseLimits, setLicenseLimits] = useState<{ profiles: number } | null>(null)
@@ -670,6 +729,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToas
               key={p.id}
               profile={p}
               proxies={proxies}
+              brandingConfig={brandingConfig}
               onStart={() => handleStartProfile(p)}
               onStop={async () => {
                 if (!sessionToken) return
@@ -711,6 +771,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToas
               key={p.id}
               profile={p}
               proxies={proxies}
+              brandingConfig={brandingConfig}
               onStart={() => handleStartProfile(p)}
               onStop={async () => {
                 if (!sessionToken) return
@@ -1953,6 +2014,21 @@ function AppContent() {
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [appVersion, setAppVersion] = useState('1.0.0')
 
+  // Real-Time Custom Browser Branding State
+  const [brandingConfig, setBrandingConfig] = useState<any>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).api?.getBrandingConfig) {
+      (window as any).api.getBrandingConfig().then((res: any) => {
+        if (res?.success && res?.data) setBrandingConfig(res.data)
+      }).catch(() => {})
+    }
+    const unsub = (window as any).api?.onBrandingUpdated?.((_e: any, config: any) => {
+      if (config) setBrandingConfig(config)
+    })
+    return () => { if (unsub) unsub() }
+  }, [])
+
   // Real-Time Central Synchronization State
   const [syncStatus, setSyncStatus] = useState<{
     status: 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'syncing' | 'error'
@@ -2297,7 +2373,7 @@ function AppContent() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="sidebar-brand">
-            <img src={logoImg} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
+            <img src={brandingConfig?.app?.previewUrl || logoImg} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
             <span className="sidebar-brand-text">AntiProfiles</span>
           </div>
         </div>
@@ -2486,8 +2562,8 @@ function AppContent() {
             <AdminDashboard />
           ) : (
             <>
-              {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} />}
-              {currentPage === 'profiles' && <ProfilesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
+              {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} brandingConfig={brandingConfig} />}
+              {currentPage === 'profiles' && <ProfilesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} brandingConfig={brandingConfig} />}
               {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}

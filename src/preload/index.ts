@@ -239,6 +239,10 @@ const api = {
     ipcRenderer.invoke('branding:resolveIcon', engine, profileId),
   selectProfileIcon: (profileId: string) => ipcRenderer.invoke('branding:selectProfileIcon', profileId),
   resetProfileIcon: (profileId: string) => ipcRenderer.invoke('branding:resetProfileIcon', profileId),
+  onBrandingUpdated: (callback: (e: any, config: any) => void) => {
+    ipcRenderer.on('branding:updated', callback)
+    return () => ipcRenderer.removeListener('branding:updated', callback)
+  },
 
   // ── Logs ──
   getLogs: (limit?: number, level?: string, category?: string) =>

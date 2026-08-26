@@ -38,6 +38,10 @@ export const CustomBrandingManager: React.FC = () => {
 
   useEffect(() => {
     loadConfig()
+    const unsub = (window as any).api?.onBrandingUpdated?.((_e: any, newConfig: any) => {
+      if (newConfig) setConfig(newConfig)
+    })
+    return () => { if (unsub) unsub() }
   }, [])
 
   const handleUpload = async (target: 'chromium' | 'firefox' | 'app') => {
