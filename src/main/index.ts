@@ -2,7 +2,7 @@
 // AntiProfiles — Main Process Entry Point
 // ──────────────────────────────────────────────
 
-import { app, BrowserWindow, shell, nativeTheme } from 'electron'
+import { app, BrowserWindow, shell, dialog } from 'electron'
 import path from 'path'
 import { initDatabase, closeDatabase, getDatabase } from './database/connection'
 import { profileManager } from './browser/profile-manager'
@@ -23,8 +23,36 @@ import { registerAffiliateHandlers } from './ipc/affiliate.ipc'
 import { registerBrandingHandlers } from './ipc/branding.ipc'
 import { logger } from './logging/logger'
 
+// ── 1. Global Process Exception & Crash Handlers ──
+process.on('uncaughtException', (err) => {
+  logger.error('system', `Uncaught Exception in Main Process: ${err?.stack || err?.message || err}`)
+  try {
+    dialog.showErrorBox('AntiProfiles Startup Error', `A fatal error occurred in the application:\n\n${err?.message || err}`)
+  } catch {}
+})
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('system', `Unhandled Promise Rejection: ${reason}`)
+})
+
+// ── 2. Enforce Single Instance Lock (Top of lifecycle) ──
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  logger.warn('system', 'Another instance of AntiProfiles is already running. Exiting secondary process.')
+  app.quit()
+  process.exit(0)
+}
+
 let mainWindow: BrowserWindow | null = null
 
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+})
+
+// ── 3. Main Window Construction ──
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -33,8 +61,8 @@ function createWindow(): void {
     minHeight: 700,
     title: 'AntiProfiles',
     icon: path.join(__dirname, '../../resources/icon.png'),
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 16 } : undefined,
     backgroundColor: '#0F0F14',
     show: false,
     webPreferences: {
@@ -57,6 +85,11 @@ function createWindow(): void {
     }
   }, 400)
 
+  // Log load failures
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    logger.error('system', `Renderer failed to load (${errorCode}): ${errorDescription} at ${validatedURL}`)
+  })
+
   // Open external links in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https:') || url.startsWith('http:')) {
@@ -77,15 +110,14 @@ function createWindow(): void {
   })
 }
 
-// ── App Lifecycle ──
-
+// ── 4. App Lifecycle ──
 app.whenReady().then(async () => {
   logger.info('system', 'AntiProfiles starting...')
 
   // Initialize database
   try {
     initDatabase()
-    logger.info('system', 'Database initialized')
+    logger.info('system', 'Database initialized successfully')
 
     // Connect logger to database
     const db = getDatabase()
@@ -118,15 +150,17 @@ app.whenReady().then(async () => {
   try { registerFingerprintIPC() } catch (err: any) { logger.error('system', `Fingerprint IPC failed: ${err.message}`) }
   try { registerBrandingHandlers() } catch (err: any) { logger.error('system', `Branding IPC failed: ${err.message}`) }
 
-  // Initialize profile manager (find Chromium)
+  // Create main window immediately
+  createWindow()
+
+  // Initialize profile manager in background so UI displays instantly
   try {
-    await profileManager.initialize()
+    profileManager.initialize().catch((err) => {
+      logger.error('system', `Profile manager async initialization failed: ${err.message}`)
+    })
   } catch (err: any) {
     logger.error('system', `Profile manager initialization failed: ${err.message}`)
   }
-
-  // Create main window
-  createWindow()
 
   // macOS: re-create window when dock icon is clicked
   app.on('activate', () => {
@@ -155,22 +189,17 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Prevent multiple instances
-const gotTheLock = app.requestSingleInstanceLock()
-if (!gotTheLock) {
-  app.quit()
-} else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
+// Security: Prevent unhandled out-of-bounds navigation in app web contents
+app.on('web-contents-created', (_, contents) => {
+  contents.on('will-navigate', (event, navigationUrl) => {
+    const isDevUrl = process.env.ELECTRON_RENDERER_URL && navigationUrl.startsWith(process.env.ELECTRON_RENDERER_URL)
+    const isFileUrl = navigationUrl.startsWith('file://')
+    if (!isDevUrl && !isFileUrl) {
+      event.preventDefault()
+      if (navigationUrl.startsWith('https:') || navigationUrl.startsWith('http:')) {
+        shell.openExternal(navigationUrl)
+      }
     }
   })
-}
-
-// Security: Disable navigation to unknown URLs
-app.on('web-contents-created', (_, contents) => {
-  contents.on('will-navigate', (event) => {
-    event.preventDefault()
-  })
 })
+
