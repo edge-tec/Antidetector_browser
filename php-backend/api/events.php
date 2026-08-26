@@ -31,14 +31,8 @@ switch ($action) {
         header('X-Accel-Buffering: no'); // Essential for Nginx SSE streaming
 
         // Token Authentication (Header or Query Param for EventSource)
-        $token = null;
+        $token = getBearerToken() ?: (!empty($_GET['token']) ? trim($_GET['token']) : null);
         $visitorToken = trim($_GET['visitor_token'] ?? '');
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-        if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
-            $token = $matches[1];
-        } elseif (!empty($_GET['token'])) {
-            $token = $_GET['token'];
-        }
 
         $userId = null;
         $userRole = 'guest';
@@ -47,6 +41,7 @@ switch ($action) {
         if ($token) {
             $userId = verifySessionToken($token);
             if (!$userId) {
+                http_response_code(401);
                 echo "event: error\n";
                 echo "data: " . json_encode(['error' => 'Invalid or expired session token']) . "\n\n";
                 exit();
@@ -122,7 +117,7 @@ switch ($action) {
 
         // Keep-Alive & Event Polling Loop (SSE Stream)
         $loopCount = 0;
-        $maxLoops = 1800; // 30 minutes continuous connection
+        $maxLoops = 45; // 45s cycle prevents Cloudflare (100s) & Nginx FastCGI timeouts, enables graceful reconnect
 
         while ($loopCount < $maxLoops) {
             if (connection_aborted()) {

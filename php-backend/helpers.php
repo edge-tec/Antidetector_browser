@@ -575,6 +575,11 @@ function decodeSessionToken(string $jwt): ?string {
     return $data['user_id'];
 }
 
+function verifySessionToken(?string $jwt): ?string {
+    if (empty($jwt)) return null;
+    return decodeSessionToken($jwt);
+}
+
 // Get Auth Bearer Token from HTTP Headers (robust multi-server support)
 function getBearerToken(): ?string {
     $headers = null;

@@ -75,7 +75,12 @@ class RealtimeSyncService {
     this.setStatus('connecting')
 
     // Initial authoritative synchronization
-    await this.resyncAuthoritativeState()
+    const authState = await this.resyncAuthoritativeState()
+    if (!authState && (this.status === 'error' || this.status === 'disconnected')) {
+      logger.info('sync', '[SyncService] Central server unreachable or local offline session. Running in offline mode.')
+      this.setStatus('disconnected')
+      return
+    }
 
     // Establish persistent SSE event stream
     this.connectStream()
@@ -189,7 +194,7 @@ class RealtimeSyncService {
     } catch (err: any) {
       logger.warn('sync', `[SyncService] Authoritative sync failed: ${err.message}`)
       if (this.status !== 'disconnected') {
-        this.setStatus('error')
+        this.setStatus('disconnected')
       }
       return null
     }
@@ -234,14 +239,14 @@ class RealtimeSyncService {
 
       const req = client.request(options, (res) => {
         if (res.statusCode === 401 || res.statusCode === 403) {
-          logger.warn('sync', `[SyncService] Stream rejected with status ${res.statusCode}`)
-          this.handleSessionRevoked('Session is invalid or account restricted.')
+          logger.warn('sync', `[SyncService] Central stream unauthorized (${res.statusCode}) - operating in offline/standalone mode.`)
+          this.setStatus('disconnected')
           return
         }
 
         if (res.statusCode !== 200) {
           logger.warn('sync', `[SyncService] SSE stream HTTP status ${res.statusCode}`)
-          this.scheduleReconnect()
+          this.scheduleReconnect(false, false)
           return
         }
 
@@ -262,19 +267,19 @@ class RealtimeSyncService {
         })
 
         res.on('end', () => {
-          logger.info('sync', '[SyncService] SSE connection ended by server, reconnecting...')
-          this.scheduleReconnect()
+          logger.info('sync', '[SyncService] SSE connection ended by server, renewing stream cycle...')
+          this.scheduleReconnect(false, true)
         })
 
         res.on('error', (err) => {
           logger.warn('sync', `[SyncService] SSE connection error: ${err.message}`)
-          this.scheduleReconnect()
+          this.scheduleReconnect(false, false)
         })
       })
 
       req.on('error', (err) => {
         logger.warn('sync', `[SyncService] SSE request error: ${err.message}`)
-        this.scheduleReconnect()
+        this.scheduleReconnect(false, false)
       })
 
       this.activeRequest = req
@@ -427,6 +432,16 @@ class RealtimeSyncService {
         this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
         break
 
+      case 'error':
+        logger.warn('sync', `[SyncEvent] Received error from stream: ${parsedPayload?.error || dataStr}`)
+        if (parsedPayload?.error?.includes('token') || parsedPayload?.error?.includes('expired') || parsedPayload?.error?.includes('required')) {
+          logger.info('sync', '[SyncService] Local or unverified session token. Operating in offline mode.')
+          this.setStatus('disconnected')
+          if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+          return
+        }
+        break
+
       default:
         // Broadcast generic event to all renderers
         this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
@@ -437,16 +452,39 @@ class RealtimeSyncService {
   /**
    * Schedule automatic reconnection with exponential backoff.
    */
-  private scheduleReconnect(forceResync = false): void {
+  private scheduleReconnect(forceResync = false, isCleanCycle = false): void {
     if (this.isShuttingDown || !this.sessionToken) return
 
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
 
-    this.reconnectAttempts++
-    const delay = Math.min(1000 * Math.pow(1.5, Math.min(this.reconnectAttempts, 4)), 8000)
+    // Clean cycle (e.g. server ended 45s loop) - reconnect smoothly without error state
+    if (isCleanCycle && this.status === 'connected') {
+      this.reconnectAttempts = 0
+      this.reconnectTimer = setTimeout(() => {
+        if (this.isShuttingDown || !this.sessionToken) return
+        this.connectStream()
+      }, 500)
+      return
+    }
 
-    // Only broadcast 'reconnecting' status if persistent (>2 failed attempts)
-    if (this.reconnectAttempts > 2) {
+    this.reconnectAttempts++
+
+    // After 3 failed attempts, back off gracefully to Offline state
+    // Prevents endless "Reconnecting..." spinner and UI annoyance
+    if (this.reconnectAttempts > 3) {
+      logger.info('sync', '[SyncService] Central connection unavailable after retries. Operating in offline mode.')
+      this.setStatus('disconnected')
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectAttempts = 0
+        this.connectStream()
+      }, 30000) // quiet background retry after 30s
+      return
+    }
+
+    const delay = Math.min(1000 * Math.pow(1.5, Math.min(this.reconnectAttempts, 4)), 6000)
+
+    // Only broadcast 'reconnecting' status if persistent (>1 failed attempt)
+    if (this.reconnectAttempts > 1) {
       this.setStatus('reconnecting')
     }
 
