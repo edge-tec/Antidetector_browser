@@ -2,24 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- Allows V8 JIT code generation in Electron & Chromium renderers -->
+  <!-- Inherited entitlements for Electron Helper apps (Renderer, GPU, Plugin) -->
   <key>com.apple.security.cs.allow-jit</key>
   <true/>
-  <!-- Allows unsigned executable memory for WebGL and V8 compilation -->
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
-  <!-- Allows DYLD environment variables for native library loading -->
   <key>com.apple.security.cs.allow-dyld-environment-variables</key>
   <true/>
-  <!-- CRITICAL: Allows loading native Node addons (better-sqlite3.node) without Team ID mismatch -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
-  <!-- Network access for proxy connections, CDP, and browser engine downloads -->
   <key>com.apple.security.network.client</key>
   <true/>
   <key>com.apple.security.network.server</key>
   <true/>
-  <!-- File access permissions for profiles and user data -->
   <key>com.apple.security.files.user-selected.read-write</key>
   <true/>
 </dict>

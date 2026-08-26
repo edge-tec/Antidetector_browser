@@ -19,10 +19,11 @@ mac:
   icon: resources/icon.icns
   category: public.app-category.developer-tools
   darkModeSupport: true
-  minimumSystemVersion: '10.15'
-  hardenedRuntime: false
+  minimumSystemVersion: '11.0'
+  hardenedRuntime: true
   gatekeeperAssess: false
-  identity: null
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.inherit.plist
   target:
     - target: dmg
       arch:

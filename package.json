@@ -21,6 +21,7 @@
     "package:mac:intel": "electron-builder install-app-deps --arch=x64 && electron-vite build && electron-builder --mac dmg --x64",
     "package:mac:arm": "electron-builder install-app-deps --arch=arm64 && electron-vite build && electron-builder --mac dmg --arm64",
     "package:mac:universal": "electron-vite build && electron-builder --mac dmg --universal",
+    "sign:mac": "./scripts/notarize-and-sign-mac.sh",
     "rebuild:x64": "electron-builder install-app-deps --arch=x64",
     "rebuild:arm64": "electron-builder install-app-deps --arch=arm64",
     "package:linux": "electron-vite build && electron-builder --linux AppImage --x64",
