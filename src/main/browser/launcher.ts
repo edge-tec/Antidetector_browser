@@ -582,15 +582,11 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   }
 
   // Proxy configuration
-  // CRITICAL for Windows: Without --proxy-bypass-list="", Chromium on Windows
-  // falls back to WinHTTP/WinINET system proxy settings, ignoring --proxy-server.
   if (proxy && proxy.type !== 'direct' && proxy.host) {
     const proxyUrl = `${proxy.type}://${proxy.host}:${proxy.port}`
     args.push(`--proxy-server=${proxyUrl}`)
-    // Empty bypass list = proxy ALL traffic, never fall back to system proxy
-    args.push('--proxy-bypass-list=""')
-    // Force DNS resolution through the proxy to prevent DNS leaks on Windows
-    args.push('--host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"')
+    // Route all traffic through proxy without Windows system proxy fallback
+    args.push('--proxy-bypass-list=<-loopback>')
   } else {
     // Explicitly disable proxy when "No Proxy" / "Direct" is selected
     // Prevents Windows from using system proxy auto-detection (WPAD/PAC)
@@ -918,7 +914,8 @@ export async function launchBrowser(
       headless: false,
       defaultViewport: null,
       args,
-      ignoreDefaultArgs: true,
+      ignoreDefaultArgs: ['--enable-automation'],
+      timeout: 60000,
       handleSIGINT: false,
       handleSIGTERM: false,
       handleSIGHUP: false
