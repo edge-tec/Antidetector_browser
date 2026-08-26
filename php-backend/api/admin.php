@@ -253,6 +253,11 @@ switch ($action) {
                 $sets[] = "password_hash = ?";
                 $params[] = hashUserPassword($input['password']);
             }
+            if (isset($input['profile_limit']) || isset($input['profileLimit'])) {
+                $pLim = (int)($input['profile_limit'] ?? $input['profileLimit']);
+                $sets[] = "profile_limit = ?";
+                $params[] = $pLim;
+            }
 
             $newVersion = (int)($targetUser['auth_version'] ?? 1) + 1;
             $sets[] = "auth_version = ?";
@@ -505,9 +510,9 @@ switch ($action) {
     // ── 2. Subscriptions Management APIs ──
     case 'get-subscriptions':
         $stmt = $db->prepare("
-            SELECT u.id as user_id, u.name, u.email, u.role, u.account_status,
-                   s.id as sub_id, s.plan_id, s.status as sub_status, s.starts_at, s.expires_at, s.grace_period_days, s.device_limit as sub_device_limit,
-                   p.name as plan_name, p.monthly_price, p.yearly_price, p.team_limit as plan_team_limit
+            SELECT u.id as user_id, u.name, u.email, u.role, u.account_status, u.profile_limit as user_profile_limit,
+                   s.id as sub_id, s.plan_id, s.status as sub_status, s.starts_at, s.expires_at, s.grace_period_days, s.device_limit as sub_device_limit, s.profile_limit as sub_profile_limit,
+                   p.name as plan_name, p.monthly_price, p.yearly_price, p.profile_limit as plan_profile_limit, p.team_limit as plan_team_limit
             FROM users u
             LEFT JOIN subscriptions s ON u.id = s.user_id
             LEFT JOIN pricing_plans p ON s.plan_id = p.id
@@ -525,6 +530,7 @@ switch ($action) {
             $activeCount = count($devices);
 
             $deviceLimit = !empty($r['sub_device_limit']) ? (int)$r['sub_device_limit'] : (int)($r['plan_team_limit'] ?? 2);
+            $profileLimit = !empty($r['sub_profile_limit']) ? (int)$r['sub_profile_limit'] : (!empty($r['user_profile_limit']) ? (int)$r['user_profile_limit'] : (int)($r['plan_profile_limit'] ?? 3));
 
             $data[] = [
                 'user' => [
@@ -532,7 +538,8 @@ switch ($action) {
                     'name' => $r['name'],
                     'email' => $r['email'],
                     'role' => $r['role'],
-                    'account_status' => $r['account_status']
+                    'account_status' => $r['account_status'],
+                    'profile_limit' => $profileLimit
                 ],
                 'subscription' => [
                     'id' => $r['sub_id'] ?: ('sub_' . $r['user_id']),
@@ -543,11 +550,13 @@ switch ($action) {
                     'expires_at' => $r['expires_at'] ?: date('Y-m-d H:i:s', strtotime('+1 year')),
                     'grace_period_days' => (int)($r['grace_period_days'] ?? 3),
                     'device_limit' => $deviceLimit,
+                    'profile_limit' => $profileLimit,
                     'plan' => [
                         'id' => $r['plan_id'] ?: 'plan_starter',
                         'name' => $r['plan_name'] ?: 'Starter',
                         'monthly_price' => (float)($r['monthly_price'] ?? 19),
                         'yearly_price' => (float)($r['yearly_price'] ?? 15),
+                        'profile_limit' => (int)($r['plan_profile_limit'] ?? 3),
                         'team_limit' => (int)($r['plan_team_limit'] ?? 2)
                     ]
                 ],
@@ -555,7 +564,6 @@ switch ($action) {
                 'devices' => $devices
             ];
         }
-
         respondJson(['success' => true, 'data' => $data]);
         break;
 
@@ -573,6 +581,7 @@ switch ($action) {
         $expiresAt = $input['expires_at'] ?? null;
         $graceDays = isset($input['grace_period_days']) ? (int)$input['grace_period_days'] : null;
         $deviceLimit = isset($input['device_limit']) ? (int)$input['device_limit'] : (isset($input['deviceLimit']) ? (int)$input['deviceLimit'] : null);
+        $profileLimit = isset($input['profile_limit']) ? (int)$input['profile_limit'] : (isset($input['profileLimit']) ? (int)$input['profileLimit'] : null);
 
         $db->beginTransaction();
         try {
@@ -583,8 +592,8 @@ switch ($action) {
             if (!$sub) {
                 $subId = 'sub_' . $userId;
                 $insSub = $db->prepare("
-                    INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
+                    INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit, profile_limit)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
                 ");
                 $insSub->execute([
                     $subId,
@@ -593,7 +602,8 @@ switch ($action) {
                     $status ?: 'active',
                     $expiresAt ?: date('Y-m-d H:i:s', strtotime('+1 year')),
                     $graceDays ?? 3,
-                    $deviceLimit ?: 2
+                    $deviceLimit ?: 2,
+                    $profileLimit
                 ]);
             } else {
                 $updSub = $db->prepare("
@@ -603,10 +613,15 @@ switch ($action) {
                         expires_at = COALESCE(?, expires_at),
                         grace_period_days = COALESCE(?, grace_period_days),
                         device_limit = COALESCE(?, device_limit),
+                        profile_limit = COALESCE(?, profile_limit),
                         updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ?
                 ");
-                $updSub->execute([$planId, $status, $expiresAt, $graceDays, $deviceLimit, $userId]);
+                $updSub->execute([$planId, $status, $expiresAt, $graceDays, $deviceLimit, $profileLimit, $userId]);
+            }
+
+            if ($profileLimit !== null) {
+                $db->prepare("UPDATE users SET profile_limit = ? WHERE id = ?")->execute([$profileLimit, $userId]);
             }
 
             // Bump user auth_version for subscription & device limit state sync

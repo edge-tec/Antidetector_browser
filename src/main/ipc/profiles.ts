@@ -4,6 +4,7 @@
 
 import { ipcMain } from 'electron'
 import { profileRepo } from '../database/repositories/profile.repo'
+import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { profileManager } from '../browser/profile-manager'
 import { validateProfileName, validateId } from '../security/validators'
 import { authorizeUser, normalizeUserRole } from '../security/session'
@@ -100,6 +101,37 @@ export function registerProfileHandlers(): void {
       }
 
       validateProfileName(input.name)
+
+      // ── Quota Check: Enforce Profile Limit ──
+      const role = normalizeUserRole(auth.user.role)
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      if (!isAdmin) {
+        // Count existing profiles owned by this user
+        const userProfiles = profileRepo.getAll(auth.user.id)
+        const currentCount = userProfiles.length
+
+        // Retrieve authoritative profile limit: Server License > Local Subscription License > Default 3
+        let maxAllowed = 3
+        const liveLicense = centralApi.getCurrentLicense()
+        if (liveLicense && liveLicense.limits && typeof liveLicense.limits.profiles === 'number' && liveLicense.limits.profiles > 0) {
+          maxAllowed = liveLicense.limits.profiles
+        } else {
+          try {
+            const localLicense = subscriptionRepo.validateLicense(auth.user.id)
+            if (localLicense && localLicense.limits && typeof localLicense.limits.profiles === 'number' && localLicense.limits.profiles > 0) {
+              maxAllowed = localLicense.limits.profiles
+            }
+          } catch {}
+        }
+
+        if (currentCount >= maxAllowed) {
+          logger.warn('profile', `[PROFILE_LIMIT_BLOCKED] User ${auth.user.id} reached quota (${currentCount}/${maxAllowed})`)
+          return {
+            success: false,
+            error: `Profile limit reached (${currentCount}/${maxAllowed}). Your account is allowed a maximum of ${maxAllowed} profile${maxAllowed === 1 ? '' : 's'}. Please upgrade your plan in the Web Control Center to create more profiles.`
+          }
+        }
+      }
 
       // 1. Create local profile and filesystem sandbox
       const profile = profileManager.createProfile(input, auth.user.id)

@@ -47,7 +47,7 @@ export class SubscriptionRepository {
     if (!sub) {
       // Check user role
       const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId) as any
-      const defaultPlanId = user?.role === 'admin' ? 'plan_pro' : 'plan_starter'
+      const defaultPlanId = user?.role === 'admin' ? 'plan_pro' : 'plan_free'
       const subId = `sub_${userId}`
 
       db.prepare(`
@@ -242,6 +242,14 @@ export class SubscriptionRepository {
     const hasApiAccess = plan.api_limit !== '—' && plan.api_limit !== 'Disabled'
     const isProOrBusiness = plan.monthly_price >= 49 || user.role === 'admin'
 
+    const userProfileLimit = (sub.profile_limit && sub.profile_limit > 0)
+      ? sub.profile_limit
+      : (user.profile_limit && user.profile_limit > 0)
+        ? user.profile_limit
+        : (plan && plan.profile_limit && plan.profile_limit > 0)
+          ? plan.profile_limit
+          : 3
+
     return {
       valid: true,
       account_status: user.account_status,
@@ -263,7 +271,7 @@ export class SubscriptionRepository {
         api_access: hasApiAccess
       },
       limits: {
-        profiles: user.role === 'admin' ? 1000 : (plan.profile_limit || 25),
+        profiles: user.role === 'admin' ? 1000 : userProfileLimit,
         team_members: user.role === 'admin' ? 50 : (plan.team_limit || 2),
         api_access: hasApiAccess
       },

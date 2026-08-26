@@ -116,6 +116,8 @@ function ensureDatabaseTablesExist() {
         ");
         try {
             $db->exec("ALTER TABLE `subscriptions` ADD COLUMN IF NOT EXISTS `device_limit` INT DEFAULT NULL;");
+            $db->exec("ALTER TABLE `subscriptions` ADD COLUMN IF NOT EXISTS `profile_limit` INT DEFAULT NULL;");
+            $db->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `profile_limit` INT DEFAULT NULL;");
         } catch (Throwable $e) {}
 
         // 4. Desktop Installations Table

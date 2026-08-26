@@ -365,8 +365,9 @@ function ProfileListRowComponent({ profile, proxies, onStart, onStop, onEdit, on
 // ═══════════════════════════════════════════
 
 function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['type'], msg: string) => void; confirm: (c: Omit<ConfirmState, 'show'>) => void }) {
-  const { sessionToken } = useAuth()
+  const { sessionToken, isAdmin } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [licenseLimits, setLicenseLimits] = useState<{ profiles: number } | null>(null)
   const [proxies, setProxies] = useState<ProxyDisplay[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -387,6 +388,11 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
     const result = await window.api.getProfiles(sessionToken, search || undefined)
     if (result.success && result.data) setProfiles(result.data)
     setLoading(false)
+    window.api.getLicenseStatus(sessionToken).then((r: any) => {
+      if (r?.success && r?.data?.limits) {
+        setLicenseLimits(r.data.limits)
+      }
+    }).catch(() => {})
   }, [sessionToken, search])
 
   const [provisioningProgress, setProvisioningProgress] = useState<ProvisioningProgressData | null>(null)
@@ -447,6 +453,12 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
         showToast('error', result.error || 'Failed to update profile')
       }
     } else {
+      const maxLimit = licenseLimits?.profiles ?? 3
+      if (!isAdmin && profiles.length >= maxLimit) {
+        showToast('error', `Profile limit reached (${profiles.length}/${maxLimit}). Your account is allowed a maximum of ${maxLimit} profile${maxLimit === 1 ? '' : 's'}. Please upgrade your subscription plan.`)
+        return
+      }
+
       const result = await window.api.createProfile(sessionToken, input)
       if (result.success) {
         const createdName = result.data?.name || input.name || 'New Profile'
@@ -467,6 +479,12 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
 
   const handleBulkCreate = async (count: number, osType: string, namePrefix: string, groupId?: string, proxyId?: string) => {
     if (!sessionToken) return
+    const maxLimit = licenseLimits?.profiles ?? 3
+    if (!isAdmin && profiles.length + count > maxLimit) {
+      const remaining = Math.max(0, maxLimit - profiles.length)
+      showToast('error', `Cannot create ${count} profiles. Your account quota only allows ${remaining} more profile(s) (${profiles.length}/${maxLimit}).`)
+      return
+    }
     let successCount = 0
     for (let i = 1; i <= count; i++) {
       const name = `${namePrefix} ${i}`
@@ -484,9 +502,14 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
             return exists ? prev : [res.data!, ...prev]
           })
         }
+      } else {
+        showToast('error', res.error || 'Profile limit reached.')
+        break
       }
     }
-    showToast('success', `Created ${successCount} profiles successfully`)
+    if (successCount > 0) {
+      showToast('success', `Created ${successCount} profiles successfully`)
+    }
     loadProfiles()
   }
 
@@ -501,6 +524,12 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
       } as any)
       setShowCreate(true)
     } else {
+      const maxLimit = licenseLimits?.profiles ?? 3
+      if (!isAdmin && profiles.length >= maxLimit) {
+        showToast('error', `Profile limit reached (${profiles.length}/${maxLimit}). Your account is allowed a maximum of ${maxLimit} profile${maxLimit === 1 ? '' : 's'}. Please upgrade your plan.`)
+        return
+      }
+
       const res = await window.api.createProfile(sessionToken, {
         name: templateName,
         osType: templateOs
@@ -527,7 +556,24 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           <h1 className="page-title">Profiles</h1>
           <p className="page-subtitle">{profiles.length} browser profile{profiles.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {!isAdmin && licenseLimits && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '12px',
+              fontWeight: 600,
+              background: profiles.length >= licenseLimits.profiles ? 'rgba(239, 68, 68, 0.15)' : 'rgba(45, 212, 191, 0.12)',
+              color: profiles.length >= licenseLimits.profiles ? '#F87171' : '#2DD4BF',
+              border: profiles.length >= licenseLimits.profiles ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(45, 212, 191, 0.25)'
+            }}>
+              <span>{profiles.length >= licenseLimits.profiles ? '⚠️ Quota Limit:' : '📊 Quota:'}</span>
+              <span>{profiles.length} / {licenseLimits.profiles} Profiles</span>
+            </div>
+          )}
           <button className="btn btn-ghost btn-icon" onClick={loadProfiles} title="Refresh">
             <span style={{ width: 16, height: 16, display: 'flex' }}>{Icons.refresh}</span>
           </button>
@@ -540,7 +586,19 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           <button className="btn btn-secondary" onClick={() => setShowBulk(true)}>
             📦 Bulk Create
           </button>
-          <button className="btn btn-primary" onClick={() => { setEditId(null); setEditProfile(null); setShowCreate(true) }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              const maxLimit = licenseLimits?.profiles ?? 3
+              if (!isAdmin && profiles.length >= maxLimit) {
+                showToast('error', `Profile limit reached (${profiles.length}/${maxLimit}). Your account is allowed a maximum of ${maxLimit} profile${maxLimit === 1 ? '' : 's'}. Please upgrade your plan in the Web Control Center.`)
+                return
+              }
+              setEditId(null)
+              setEditProfile(null)
+              setShowCreate(true)
+            }}
+          >
             <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.plus}</span>
             New Profile
           </button>
@@ -587,7 +645,23 @@ function ProfilesPage({ showToast, confirm }: { showToast: (type: ToastItem['typ
           <div className="empty-state-text">
             {search ? 'Try a different search term.' : 'Create your first browser profile to get started.'}
           </div>
-          {!search && <button className="btn btn-primary" onClick={() => { setEditId(null); setEditProfile(null); setShowCreate(true) }}>Create Profile</button>}
+          {!search && (
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                const maxLimit = licenseLimits?.profiles ?? 3
+                if (!isAdmin && profiles.length >= maxLimit) {
+                  showToast('error', `Profile limit reached (${profiles.length}/${maxLimit}). Your account is allowed a maximum of ${maxLimit} profile${maxLimit === 1 ? '' : 's'}. Please upgrade your plan in the Web Control Center.`)
+                  return
+                }
+                setEditId(null)
+                setEditProfile(null)
+                setShowCreate(true)
+              }}
+            >
+              Create Profile
+            </button>
+          )}
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid-profiles">

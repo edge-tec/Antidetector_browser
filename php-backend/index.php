@@ -2462,6 +2462,7 @@ try {
                                     <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
                                         <th style="padding: 12px 16px; color: var(--text-muted);">User Account</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Package Plan</th>
+                                        <th style="padding: 12px 16px; color: var(--text-muted);">Profile Limit</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Device Limit</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Status</th>
                                         <th style="padding: 12px 16px; color: var(--text-muted);">Expiration Date</th>
@@ -2469,7 +2470,7 @@ try {
                                     </tr>
                                 </thead>
                                 <tbody id="subsTableBody">
-                                    <tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user subscription expiration dates...</td></tr>
+                                    <tr><td colspan="7" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading user subscription expiration dates...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -7422,18 +7423,25 @@ try {
                     tbody.innerHTML = data.data.map((item, idx) => {
                         const expDate = item.subscription.expires_at ? item.subscription.expires_at.substring(0, 10) : '2026-12-31';
                         const planId = item.subscription.plan_id || 'plan_starter';
+                        const profileLimit = item.subscription.profile_limit || (planId === 'plan_free' ? 3 : (planId === 'plan_starter' ? 25 : (planId === 'plan_pro' ? 100 : 500)));
                         const deviceLimit = item.subscription.device_limit || item.subscription.plan.team_limit || 2;
                         const activeDevices = item.active_devices_count || 0;
                         return `
                         <tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${item.user.name} <br><span style="font-size:12px; color:var(--text-muted);">${item.user.email}</span></td>
                             <td style="padding: 12px 16px;">
-                                <select id="subPlan_${item.user.id}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
+                                <select id="subPlan_${item.user.id}" onchange="const def = {'plan_free':3,'plan_starter':25,'plan_pro':100,'plan_business':500}[this.value]||3; const inp = document.getElementById('subProfileLimit_${item.user.id}'); if (inp) inp.value = def;" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
                                     <option value="plan_free" ${planId === 'plan_free' ? 'selected' : ''}>Free (3 Profiles)</option>
                                     <option value="plan_starter" ${planId === 'plan_starter' ? 'selected' : ''}>Starter (25 Profiles)</option>
                                     <option value="plan_pro" ${planId === 'plan_pro' ? 'selected' : ''}>Professional (100 Profiles)</option>
                                     <option value="plan_business" ${planId === 'plan_business' ? 'selected' : ''}>Business (500 Profiles)</option>
                                 </select>
+                            </td>
+                            <td style="padding: 12px 16px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <input type="number" id="subProfileLimit_${item.user.id}" value="${profileLimit}" min="1" max="10000" style="width: 65px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; color: #2DD4BF; font-weight: 700; font-size: 13px; text-align: center;">
+                                    <span style="font-size: 11px; color: #94A3B8; white-space: nowrap;">profiles</span>
+                                </div>
                             </td>
                             <td style="padding: 12px 16px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -7458,16 +7466,17 @@ try {
                         `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#F87171;">No subscription records found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:#F87171;">No subscription records found.</td></tr>';
                 }
             } catch(err) {
-                tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#F87171;">Error loading subscriptions.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:#F87171;">Error loading subscriptions.</td></tr>';
             }
         }
 
         async function updateUserSubscriptionDateAndPlan(userId) {
             const token = localStorage.getItem('sessionToken');
             const planId = document.getElementById('subPlan_' + userId).value;
+            const profileLimit = document.getElementById('subProfileLimit_' + userId)?.value || 3;
             const deviceLimit = document.getElementById('subDeviceLimit_' + userId)?.value || 2;
             const status = document.getElementById('subStatus_' + userId).value;
             const expDate = document.getElementById('subExp_' + userId).value;
@@ -7487,6 +7496,7 @@ try {
                     body: JSON.stringify({
                         userId: userId,
                         plan_id: planId,
+                        profile_limit: parseInt(profileLimit, 10),
                         device_limit: parseInt(deviceLimit, 10),
                         status: status,
                         expires_at: expDate + ' 23:59:59'
@@ -7494,7 +7504,7 @@ try {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(`User subscription (Plan: ${planId}, Device Limit: ${deviceLimit}) and expiration updated successfully!`);
+                    alert(`User subscription (Plan: ${planId}, Profile Limit: ${profileLimit}, Device Limit: ${deviceLimit}) and expiration updated successfully!`);
                     loadSubscriptionsTable();
                 } else {
                     alert('Error: ' + (data.error || 'Failed to update subscription.'));

@@ -152,22 +152,36 @@ switch ($action) {
             $countStmt->execute([$userId]);
             $currentCount = (int)$countStmt->fetchColumn();
 
-            // Fetch user plan limit
-            $subStmt = $db->prepare("
-                SELECT p.profile_limit 
-                FROM subscriptions s 
-                JOIN pricing_plans p ON s.plan_id = p.id 
-                WHERE s.user_id = ? AND s.status = 'active'
+            // Fetch authoritative profile limit: Subscriptions custom limit > User custom limit > Pricing Plan limit > Default (3)
+            $limitStmt = $db->prepare("
+                SELECT 
+                    s.profile_limit as sub_limit,
+                    u.profile_limit as user_limit,
+                    p.profile_limit as plan_limit
+                FROM users u
+                LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
+                LEFT JOIN pricing_plans p ON s.plan_id = p.id
+                WHERE u.id = ?
                 ORDER BY s.created_at DESC LIMIT 1
             ");
-            $subStmt->execute([$userId]);
-            $planLimit = $subStmt->fetchColumn();
-            $maxAllowed = $planLimit ? (int)$planLimit : 50; // Default quota
+            $limitStmt->execute([$userId]);
+            $limits = $limitStmt->fetch();
+
+            $maxAllowed = 3; // Default free plan limit
+            if ($limits) {
+                if (!empty($limits['sub_limit']) && (int)$limits['sub_limit'] > 0) {
+                    $maxAllowed = (int)$limits['sub_limit'];
+                } elseif (!empty($limits['user_limit']) && (int)$limits['user_limit'] > 0) {
+                    $maxAllowed = (int)$limits['user_limit'];
+                } elseif (!empty($limits['plan_limit']) && (int)$limits['plan_limit'] > 0) {
+                    $maxAllowed = (int)$limits['plan_limit'];
+                }
+            }
 
             if (!$isAdmin && $currentCount >= $maxAllowed) {
                 respondJson([
                     'success' => false,
-                    'error' => "Profile limit reached ({$currentCount}/{$maxAllowed}). Please upgrade your plan in the Web Control Center."
+                    'error' => "Profile limit reached ({$currentCount}/{$maxAllowed}). Your account is strictly limited to {$maxAllowed} profiles. Please upgrade your plan in the Web Control Center to create more profiles."
                 ], 403);
             }
         } catch (Throwable $e) {}

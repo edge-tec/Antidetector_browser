@@ -206,6 +206,16 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
     $hasApiAccess = $plan['api_limit'] !== '—' && $plan['api_limit'] !== 'Disabled';
     $isProOrBusiness = (float)$plan['monthly_price'] >= 49 || $user['role'] === 'admin';
 
+    // Authoritative Profile Limit (Subscription override > User override > Plan limit > Default 3)
+    $userProfileLimit = 3;
+    if (!empty($sub['profile_limit']) && (int)$sub['profile_limit'] > 0) {
+        $userProfileLimit = (int)$sub['profile_limit'];
+    } elseif (!empty($user['profile_limit']) && (int)$user['profile_limit'] > 0) {
+        $userProfileLimit = (int)$user['profile_limit'];
+    } elseif (!empty($plan['profile_limit']) && (int)$plan['profile_limit'] > 0) {
+        $userProfileLimit = (int)$plan['profile_limit'];
+    }
+
     return [
         'valid' => true,
         'account_status' => $user['account_status'],
@@ -227,7 +237,7 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
             'api_access' => $hasApiAccess
         ],
         'limits' => [
-            'profiles' => $user['role'] === 'admin' ? 1000 : (int)($plan['profile_limit'] ?? 25),
+            'profiles' => $user['role'] === 'admin' ? 1000 : $userProfileLimit,
             'team_members' => $user['role'] === 'admin' ? 50 : (int)($plan['team_limit'] ?? 2),
             'api_access' => $hasApiAccess
         ],
