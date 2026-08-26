@@ -4,6 +4,18 @@ directories:
   buildResources: resources
   output: dist
 files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+  - '!php-backend/**'
+  - '!aaPanel-deployment/**'
+  - '!dist/**'
+  - '!scratch/**'
+  - '!docs/**'
+  - '!uploads/**'
+  - '!userData/**'
+  - '!*.db*'
+  - '!**/*.php'
   - '!**/.vscode/*'
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
