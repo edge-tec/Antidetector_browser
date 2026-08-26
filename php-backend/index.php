@@ -2287,6 +2287,19 @@ header('Content-Type: text/html; charset=utf-8');
 
                         </div>
 
+                        <!-- macOS Gatekeeper Installation Helper Box -->
+                        <div style="margin-top: 18px; margin-bottom: 20px; padding: 14px 18px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; font-size: 12px; color: #94A3B8; line-height: 1.6;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                <span style="font-size: 16px;">🍏</span>
+                                <strong style="color: #60A5FA; font-size: 13px;">macOS Installation Guide (If blocked by Gatekeeper)</strong>
+                            </div>
+                            If macOS displays <em>"AntiProfiles is damaged and can't be opened. You should move it to the Trash."</em>, open <strong>Terminal</strong> and run:
+                            <div style="margin-top: 6px; padding: 8px 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-family: monospace; color: #34D399; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                                <code>xattr -cr /Applications/AntiProfiles.app</code>
+                                <button type="button" onclick="navigator.clipboard.writeText('xattr -cr /Applications/AntiProfiles.app'); alert('Command copied to clipboard!');" style="background: rgba(255,255,255,0.15); color: #FFF; border: none; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;">📋 Copy Command</button>
+                            </div>
+                        </div>
+
                         <!-- System Security & Feature Highlights Bar -->
                         <div class="security-highlights-grid">
                             <div style="display: flex; gap: 12px; align-items: center;">

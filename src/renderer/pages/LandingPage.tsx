@@ -839,6 +839,13 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                 <strong style={{ color: '#10B981' }}>🍏 Mac — Intel:</strong>
                 <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>Select this if your Mac has an Intel Core i5, i7, or i9 processor (typically models made before late 2020).</p>
               </div>
+
+              <div style={{ padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+                <strong style={{ color: '#60A5FA' }}>💡 macOS Gatekeeper / "App is damaged" Fix:</strong>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                  If macOS shows <em>"AntiProfiles is damaged and can't be opened"</em>, open Terminal and run: <code style={{ color: '#34D399', background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '4px' }}>xattr -cr /Applications/AntiProfiles.app</code>
+                </p>
+              </div>
             </div>
 
             <button
