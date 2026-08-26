@@ -444,18 +444,24 @@ export class BrowserIconManager {
     const checkEngine = (engine: 'chromium' | 'firefox' | 'app') => {
       const customPng = path.join(customDir, `${engine}.png`)
       const isCustom = fs.existsSync(customPng)
-      const icon = this.resolveIcon(engine === 'app' ? 'chromium' : engine)
       let updatedAt: string | undefined
+      let previewUrl = ''
 
       if (isCustom) {
+        // Use the actual custom-uploaded icon as the preview
+        previewUrl = this.pathToDataUrl(customPng)
         try {
           updatedAt = fs.statSync(customPng).mtime.toISOString()
         } catch {}
+      } else {
+        // Fall back to resolveIcon for the default/bundled icon
+        const icon = this.resolveIcon(engine === 'app' ? 'chromium' : engine)
+        previewUrl = icon.dataUrl || ''
       }
 
       return {
         isCustom,
-        previewUrl: icon.dataUrl || '',
+        previewUrl,
         updatedAt
       }
     }
@@ -520,8 +526,14 @@ export class BrowserIconManager {
         'true'
       )
 
-      // If target is firefox or app, patch any existing standalone runtime packages
+      // Patch existing standalone runtime packages with the new custom icon
       if (target === 'firefox') {
+        this.patchFirefoxRuntimeBranding()
+      } else if (target === 'chromium') {
+        this.patchChromiumRuntimeBranding()
+      } else if (target === 'app') {
+        // 'app' target affects both engines
+        this.patchChromiumRuntimeBranding()
         this.patchFirefoxRuntimeBranding()
       }
 
