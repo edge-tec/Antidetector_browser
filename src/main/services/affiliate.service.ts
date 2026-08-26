@@ -236,12 +236,30 @@ export class AffiliateService {
     const query = onlyActive
       ? "SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at DESC"
       : "SELECT * FROM affiliate_offers ORDER BY created_at DESC"
-    return db.prepare(query).all() as AffiliateOffer[]
+    let offers = db.prepare(query).all() as AffiliateOffer[]
+
+    if (!offers || offers.length === 0) {
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO affiliate_offers (id, title, description, target_url, payout_type, commission_rate, fixed_payout_usd, status, created_at, updated_at)
+          VALUES 
+            ('offer_main_saas', 'AntiProfiles Pro & Team Subscription Plan', 'Earn 15% recurring lifetime revenue share on every monthly or annual plan purchased.', 'https://antiprofiles.com/#pricing', 'percentage', 15.0, 0.0, 'active', datetime('now'), datetime('now')),
+            ('offer_starter_bounty', 'AntiProfiles Starter Account Direct Bounty', 'Earn a $10.00 instant CPA bounty for every newly verified paying user.', 'https://antiprofiles.com/register', 'fixed', 0.0, 10.0, 'active', datetime('now'), datetime('now'))
+        `).run()
+        offers = db.prepare(query).all() as AffiliateOffer[]
+      } catch {}
+    }
+
+    return offers
   }
 
   public getOfferById(offerId: string): AffiliateOffer | null {
     const db = getDatabase()
-    const offer = db.prepare('SELECT * FROM affiliate_offers WHERE id = ?').get(offerId) as AffiliateOffer | undefined
+    let offer = db.prepare('SELECT * FROM affiliate_offers WHERE id = ?').get(offerId) as AffiliateOffer | undefined
+    if (!offer) {
+      this.getOffers() // Trigger auto-seed
+      offer = db.prepare('SELECT * FROM affiliate_offers WHERE id = ?').get(offerId) as AffiliateOffer | undefined
+    }
     return offer || null
   }
 

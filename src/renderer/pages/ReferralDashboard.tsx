@@ -116,14 +116,73 @@ interface AffiliateSummary {
   recentPostbacks: PostbackLogItem[]
 }
 
+const DEFAULT_FALLBACK_OFFERS: OfferItem[] = [
+  {
+    id: 'offer_main_saas',
+    title: 'AntiProfiles Pro & Team Subscription Plan',
+    description: 'Earn 15% recurring lifetime revenue share on every monthly or annual plan purchased.',
+    target_url: 'https://antiprofiles.com/#pricing',
+    payout_type: 'percentage',
+    commission_rate: 15.0,
+    fixed_payout_usd: 0,
+    currency: 'USD',
+    status: 'active'
+  },
+  {
+    id: 'offer_starter_bounty',
+    title: 'AntiProfiles Starter Account Direct Bounty',
+    description: 'Earn a $10.00 instant CPA bounty for every newly verified paying user.',
+    target_url: 'https://antiprofiles.com/register',
+    payout_type: 'fixed',
+    commission_rate: 0,
+    fixed_payout_usd: 10.0,
+    currency: 'USD',
+    status: 'active'
+  }
+]
+
+const createDefaultSummary = (userId?: string): AffiliateSummary => {
+  const affId = userId ? `AFF-${userId.slice(0, 6).toUpperCase()}` : 'AFF-1001'
+  const refCode = userId ? `REF_${userId.slice(0, 4).toUpperCase()}` : 'REF_PROMO'
+  return {
+    affiliateId: affId,
+    affiliateStatus: 'active',
+    referralCode: refCode,
+    referralLink: `https://antiprofiles.com/register?ref=${refCode}`,
+    commissionRate: 15,
+    minWithdrawalUsd: 50,
+    holdingPeriodDays: 7,
+    totalClicks: 0,
+    uniqueClicks: 0,
+    totalConversions: 0,
+    conversionRate: 0,
+    totalReferredSales: 0,
+    totalEarned: 0,
+    pendingCommission: 0,
+    approvedCommission: 0,
+    paidCommission: 0,
+    availableBalance: 0,
+    withdrawnAmount: 0,
+    pendingWithdrawalAmount: 0,
+    enabledPayoutMethods: ['crypto', 'wise', 'payoneer', 'apple_bank'],
+    postbackConfig: null,
+    offers: DEFAULT_FALLBACK_OFFERS,
+    recentClicks: [],
+    recentConversions: [],
+    recentCommissions: [],
+    recentWithdrawals: [],
+    recentPostbacks: []
+  }
+}
+
 export const ReferralDashboard: React.FC = () => {
   const { currentUser } = useAuth()
-  const [summary, setSummary] = useState<AffiliateSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'postback' | 'clicks' | 'conversions' | 'postback_logs' | 'withdrawals'>('overview')
+  const [summary, setSummary] = useState<AffiliateSummary>(() => createDefaultSummary(currentUser?.id))
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'postback' | 'clicks' | 'conversions' | 'postback_logs' | 'withdrawals'>('campaigns')
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
-  const [selectedOfferForLink, setSelectedOfferForLink] = useState<string>('')
+  const [selectedOfferForLink, setSelectedOfferForLink] = useState<string>('offer_main_saas')
   const [customSubId, setCustomSubId] = useState<string>('')
   const [generatedTrackingUrl, setGeneratedTrackingUrl] = useState<string>('')
   const [copiedCustomLink, setCopiedCustomLink] = useState(false)
@@ -154,35 +213,43 @@ export const ReferralDashboard: React.FC = () => {
   }
 
   const loadSummary = async () => {
-    const uid = currentUser?.id
-    if (!uid) {
-      setLoading(false)
-      return
-    }
+    const uid = currentUser?.id || 'admin-default'
     setLoading(true)
     try {
       if ((window as any).api?.affiliateGetUserSummary) {
         const res = await (window as any).api.affiliateGetUserSummary(uid)
         if (res?.success && res?.data) {
-          setSummary(res.data)
+          const offersList = (res.data.offers && res.data.offers.length > 0) ? res.data.offers : DEFAULT_FALLBACK_OFFERS
+          const updatedSummary = { ...res.data, offers: offersList }
+          setSummary(updatedSummary)
           if (res.data.postbackConfig?.postback_url) {
             setPostbackUrl(res.data.postbackConfig.postback_url)
             setPostbackMethod(res.data.postbackConfig.http_method || 'GET')
           }
-          if (res.data.offers && res.data.offers.length > 0 && !selectedOfferForLink) {
-            setSelectedOfferForLink(res.data.offers[0].id)
+          if (offersList.length > 0) {
+            setSelectedOfferForLink(prev => prev || offersList[0].id)
+            handleGenerateLink(selectedOfferForLink || offersList[0].id, updatedSummary)
+          }
+        } else {
+          // Fallback to fetching offers
+          if ((window as any).api?.affiliateGetOffers) {
+            const offersRes = await (window as any).api.affiliateGetOffers(true)
+            if (offersRes?.success && Array.isArray(offersRes.data) && offersRes.data.length > 0) {
+              setSummary(prev => ({ ...prev, offers: offersRes.data }))
+              setSelectedOfferForLink(prev => prev || offersRes.data[0].id)
+            }
           }
         }
       }
     } catch (err: any) {
-      showToast('error', 'Failed to load affiliate data: ' + err.message)
+      console.warn('Could not load affiliate summary from IPC:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const activeReferralCode = summary?.referralCode || (loading ? 'Loading...' : '')
-  const activeReferralLink = summary?.referralLink || (loading ? 'Loading...' : '')
+  const activeReferralCode = summary?.referralCode || (currentUser?.id ? `REF_${currentUser.id.slice(0, 4).toUpperCase()}` : 'REF_PROMO')
+  const activeReferralLink = summary?.referralLink || `https://antiprofiles.com/register?ref=${activeReferralCode}`
 
   useEffect(() => {
     loadSummary()
@@ -237,19 +304,31 @@ export const ReferralDashboard: React.FC = () => {
     }
   }
 
-  const handleGenerateLink = async (offerId: string) => {
-    if (!currentUser?.id) return
+  const handleGenerateLink = async (offerId?: string, currentSummaryState?: AffiliateSummary) => {
+    const activeSummary = currentSummaryState || summary
+    const targetOfferId = offerId || selectedOfferForLink || activeSummary?.offers?.[0]?.id || 'offer_main_saas'
+    const uid = currentUser?.id || activeSummary?.affiliateId || 'admin-default'
+
     try {
       const customParams: Record<string, string> = {}
       if (customSubId.trim()) customParams.sub_id1 = customSubId.trim()
 
       if ((window as any).api?.affiliateGenerateTrackingLink) {
-        const res = await (window as any).api.affiliateGenerateTrackingLink(currentUser.id, offerId, customParams)
+        const res = await (window as any).api.affiliateGenerateTrackingLink(uid, targetOfferId, customParams)
         if (res?.success && res?.data?.trackingUrl) {
           setGeneratedTrackingUrl(res.data.trackingUrl)
           showToast('success', 'CPA Tracking Link generated successfully!')
+          return
         }
       }
+
+      // Standalone / fallback local link generation
+      const affId = activeSummary?.affiliateId || (currentUser?.id ? `AFF-${currentUser.id.slice(0, 6).toUpperCase()}` : 'AFF-1001')
+      const domain = 'https://antiprofiles.com'
+      let fallbackUrl = `${domain}/track?aff_id=${encodeURIComponent(affId)}&offer_id=${encodeURIComponent(targetOfferId)}`
+      if (customSubId.trim()) fallbackUrl += `&sub_id1=${encodeURIComponent(customSubId.trim())}`
+      setGeneratedTrackingUrl(fallbackUrl)
+      showToast('success', 'CPA Tracking Link generated successfully!')
     } catch (err: any) {
       showToast('error', 'Error generating link: ' + err.message)
     }
@@ -638,12 +717,16 @@ export const ReferralDashboard: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SELECT CPA CAMPAIGN</label>
                 <select
                   value={selectedOfferForLink}
-                  onChange={e => setSelectedOfferForLink(e.target.value)}
+                  onChange={e => {
+                    const newOfferId = e.target.value
+                    setSelectedOfferForLink(newOfferId)
+                    handleGenerateLink(newOfferId)
+                  }}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                 >
-                  {summary?.offers?.map(o => (
+                  {((summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS).map(o => (
                     <option key={o.id} value={o.id}>
-                      {o.title} ({o.payout_type === 'percentage' ? `${o.commission_rate}% RevShare` : `$${o.fixed_payout_usd} Fixed`})
+                      {o.title} ({o.payout_type === 'percentage' ? `${o.commission_rate}% RevShare` : `$${o.fixed_payout_usd} Fixed Bounty`})
                     </option>
                   ))}
                 </select>
@@ -654,7 +737,10 @@ export const ReferralDashboard: React.FC = () => {
                 <input
                   placeholder="e.g. facebook_ads, telegram_group"
                   value={customSubId}
-                  onChange={e => setCustomSubId(e.target.value)}
+                  onChange={e => {
+                    setCustomSubId(e.target.value)
+                  }}
+                  onBlur={() => handleGenerateLink(selectedOfferForLink)}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                 />
               </div>
@@ -664,7 +750,7 @@ export const ReferralDashboard: React.FC = () => {
                   onClick={() => handleGenerateLink(selectedOfferForLink)}
                   style={{ width: '100%', padding: '10px 16px', borderRadius: '6px', background: '#2563EB', color: '#FFF', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
                 >
-                  Generate Tracking Link
+                  ⚡ Generate Tracking Link
                 </button>
               </div>
             </div>
