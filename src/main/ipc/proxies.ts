@@ -155,4 +155,40 @@ export function registerProxyHandlers(): void {
       return { success: false, error: err.message }
     }
   })
+
+  // Verify proxy before launching a profile — returns external IP for display
+  ipcMain.handle('proxies:verifyBeforeLaunch', async (_event, proxyId: string) => {
+    try {
+      validateId(proxyId)
+      const proxy = proxyRepo.getById(proxyId)
+      if (!proxy) {
+        return { success: false, error: 'Proxy not found' }
+      }
+
+      if (proxy.type === 'direct') {
+        return { success: true, data: { ip: 'Direct Connection', proxyType: 'DIRECT' } }
+      }
+
+      const result = await testProxyConnection(proxyId)
+      if (result.success) {
+        return {
+          success: true,
+          data: {
+            ip: result.ip,
+            proxyName: result.proxyName,
+            proxyType: result.proxyType,
+            latency: result.latency,
+            country: result.country,
+            countryName: result.countryName,
+            city: result.city,
+            flag: result.flag
+          }
+        }
+      } else {
+        return { success: false, error: result.error || 'Proxy verification failed' }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }

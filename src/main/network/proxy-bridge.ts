@@ -92,10 +92,16 @@ export async function startProxyBridge(profileId: string, proxy: Proxy): Promise
           return
         }
 
-        // Connect to remote SOCKS5 proxy
-        const proxySocket = net.connect({ host: proxy.host, port: proxy.port }, () => {
+        // Connect to remote SOCKS5 proxy with timeout
+        const proxySocket = net.connect({ host: proxy.host, port: proxy.port, timeout: 15000 }, () => {
           // Send SOCKS5 Greeting: 0x00 (No Auth), 0x02 (Username/Password)
           proxySocket.write(Buffer.from([0x05, 0x02, 0x00, 0x02]))
+        })
+
+        proxySocket.on('timeout', () => {
+          logger.warn('proxy', `SOCKS5 connection to ${proxy.host}:${proxy.port} timed out`)
+          sendHttpError(clientSocket, 504, 'SOCKS5 Proxy Connection Timeout')
+          proxySocket.destroy()
         })
 
         let socksStage = 0 // 0: greeting sent, 1: auth sent, 2: connect sent, 3: connected
@@ -191,7 +197,17 @@ export async function startProxyBridge(profileId: string, proxy: Proxy): Promise
       clientSocket.on('data', onClientData)
     })
 
-    server.listen(0, '127.0.0.1', () => {
+    server.on('error', (err: any) => {
+      // Handle Windows-specific binding errors
+      if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+        logger.error('proxy', `SOCKS5 Bridge port binding failed (${err.code}): ${err.message}`)
+      }
+      reject(err)
+    })
+
+    // Use 127.0.0.1 on macOS/Linux; on Windows use 0.0.0.0 for IPv4 loopback compatibility
+    const bindHost = process.platform === 'win32' ? '0.0.0.0' : '127.0.0.1'
+    server.listen(0, bindHost, () => {
       const address = server.address() as net.AddressInfo
       const localPort = address.port
       const localProxyUrl = `http://127.0.0.1:${localPort}`
@@ -205,11 +221,9 @@ export async function startProxyBridge(profileId: string, proxy: Proxy): Promise
         }
       })
 
-      logger.info('proxy', `SOCKS5 Tunnel Bridge started on ${localProxyUrl} for profile ${profileId}`)
+      logger.info('proxy', `SOCKS5 Tunnel Bridge started on ${localProxyUrl} (bound to ${bindHost}) for profile ${profileId}`)
       resolve(localProxyUrl)
     })
-
-    server.on('error', err => reject(err))
   })
 }
 

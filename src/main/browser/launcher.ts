@@ -5,6 +5,7 @@
 
 import { spawn, ChildProcess } from 'child_process'
 import fs from 'fs'
+import net from 'net'
 import path from 'path'
 import puppeteer, { Browser } from 'puppeteer-core'
 import { Profile, Proxy } from '../database/models'
@@ -24,6 +25,38 @@ export interface LaunchResult {
   browser: Browser | any
   pid: number
   wsEndpoint: string
+}
+
+/**
+ * Quick TCP-level proxy reachability check.
+ * Connects to the proxy host:port with a short timeout to verify it's alive
+ * before launching the browser. Returns success/failure with latency and IP.
+ */
+async function quickProxyCheck(proxy: Proxy): Promise<{ success: boolean; latency: number; ip?: string; error?: string }> {
+  const startTime = Date.now()
+  const timeout = 8000
+
+  return new Promise((resolve) => {
+    const socket = net.connect({ host: proxy.host, port: proxy.port, timeout })
+
+    socket.on('connect', () => {
+      const latency = Date.now() - startTime
+      socket.destroy()
+      resolve({ success: true, latency, ip: proxy.host })
+    })
+
+    socket.on('error', (err: Error) => {
+      const latency = Date.now() - startTime
+      socket.destroy()
+      resolve({ success: false, latency, error: err.message })
+    })
+
+    socket.on('timeout', () => {
+      const latency = Date.now() - startTime
+      socket.destroy()
+      resolve({ success: false, latency, error: `Connection timed out after ${timeout}ms` })
+    })
+  })
 }
 
 /**
@@ -542,9 +575,19 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   }
 
   // Proxy configuration
+  // CRITICAL for Windows: Without --proxy-bypass-list="", Chromium on Windows
+  // falls back to WinHTTP/WinINET system proxy settings, ignoring --proxy-server.
   if (proxy && proxy.type !== 'direct' && proxy.host) {
     const proxyUrl = `${proxy.type}://${proxy.host}:${proxy.port}`
     args.push(`--proxy-server=${proxyUrl}`)
+    // Empty bypass list = proxy ALL traffic, never fall back to system proxy
+    args.push('--proxy-bypass-list=""')
+    // Force DNS resolution through the proxy to prevent DNS leaks on Windows
+    args.push('--host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"')
+  } else {
+    // Explicitly disable proxy when "No Proxy" / "Direct" is selected
+    // Prevents Windows from using system proxy auto-detection (WPAD/PAC)
+    args.push('--no-proxy-server')
   }
 
   // Custom launch args (allowlisted)
@@ -797,6 +840,31 @@ export async function launchBrowser(
     dnsMode: fingerprint.browser?.dnsMode || 'system',
     networkNote: 'Fingerprint masking isolates browser and hardware characteristics; it does not alter public IP address without a proxy.'
   })
+
+  // ── Pre-Launch Proxy Verification (prevents silent fallback to direct connection) ──
+  if (launchProxy && launchProxy.type !== 'direct' && launchProxy.host) {
+    logger.info('network', `[ProxyPreLaunchCheck] Verifying proxy reachability for profile "${profile.name}"`, {
+      profileId: profile.id,
+      platform: process.platform,
+      proxyType: launchProxy.type,
+      proxyHost: launchProxy.host,
+      proxyPort: launchProxy.port,
+      socksBridgeUsed: proxy?.type?.startsWith('socks') || false
+    })
+
+    try {
+      const checkResult = await quickProxyCheck(launchProxy)
+      if (checkResult.success) {
+        logger.info('network', `[ProxyVerified] ✓ Proxy ${launchProxy.host}:${launchProxy.port} is reachable (${checkResult.latency}ms). External IP: ${checkResult.ip || 'resolved'}`)
+      } else {
+        logger.error('network', `[ProxyFailed] ✗ Proxy ${launchProxy.host}:${launchProxy.port} is unreachable: ${checkResult.error}`)
+        throw new Error(`Proxy is unreachable: ${checkResult.error || 'Connection failed'}. Please check your proxy settings.`)
+      }
+    } catch (err: any) {
+      if (err.message.startsWith('Proxy is unreachable')) throw err
+      logger.warn('network', `[ProxyCheckSkipped] Could not verify proxy: ${err.message}. Proceeding with launch.`)
+    }
+  }
 
   // Determine start URLs
   let startUrls: string[] = []

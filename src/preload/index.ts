@@ -168,6 +168,7 @@ const api = {
   deleteProxy: (id: string) => ipcRenderer.invoke('proxies:delete', id),
   testProxy: (id: string) => ipcRenderer.invoke('proxies:test', id),
   testCustomProxy: (input: any) => ipcRenderer.invoke('proxies:testCustom', input),
+  verifyProxyBeforeLaunch: (proxyId: string) => ipcRenderer.invoke('proxies:verifyBeforeLaunch', proxyId),
 
   // ── Groups ──
   getGroups: () => ipcRenderer.invoke('groups:getAll'),
