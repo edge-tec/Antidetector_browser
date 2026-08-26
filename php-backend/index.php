@@ -323,6 +323,22 @@ try {
         }
     }
 } catch (Throwable $e) {}
+
+$landingLogoUrl = '/brand-logo.png';
+$landingFaviconUrl = '/favicon.ico';
+try {
+    if ($pdo) {
+        $bStmt = $pdo->query("SELECT config_key, config_value FROM desktop_app_config WHERE config_key IN ('landing_logo_url', 'landing_favicon_url')");
+        while ($b = $bStmt->fetch()) {
+            if ($b['config_key'] === 'landing_logo_url' && !empty($b['config_value'])) {
+                $landingLogoUrl = htmlspecialchars($b['config_value']);
+            }
+            if ($b['config_key'] === 'landing_favicon_url' && !empty($b['config_value'])) {
+                $landingFaviconUrl = htmlspecialchars($b['config_value']);
+            }
+        }
+    }
+} catch (Throwable $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -333,13 +349,12 @@ try {
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc); ?>">
     <meta name="robots" content="<?php echo htmlspecialchars($pageRobots); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($pageCanonical); ?>">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" id="dynamicSiteFavicon" type="image/x-icon" href="<?php echo $landingFaviconUrl; ?>">
+    <link rel="shortcut icon" href="<?php echo $landingFaviconUrl; ?>">
+    <link rel="apple-touch-icon" href="<?php echo $landingFaviconUrl; ?>">
     <meta property="og:title" content="<?php echo htmlspecialchars($ogTitle); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($ogDesc); ?>">
-    <meta property="og:image" content="https://antiprofiles.com/logo.png">
+    <meta property="og:image" content="<?php echo (strpos($landingLogoUrl, 'http') === 0) ? $landingLogoUrl : 'https://antiprofiles.com' . $landingLogoUrl; ?>">
     <meta property="og:url" content="<?php echo htmlspecialchars($pageCanonical); ?>">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json"><?php echo json_encode($schemas, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); ?></script>
@@ -968,7 +983,7 @@ try {
     <!-- Navbar -->
     <nav class="navbar">
         <a href="/" class="logo" style="display: flex; align-items: center;">
-            <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+            <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
@@ -1833,7 +1848,7 @@ try {
         <div class="container footer-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border);">
             <div class="footer-brand">
                 <div class="footer-logo-wrapper" style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+                    <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
                 </div>
                 <p style="color: var(--text-muted); font-size: 13px; line-height: 1.6; max-width: 320px;">Professional browser profile isolation and anti-detect privacy management software.</p>
             </div>
@@ -1877,7 +1892,7 @@ try {
 
             <!-- Brand Logo Header in Login Modal -->
             <div style="text-align: center; margin-bottom: 22px;">
-                <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 44px; width: auto; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(59,130,246,0.3));" onerror="this.onerror=null; this.src='/logo.png';">
+                <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 44px; width: auto; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(59,130,246,0.3));" onerror="this.onerror=null; this.src='/logo.png';">
             </div>
 
             <!-- Mode Switcher Tabs -->
@@ -2031,7 +2046,7 @@ try {
             <!-- Top Bar Header -->
             <div style="padding: 12px 20px; background: #151720; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 34px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+                    <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 34px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
                     <div>
                         <h2 style="font-size: 15px; color: #FFF; margin: 0;">Central Web Control Center</h2>
                         <p style="font-size: 11px; color: var(--text-muted); margin: 0;" id="adminUserInfo">Logged in as System Admin</p>
@@ -3272,7 +3287,75 @@ try {
 
                     <!-- TAB 11: LANDING CMS -->
                     <div id="tab-landing" class="admin-tab-content" style="display: none;">
-                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Landing Page Content & SaaS Pricing Plans Manager</h3>
+                        <h3 style="font-size: 18px; color: #FFF; margin-bottom: 16px;">Landing Page Content, Branding & SaaS Pricing Manager</h3>
+
+                        <!-- 1. Brand Logo & Favicon Customizer -->
+                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                                <h4 style="color: var(--accent); margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <span>🎨</span> Website Logo & Browser Tab Favicon
+                                </h4>
+                                <span style="font-size: 11px; background: rgba(45,212,191,0.1); color: #2DD4BF; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(45,212,191,0.2);">REAL-TIME SYNC</span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Upload your company brand logo and favicon icon file, or enter direct CDN/image URLs. Updates apply immediately across your entire landing page, modals, and browser tabs without rebuilding.</p>
+
+                            <div id="brandingAdminStatusMsg" style="display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
+                                <!-- Logo Column -->
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <label style="font-size: 13px; color: #FFF; font-weight: 700;">🏷️ Main Brand Logo</label>
+                                        <span style="font-size: 11px; color: var(--text-muted);">PNG, SVG, WEBP</span>
+                                    </div>
+                                    
+                                    <!-- Current Logo Preview Box -->
+                                    <div style="background: #0B0D13; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: center; min-height: 64px;">
+                                        <img id="adminLogoPreview" src="<?php echo $landingLogoUrl; ?>" alt="Logo Preview" style="max-height: 48px; max-width: 100%; object-fit: contain;">
+                                    </div>
+
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Upload Image File</label>
+                                        <input type="file" id="adminLogoFileInput" accept="image/png,image/svg+xml,image/webp,image/jpeg,image/gif" onchange="previewSelectedLogo(event)" style="width: 100%; font-size: 12px; color: var(--text-muted); background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px;">
+                                    </div>
+
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">OR Image Direct URL</label>
+                                        <input type="text" id="adminLogoUrlInput" value="<?php echo $landingLogoUrl; ?>" placeholder="https://yourdomain.com/logo.png" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: #FFF; font-size: 12px;">
+                                    </div>
+                                </div>
+
+                                <!-- Favicon Column -->
+                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <label style="font-size: 13px; color: #FFF; font-weight: 700;">🌐 Browser Tab Favicon</label>
+                                        <span style="font-size: 11px; color: var(--text-muted);">ICO, PNG (32x32)</span>
+                                    </div>
+
+                                    <!-- Current Favicon Preview Box -->
+                                    <div style="background: #0B0D13; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 64px;">
+                                        <img id="adminFaviconPreview" src="<?php echo $landingFaviconUrl; ?>" alt="Favicon Preview" style="width: 32px; height: 32px; object-fit: contain;">
+                                        <span style="font-size: 12px; color: var(--text-muted); font-family: monospace;">Browser Tab Icon</span>
+                                    </div>
+
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Upload Favicon File</label>
+                                        <input type="file" id="adminFaviconFileInput" accept=".ico,image/x-icon,image/png,image/svg+xml" onchange="previewSelectedFavicon(event)" style="width: 100%; font-size: 12px; color: var(--text-muted); background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px;">
+                                    </div>
+
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">OR Favicon Direct URL</label>
+                                        <input type="text" id="adminFaviconUrlInput" value="<?php echo $landingFaviconUrl; ?>" placeholder="https://yourdomain.com/favicon.ico" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: #FFF; font-size: 12px;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                                <button class="btn btn-primary" id="btnSaveBranding" onclick="saveBrandingSettings()" style="padding: 10px 20px; font-weight: 700; font-size: 13px;">💾 Save & Update Logo & Favicon</button>
+                                <button class="btn btn-outline" onclick="loadBrandingSettings()" style="padding: 10px 16px; font-size: 13px;">🔄 Reload Current Assets</button>
+                            </div>
+                        </div>
+
                         <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 14px;">
                             <h4 style="color: var(--accent);">Hero Headline & Trust Settings</h4>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
@@ -4808,6 +4891,7 @@ try {
                 loadSmtpConfig();
                 loadEmailLogs(1);
             }
+            if (tabName === 'landing') loadBrandingSettings();
         }
 
         function initDownloadOsDetection() {
@@ -6100,6 +6184,152 @@ try {
                 document.getElementById('notifMsg').value = '';
             } catch(e) {
                 alert('Broadcast notification sent!');
+            }
+        }
+
+        function previewSelectedLogo(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('adminLogoPreview');
+                    if (preview) preview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function previewSelectedFavicon(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('adminFaviconPreview');
+                    if (preview) preview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function loadBrandingSettings() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/admin/get-branding-settings', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+                if (result.success && result.data) {
+                    if (result.data.landing_logo_url) {
+                        const logoInput = document.getElementById('adminLogoUrlInput');
+                        const logoPreview = document.getElementById('adminLogoPreview');
+                        if (logoInput) logoInput.value = result.data.landing_logo_url;
+                        if (logoPreview) logoPreview.src = result.data.landing_logo_url;
+                    }
+                    if (result.data.landing_favicon_url) {
+                        const favInput = document.getElementById('adminFaviconUrlInput');
+                        const favPreview = document.getElementById('adminFaviconPreview');
+                        if (favInput) favInput.value = result.data.landing_favicon_url;
+                        if (favPreview) favPreview.src = result.data.landing_favicon_url;
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading branding settings:', err);
+            }
+        }
+
+        async function saveBrandingSettings() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                alert('Please sign in as administrator.');
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveBranding');
+            const msgBox = document.getElementById('brandingAdminStatusMsg');
+            const logoFile = document.getElementById('adminLogoFileInput')?.files[0];
+            const faviconFile = document.getElementById('adminFaviconFileInput')?.files[0];
+            const logoUrl = document.getElementById('adminLogoUrlInput')?.value.trim();
+            const faviconUrl = document.getElementById('adminFaviconUrlInput')?.value.trim();
+
+            const formData = new FormData();
+            if (logoFile) formData.append('logo_file', logoFile);
+            if (faviconFile) formData.append('favicon_file', faviconFile);
+            if (logoUrl) formData.append('logo_url', logoUrl);
+            if (faviconUrl) formData.append('favicon_url', faviconUrl);
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '⏳ Uploading & Saving...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/update-branding-settings', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: formData
+                });
+                const result = await res.json();
+                if (result.success) {
+                    if (msgBox) {
+                        msgBox.style.display = 'block';
+                        msgBox.style.background = 'rgba(34, 197, 94, 0.15)';
+                        msgBox.style.border = '1px solid #22C55E';
+                        msgBox.style.color = '#4ADE80';
+                        msgBox.innerText = '✅ ' + (result.message || 'Logo and Favicon updated successfully!');
+                    }
+                    // Instantly update all logo instances across navbar, footer, modals, and admin
+                    if (result.data?.logo_url) {
+                        const newLogo = result.data.logo_url;
+                        const cacheBusted = newLogo + (newLogo.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        document.querySelectorAll('.brand-logo-img').forEach(img => {
+                            img.src = cacheBusted;
+                        });
+                        const preview = document.getElementById('adminLogoPreview');
+                        if (preview) preview.src = cacheBusted;
+                        const logoInput = document.getElementById('adminLogoUrlInput');
+                        if (logoInput) logoInput.value = newLogo;
+                    }
+                    // Instantly update favicon in browser tab
+                    if (result.data?.favicon_url) {
+                        const newFav = result.data.favicon_url;
+                        const cacheBustedFav = newFav + (newFav.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        const favPreview = document.getElementById('adminFaviconPreview');
+                        if (favPreview) favPreview.src = cacheBustedFav;
+                        const favInput = document.getElementById('adminFaviconUrlInput');
+                        if (favInput) favInput.value = newFav;
+                        const dynamicFav = document.getElementById('dynamicSiteFavicon');
+                        if (dynamicFav) dynamicFav.href = cacheBustedFav;
+                    }
+                    // Reset file inputs
+                    const fileInp1 = document.getElementById('adminLogoFileInput');
+                    if (fileInp1) fileInp1.value = '';
+                    const fileInp2 = document.getElementById('adminFaviconFileInput');
+                    if (fileInp2) fileInp2.value = '';
+                } else {
+                    if (msgBox) {
+                        msgBox.style.display = 'block';
+                        msgBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                        msgBox.style.border = '1px solid #EF4444';
+                        msgBox.style.color = '#F87171';
+                        msgBox.innerText = '❌ Error: ' + (result.error || 'Failed to update branding.');
+                    }
+                }
+            } catch (err) {
+                if (msgBox) {
+                    msgBox.style.display = 'block';
+                    msgBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    msgBox.style.border = '1px solid #EF4444';
+                    msgBox.style.color = '#F87171';
+                    msgBox.innerText = '❌ Network error saving branding assets.';
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '💾 Save & Update Logo & Favicon';
+                }
             }
         }
 

@@ -2084,6 +2084,85 @@ switch ($action) {
         respondJson(['success' => true, 'message' => 'Release deleted successfully.']);
         break;
 
+    case 'get-branding-settings':
+        $bStmt = $db->query("SELECT config_key, config_value FROM desktop_app_config WHERE config_key IN ('landing_logo_url', 'landing_favicon_url')");
+        $brandConfig = [
+            'landing_logo_url' => '/brand-logo.png',
+            'landing_favicon_url' => '/favicon.ico'
+        ];
+        while ($row = $bStmt->fetch()) {
+            if (!empty($row['config_value'])) {
+                $brandConfig[$row['config_key']] = $row['config_value'];
+            }
+        }
+        respondJson(['success' => true, 'data' => $brandConfig]);
+        break;
+
+    case 'update-branding-settings':
+        $logoUrl = trim($_POST['logo_url'] ?? '');
+        $faviconUrl = trim($_POST['favicon_url'] ?? '');
+        $publicDir = realpath(__DIR__ . '/..');
+        $uploadsDir = $publicDir . '/uploads';
+        if (!is_dir($uploadsDir)) {
+            @mkdir($uploadsDir, 0755, true);
+        }
+
+        // 1. Handle Logo Upload
+        if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
+            $ext = strtolower(pathinfo($_FILES['logo_file']['name'], PATHINFO_EXTENSION));
+            $allowedLogoExts = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'];
+            if (!in_array($ext, $allowedLogoExts)) {
+                respondJson(['success' => false, 'error' => 'Invalid logo image format. Allowed: PNG, SVG, WEBP, JPG.'], 400);
+            }
+            $targetFilename = 'brand-logo-' . time() . '.' . $ext;
+            $targetPath = $uploadsDir . '/' . $targetFilename;
+            if (move_uploaded_file($_FILES['logo_file']['tmp_name'], $targetPath)) {
+                @chmod($targetPath, 0644);
+                $logoUrl = '/uploads/' . $targetFilename;
+                @copy($targetPath, $publicDir . '/brand-logo.png');
+            }
+        }
+
+        // 2. Handle Favicon Upload
+        if (isset($_FILES['favicon_file']) && $_FILES['favicon_file']['error'] === UPLOAD_ERR_OK) {
+            $ext = strtolower(pathinfo($_FILES['favicon_file']['name'], PATHINFO_EXTENSION));
+            $allowedFavExts = ['ico', 'png', 'svg', 'webp'];
+            if (!in_array($ext, $allowedFavExts)) {
+                respondJson(['success' => false, 'error' => 'Invalid favicon format. Allowed: ICO, PNG, SVG.'], 400);
+            }
+            $targetFilename = 'favicon-' . time() . '.' . $ext;
+            $targetPath = $uploadsDir . '/' . $targetFilename;
+            if (move_uploaded_file($_FILES['favicon_file']['tmp_name'], $targetPath)) {
+                @chmod($targetPath, 0644);
+                $faviconUrl = '/uploads/' . $targetFilename;
+                if ($ext === 'ico' || $ext === 'png') {
+                    @copy($targetPath, $publicDir . '/favicon.ico');
+                    @copy($targetPath, $publicDir . '/favicon-32x32.png');
+                }
+            }
+        }
+
+        // 3. Save into desktop_app_config
+        $saveStmt = $db->prepare("INSERT INTO desktop_app_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+        if (!empty($logoUrl)) {
+            $saveStmt->execute(['landing_logo_url', $logoUrl]);
+        }
+        if (!empty($faviconUrl)) {
+            $saveStmt->execute(['landing_favicon_url', $faviconUrl]);
+        }
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'UPDATE_BRANDING_ASSETS', null, "Updated landing page logo and favicon icons");
+
+        respondJson([
+            'success' => true,
+            'message' => 'Landing page Logo & Favicon updated successfully!',
+            'data' => [
+                'logo_url' => $logoUrl ?: '/brand-logo.png',
+                'favicon_url' => $faviconUrl ?: '/favicon.ico'
+            ]
+        ]);
+        break;
+
     default:
         respondJson(['success' => false, 'error' => 'Invalid admin action.'], 404);
 }
