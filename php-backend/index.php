@@ -296,6 +296,33 @@ if ($indexFile && @file_exists($indexFile)) {
 
 // Default Full-Featured Production Landing Page & Web Portal
 header('Content-Type: text/html; charset=utf-8');
+
+// Server-Side Active Platform Releases for Instant Landing Page Display
+$activeLandingReleases = [
+    'windows-x64' => ['version' => '1.0.0', 'url' => '/download/windows', 'name' => 'Windows Client'],
+    'macos-arm64' => ['version' => '1.0.0', 'url' => '/download/macos-arm64', 'name' => 'macOS Apple Silicon'],
+    'macos-x64' => ['version' => '1.0.0', 'url' => '/download/macos-intel', 'name' => 'macOS Intel'],
+    'linux-x64' => ['version' => '1.0.0', 'url' => '/download/linux', 'name' => 'Linux Client']
+];
+try {
+    if ($pdo) {
+        $rStmt = $pdo->query("SELECT platform, version, download_url, release_name FROM app_releases WHERE status = 'active' ORDER BY published_at DESC");
+        $seenPlat = [];
+        while ($r = $rStmt->fetch()) {
+            $p = $r['platform'];
+            if (!isset($seenPlat[$p]) && isset($activeLandingReleases[$p])) {
+                $activeLandingReleases[$p]['version'] = htmlspecialchars($r['version']);
+                if (!empty($r['download_url'])) {
+                    $activeLandingReleases[$p]['url'] = htmlspecialchars($r['download_url']);
+                }
+                if (!empty($r['release_name'])) {
+                    $activeLandingReleases[$p]['name'] = htmlspecialchars($r['release_name']);
+                }
+                $seenPlat[$p] = true;
+            }
+        }
+    }
+} catch (Throwable $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -2228,11 +2255,11 @@ header('Content-Type: text/html; charset=utf-8');
                                         <span style="background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">WINDOWS</span>
                                     </div>
                                     <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">Windows Client</h4>
-                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userWinVerText">v1.0.0 (x64 Architecture)</div>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userWinVerText">v<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?> (x64 Architecture)</div>
                                     <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native standalone installer for Windows 10 & 11 (64-bit systems).</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=windows-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; border-color: rgba(96,165,250,0.4); font-size: 13px;" id="userBtnWinDl">
-                                    ⬇️ Download .exe
+                                <a href="<?= htmlspecialchars($activeLandingReleases['windows-x64']['url']) ?>" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; border-color: rgba(96,165,250,0.4); font-size: 13px;" id="userBtnWinDl">
+                                    ⬇️ Download .exe (v<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?>)
                                 </a>
                             </div>
 
@@ -2245,11 +2272,11 @@ header('Content-Type: text/html; charset=utf-8');
                                         <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">APPLE SILICON</span>
                                     </div>
                                     <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">macOS Silicon</h4>
-                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacArmVerText">v1.0.0 (M1 / M2 / M3 / M4)</div>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacArmVerText">v<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?> (M1 / M2 / M3 / M4)</div>
                                     <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native ARM64 disk image for Apple M-series chips (M1 to M4).</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn btn-primary" style="width: 100%; justify-content: center; padding: 10px 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;" id="userBtnMacArmDl">
-                                    ⬇️ Download .dmg (ARM)
+                                <a href="<?= htmlspecialchars($activeLandingReleases['macos-arm64']['url']) ?>" download class="btn btn-primary" style="width: 100%; justify-content: center; padding: 10px 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;" id="userBtnMacArmDl">
+                                    ⬇️ Download .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?>)
                                 </a>
                             </div>
 
@@ -2261,11 +2288,11 @@ header('Content-Type: text/html; charset=utf-8');
                                         <span style="background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">MACOS INTEL</span>
                                     </div>
                                     <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">macOS Intel</h4>
-                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacIntelVerText">v1.0.0 (Intel Processors)</div>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacIntelVerText">v<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?> (Intel Processors)</div>
                                     <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Disk image optimized for Intel Macs manufactured prior to late 2020.</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=macos-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; font-size: 13px;" id="userBtnMacIntelDl">
-                                    ⬇️ Download .dmg (Intel)
+                                <a href="<?= htmlspecialchars($activeLandingReleases['macos-x64']['url']) ?>" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; font-size: 13px;" id="userBtnMacIntelDl">
+                                    ⬇️ Download .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?>)
                                 </a>
                             </div>
 
@@ -2277,11 +2304,11 @@ header('Content-Type: text/html; charset=utf-8');
                                         <span style="background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">LINUX</span>
                                     </div>
                                     <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">Linux Client</h4>
-                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userLinuxVerText">v1.0.0 (AppImage & .deb)</div>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userLinuxVerText">v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?> (AppImage & .deb)</div>
                                     <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Universal standalone package for Ubuntu, Debian, Fedora & Arch.</p>
                                 </div>
-                                <a href="/api/releases?download=1&platform=linux-x64" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; border-color: rgba(250,204,21,0.4); font-size: 13px;" id="userBtnLinuxDl">
-                                    ⬇️ Download .AppImage
+                                <a href="<?= htmlspecialchars($activeLandingReleases['linux-x64']['url']) ?>" download class="btn btn-outline" style="width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; border-color: rgba(250,204,21,0.4); font-size: 13px;" id="userBtnLinuxDl">
+                                    ⬇️ Download .AppImage (v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>)
                                 </a>
                             </div>
 
@@ -4326,68 +4353,97 @@ header('Content-Type: text/html; charset=utf-8');
                     if (document.getElementById('userSubExpiresAt')) document.getElementById('userSubExpiresAt').innerText = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'September 15, 2027';
                 }
 
-                // Fetch Release Manifest from Server
-                try {
-                    const relRes = await fetch('/api/releases');
-                    const relData = await relRes.json();
-                    if (relData.success && relData.data && relData.data.platforms) {
-                        const plats = relData.data.platforms;
-                        
-                        if (plats['windows-x64']) {
-                            const win = plats['windows-x64'];
-                            const dlUrl = win.download_url || '/api/releases?download=1&platform=windows-x64';
-                            if (document.getElementById('userWinVerText')) document.getElementById('userWinVerText').innerText = 'Version: ' + win.version + ' (x64 Architecture)';
-                            if (document.getElementById('userBtnWinDl')) {
-                                document.getElementById('userBtnWinDl').innerText = '⬇️ Download for Windows (.exe)';
-                                document.getElementById('userBtnWinDl').href = dlUrl;
-                            }
-                            if (document.getElementById('landingBtnWinDl')) {
-                                document.getElementById('landingBtnWinDl').innerText = 'Download Windows .exe (v' + win.version + ')';
-                                document.getElementById('landingBtnWinDl').href = dlUrl;
-                            }
+                // Fetch and update live releases across landing page download section
+                await fetchReleasesAndUpdateLanding();
+            } catch(e){}
+        }
+
+        window.activeReleasesCache = null;
+
+        async function fetchReleasesAndUpdateLanding() {
+            try {
+                const relRes = await fetch('/api/releases?t=' + Date.now());
+                const relData = await relRes.json();
+                if (relData.success && relData.data && relData.data.platforms) {
+                    const plats = relData.data.platforms;
+                    window.activeReleasesCache = plats;
+                    
+                    // 1. Windows Client
+                    if (plats['windows-x64']) {
+                        const win = plats['windows-x64'];
+                        const dlUrl = win.download_url || '/api/releases?download=1&platform=windows-x64';
+                        if (document.getElementById('userWinVerText')) {
+                            document.getElementById('userWinVerText').innerText = 'v' + win.version + ' (x64 Architecture)';
                         }
-                        if (plats['macos-x64']) {
-                            const macIntel = plats['macos-x64'];
-                            const dlUrl = macIntel.download_url || '/api/releases?download=1&platform=macos-x64';
-                            if (document.getElementById('userMacIntelVerText')) document.getElementById('userMacIntelVerText').innerText = 'Version: ' + macIntel.version + ' (Intel Processors)';
-                            if (document.getElementById('userBtnMacIntelDl')) {
-                                document.getElementById('userBtnMacIntelDl').innerText = '⬇️ Download for macOS Intel (.dmg)';
-                                document.getElementById('userBtnMacIntelDl').href = dlUrl;
-                            }
-                            if (document.getElementById('landingBtnMacIntelDl')) {
-                                document.getElementById('landingBtnMacIntelDl').innerText = 'Download macOS Intel .dmg (v' + macIntel.version + ')';
-                                document.getElementById('landingBtnMacIntelDl').href = dlUrl;
-                            }
+                        if (document.getElementById('userBtnWinDl')) {
+                            document.getElementById('userBtnWinDl').innerText = '⬇️ Download .exe (v' + win.version + ')';
+                            document.getElementById('userBtnWinDl').href = dlUrl;
                         }
-                        if (plats['macos-arm64']) {
-                            const macArm = plats['macos-arm64'];
-                            const dlUrl = macArm.download_url || '/api/releases?download=1&platform=macos-arm64';
-                            if (document.getElementById('userMacArmVerText')) document.getElementById('userMacArmVerText').innerText = 'Version: ' + macArm.version + ' (M1 / M2 / M3 / M4)';
-                            if (document.getElementById('userBtnMacArmDl')) {
-                                document.getElementById('userBtnMacArmDl').innerText = '⬇️ Download Apple Silicon (.dmg)';
-                                document.getElementById('userBtnMacArmDl').href = dlUrl;
-                            }
-                            if (document.getElementById('landingBtnMacArmDl')) {
-                                document.getElementById('landingBtnMacArmDl').innerText = 'Download Apple Silicon .dmg (v' + macArm.version + ')';
-                                document.getElementById('landingBtnMacArmDl').href = dlUrl;
-                            }
-                        }
-                        if (plats['linux-x64']) {
-                            const linux = plats['linux-x64'];
-                            const dlUrl = linux.download_url || '/api/releases?download=1&platform=linux-x64';
-                            if (document.getElementById('userLinuxVerText')) document.getElementById('userLinuxVerText').innerText = 'Version: ' + linux.version + ' (x64 AppImage & .deb)';
-                            if (document.getElementById('userBtnLinuxDl')) {
-                                document.getElementById('userBtnLinuxDl').innerText = '⬇️ Download for Linux (.AppImage)';
-                                document.getElementById('userBtnLinuxDl').href = dlUrl;
-                            }
-                            if (document.getElementById('landingBtnLinuxDl')) {
-                                document.getElementById('landingBtnLinuxDl').innerText = 'Download Linux .AppImage (v' + linux.version + ')';
-                                document.getElementById('landingBtnLinuxDl').href = dlUrl;
-                            }
+                        if (document.getElementById('landingBtnWinDl')) {
+                            document.getElementById('landingBtnWinDl').innerText = 'Download Windows .exe (v' + win.version + ')';
+                            document.getElementById('landingBtnWinDl').href = dlUrl;
                         }
                     }
-                } catch(e){}
-            } catch(e){}
+
+                    // 2. macOS Apple Silicon
+                    if (plats['macos-arm64']) {
+                        const macArm = plats['macos-arm64'];
+                        const dlUrl = macArm.download_url || '/api/releases?download=1&platform=macos-arm64';
+                        if (document.getElementById('userMacArmVerText')) {
+                            document.getElementById('userMacArmVerText').innerText = 'v' + macArm.version + ' (M1 / M2 / M3 / M4)';
+                        }
+                        if (document.getElementById('userBtnMacArmDl')) {
+                            document.getElementById('userBtnMacArmDl').innerText = '⬇️ Download .dmg (v' + macArm.version + ')';
+                            document.getElementById('userBtnMacArmDl').href = dlUrl;
+                        }
+                        if (document.getElementById('landingBtnMacArmDl')) {
+                            document.getElementById('landingBtnMacArmDl').innerText = 'Download Apple Silicon .dmg (v' + macArm.version + ')';
+                            document.getElementById('landingBtnMacArmDl').href = dlUrl;
+                        }
+                    }
+
+                    // 3. macOS Intel
+                    if (plats['macos-x64']) {
+                        const macIntel = plats['macos-x64'];
+                        const dlUrl = macIntel.download_url || '/api/releases?download=1&platform=macos-x64';
+                        if (document.getElementById('userMacIntelVerText')) {
+                            document.getElementById('userMacIntelVerText').innerText = 'v' + macIntel.version + ' (Intel Processors)';
+                        }
+                        if (document.getElementById('userBtnMacIntelDl')) {
+                            document.getElementById('userBtnMacIntelDl').innerText = '⬇️ Download .dmg (v' + macIntel.version + ')';
+                            document.getElementById('userBtnMacIntelDl').href = dlUrl;
+                        }
+                        if (document.getElementById('landingBtnMacIntelDl')) {
+                            document.getElementById('landingBtnMacIntelDl').innerText = 'Download macOS Intel .dmg (v' + macIntel.version + ')';
+                            document.getElementById('landingBtnMacIntelDl').href = dlUrl;
+                        }
+                    }
+
+                    // 4. Linux Client
+                    if (plats['linux-x64']) {
+                        const linux = plats['linux-x64'];
+                        const dlUrl = linux.download_url || '/api/releases?download=1&platform=linux-x64';
+                        if (document.getElementById('userLinuxVerText')) {
+                            document.getElementById('userLinuxVerText').innerText = 'v' + linux.version + ' (AppImage & .deb)';
+                        }
+                        if (document.getElementById('userBtnLinuxDl')) {
+                            document.getElementById('userBtnLinuxDl').innerText = '⬇️ Download .AppImage (v' + linux.version + ')';
+                            document.getElementById('userBtnLinuxDl').href = dlUrl;
+                        }
+                        if (document.getElementById('landingBtnLinuxDl')) {
+                            document.getElementById('landingBtnLinuxDl').innerText = 'Download Linux .AppImage (v' + linux.version + ')';
+                            document.getElementById('landingBtnLinuxDl').href = dlUrl;
+                        }
+                    }
+
+                    // Re-sync Hero detection banner with live versions
+                    if (typeof initDownloadOsDetection === 'function') {
+                        initDownloadOsDetection();
+                    }
+                }
+            } catch(e) {
+                console.warn('[AntiProfiles] Live release update failed:', e);
+            }
         }
 
         async function handleDownloadApp(platformKey) {
@@ -4757,12 +4813,17 @@ header('Content-Type: text/html; charset=utf-8');
         function initDownloadOsDetection() {
             const userAgent = (navigator.userAgent || '').toLowerCase();
             const platform = (navigator.platform || '').toLowerCase();
+            const releases = window.activeReleasesCache || {};
+            const winVer = (releases['windows-x64'] && releases['windows-x64'].version) ? releases['windows-x64'].version : '<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?>';
+            const macArmVer = (releases['macos-arm64'] && releases['macos-arm64'].version) ? releases['macos-arm64'].version : '<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?>';
+            const macIntelVer = (releases['macos-x64'] && releases['macos-x64'].version) ? releases['macos-x64'].version : '<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?>';
+            const linuxVer = (releases['linux-x64'] && releases['linux-x64'].version) ? releases['linux-x64'].version : '<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>';
             
             let osName = 'AntiProfiles for Windows (64-Bit)';
             let osIcon = '🪟';
-            let osSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture)';
+            let osSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture) • v' + winVer;
             let dlUrl = '/api/releases?download=1&platform=windows-x64';
-            let btnText = '⬇️ Direct Download for Windows (.exe)';
+            let btnText = '⬇️ Direct Download for Windows .exe (v' + winVer + ')';
             let cardId = 'cardWinPlatform';
 
             if (userAgent.includes('mac') || platform.includes('mac')) {
@@ -4784,24 +4845,24 @@ header('Content-Type: text/html; charset=utf-8');
                 if (isArm || userAgent.includes('arm64') || userAgent.includes('aarch64')) {
                     osName = 'AntiProfiles for macOS (Apple Silicon)';
                     osIcon = '🍏';
-                    osSub = 'Native ARM64 build for Apple M-series chips (M1 / M2 / M3 / M4)';
+                    osSub = 'Native ARM64 build for Apple M-series chips (M1 / M2 / M3 / M4) • v' + macArmVer;
                     dlUrl = '/api/releases?download=1&platform=macos-arm64';
-                    btnText = '⬇️ Direct Download for Apple Silicon (.dmg)';
+                    btnText = '⬇️ Direct Download for Apple Silicon .dmg (v' + macArmVer + ')';
                     cardId = 'cardMacArmPlatform';
                 } else {
-                    osName = 'AntiProfiles for macOS (Apple Silicon & Intel)';
+                    osName = 'AntiProfiles for macOS (Intel)';
                     osIcon = '🍏';
-                    osSub = 'Native disk image installer for macOS';
-                    dlUrl = '/api/releases?download=1&platform=macos-arm64';
-                    btnText = '⬇️ Direct Download for macOS (.dmg)';
-                    cardId = 'cardMacArmPlatform';
+                    osSub = 'Native disk image installer for Intel Mac processors • v' + macIntelVer;
+                    dlUrl = '/api/releases?download=1&platform=macos-x64';
+                    btnText = '⬇️ Direct Download for macOS Intel .dmg (v' + macIntelVer + ')';
+                    cardId = 'cardMacIntelPlatform';
                 }
             } else if (userAgent.includes('linux') || platform.includes('linux')) {
                 osName = 'AntiProfiles for Linux';
                 osIcon = '🐧';
-                osSub = 'Universal standalone AppImage & .deb for Ubuntu, Debian, Fedora & Arch';
+                osSub = 'Universal standalone AppImage & .deb for Ubuntu, Debian, Fedora & Arch • v' + linuxVer;
                 dlUrl = '/api/releases?download=1&platform=linux-x64';
-                btnText = '⬇️ Direct Download for Linux (.AppImage)';
+                btnText = '⬇️ Direct Download for Linux .AppImage (v' + linuxVer + ')';
                 cardId = 'cardLinuxPlatform';
             }
 
@@ -7473,6 +7534,7 @@ header('Content-Type: text/html; charset=utf-8');
                     document.getElementById('relNotes').value = '';
                     if (fileInput) fileInput.value = '';
 
+                    await fetchReleasesAndUpdateLanding();
                     loadAppReleasesTable();
                     loadUserPortalData();
                 } else {
@@ -7510,6 +7572,7 @@ header('Content-Type: text/html; charset=utf-8');
                 const data = await res.json();
                 if (data.success) {
                     alert(data.message);
+                    await fetchReleasesAndUpdateLanding();
                     loadAppReleasesTable();
                     loadUserPortalData();
                 } else {
@@ -7535,6 +7598,7 @@ header('Content-Type: text/html; charset=utf-8');
                 });
                 const data = await res.json();
                 if (data.success) {
+                    await fetchReleasesAndUpdateLanding();
                     loadAppReleasesTable();
                     loadUserPortalData();
                 } else {
@@ -7570,6 +7634,7 @@ header('Content-Type: text/html; charset=utf-8');
                 const data = await res.json();
                 if (data.success) {
                     alert('App Release Settings & Download URLs updated successfully!');
+                    await fetchReleasesAndUpdateLanding();
                     loadUserPortalData();
                 } else {
                     alert('Failed to update release settings: ' + (data.error || 'Unknown error'));
@@ -7989,6 +8054,7 @@ header('Content-Type: text/html; charset=utf-8');
             }
             initRealtimeWebSync();
             loadUserPortalData();
+            fetchReleasesAndUpdateLanding();
 
             // Auto trigger Google OAuth if query param is set (e.g. from desktop app or external link)
             try {

@@ -177,6 +177,23 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           if (isMounted && rel?.success && rel.data) {
             setAppReleases(rel.data)
           }
+        } else {
+          // Direct web fallback to central releases API
+          const res = await fetch('/api/releases?t=' + Date.now())
+          const json = await res.json()
+          if (isMounted && json?.success && json?.data?.platforms) {
+            const plats = json.data.platforms
+            setAppReleases({
+              win_app_version: plats['windows-x64']?.version || '1.0.0',
+              win_download_url: plats['windows-x64']?.download_url || '/api/releases?download=1&platform=windows-x64',
+              mac_arm_app_version: plats['macos-arm64']?.version || '1.0.0',
+              mac_arm_download_url: plats['macos-arm64']?.download_url || '/api/releases?download=1&platform=macos-arm64',
+              mac_intel_app_version: plats['macos-x64']?.version || '1.0.0',
+              mac_intel_download_url: plats['macos-x64']?.download_url || '/api/releases?download=1&platform=macos-x64',
+              linux_app_version: plats['linux-x64']?.version || '1.0.0',
+              linux_download_url: plats['linux-x64']?.download_url || '/api/releases?download=1&platform=linux-x64'
+            })
+          }
         }
       } catch {}
     }
