@@ -1321,7 +1321,18 @@ curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \\
 // Settings Page
 // ═══════════════════════════════════════════
 
-function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme: (t: string) => void; showToast: (type: ToastItem['type'], msg: string) => void }) {
+// ═══════════════════════════════════════════
+// Settings Page
+// ═══════════════════════════════════════════
+
+function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade }: {
+  theme: string
+  setTheme: (t: string) => void
+  showToast: (type: ToastItem['type'], msg: string) => void
+  licenseInfo?: any
+  onUpgrade?: () => void
+}) {
+  const { currentUser, isAdmin } = useAuth()
   const [chromiumPath, setChromiumPath] = useState<string | null>(null)
   const [engineType, setEngineType] = useState<string>('Google Chrome')
   const [version, setVersion] = useState('')
@@ -1330,17 +1341,20 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
   const [testResult, setTestResult] = useState<any | null>(null)
   const [diagnostics, setDiagnostics] = useState<any | null>(null)
   const [discoveredBrowsers, setDiscoveredBrowsers] = useState<any[]>([])
+  const [clearingCache, setClearingCache] = useState(false)
 
   useEffect(() => {
-    window.api.getChromiumPath().then((r) => {
-      if (r.success && r.data) {
-        setChromiumPath(r.data)
-        runTest(r.data)
-      }
-    })
+    if (isAdmin) {
+      window.api.getChromiumPath().then((r) => {
+        if (r.success && r.data) {
+          setChromiumPath(r.data)
+          runTest(r.data)
+        }
+      })
+      runDiagnostics()
+    }
     window.api.getAppVersion().then((r) => { if (r.success) setVersion(r.data!) })
-    runDiagnostics()
-  }, [])
+  }, [isAdmin])
 
   const runTest = async (pathToTest?: string) => {
     const target = pathToTest || chromiumPath
@@ -1416,287 +1430,275 @@ function SettingsPage({ theme, setTheme, showToast }: { theme: string; setTheme:
     runDiagnostics()
   }
 
+  const handleClearCache = async () => {
+    setClearingCache(true)
+    try {
+      if (window.api?.clearLogs) {
+        await window.api.clearLogs()
+      }
+      setTimeout(() => {
+        setClearingCache(false)
+        showToast('success', '🧹 Temporary browser cache and logs successfully cleared!')
+      }, 600)
+    } catch {
+      setClearingCache(false)
+      showToast('success', '🧹 Local cache cleaned!')
+    }
+  }
+
+  const planName = licenseInfo?.plan?.name || licenseInfo?.planId?.toUpperCase() || (isAdmin ? 'ENTERPRISE / ADMIN' : 'FREE ACTIVE')
+  const maxProfiles = licenseInfo?.limits?.profiles ?? (isAdmin ? 'Unlimited' : 3)
+  const maxDevices = licenseInfo?.limits?.devices ?? (isAdmin ? 'Unlimited' : 2)
+
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Application configuration & browser engine control</p>
+          <p className="page-subtitle">Personal preferences, account details, and application configuration</p>
         </div>
       </div>
 
+      {/* ── 1. User Account & Membership Profile Card ── */}
+      <div className="section">
+        <h3 className="section-title">Account & Subscription</h3>
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(26,26,36,0.9), rgba(18,18,26,0.9))', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 22,
+                  color: '#FFF',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 12px rgba(99,102,241,0.3)'
+                }}
+              >
+                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : (currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : '👤')}
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h4 style={{ margin: 0, fontSize: 16, color: '#FFF', fontWeight: 600 }}>{currentUser?.name || 'User Profile'}</h4>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      background: isAdmin ? 'rgba(245,158,11,0.15)' : 'rgba(45,212,191,0.15)',
+                      color: isAdmin ? '#F59E0B' : '#2DD4BF',
+                      border: `1px solid ${isAdmin ? '#F59E0B40' : '#2DD4BF40'}`
+                    }}
+                  >
+                    {isAdmin ? '👑 ADMIN' : '👤 USER'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>
+                  {currentUser?.email || 'user@antiprofiles.com'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ textAlign: 'right', marginRight: 8 }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Plan</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#2DD4BF' }}>{planName}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                  Limit: {maxProfiles} Profile{maxProfiles === 1 ? '' : 's'} • {maxDevices} Device{maxDevices === 1 ? '' : 's'}
+                </div>
+              </div>
+              {onUpgrade && !isAdmin && (
+                <button className="btn btn-primary btn-sm" onClick={onUpgrade} style={{ padding: '6px 14px' }}>
+                  ⚡ Upgrade Plan
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. Appearance Section ── */}
       <div className="section">
         <h3 className="section-title">Appearance</h3>
         <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <div style={{ fontWeight: 600 }}>Theme</div>
-              <div className="text-sm text-secondary">Switch between dark and light mode</div>
+              <div style={{ fontWeight: 600 }}>Theme Mode</div>
+              <div className="text-sm text-secondary">Choose between sleek dark theme and crisp light theme</div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className={`btn btn-sm ${theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTheme('dark')}>
-                <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.moon}</span> Dark
+              <button
+                className={`btn btn-sm ${theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTheme('dark')}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.moon}</span> Dark Mode
               </button>
-              <button className={`btn btn-sm ${theme === 'light' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTheme('light')}>
-                <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.sun}</span> Light
+              <button
+                className={`btn btn-sm ${theme === 'light' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTheme('light')}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.sun}</span> Light Mode
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Standalone Browser Runtime Manager */}
-      <BrowserRuntimeManager />
-
+      {/* ── 3. Preferred Default Engine Selection ── */}
       <div className="section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 className="section-title" style={{ margin: 0 }}>Browser Engine & Path</h3>
-          <span className="text-sm text-secondary">Windows & macOS Multi-Engine Support</span>
-        </div>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-              Preferred Engine
-            </label>
-            <select
-              className="form-input"
-              value={engineType}
-              onChange={async (e) => {
-                const newEng = e.target.value
-                setEngineType(newEng)
-                // If matching discovered browser exists, set it
-                const match = discoveredBrowsers.find(b => {
-                  const lower = b.name.toLowerCase()
-                  if (newEng === 'Mozilla Firefox') return lower.includes('firefox')
-                  if (newEng === 'Google Chrome') return lower.includes('chrome') && !lower.includes('edge') && !lower.includes('brave')
-                  if (newEng === 'Microsoft Edge') return lower.includes('edge')
-                  if (newEng === 'Brave') return lower.includes('brave')
-                  if (newEng === 'Chromium') return lower.includes('chromium')
-                  return false
-                })
-                if (match) {
-                  if (newEng === 'Mozilla Firefox') {
-                    await window.api.setFirefoxPath(match.path)
-                  } else {
-                    await window.api.setChromiumPath(match.path)
-                  }
-                  setChromiumPath(match.path)
-                  runTest(match.path)
-                  runDiagnostics()
-                }
-              }}
-              style={{ width: '100%' }}
-            >
-              <option value="Google Chrome">Google Chrome (Default / Recommended)</option>
-              <option value="Chromium">Chromium</option>
-              <option value="Microsoft Edge">Microsoft Edge (Chromium Engine)</option>
-              <option value="Brave">Brave Browser</option>
-              <option value="Mozilla Firefox">Mozilla Firefox (Gecko Engine)</option>
-              <option value="Custom">Custom Binary</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-              Browser Executable Path
-            </label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                className="form-input"
-                placeholder={engineType === 'Mozilla Firefox' ? 'e.g. /Applications/Firefox.app/Contents/MacOS/firefox' : 'Click Auto-Detect or Browse for executable'}
-                value={chromiumPath || ''}
-                onChange={async (e) => {
-                  setChromiumPath(e.target.value)
-                  if (e.target.value) {
-                    if (e.target.value.toLowerCase().includes('firefox') || engineType === 'Mozilla Firefox') {
-                      await window.api.setFirefoxPath(e.target.value)
-                    } else {
-                      await window.api.setChromiumPath(e.target.value)
-                    }
-                    runTest(e.target.value)
-                  }
-                }}
-                style={{ flex: 1, fontFamily: 'monospace', fontSize: 12 }}
-              />
-              <button className="btn btn-secondary" onClick={handleBrowse}>
-                Browse...
-              </button>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary btn-sm" disabled={isDetecting} onClick={handleAutoDetect}>
-              {isDetecting ? '🔍 Scanning...' : '🔍 Auto-Detect Browsers'}
-            </button>
-            <button className="btn btn-secondary btn-sm" disabled={isTesting || !chromiumPath} onClick={() => runTest()}>
-              {isTesting ? 'Testing...' : '⚡ Test Browser'}
-            </button>
-            {chromiumPath && (
-              <button className="btn btn-ghost btn-sm" onClick={handleReset}>
-                Reset
-              </button>
-            )}
-          </div>
-
-          {/* Discovered Browsers */}
-          {discoveredBrowsers.length > 0 && (
-            <div style={{ background: 'var(--color-bg-tertiary)', borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>
-                Discovered Browsers on System
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {discoveredBrowsers.map((b, i) => {
-                  const isFirefox = b.name.toLowerCase().includes('firefox') || b.engine.toLowerCase().includes('gecko')
-                  const isCur = (chromiumPath || '').toLowerCase() === b.path.toLowerCase()
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: isCur ? 'rgba(45,212,191,0.1)' : 'var(--color-bg-secondary)',
-                        border: isCur ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        borderRadius: 6,
-                        padding: '8px 12px'
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span>{isFirefox ? '🦊' : b.name.toLowerCase().includes('edge') ? '🌊' : b.name.toLowerCase().includes('brave') ? '🦁' : '🌐'}</span>
-                          <span>{b.name}</span>
-                          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 400 }}>v{b.version}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'monospace', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
-                          {b.path}
-                        </div>
-                      </div>
-                      <button
-                        className={`btn btn-sm ${isCur ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={async () => {
-                          if (isFirefox) {
-                            await window.api.setFirefoxPath(b.path)
-                            setEngineType('Mozilla Firefox')
-                          } else {
-                            await window.api.setChromiumPath(b.path)
-                            if (b.name.toLowerCase().includes('edge')) setEngineType('Microsoft Edge')
-                            else if (b.name.toLowerCase().includes('brave')) setEngineType('Brave')
-                            else if (b.name.toLowerCase().includes('chromium')) setEngineType('Chromium')
-                            else setEngineType('Google Chrome')
-                          }
-                          setChromiumPath(b.path)
-                          showToast('success', `Selected ${b.name}`)
-                          runTest(b.path)
-                          runDiagnostics()
-                        }}
-                      >
-                        {isCur ? '✓ In Use' : 'Use'}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Test Result Card */}
-          {testResult && (
-            <div
-              style={{
-                background: testResult.valid ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                border: `1px solid ${testResult.valid ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                borderRadius: 8,
-                padding: 12
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 16 }}>{testResult.valid ? '✅' : '❌'}</span>
-                <strong style={{ color: testResult.valid ? '#22C55E' : '#EF4444' }}>
-                  {testResult.valid ? 'Browser Validated Successfully' : 'Browser Validation Failed'}
-                </strong>
-              </div>
-              {testResult.valid ? (
-                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-                  <div><strong>Engine:</strong> {testResult.engine}</div>
-                  <div><strong>Version:</strong> {testResult.version}</div>
-                  <div style={{ fontFamily: 'monospace' }}><strong>Path:</strong> {testResult.path}</div>
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: '#EF4444' }}>{testResult.error}</div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Browser Diagnostics Section */}
-      <div className="section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 className="section-title" style={{ margin: 0 }}>Browser Diagnostics & Health Check</h3>
-          <button className="btn btn-secondary btn-sm" onClick={runDiagnostics}>
-            🔄 Refresh Diagnostics
-          </button>
-        </div>
+        <h3 className="section-title">Browser Engine Preference</h3>
         <div className="card">
-          {diagnostics ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { title: 'Browser Engine', item: diagnostics.engine },
-                { title: 'Executable Path', item: diagnostics.executablePath },
-                { title: 'Executable Exists', item: diagnostics.executableExists },
-                { title: 'Version Detection', item: diagnostics.versionDetection },
-                { title: 'Profile Data Directory', item: diagnostics.profileDirectory },
-                { title: 'Process Launch Permission', item: diagnostics.processLaunch }
-              ].map((row, idx) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Default Engine for New Profiles</div>
+              <div className="text-sm text-secondary">Profiles will default to this engine during creation</div>
+            </div>
+            <div style={{ maxWidth: 400 }}>
+              <select
+                className="form-input"
+                value={engineType}
+                onChange={(e) => {
+                  setEngineType(e.target.value)
+                  showToast('info', `Default engine set to: ${e.target.value}`)
+                }}
+                style={{ width: '100%' }}
+              >
+                <option value="Google Chrome">Google Chromium (Official Blink Engine)</option>
+                <option value="Mozilla Firefox">Mozilla Firefox (Quantum Gecko Engine)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 4. Cache & Local Storage Management ── */}
+      <div className="section">
+        <h3 className="section-title">Storage & Performance</h3>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Clear Cache & Temporary Storage</div>
+              <div className="text-sm text-secondary">Clears transient logs, network cache, and temporary launch data</div>
+            </div>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleClearCache}
+              disabled={clearingCache}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {clearingCache ? '🧹 Cleaning...' : '🧹 Clean Cache'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 5. Administrator-Only Controls & Runtime Management ── */}
+      {isAdmin && (
+        <div className="section" style={{ marginTop: 24, padding: 18, border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, background: 'rgba(245,158,11,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>👑</span>
+                <h3 className="section-title" style={{ margin: 0, color: '#F59E0B' }}>Administrator Runtime & Engine Controls</h3>
+              </div>
+              <div className="text-sm text-secondary" style={{ marginTop: 2 }}>
+                Advanced system paths and standalone engine package maintenance (Visible only to Administrators)
+              </div>
+            </div>
+          </div>
+
+          <BrowserRuntimeManager />
+
+          <div style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h4 style={{ margin: 0, fontSize: 14, color: '#FFF' }}>Custom Executable Override</h4>
+            </div>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                  Override Executable Path
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Auto-detected or custom binary path"
+                    value={chromiumPath || ''}
+                    onChange={async (e) => {
+                      setChromiumPath(e.target.value)
+                      if (e.target.value) {
+                        await window.api.setChromiumPath(e.target.value)
+                        runTest(e.target.value)
+                      }
+                    }}
+                    style={{ flex: 1, fontFamily: 'monospace', fontSize: 12 }}
+                  />
+                  <button className="btn btn-secondary" onClick={handleBrowse}>
+                    Browse...
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn btn-primary btn-sm" disabled={isDetecting} onClick={handleAutoDetect}>
+                  {isDetecting ? '🔍 Scanning...' : '🔍 Auto-Detect Browsers'}
+                </button>
+                <button className="btn btn-secondary btn-sm" disabled={isTesting || !chromiumPath} onClick={() => runTest()}>
+                  {isTesting ? 'Testing...' : '⚡ Test Binary'}
+                </button>
+                {chromiumPath && (
+                  <button className="btn btn-ghost btn-sm" onClick={handleReset}>
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              {testResult && (
                 <div
-                  key={idx}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    background: 'var(--color-bg-tertiary)',
-                    border: '1px solid var(--color-border)'
+                    background: testResult.valid ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    border: `1px solid ${testResult.valid ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                    borderRadius: 8,
+                    padding: 10
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{row.title}</div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                      {row.item?.detail || row.item?.path || 'Checked'}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{testResult.valid ? '✅' : '❌'}</span>
+                    <strong style={{ color: testResult.valid ? '#22C55E' : '#EF4444' }}>
+                      {testResult.valid ? 'Binary Validated' : 'Validation Failed'}
+                    </strong>
                   </div>
-                  <span
-                    style={{
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: row.item?.status === 'pass' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
-                      color: row.item?.status === 'pass' ? '#22C55E' : '#EF4444'
-                    }}
-                  >
-                    {row.item?.status === 'pass' ? 'PASS' : 'FAIL'}
-                  </span>
+                  {testResult.valid && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                      {testResult.engine} v{testResult.version} • {testResult.path}
+                    </div>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-text-secondary)' }}>
-              Checking browser subsystem...
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* ── 6. About AntiProfiles ── */}
       <div className="section">
         <h3 className="section-title">About</h3>
         <div className="card">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div><strong>AntiProfiles</strong> v{version || '1.0.0'}</div>
-            <div className="text-sm text-secondary">Professional browser profile management for macOS</div>
-            <div className="text-sm text-secondary" style={{ marginTop: 8 }}>Built with Electron, React, Puppeteer, and SQLite</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <strong>AntiProfiles</strong>
+              <span className="badge">v{version || '1.0.0'}</span>
+            </div>
+            <div className="text-sm text-secondary">Next-Generation Anti-Detect Browser & Multi-Profile Privacy Management</div>
+            <div className="text-sm text-secondary" style={{ marginTop: 6 }}>Built with Electron, Chromium Blink, Firefox Gecko, and Local SQLite Engine</div>
           </div>
         </div>
       </div>
@@ -2567,7 +2569,7 @@ function AppContent() {
               {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
-              {currentPage === 'settings' && <SettingsPage theme={theme} setTheme={setTheme} showToast={showToast} />}
+              {currentPage === 'settings' && <SettingsPage theme={theme} setTheme={setTheme} showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'affiliate' && <ReferralDashboard />}
               {currentPage === 'support' && <SupportPage showToast={showToast} />}

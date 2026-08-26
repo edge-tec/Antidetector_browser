@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { ChromeLogo, FirefoxLogo } from './BrowserLogos'
-import { CustomBrandingManager } from './CustomBrandingManager'
 
 interface RuntimeInfo {
   installed: boolean
@@ -295,8 +294,6 @@ export const BrowserRuntimeManager: React.FC = () => {
           '#FB923C'
         )}
       </div>
-
-      <CustomBrandingManager />
     </div>
   )
 }
