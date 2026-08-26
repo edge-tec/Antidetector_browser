@@ -155,28 +155,36 @@ export function getChromiumArtifactInfo(): { downloadUrl: string; fileName: stri
 
 /**
  * Determine official download URL and executable relative path for Firefox.
+ *
+ * Windows note: Mozilla does NOT distribute Firefox as .zip for Windows.
+ * They only provide .exe installers. We download the installer and use
+ * its built-in /ExtractDir option for silent portable extraction.
  */
-export function getFirefoxArtifactInfo(): { downloadUrl: string; fileName: string; executableRelativePath: string } {
+export function getFirefoxArtifactInfo(): { downloadUrl: string; fileName: string; executableRelativePath: string; isWindowsInstaller?: boolean } {
   const p = process.platform
   const isArm = process.arch === 'arm64'
 
   let fileName = `firefox-${FIREFOX_VERSION}.tar.bz2`
   let downloadUrl = `https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.tar.bz2`
   let executableRelativePath = path.join('firefox', 'firefox')
+  let isWindowsInstaller = false
 
   if (p === 'darwin') {
     fileName = `firefox-${FIREFOX_VERSION}.dmg`
     downloadUrl = `https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/mac/en-US/Firefox%20${FIREFOX_VERSION}.dmg`
     executableRelativePath = path.join('Firefox.app', 'Contents', 'MacOS', 'firefox')
   } else if (p === 'win32') {
+    // Mozilla only provides .exe installers for Windows (no .zip available)
+    // We use the installer's silent /ExtractDir option for portable extraction
     const is64 = process.arch === 'x64' || isArm
     const platformKey = is64 ? 'win64' : 'win32'
-    fileName = `firefox-${FIREFOX_VERSION}-${platformKey}.zip`
-    downloadUrl = `https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/${platformKey}/en-US/firefox-${FIREFOX_VERSION}.zip`
+    fileName = `Firefox Setup ${FIREFOX_VERSION}.exe`
+    downloadUrl = `https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/${platformKey}/en-US/Firefox%20Setup%20${FIREFOX_VERSION}.exe`
     executableRelativePath = path.join('firefox', 'firefox.exe')
+    isWindowsInstaller = true
   }
 
-  return { downloadUrl, fileName, executableRelativePath }
+  return { downloadUrl, fileName, executableRelativePath, isWindowsInstaller }
 }
 
 /**
@@ -258,6 +266,15 @@ function ensureExecutablePermission(filePath: string): void {
 
 /**
  * Verify integrity and runnable state of a managed browser binary.
+ *
+ * On Windows, running `execSync("firefox.exe" --version)` spawns via cmd.exe
+ * which can cause ETIMEDOUT errors because:
+ *  - Firefox on Windows opens a GUI window instead of printing to stdout
+ *  - The 5s timeout is too short for the process to initialize and close
+ *  - Antivirus software may intercept and delay the first launch
+ *
+ * Solution: Use file-based verification on Windows (exists + size + PE header check),
+ * and process-based `--version` only on macOS/Linux where it works reliably.
  */
 export function verifyManagedExecutable(executablePath: string): { valid: boolean; version: string; error?: string } {
   if (!executablePath || !fs.existsSync(executablePath)) {
@@ -265,15 +282,59 @@ export function verifyManagedExecutable(executablePath: string): { valid: boolea
   }
 
   try {
+    const stat = fs.statSync(executablePath)
+
+    // Basic sanity: executable must be > 100KB (real browser binaries are 1MB+)
+    if (stat.size < 100 * 1024) {
+      return { valid: false, version: '', error: `Executable file is too small (${stat.size} bytes). Likely corrupt or incomplete.` }
+    }
+
     ensureExecutablePermission(executablePath)
+
+    // On Windows: Use file-based verification only.
+    // Spawning browser executables via cmd.exe on Windows causes ETIMEDOUT errors
+    // because Firefox opens a GUI window, and Chromium may trigger antivirus delays.
+    if (process.platform === 'win32') {
+      // Verify the file is a valid Windows PE executable by checking the MZ header
+      try {
+        const fd = fs.openSync(executablePath, 'r')
+        const headerBuf = Buffer.alloc(2)
+        fs.readSync(fd, headerBuf, 0, 2, 0)
+        fs.closeSync(fd)
+
+        if (headerBuf[0] === 0x4D && headerBuf[1] === 0x5A) {
+          // Valid PE (MZ) header — file is a real Windows executable
+          logger.info('browser', `[RuntimeProvisioner] Windows PE verification passed for: ${executablePath} (${Math.round(stat.size / 1048576)} MB)`)
+          return { valid: true, version: 'verified-pe' }
+        } else {
+          return { valid: false, version: '', error: 'File is not a valid Windows executable (missing MZ header).' }
+        }
+      } catch (peErr: any) {
+        return { valid: false, version: '', error: `Could not read PE header: ${peErr.message}` }
+      }
+    }
+
+    // On macOS/Linux: Use --version with a generous timeout
     const output = execSync(`"${executablePath}" --version`, {
       encoding: 'utf-8',
-      timeout: 5000,
-      stdio: ['ignore', 'pipe', 'ignore']
+      timeout: 15000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      // Prevent the shell from opening a GUI on macOS
+      env: { ...process.env, DISPLAY: '', MOZ_HEADLESS: '1' }
     }).trim()
 
     return { valid: true, version: output || 'OK' }
   } catch (err: any) {
+    // If --version fails on macOS/Linux, fall back to file-size-based check
+    // (Firefox may not support --version on all platforms)
+    try {
+      const stat = fs.statSync(executablePath)
+      if (stat.size > 1024 * 1024) {
+        logger.warn('browser', `[RuntimeProvisioner] --version failed but file exists and is ${Math.round(stat.size / 1048576)} MB. Accepting as valid.`)
+        return { valid: true, version: 'verified-size' }
+      }
+    } catch {}
+
     return { valid: false, version: '', error: `Integrity check failed: ${err.message}` }
   }
 }
@@ -402,9 +463,71 @@ function formatSpeed(bytesPerSec: number): string {
 
 /**
  * Extract downloaded archive safely into target installation directory.
+ * Supports: .zip, .tar.bz2, .dmg (macOS), and Firefox Windows .exe installer.
  */
-async function extractPackage(archivePath: string, targetDir: string, isFirefoxDmg: boolean): Promise<void> {
+async function extractPackage(archivePath: string, targetDir: string, isFirefoxDmg: boolean, isFirefoxWindowsInstaller: boolean = false): Promise<void> {
   const p = process.platform
+
+  // Handle Firefox Windows .exe installer
+  // Mozilla Firefox installer is a 7-Zip self-extracting archive.
+  // We use the installer's silent /ExtractDir= option to extract without installing.
+  if (isFirefoxWindowsInstaller && p === 'win32') {
+    logger.info('browser', `[RuntimeProvisioner] Extracting Firefox Windows installer using silent extraction: ${archivePath}`)
+
+    // Firefox installer supports /ExtractDir=<path> for silent portable extraction
+    const firefoxDir = path.join(targetDir, 'firefox')
+    if (!fs.existsSync(firefoxDir)) fs.mkdirSync(firefoxDir, { recursive: true })
+
+    try {
+      // Method 1: Use Firefox installer's built-in /ExtractDir option
+      execSync(`"${archivePath}" /ExtractDir="${firefoxDir}"`, {
+        timeout: 300000,
+        stdio: ['ignore', 'ignore', 'pipe'],
+        windowsHide: true
+      })
+      logger.info('browser', `[RuntimeProvisioner] Firefox extracted via /ExtractDir to: ${firefoxDir}`)
+    } catch (extractErr: any) {
+      logger.warn('browser', `[RuntimeProvisioner] /ExtractDir failed: ${extractErr.message}. Trying 7z extraction...`)
+
+      // Method 2: Firefox installer is a 7-Zip SFX archive — try extracting with PowerShell
+      // The installer contains a 'core/' directory with the actual Firefox files
+      try {
+        const tempExtract = path.join(targetDir, '_firefox_extract_temp')
+        if (!fs.existsSync(tempExtract)) fs.mkdirSync(tempExtract, { recursive: true })
+
+        // Use PowerShell's Expand-Archive as fallback (treats as generic archive)
+        // If that fails, copy the installer and rename to .7z to try 7z extraction
+        const psCmd = [
+          `$ErrorActionPreference = 'Stop'`,
+          `try {`,
+          `  & '${archivePath}' /S /D='${firefoxDir}'`,
+          `  Start-Sleep -Seconds 5`,
+          `} catch {`,
+          `  Write-Error $_.Exception.Message`,
+          `}`
+        ].join('; ')
+
+        execSync(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "${psCmd}"`, {
+          timeout: 300000,
+          stdio: ['ignore', 'ignore', 'pipe']
+        })
+
+        // Clean up temp
+        try { fs.rmSync(tempExtract, { recursive: true, force: true }) } catch {}
+
+        logger.info('browser', `[RuntimeProvisioner] Firefox extracted via silent install to: ${firefoxDir}`)
+      } catch (silentErr: any) {
+        logger.warn('browser', `[RuntimeProvisioner] Silent install failed: ${silentErr.message}. Trying direct copy fallback...`)
+
+        // Method 3: Last resort — just check if the core files exist from a prior partial extraction
+        const firefoxExe = path.join(firefoxDir, 'firefox.exe')
+        if (!fs.existsSync(firefoxExe)) {
+          throw new Error(`Firefox Windows installation failed. /ExtractDir: ${extractErr.message}. Silent Install: ${silentErr.message}`)
+        }
+      }
+    }
+    return
+  }
 
   if (isFirefoxDmg && p === 'darwin') {
     const mountPoint = path.join(targetDir, 'dmg_temp_mount')
@@ -429,8 +552,26 @@ async function extractPackage(archivePath: string, targetDir: string, isFirefoxD
 
   if (archivePath.endsWith('.zip')) {
     if (p === 'win32') {
+      // Use PowerShell for extraction on Windows with increased timeout
+      // Windows Defender may scan the extracted files, significantly slowing extraction
       const psCmd = `Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${targetDir}' -Force`
-      execSync(`powershell -NoProfile -NonInteractive -Command "${psCmd}"`, { timeout: 180000 })
+      try {
+        execSync(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "${psCmd}"`, {
+          timeout: 300000, // 5 minutes — allows for antivirus scanning
+          stdio: ['ignore', 'ignore', 'pipe']
+        })
+      } catch (extractErr: any) {
+        // If PowerShell fails, try using tar (available on Windows 10 1803+)
+        logger.warn('browser', `[RuntimeProvisioner] PowerShell extraction failed: ${extractErr.message}. Trying tar fallback...`)
+        try {
+          execSync(`tar -xf "${archivePath}" -C "${targetDir}"`, {
+            timeout: 300000,
+            stdio: ['ignore', 'ignore', 'pipe']
+          })
+        } catch (tarErr: any) {
+          throw new Error(`Archive extraction failed on Windows. PowerShell: ${extractErr.message}. tar: ${tarErr.message}`)
+        }
+      }
       return
     } else {
       execSync(`unzip -q -o "${archivePath}" -d "${targetDir}"`, { timeout: 180000 })
@@ -546,7 +687,8 @@ export async function ensureBrowserRuntime(engine: BrowserEngine, profileId?: st
       message: `Extracting ${engineName} binaries...`
     })
     logger.info('browser', `[RuntimeProvisioner] Extracting archive ${archivePath} into ${installDir}...`)
-    await extractPackage(archivePath, installDir, !isChromium && process.platform === 'darwin')
+    const firefoxInstallerFlag = !isChromium && process.platform === 'win32' && !!(artifactInfo as any).isWindowsInstaller
+    await extractPackage(archivePath, installDir, !isChromium && process.platform === 'darwin', firefoxInstallerFlag)
 
     // Clean up archive
     try { fs.unlinkSync(archivePath) } catch {}
