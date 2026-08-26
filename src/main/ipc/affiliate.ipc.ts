@@ -27,7 +27,10 @@ export function registerAffiliateHandlers(): void {
       if (!targetUserId) {
         const db = getDatabase()
         const user = db.prepare('SELECT id FROM users ORDER BY created_at ASC LIMIT 1').get() as { id: string } | undefined
-        targetUserId = user?.id || 'usr_default'
+        if (!user?.id) {
+          return { success: false, error: 'No authenticated user found' }
+        }
+        targetUserId = user.id
       }
       const summary = affiliateService.getUserAffiliateSummary(targetUserId)
       return { success: true, data: summary }

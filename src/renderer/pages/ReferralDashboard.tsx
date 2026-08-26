@@ -80,9 +80,13 @@ export const ReferralDashboard: React.FC = () => {
   }
 
   const loadSummary = async () => {
+    const uid = currentUser?.id
+    if (!uid) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      const uid = currentUser?.id || 'usr_default'
       if ((window as any).api?.affiliateGetUserSummary) {
         const res = await (window as any).api.affiliateGetUserSummary(uid)
         if (res.success && res.data) {
@@ -96,10 +100,8 @@ export const ReferralDashboard: React.FC = () => {
     }
   }
 
-  const fallbackCode = currentUser?.id ? `REF_${currentUser.id.slice(0, 4).toUpperCase()}` : 'REF_MEMBER'
-  const fallbackLink = `https://antiprofiles.com/register?ref=${fallbackCode}`
-  const activeReferralCode = summary?.referralCode || fallbackCode
-  const activeReferralLink = summary?.referralLink || fallbackLink
+  const activeReferralCode = summary?.referralCode || (loading ? 'Loading...' : '')
+  const activeReferralLink = summary?.referralLink || (loading ? 'Loading...' : '')
 
   useEffect(() => {
     loadSummary()
