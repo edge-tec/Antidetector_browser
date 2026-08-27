@@ -2286,6 +2286,26 @@ try {
                             </div>
                         </div>
 
+                        <!-- AVAILABLE CPA CAMPAIGN OFFERS SECTION -->
+                        <div style="margin-bottom: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                <div>
+                                    <h4 style="font-size: 16px; color: #FFF; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
+                                        <span>🎯 Available CPA Campaign Offers</span>
+                                    </h4>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+                                        Select any active campaign offer to promote and earn recurring revshare or instant fixed bounties.
+                                    </p>
+                                </div>
+                                <button class="btn btn-outline" style="font-size: 11px; padding: 4px 10px;" onclick="loadOffersDropdown()">🔄 Refresh Offers</button>
+                            </div>
+                            <div id="userAffOffersCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+                                <div style="grid-column: 1/-1; text-align: center; padding: 24px; color: var(--text-muted); background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border);">
+                                    Loading active CPA offers...
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 2-Column Grid: Link Builder + Postback Webhook -->
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 24px;">
                             
@@ -8973,16 +8993,89 @@ try {
                     if (sel) {
                         const currentVal = sel.value;
                         sel.innerHTML = data.data.map(o => {
-                            const rateTxt = o.payout_type === 'revshare' ? (o.revshare_percent + '% RevShare') : ('$' + o.fixed_payout_usd + ' Fixed Bounty');
+                            const isRev = o.payout_type === 'revshare' || o.payout_type === 'percentage';
+                            const rateVal = o.revshare_percent !== undefined ? o.revshare_percent : (o.commission_rate !== undefined ? o.commission_rate : 15);
+                            const rateTxt = isRev ? (rateVal + '% RevShare') : ('$' + Number(o.fixed_payout_usd || 0).toFixed(2) + ' Fixed Bounty');
                             return `<option value="${escapeHtml(o.id)}">${escapeHtml(o.title)} (${rateTxt})</option>`;
                         }).join('');
                         if (currentVal && data.data.some(o => o.id === currentVal)) {
                             sel.value = currentVal;
                         }
                     }
+                    renderUserAffiliateOffers(data.data);
                     generateCustomAffiliateLink();
+                } else {
+                    renderUserAffiliateOffers([]);
                 }
-            } catch(e) {}
+            } catch(e) {
+                renderUserAffiliateOffers([]);
+            }
+        }
+
+        function renderUserAffiliateOffers(offers) {
+            const container = document.getElementById('userAffOffersCardsContainer');
+            if (!container) return;
+            if (!offers || offers.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 24px; color: var(--text-muted); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);">No active CPA offers available at the moment.</div>';
+                return;
+            }
+            const affId = (_userAffiliateData && _userAffiliateData.affiliateId) ? _userAffiliateData.affiliateId : 'AFF-DEFAULT';
+            const origin = window.location.origin;
+
+            container.innerHTML = offers.map(o => {
+                const isRev = o.payout_type === 'revshare' || o.payout_type === 'percentage';
+                const rateVal = o.revshare_percent !== undefined ? o.revshare_percent : (o.commission_rate !== undefined ? o.commission_rate : 15);
+                const rateBadge = isRev ? `${rateVal}% REVSHARE` : `$${Number(o.fixed_payout_usd || 0).toFixed(2)} CPA BOUNTY`;
+                const directUrl = `${origin}/track?aff_id=${encodeURIComponent(affId)}&offer_id=${encodeURIComponent(o.id)}`;
+                
+                return `
+                    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2DD4BF, #818CF8);"></div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px;">
+                                    ${rateBadge}
+                                </span>
+                                <span style="font-size: 11px; color: #10B981; font-weight: 700;">● Active</span>
+                            </div>
+                            <h4 style="font-size: 16px; color: #FFF; margin: 0 0 8px 0; font-weight: 700;">${escapeHtml(o.title)}</h4>
+                            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0 0 12px 0;">
+                                ${escapeHtml(o.description || 'Promote this AntiProfiles package and earn commissions for every referred customer.')}
+                            </p>
+                            <div style="font-size: 11px; color: #818CF8; font-family: monospace; word-break: break-all;">
+                                Target: ${escapeHtml(o.target_url)}
+                            </div>
+                        </div>
+                        <div style="border-top: 1px solid var(--border); padding-top: 14px; display: flex; gap: 8px;">
+                            <button class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 7px 10px;" onclick="selectOfferInBuilder('${escapeHtml(o.id)}')">
+                                ⚡ Link Builder
+                            </button>
+                            <button class="btn btn-primary" style="flex: 1; font-size: 12px; padding: 7px 10px; font-weight: 700;" onclick="copyDirectOfferLink('${escapeHtml(directUrl)}')">
+                                📋 Copy Link
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectOfferInBuilder(offerId) {
+            const sel = document.getElementById('userLinkOfferSelect');
+            if (sel) {
+                sel.value = offerId;
+                generateCustomAffiliateLink();
+                sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                sel.style.borderColor = '#2DD4BF';
+                setTimeout(() => sel.style.borderColor = 'var(--border)', 1500);
+            }
+        }
+
+        function copyDirectOfferLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('✓ Direct CPA Campaign link copied to clipboard!\n\n' + url);
+            }).catch(() => {
+                prompt('Copy your link:', url);
+            });
         }
 
         function generateCustomAffiliateLink() {
