@@ -9,7 +9,7 @@ import { profileRepo } from '../database/repositories/profile.repo'
 import { Profile, ProfileCreateInput } from '../database/models'
 import { launchBrowser } from './launcher'
 import { processTracker } from './process-tracker'
-import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
+import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, clearProfileCookiesData, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
 import { ensureBrowserRuntime } from './runtime-provisioner'
 import { resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { logger } from '../logging/logger'
@@ -161,6 +161,29 @@ class ProfileManager {
 
     logger.info('profile', `[PROFILE_READY] Profile "${profile.name}" (${profile.id}) is ready.`)
     return profile
+  }
+
+  /**
+   * Clear cookies and browser cache for a profile while preserving profile settings.
+   */
+  async clearProfileCookies(profileId: string): Promise<void> {
+    // 1. Stop if running
+    if (processTracker.isRunning(profileId)) {
+      await processTracker.stop(profileId)
+    }
+
+    const profile = profileRepo.getById(profileId)
+    const name = profile?.name || profileId
+
+    // 2. Clear files on disk
+    clearProfileCookiesData(profileId)
+
+    // 3. Clear cookies in database
+    try {
+      profileRepo.update(profileId, { cookies: '[]' } as any)
+    } catch {}
+
+    logger.info('profile', `Cleared cookies and cache for profile "${name}" (${profileId})`)
   }
 
   /**

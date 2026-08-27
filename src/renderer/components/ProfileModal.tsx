@@ -4244,9 +4244,14 @@ export const ProfileModal: React.FC<Props> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              if (window.confirm('Are you sure you want to remove all cookies from this profile?')) {
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to remove all cookies and wipe browser cache from this profile?')) {
                                 setCookies([])
+                                if (profile?.id) {
+                                  try {
+                                    await (window as any).api?.clearProfileCookies?.(profile.id)
+                                  } catch {}
+                                }
                               }
                             }}
                             style={{
@@ -4258,7 +4263,7 @@ export const ProfileModal: React.FC<Props> = ({
                               fontSize: '13px',
                               cursor: 'pointer'
                             }}
-                            title="Clear all cookies"
+                            title="Clear all cookies and cache"
                           >
                             Clear All
                           </button>

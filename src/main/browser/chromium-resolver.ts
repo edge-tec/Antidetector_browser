@@ -669,3 +669,65 @@ export function getProfileDataSize(profileId: string): number {
   walkDir(dir)
   return totalSize
 }
+
+/**
+ * Clear cookies, web storage, and session caches for a profile while preserving profile config.
+ */
+export function clearProfileCookiesData(profileId: string): void {
+  // 1. Chromium Profile Directory
+  const chrDir = getProfileDataDir(profileId)
+  if (fs.existsSync(chrDir)) {
+    const targets = [
+      path.join(chrDir, 'Default', 'Network', 'Cookies'),
+      path.join(chrDir, 'Default', 'Network', 'Cookies-journal'),
+      path.join(chrDir, 'Default', 'Cookies'),
+      path.join(chrDir, 'Default', 'Cookies-journal'),
+      path.join(chrDir, 'Default', 'Local Storage'),
+      path.join(chrDir, 'Default', 'Session Storage'),
+      path.join(chrDir, 'Default', 'IndexedDB'),
+      path.join(chrDir, 'Default', 'Cache'),
+      path.join(chrDir, 'Default', 'Code Cache'),
+      path.join(chrDir, 'Default', 'Service Worker'),
+      path.join(chrDir, 'Default', 'Web Data'),
+      path.join(chrDir, 'Default', 'Web Data-journal'),
+      path.join(chrDir, 'Default', 'History'),
+      path.join(chrDir, 'Default', 'History-journal'),
+      path.join(chrDir, 'Default', 'Sessions'),
+      path.join(chrDir, 'Default', 'Application Cache'),
+      path.join(chrDir, 'Default', 'GPUCache')
+    ]
+    for (const target of targets) {
+      try {
+        if (fs.existsSync(target)) {
+          fs.rmSync(target, { recursive: true, force: true })
+        }
+      } catch {}
+    }
+  }
+
+  // 2. Firefox Profile Directory
+  const ffDir = getFirefoxProfileDataDir(profileId)
+  if (fs.existsSync(ffDir)) {
+    const ffTargets = [
+      path.join(ffDir, 'cookies.sqlite'),
+      path.join(ffDir, 'cookies.sqlite-wal'),
+      path.join(ffDir, 'cookies.sqlite-shm'),
+      path.join(ffDir, 'webappsstore.sqlite'),
+      path.join(ffDir, 'storage', 'default'),
+      path.join(ffDir, 'storage', 'permanent'),
+      path.join(ffDir, 'storage', 'temporary'),
+      path.join(ffDir, 'cache2'),
+      path.join(ffDir, 'startupCache'),
+      path.join(ffDir, 'sessionstore.jsonlz4'),
+      path.join(ffDir, 'sessionstore-backups')
+    ]
+    for (const target of ffTargets) {
+      try {
+        if (fs.existsSync(target)) {
+          fs.rmSync(target, { recursive: true, force: true })
+        }
+      } catch {}
+    }
+  }
+}
+

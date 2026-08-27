@@ -122,6 +122,11 @@ const api = {
     const token = maybeId ? sessionTokenOrId : getSavedToken()
     return ipcRenderer.invoke('profiles:delete', token, id)
   },
+  clearProfileCookies: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:clearCookies', token, id)
+  },
   duplicateProfile: (sessionTokenOrId: string, maybeId?: string) => {
     const id = maybeId || sessionTokenOrId
     const token = maybeId ? sessionTokenOrId : getSavedToken()

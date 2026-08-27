@@ -411,6 +411,45 @@ switch ($action) {
         }
         break;
 
+    // ── 6. Clear Profile Cookies ──
+    case 'clear-cookies':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            respondJson(['success' => false, 'error' => 'POST method required.'], 405);
+        }
+
+        $id = $input['id'] ?? $_GET['id'] ?? '';
+        if (empty($id)) {
+            respondJson(['success' => false, 'error' => 'Profile ID required.'], 400);
+        }
+
+        try {
+            $checkStmt = $db->prepare("SELECT user_id, name FROM profiles WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$existing) {
+                respondJson(['success' => false, 'error' => 'Profile not found.'], 404);
+            }
+
+            if (!$isAdmin && $existing['user_id'] !== $userId) {
+                respondJson(['success' => false, 'error' => 'Access denied.'], 403);
+            }
+
+            $upd = $db->prepare("UPDATE profiles SET cookies = '[]', updated_at = NOW() WHERE id = ?");
+            $upd->execute([$id]);
+
+            publishRealtimeEvent('profile.cookies.cleared', [
+                'profileId' => $id,
+                'userId' => $existing['user_id'],
+                'timestamp' => date('c')
+            ], $existing['user_id']);
+
+            respondJson(['success' => true, 'message' => 'Profile cookies cleared successfully.']);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => 'Failed to clear cookies: ' . $e->getMessage()], 500);
+        }
+        break;
+
     default:
         respondJson(['success' => false, 'error' => "Unknown action '{$action}'."], 400);
         break;

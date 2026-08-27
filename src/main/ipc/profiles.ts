@@ -285,6 +285,32 @@ export function registerProfileHandlers(): void {
     }
   })
 
+  ipcMain.handle('profiles:clearCookies', async (_event, sessionToken: string, id: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+
+      validateId(id)
+      const role = normalizeUserRole(auth.user.role)
+      const isAdmin = (role === 'admin' || role === 'super_admin')
+      if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
+        return { success: false, error: 'Access denied. You do not own this profile.' }
+      }
+
+      await profileManager.clearProfileCookies(id)
+
+      // Also sync empty cookies to Central API
+      try {
+        centralApi.updateProfile(id, { cookies: '[]' } as any).catch(() => {})
+      } catch {}
+
+      return { success: true, message: 'Cookies and cache cleared successfully.' }
+    } catch (err: any) {
+      logger.error('profile', `Failed to clear cookies for profile ${id}: ${err.message}`)
+      return { success: false, error: err.message }
+    }
+  })
+
   ipcMain.handle('profiles:duplicate', async (_event, sessionToken: string, id: string) => {
     try {
       const auth = authorizeUser(sessionToken)

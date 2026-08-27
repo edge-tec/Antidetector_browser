@@ -202,6 +202,12 @@ function DashboardPage({ onNavigate, showToast, brandingConfig }: { onNavigate: 
                 if (r.success) showToast('success', `Stopped "${profile.name}"`)
                 else showToast('error', r.error || 'Failed to stop')
                 loadStats()
+              }} onClearCookies={async () => {
+                if (!sessionToken) return
+                const r = await window.api.clearProfileCookies(sessionToken, profile.id)
+                if (r.success) showToast('success', `✓ Cookies & cache cleared for "${profile.name}"`)
+                else showToast('error', r.error || 'Failed to clear cookies')
+                loadStats()
               }} />
             ))}
           </div>
@@ -224,12 +230,13 @@ function DashboardPage({ onNavigate, showToast, brandingConfig }: { onNavigate: 
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onStop, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
   onStart?: () => void
   onStop?: () => void
+  onClearCookies?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -312,6 +319,16 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onSto
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
           </button>
         )}
+        {onClearCookies && (
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={onClearCookies}
+            title="Clear Cookies, Login Sessions & Cache"
+            style={{ color: '#F59E0B' }}
+          >
+            🍪
+          </button>
+        )}
         {onEdit && <button className="btn btn-sm btn-ghost" onClick={onEdit} title="Edit Profile"><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.edit}</span></button>}
         {onDuplicate && <button className="btn btn-sm btn-ghost" onClick={onDuplicate} title="Duplicate Profile"><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.copy}</span></button>}
         {onDelete && <button className="btn btn-sm btn-ghost" onClick={onDelete} title="Delete Profile"><span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.trash}</span></button>}
@@ -320,12 +337,13 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onSto
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, onStop, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
   onStart?: () => void
   onStop?: () => void
+  onClearCookies?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -409,6 +427,16 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, on
         ) : (
           <button className="btn btn-sm btn-success" onClick={onStart} disabled={isLaunching}>
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
+          </button>
+        )}
+        {onClearCookies && (
+          <button
+            className="btn btn-sm btn-ghost btn-icon"
+            onClick={onClearCookies}
+            title="Clear Cookies, Login Sessions & Cache"
+            style={{ color: '#F59E0B', fontSize: 13 }}
+          >
+            🍪
           </button>
         )}
         {onEdit && <button className="btn btn-sm btn-ghost btn-icon" onClick={onEdit} title="Edit Profile"><span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.edit}</span></button>}
@@ -738,6 +766,18 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
                 else showToast('error', r.error || 'Failed to stop')
                 loadProfiles()
               }}
+              onClearCookies={() => confirm({
+                title: 'Clear Cookies & Cache',
+                message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
+                confirmLabel: 'Clear Cookies',
+                danger: false,
+                onConfirm: async () => {
+                  if (!sessionToken) return
+                  const r = await window.api.clearProfileCookies(sessionToken, p.id)
+                  if (r.success) { showToast('success', `✓ Cookies & cache cleared for "${p.name}"`); loadProfiles() }
+                  else showToast('error', r.error || 'Failed to clear cookies')
+                }
+              })}
               onEdit={() => {
                 setEditId(p.id)
                 setEditProfile(p)
@@ -780,6 +820,18 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
                 else showToast('error', r.error || 'Failed to stop')
                 loadProfiles()
               }}
+              onClearCookies={() => confirm({
+                title: 'Clear Cookies & Cache',
+                message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
+                confirmLabel: 'Clear Cookies',
+                danger: false,
+                onConfirm: async () => {
+                  if (!sessionToken) return
+                  const r = await window.api.clearProfileCookies(sessionToken, p.id)
+                  if (r.success) { showToast('success', `✓ Cookies & cache cleared for "${p.name}"`); loadProfiles() }
+                  else showToast('error', r.error || 'Failed to clear cookies')
+                }
+              })}
               onEdit={() => {
                 setEditId(p.id)
                 setEditProfile(p)
