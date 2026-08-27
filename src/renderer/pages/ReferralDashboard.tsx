@@ -37,10 +37,11 @@ interface OfferItem {
   title: string
   description?: string
   target_url: string
-  payout_type: 'percentage' | 'fixed'
-  commission_rate: number
+  payout_type: 'percentage' | 'fixed' | 'revshare'
+  commission_rate?: number
+  revshare_percent?: number
   fixed_payout_usd: number
-  currency: string
+  currency?: string
   status: 'active' | 'paused' | 'archived'
 }
 
@@ -227,8 +228,9 @@ export const ReferralDashboard: React.FC = () => {
             setPostbackMethod(res.data.postbackConfig.http_method || 'GET')
           }
           if (offersList.length > 0) {
-            setSelectedOfferForLink(prev => prev || offersList[0].id)
-            handleGenerateLink(selectedOfferForLink || offersList[0].id, updatedSummary)
+            const validOfferId = offersList.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : offersList[0].id
+            setSelectedOfferForLink(validOfferId)
+            handleGenerateLink(validOfferId, updatedSummary)
           }
         } else {
           // Fallback to fetching offers
@@ -236,7 +238,8 @@ export const ReferralDashboard: React.FC = () => {
             const offersRes = await (window as any).api.affiliateGetOffers(true)
             if (offersRes?.success && Array.isArray(offersRes.data) && offersRes.data.length > 0) {
               setSummary(prev => ({ ...prev, offers: offersRes.data }))
-              setSelectedOfferForLink(prev => prev || offersRes.data[0].id)
+              const validOfferId = offersRes.data.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : offersRes.data[0].id
+              setSelectedOfferForLink(validOfferId)
             }
           }
         }
@@ -257,6 +260,7 @@ export const ReferralDashboard: React.FC = () => {
     let unsubComm: (() => void) | undefined
     let unsubRef: (() => void) | undefined
     let unsubWith: (() => void) | undefined
+    let unsubSync: (() => void) | undefined
 
     if ((window as any).api?.onAffiliateCommissionEarned) {
       unsubComm = (window as any).api.onAffiliateCommissionEarned((_e: any, d: any) => {
@@ -285,10 +289,19 @@ export const ReferralDashboard: React.FC = () => {
       })
     }
 
+    if ((window as any).api?.onRealtimeSyncEvent) {
+      unsubSync = (window as any).api.onRealtimeSyncEvent((_e: any, d: any) => {
+        if (d?.eventType?.includes('affiliate') || d?.eventType?.includes('offer')) {
+          loadSummary()
+        }
+      })
+    }
+
     return () => {
       unsubComm?.()
       unsubRef?.()
       unsubWith?.()
+      unsubSync?.()
     }
   }, [currentUser?.id])
 
@@ -724,11 +737,16 @@ export const ReferralDashboard: React.FC = () => {
                   }}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                 >
-                  {((summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS).map(o => (
-                    <option key={o.id} value={o.id}>
-                      {o.title} ({o.payout_type === 'percentage' ? `${o.commission_rate}% RevShare` : `$${o.fixed_payout_usd} Fixed Bounty`})
-                    </option>
-                  ))}
+                  {((summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS).map(o => {
+                    const isRev = o.payout_type === 'percentage' || o.payout_type === 'revshare'
+                    const rate = o.commission_rate !== undefined ? o.commission_rate : (o.revshare_percent !== undefined ? o.revshare_percent : 0)
+                    const label = isRev ? `${rate}% RevShare` : `$${Number(o.fixed_payout_usd || 0).toFixed(2)} Fixed Bounty`
+                    return (
+                      <option key={o.id} value={o.id}>
+                        {o.title} ({label})
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
 
@@ -778,35 +796,40 @@ export const ReferralDashboard: React.FC = () => {
 
           {/* Offers List */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
-            {summary?.offers?.map(offer => (
-              <div key={offer.id} style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                      {offer.payout_type === 'percentage' ? `${offer.commission_rate}% RECURRING` : `$${offer.fixed_payout_usd} CPA FIXED`}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#4ADE80', fontWeight: 600 }}>Active</span>
+            {summary?.offers?.map(offer => {
+              const isRev = offer.payout_type === 'percentage' || offer.payout_type === 'revshare'
+              const rate = offer.commission_rate !== undefined ? offer.commission_rate : (offer.revshare_percent !== undefined ? offer.revshare_percent : 0)
+              const badgeText = isRev ? `${rate}% RECURRING` : `$${Number(offer.fixed_payout_usd || 0).toFixed(2)} CPA FIXED`
+              return (
+                <div key={offer.id} style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                        {badgeText}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#4ADE80', fontWeight: 600 }}>{offer.status === 'active' ? 'Active' : offer.status}</span>
+                    </div>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#FFF' }}>{offer.title}</h4>
+                    <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>
+                      {offer.description || 'Standard conversion offer for AntiProfiles products and subscriptions.'}
+                    </p>
                   </div>
-                  <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#FFF' }}>{offer.title}</h4>
-                  <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>
-                    {offer.description || 'Standard conversion offer for AntiProfiles products and subscriptions.'}
-                  </p>
-                </div>
 
-                <div style={{ borderTop: '1px solid #1E293B', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', color: '#64748B' }}>Target: {offer.target_url}</span>
-                  <button
-                    onClick={() => {
-                      setSelectedOfferForLink(offer.id)
-                      handleGenerateLink(offer.id)
-                    }}
-                    style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Create Link
-                  </button>
+                  <div style={{ borderTop: '1px solid #1E293B', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Target: {offer.target_url}</span>
+                    <button
+                      onClick={() => {
+                        setSelectedOfferForLink(offer.id)
+                        handleGenerateLink(offer.id)
+                      }}
+                      style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Create Link
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

@@ -404,6 +404,50 @@ export class CentralApiClient {
       body: JSON.stringify({ id, status })
     })
   }
+
+  // ── Central CPA Affiliate APIs ──
+  public async getAffiliateOffers(onlyActive: boolean = true): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    return await this.request(`/api/affiliate?action=get-offers${onlyActive ? '' : '&all=1'}`, { method: 'GET' })
+  }
+
+  public async getAffiliateSummary(): Promise<{ success: boolean; data?: any; error?: string }> {
+    return await this.request('/api/affiliate?action=get-summary', { method: 'GET' })
+  }
+
+  public async generateAffiliateTrackingLink(offerId: string, subId1?: string, subId2?: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    return await this.request('/api/affiliate?action=generate-tracking-link', {
+      method: 'POST',
+      body: JSON.stringify({ offer_id: offerId, sub_id1: subId1, sub_id2: subId2 })
+    })
+  }
+
+  public async saveAffiliatePostbackConfig(postbackUrl: string, httpMethod: string = 'GET', isActive: boolean = true): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/affiliate?action=save-postback-config', {
+      method: 'POST',
+      body: JSON.stringify({ postback_url: postbackUrl, http_method: httpMethod, is_active: isActive ? 1 : 0 })
+    })
+  }
+
+  public async requestAffiliateWithdrawal(amount: number, payoutMethod: string, payoutDetails: any): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/affiliate?action=request-withdrawal', {
+      method: 'POST',
+      body: JSON.stringify({ amount, payout_method: payoutMethod, payout_details: payoutDetails })
+    })
+  }
+
+  public async adminSaveAffiliateOffer(offerData: any): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/affiliate?action=admin-save-offer', {
+      method: 'POST',
+      body: JSON.stringify(offerData)
+    })
+  }
+
+  public async adminDeleteAffiliateOffer(offerId: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request('/api/affiliate?action=admin-delete-offer', {
+      method: 'POST',
+      body: JSON.stringify({ id: offerId })
+    })
+  }
 }
 
 export const centralApi = new CentralApiClient()

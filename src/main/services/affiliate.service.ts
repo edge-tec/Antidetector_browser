@@ -8,6 +8,7 @@ import https from 'https'
 import { URL } from 'url'
 import { getDatabase } from '../database/connection'
 import { logger } from '../logging/logger'
+import { centralApi } from './api-client.service'
 import {
   AffiliateOffer,
   AffiliateTrackingLink,
@@ -231,6 +232,59 @@ export class AffiliateService {
   // 3. CPA Offers & Campaigns Management
   // ──────────────────────────────────────────────
 
+  public async syncOffersFromCentralServer(): Promise<AffiliateOffer[]> {
+    try {
+      const res = await centralApi.getAffiliateOffers(false)
+      if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+        const db = getDatabase()
+        const remoteOffers = res.data
+
+        const upsert = db.prepare(`
+          INSERT INTO affiliate_offers (
+            id, title, description, target_url, payout_type, commission_rate, fixed_payout_usd, currency, status, updated_at
+          ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            description = excluded.description,
+            target_url = excluded.target_url,
+            payout_type = excluded.payout_type,
+            commission_rate = excluded.commission_rate,
+            fixed_payout_usd = excluded.fixed_payout_usd,
+            currency = excluded.currency,
+            status = excluded.status,
+            updated_at = datetime('now')
+        `)
+
+        const tx = db.transaction((offers: any[]) => {
+          for (const o of offers) {
+            const payoutType = (o.payout_type === 'fixed') ? 'fixed' : 'percentage'
+            const rate = Number(o.commission_rate ?? o.revshare_percent ?? 0)
+            const fixedUsd = Number(o.fixed_payout_usd ?? 0)
+            const status = o.status || 'active'
+            upsert.run(
+              o.id,
+              o.title || 'Affiliate Offer',
+              o.description || '',
+              o.target_url || 'https://antiprofiles.com/#pricing',
+              payoutType,
+              rate,
+              fixedUsd,
+              o.currency || 'USD',
+              status
+            )
+          }
+        })
+        tx(remoteOffers)
+        logger.info('affiliate', `[AffiliateService] Successfully synced ${remoteOffers.length} CPA offers from central server.`)
+      }
+    } catch (err: any) {
+      logger.warn('affiliate', `[AffiliateService] Remote CPA offers sync skipped/failed: ${err.message}`)
+    }
+    return this.getOffers(true)
+  }
+
   public getOffers(onlyActive: boolean = false): AffiliateOffer[] {
     const db = getDatabase()
     const query = onlyActive
@@ -294,6 +348,21 @@ export class AffiliateService {
     `).run(offerId, title, desc, targetUrl, payoutType, commRate, fixedPayout, currency, status)
 
     this.recordAuditLog('offer_saved', adminUserId, offerId, `Saved CPA Offer: ${title} (${payoutType}: ${payoutType === 'percentage' ? commRate + '%' : '$' + fixedPayout})`)
+
+    // Sync to remote central server
+    centralApi.adminSaveAffiliateOffer({
+      id: offerId,
+      title,
+      description: desc,
+      target_url: targetUrl,
+      payout_type: payoutType === 'percentage' ? 'revshare' : payoutType,
+      revshare_percent: payoutType === 'percentage' ? commRate : 0,
+      fixed_payout_usd: payoutType === 'fixed' ? fixedPayout : 0,
+      status
+    }).catch(err => {
+      logger.warn('affiliate', `[AffiliateService] Central server save offer sync skipped: ${err.message}`)
+    })
+
     return this.getOfferById(offerId)!
   }
 
@@ -301,6 +370,12 @@ export class AffiliateService {
     const db = getDatabase()
     db.prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = datetime('now') WHERE id = ?").run(offerId)
     this.recordAuditLog('offer_archived', adminUserId, offerId, `Archived CPA offer: ${offerId}`)
+
+    // Sync to remote central server
+    centralApi.adminDeleteAffiliateOffer(offerId).catch(err => {
+      logger.warn('affiliate', `[AffiliateService] Central server delete offer sync skipped: ${err.message}`)
+    })
+
     return true
   }
 

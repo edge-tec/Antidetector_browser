@@ -8971,11 +8971,16 @@ try {
                 if (data.success && Array.isArray(data.data) && data.data.length > 0) {
                     const sel = document.getElementById('userLinkOfferSelect');
                     if (sel) {
+                        const currentVal = sel.value;
                         sel.innerHTML = data.data.map(o => {
                             const rateTxt = o.payout_type === 'revshare' ? (o.revshare_percent + '% RevShare') : ('$' + o.fixed_payout_usd + ' Fixed Bounty');
                             return `<option value="${escapeHtml(o.id)}">${escapeHtml(o.title)} (${rateTxt})</option>`;
                         }).join('');
+                        if (currentVal && data.data.some(o => o.id === currentVal)) {
+                            sel.value = currentVal;
+                        }
                     }
+                    generateCustomAffiliateLink();
                 }
             } catch(e) {}
         }

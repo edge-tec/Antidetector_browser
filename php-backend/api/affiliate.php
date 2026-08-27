@@ -119,6 +119,30 @@ switch ($action) {
             }
         } catch (Throwable $e) {}
 
+        // Active CPA Offers
+        $stmtOffers = $db->prepare("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC");
+        $offers = [];
+        try {
+            $stmtOffers->execute();
+            $rawOffers = $stmtOffers->fetchAll(PDO::FETCH_ASSOC);
+            $offers = array_map(function($o) {
+                $payoutType = ($o['payout_type'] === 'fixed') ? 'fixed' : 'percentage';
+                $rate = (float)($o['revshare_percent'] ?? $o['commission_rate'] ?? 0);
+                return [
+                    'id' => $o['id'],
+                    'title' => $o['title'],
+                    'description' => $o['description'] ?? '',
+                    'target_url' => $o['target_url'],
+                    'payout_type' => $payoutType,
+                    'commission_rate' => $rate,
+                    'revshare_percent' => $rate,
+                    'fixed_payout_usd' => (float)($o['fixed_payout_usd'] ?? 0),
+                    'currency' => $o['currency'] ?? 'USD',
+                    'status' => $o['status'] ?? 'active'
+                ];
+            }, $rawOffers);
+        } catch (Throwable $e) {}
+
         respondJson([
             'success' => true,
             'data' => [
@@ -134,6 +158,7 @@ switch ($action) {
                 'paidEarnings' => round($totalPaid, 2),
                 'pendingHold' => round($pendingHold, 2),
                 'postbackConfig' => $postbackConfig ?: null,
+                'offers' => $offers,
                 'recentClicks' => $recentClicks,
                 'recentConversions' => $recentConversions,
                 'withdrawals' => $withdrawals,
@@ -148,14 +173,27 @@ switch ($action) {
         break;
 
     case 'get-offers':
-        $user = getAuthenticatedUser();
-        if (!$user) {
-            respondJson(['success' => false, 'error' => 'Authentication required.'], 401);
-        }
-
-        $stmt = $db->prepare("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC");
+        $onlyActive = !isset($_GET['all']) || $_GET['all'] !== '1';
+        $sql = $onlyActive ? "SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC" : "SELECT * FROM affiliate_offers ORDER BY created_at ASC";
+        $stmt = $db->prepare($sql);
         $stmt->execute();
-        $offers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rawOffers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $offers = array_map(function($o) {
+            $payoutType = ($o['payout_type'] === 'fixed') ? 'fixed' : 'percentage';
+            $rate = (float)($o['revshare_percent'] ?? $o['commission_rate'] ?? 0);
+            return [
+                'id' => $o['id'],
+                'title' => $o['title'],
+                'description' => $o['description'] ?? '',
+                'target_url' => $o['target_url'],
+                'payout_type' => $payoutType,
+                'commission_rate' => $rate,
+                'revshare_percent' => $rate,
+                'fixed_payout_usd' => (float)($o['fixed_payout_usd'] ?? 0),
+                'currency' => $o['currency'] ?? 'USD',
+                'status' => $o['status'] ?? 'active'
+            ];
+        }, $rawOffers);
 
         respondJson(['success' => true, 'data' => $offers]);
         break;
@@ -443,6 +481,18 @@ switch ($action) {
         $stmt->execute([$offerId, $title, $description, $targetUrl, $payoutType, $revsharePercent, $fixedPayoutUsd, $status]);
 
         respondJson(['success' => true, 'message' => "Offer '{$title}' saved successfully."]);
+        break;
+
+    case 'admin-delete-offer':
+        $admin = requireAdmin();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $offerId = trim($input['id'] ?? $input['offer_id'] ?? '');
+        if (!$offerId) {
+            respondJson(['success' => false, 'error' => 'Offer ID is required.'], 400);
+        }
+        $stmt = $db->prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = NOW() WHERE id = ?");
+        $stmt->execute([$offerId]);
+        respondJson(['success' => true, 'message' => 'Offer archived successfully.']);
         break;
 
     case 'admin-get-clicks':

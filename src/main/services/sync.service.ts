@@ -173,6 +173,12 @@ class RealtimeSyncService {
 
         this.cachedState = newState
 
+        // Sync fresh CPA Affiliate offers in background
+        try {
+          const { affiliateService } = require('./affiliate.service')
+          affiliateService.syncOffersFromCentralServer().catch(() => {})
+        } catch {}
+
         // Check if account was suspended or disabled
         if (!newState.isAuthorized || newState.accountStatus === 'suspended' || newState.accountStatus === 'disabled') {
           logger.warn('sync', `[SyncService] User ${u.email} account is ${newState.accountStatus}. Revoking access immediately.`)
@@ -428,6 +434,20 @@ class RealtimeSyncService {
           logger.warn('sync', `Failed to sync remote software release: ${e.message}`)
         }
         this.broadcastToAllWindows('ui:software-update-available', parsedPayload)
+        this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
+        break
+
+      case 'affiliate.offer.created':
+      case 'affiliate.offer.updated':
+      case 'affiliate.offer.deleted':
+      case 'affiliate.offers.sync':
+      case 'affiliate.commission.earned':
+      case 'affiliate.withdrawal.updated':
+        logger.info('sync', `[SyncEvent] Affiliate event received (${eventType}), resyncing CPA offers...`)
+        try {
+          const { affiliateService } = require('./affiliate.service')
+          await affiliateService.syncOffersFromCentralServer()
+        } catch {}
         this.broadcastToAllWindows('sync:realtime-event', { eventType, payload: parsedPayload, eventId })
         break
 

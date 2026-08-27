@@ -33,6 +33,9 @@ export function registerAffiliateHandlers(): void {
   // ── 1. User: Get Affiliate Summary, CPA Analytics & Balances ──
   ipcMain.handle('affiliate:getUserSummary', async (_event, userId: string) => {
     try {
+      // Sync fresh offers and configs from central server if connected
+      await affiliateService.syncOffersFromCentralServer().catch(() => {})
+
       let targetUserId = (userId && typeof userId === 'string') ? userId.trim() : ''
       if (!targetUserId) {
         const db = getDatabase()
@@ -73,6 +76,7 @@ export function registerAffiliateHandlers(): void {
   // ── 4. CPA Offers (Public & User) ──
   ipcMain.handle('affiliate:getOffers', async (_event, onlyActive?: boolean) => {
     try {
+      await affiliateService.syncOffersFromCentralServer().catch(() => {})
       const offers = affiliateService.getOffers(onlyActive)
       return { success: true, data: offers }
     } catch (err: any) {
