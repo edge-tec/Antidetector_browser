@@ -16,20 +16,33 @@ function ensureUserAffiliateId(PDO $db, array $user): array {
     $status = $user['affiliate_status'] ?? 'active';
 
     if (empty($affId)) {
-        $affId = 'AFF-' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $user['id']), 0, 8));
-        $refCode = 'REF_' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $user['id']), 0, 8));
+        try {
+            $st = $db->prepare("SELECT affiliate_id, referral_code, affiliate_status FROM users WHERE id = ?");
+            $st->execute([$user['id']]);
+            $uRow = $st->fetch(PDO::FETCH_ASSOC);
+            if (!empty($uRow['affiliate_id'])) {
+                $affId = $uRow['affiliate_id'];
+                $refCode = $uRow['referral_code'] ?? ('REF_' . substr($affId, 4));
+                $status = $uRow['affiliate_status'] ?? 'active';
+            }
+        } catch (Throwable $e) {}
+    }
+
+    if (empty($affId)) {
+        $cleanId = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $user['id'] ?? 'USER'), 0, 8));
+        $affId = 'AFF-' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
+        $refCode = 'REF_' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
         
         try {
             $stmt = $db->prepare("UPDATE users SET affiliate_id = ?, referral_code = ?, affiliate_status = ? WHERE id = ?");
             $stmt->execute([$affId, $refCode, $status, $user['id']]);
-        } catch (Throwable $e) {
-            $affId = 'AFF-' . strtoupper(bin2hex(random_bytes(4)));
-            $refCode = 'REF_' . strtoupper(bin2hex(random_bytes(4)));
-            $stmt = $db->prepare("UPDATE users SET affiliate_id = ?, referral_code = ?, affiliate_status = ? WHERE id = ?");
-            $stmt->execute([$affId, $refCode, $status, $user['id']]);
-        }
+        } catch (Throwable $e) {}
     }
-    return ['affiliate_id' => $affId, 'referral_code' => $refCode, 'status' => $status];
+    return [
+        'affiliate_id' => $affId,
+        'referral_code' => $refCode ?: ('REF_' . substr($affId, 4)),
+        'status' => $status ?: 'active'
+    ];
 }
 
 switch ($action) {

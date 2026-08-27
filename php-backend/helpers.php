@@ -799,9 +799,9 @@ function getAuthenticatedUser(): ?array {
     if (!$userId) return null;
 
     $db = Database::getConnection();
-    $stmt = $db->prepare("SELECT id, name, email, role, permissions, email_verified, account_status, created_at, last_login_at FROM users WHERE id = ?");
+    $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->execute([$userId]);
-    $user = $stmt->fetch();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
         $lowerEmail = strtolower(trim($user['email'] ?? ''));

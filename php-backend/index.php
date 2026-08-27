@@ -8866,6 +8866,28 @@ try {
         let _adminAffOverview = null;
 
         async function loadMyAffiliatePortal() {
+            // Immediate bootstrap from localStorage session
+            try {
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    const u = JSON.parse(userStr);
+                    const rawId = (u.id || 'USER').toString();
+                    const cleanId = rawId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase();
+                    const affId = u.affiliate_id || ('AFF-' + (cleanId || 'PARTNER'));
+                    const refCode = u.referral_code || ('REF_' + (cleanId || 'PARTNER'));
+                    if (!_userAffiliateData) {
+                        _userAffiliateData = { affiliateId: affId, referralCode: refCode, status: u.affiliate_status || 'active' };
+                    }
+                    const affIdEl = document.getElementById('userAffIdDisplay');
+                    const refCodeEl = document.getElementById('userRefCodeDisplay');
+                    if (affIdEl && affIdEl.innerText.includes('...')) affIdEl.innerText = affId;
+                    if (refCodeEl && refCodeEl.innerText.includes('...')) refCodeEl.innerText = refCode;
+                }
+            } catch(e) {}
+
+            // Always load offers immediately
+            loadOffersDropdown();
+
             const token = getAdminSessionToken();
             if (!token) return;
 
@@ -8880,8 +8902,8 @@ try {
                 _userAffiliateData = d;
 
                 // 1. Identity
-                document.getElementById('userAffIdDisplay').innerText = d.affiliateId || 'AFF-...';
-                document.getElementById('userRefCodeDisplay').innerText = d.referralCode || 'REF_...';
+                if (d.affiliateId) document.getElementById('userAffIdDisplay').innerText = d.affiliateId;
+                if (d.referralCode) document.getElementById('userRefCodeDisplay').innerText = d.referralCode;
                 const statusBadge = document.getElementById('userAffStatusBadge');
                 if (statusBadge) {
                     statusBadge.innerText = (d.status || 'active').toUpperCase();
@@ -8904,8 +8926,24 @@ try {
                     document.getElementById('userPostbackMethod').value = d.postbackConfig.http_method || 'GET';
                 }
 
-                // 4. Load Offers in Link Generator Dropdown
-                loadOffersDropdown();
+                // 4. Render offers if present in summary
+                if (Array.isArray(d.offers) && d.offers.length > 0) {
+                    const sel = document.getElementById('userLinkOfferSelect');
+                    if (sel) {
+                        const currentVal = sel.value;
+                        sel.innerHTML = d.offers.map(o => {
+                            const isRev = o.payout_type === 'revshare' || o.payout_type === 'percentage';
+                            const rateVal = o.revshare_percent !== undefined ? o.revshare_percent : (o.commission_rate !== undefined ? o.commission_rate : 15);
+                            const rateTxt = isRev ? (rateVal + '% RevShare') : ('$' + Number(o.fixed_payout_usd || 0).toFixed(2) + ' Fixed Bounty');
+                            return `<option value="${escapeHtml(o.id)}">${escapeHtml(o.title)} (${rateTxt})</option>`;
+                        }).join('');
+                        if (currentVal && d.offers.some(o => o.id === currentVal)) {
+                            sel.value = currentVal;
+                        }
+                    }
+                    renderUserAffiliateOffers(d.offers);
+                }
+
                 generateCustomAffiliateLink();
 
                 // 5. Clicks Stream
@@ -8978,14 +9016,16 @@ try {
                     }
                 }
 
-            } catch(e) {}
+            } catch(e) {
+                console.error('Affiliate portal error:', e);
+            }
         }
 
         async function loadOffersDropdown() {
             const token = getAdminSessionToken();
             try {
                 const res = await fetch('/api/affiliate/get-offers' + (token ? '?token=' + encodeURIComponent(token) : ''), {
-                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                    headers: token ? { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token } : {}
                 });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data) && data.data.length > 0) {
@@ -9019,7 +9059,19 @@ try {
                 container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 24px; color: var(--text-muted); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);">No active CPA offers available at the moment.</div>';
                 return;
             }
-            const affId = (_userAffiliateData && _userAffiliateData.affiliateId) ? _userAffiliateData.affiliateId : 'AFF-DEFAULT';
+            let affId = (_userAffiliateData && _userAffiliateData.affiliateId) ? _userAffiliateData.affiliateId : '';
+            if (!affId) {
+                try {
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const u = JSON.parse(userStr);
+                        const cleanId = (u.id || 'USER').toString().replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase();
+                        affId = u.affiliate_id || ('AFF-' + (cleanId || 'PARTNER'));
+                    }
+                } catch(e) {}
+            }
+            if (!affId) affId = 'AFF-DEFAULT';
+
             const origin = window.location.origin;
 
             container.innerHTML = offers.map(o => {
@@ -9079,8 +9131,20 @@ try {
         }
 
         function generateCustomAffiliateLink() {
-            if (!_userAffiliateData) return;
-            const affId = _userAffiliateData.affiliateId;
+            let affId = (_userAffiliateData && _userAffiliateData.affiliateId) ? _userAffiliateData.affiliateId : '';
+            if (!affId) {
+                try {
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const u = JSON.parse(userStr);
+                        const rawId = (u.id || 'USER').toString();
+                        const cleanId = rawId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase();
+                        affId = u.affiliate_id || ('AFF-' + (cleanId || 'PARTNER'));
+                    }
+                } catch(e) {}
+            }
+            if (!affId) affId = 'AFF-DEFAULT';
+
             const offerSelect = document.getElementById('userLinkOfferSelect');
             const offerId = offerSelect ? offerSelect.value : 'offer_main_saas';
             const subId1 = document.getElementById('userLinkSubId1') ? document.getElementById('userLinkSubId1').value.trim() : '';
