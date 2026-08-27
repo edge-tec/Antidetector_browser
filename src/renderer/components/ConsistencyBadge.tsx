@@ -36,7 +36,10 @@ export const ConsistencyBadge: React.FC<Props> = ({ score: propScore, result, on
   if (hasFailures || score < 70) {
     badgeColor = '#EF4444' // Red
     badgeLabel = 'Fail'
-  } else if (hasWarnings || score < 90) {
+  } else if (score < 90) {
+    badgeColor = '#F59E0B' // Yellow
+    badgeLabel = 'Warning'
+  } else if (hasWarnings && score < 95) {
     badgeColor = '#F59E0B' // Yellow
     badgeLabel = 'Warning'
   }

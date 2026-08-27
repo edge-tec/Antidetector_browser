@@ -98,8 +98,16 @@ export function validateConsistency(
     calculatedScore = Math.min(calculatedScore, Math.max(0, 50 - (failures.length - 1) * 10))
   }
 
+  // Determine status: only minor warnings (severity ≤ 5) with high score (≥ 95) → still 'pass'
+  const hasCriticalWarnings = warnings.some(w => w.severity > 5)
   const status: 'pass' | 'warn' | 'fail' =
-    failures.length > 0 ? 'fail' : (warnings.length > 0 || calculatedScore < 90 ? 'warn' : 'pass')
+    failures.length > 0
+      ? 'fail'
+      : (hasCriticalWarnings || calculatedScore < 90)
+        ? 'warn'
+        : (warnings.length > 0 && calculatedScore < 95)
+          ? 'warn'
+          : 'pass'
 
   return {
     score: calculatedScore,
@@ -464,12 +472,29 @@ function checkWebGLGpu(fp: Fingerprint): ConsistencyCheck {
     return makeCheck(id, cat, 'WebGL', 'Disabled', 'pass', 'WebGL is disabled', 5)
   }
 
-  const renderer = fp.webgl.unmaskedRenderer || ''
-  const gpuName = fp.webgl.gpuRenderer || ''
+  const renderer = (fp.webgl.unmaskedRenderer || '').toLowerCase()
+  const gpuName = (fp.webgl.gpuRenderer || '').toLowerCase()
 
-  if (gpuName && renderer && !renderer.toLowerCase().includes(gpuName.toLowerCase().split(' ')[0])) {
-    return makeCheck(id, cat, gpuName, renderer.substring(0, 50), 'warn',
-      `GPU renderer "${gpuName}" doesn't appear in WebGL unmasked renderer`, 5)
+  if (gpuName && renderer) {
+    // Normalize: strip ANGLE(...) wrapper, parentheticals, (TM)/(R), and extra whitespace
+    const normalize = (s: string) => s
+      .replace(/angle\s*\(/gi, '')
+      .replace(/\(tm\)/gi, '')
+      .replace(/\(r\)/gi, '')
+      .replace(/[(),]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    const normRenderer = normalize(renderer)
+    const normGpu = normalize(gpuName)
+
+    // Extract significant keywords (≥ 2 chars) from GPU name and check if any appear in renderer
+    const gpuKeywords = normGpu.split(' ').filter(w => w.length >= 2)
+    const matches = gpuKeywords.some(kw => normRenderer.includes(kw))
+
+    if (!matches && gpuKeywords.length > 0) {
+      return makeCheck(id, cat, fp.webgl.gpuRenderer || gpuName, (fp.webgl.unmaskedRenderer || renderer).substring(0, 50), 'warn',
+        `GPU renderer "${fp.webgl.gpuRenderer}" doesn't appear in WebGL unmasked renderer`, 4)
+    }
   }
 
   return makeCheck(id, cat, gpuName || 'WebGL', 'WebGL consistent', 'pass',
