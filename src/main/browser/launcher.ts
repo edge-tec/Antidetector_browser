@@ -1020,8 +1020,8 @@ export async function launchBrowser(
     })
 
     const wsEndpoint = browser.wsEndpoint()
-    const process = browser.process()
-    const pid = process?.pid || 0
+    const browserProcess = browser.process()
+    const pid = browserProcess?.pid || 0
 
     // Inject full fingerprint via CDP
     await setupBrowserInjection(browser, fingerprint)
