@@ -448,6 +448,18 @@ export class CentralApiClient {
       body: JSON.stringify({ id: offerId })
     })
   }
+
+  // ── Global Launch URL / Start Page System ──
+  public async getGlobalLaunchUrlConfig(): Promise<{ success: boolean; data?: any; error?: string }> {
+    return await this.request('/api/admin?action=get-launch-url-config', { method: 'GET' })
+  }
+
+  public async adminSaveGlobalLaunchUrlConfig(config: any): Promise<{ success: boolean; data?: any; error?: string }> {
+    return await this.request('/api/admin?action=save-launch-url-config', {
+      method: 'POST',
+      body: JSON.stringify(config)
+    })
+  }
 }
 
 export const centralApi = new CentralApiClient()

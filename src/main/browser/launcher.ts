@@ -18,6 +18,7 @@ import { startProxyBridge } from '../network/proxy-bridge'
 import { lookupGeoIP } from '../network/geo-lookup'
 import { killProcessTree } from './process-tracker'
 import { logger } from '../logging/logger'
+import { getGlobalLaunchUrlConfig } from './launch-url-manager'
 
 import { ResolvedFirefoxProfile, resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { installFirefoxRuntimeExtension } from './firefox/firefox-extension-builder'
@@ -921,11 +922,48 @@ export async function launchBrowser(
     }
   }
 
-  // Determine start URLs
+  // ── Determine start URLs (Integrated with Global Launch URL / Start Page System) ──
+  const globalLaunch = getGlobalLaunchUrlConfig()
   let startUrls: string[] = []
-  if (profile.startUrl) {
-    startUrls.push(profile.startUrl)
+
+  if (globalLaunch.enabled && globalLaunch.url) {
+    const adminUrl = globalLaunch.url.trim()
+    if (globalLaunch.mode === 'force') {
+      // Force mode: Admin Launch URL takes absolute precedence as tab 1
+      startUrls.push(adminUrl)
+      if (profile.startUrl && profile.startUrl !== adminUrl && !globalLaunch.lockOverride) {
+        startUrls.push(profile.startUrl)
+      }
+      logger.info('browser', `[GlobalLaunchUrl] Enforced admin launch URL: "${adminUrl}" (Mode: Force)`)
+    } else if (globalLaunch.mode === 'enroll_all') {
+      // Enroll-All mode: Use admin launch URL for all enrolled profiles
+      startUrls.push(adminUrl)
+      logger.info('browser', `[GlobalLaunchUrl] Applied enrolled admin launch URL: "${adminUrl}"`)
+    } else {
+      // Default mode: Use profile startUrl if set, otherwise fallback to admin launch URL
+      if (profile.startUrl) {
+        startUrls.push(profile.startUrl)
+      } else {
+        startUrls.push(adminUrl)
+        logger.info('browser', `[GlobalLaunchUrl] Applied default admin launch URL: "${adminUrl}"`)
+      }
+    }
+
+    // Append any extra tabs configured by the admin
+    if (globalLaunch.additionalTabs && Array.isArray(globalLaunch.additionalTabs)) {
+      for (const tabUrl of globalLaunch.additionalTabs) {
+        if (tabUrl && !startUrls.includes(tabUrl)) {
+          startUrls.push(tabUrl)
+        }
+      }
+    }
+  } else {
+    // Normal profile start URL
+    if (profile.startUrl) {
+      startUrls.push(profile.startUrl)
+    }
   }
+
   if (fingerprint?.browser?.startUrls && Array.isArray(fingerprint.browser.startUrls)) {
     for (const url of fingerprint.browser.startUrls) {
       if (url && !startUrls.includes(url)) startUrls.push(url)

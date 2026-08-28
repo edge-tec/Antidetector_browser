@@ -10,6 +10,7 @@ import { AdminSeoManager } from '../components/AdminSeoManager'
 import { AdminSoftwareVersionManager } from '../components/AdminSoftwareVersionManager'
 import { AdminAffiliateManager } from '../components/AdminAffiliateManager'
 import { CustomBrandingManager } from '../components/CustomBrandingManager'
+import { AdminLaunchUrlManager } from '../components/AdminLaunchUrlManager'
 
 interface SmtpFormState {
   host: string
@@ -66,7 +67,10 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
       'admin:get-subscriptions': 'adminGetSubscriptions',
       'admin:update-user-subscription': 'adminUpdateUserSubscription',
       'admin:get-desktop-app-config': 'adminGetDesktopAppConfig',
-      'admin:save-desktop-app-config': 'adminSaveDesktopAppConfig'
+      'admin:save-desktop-app-config': 'adminSaveDesktopAppConfig',
+      'admin:get-launch-url-config': 'adminGetLaunchUrlConfig',
+      'admin:save-launch-url-config': 'adminSaveLaunchUrlConfig',
+      'admin:enroll-all-launch-url': 'adminEnrollAllLaunchUrl'
     }
     const methodName = apiMethodMap[channel]
     if (methodName && typeof (window as any).api[methodName] === 'function') {
@@ -129,7 +133,7 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
 
 export const AdminDashboard: React.FC = () => {
   const { sessionToken, currentUser, impersonateUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>('users')
   const [users, setUsers] = useState<UserDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
@@ -586,6 +590,23 @@ export const AdminDashboard: React.FC = () => {
 
             <button
               type="button"
+              onClick={() => setActiveTab('launch_url')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: activeTab === 'launch_url' ? '#1C1C28' : 'transparent',
+                color: activeTab === 'launch_url' ? '#2DD4BF' : '#94A3B8',
+                fontWeight: activeTab === 'launch_url' ? 600 : 400,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              🌐 Launch URL
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('releases')}
               style={{
                 padding: '6px 14px',
@@ -887,7 +908,12 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* 3. Desktop App Releases & Software Version Management Tab */}
+        {/* 3. Global Launch URL & Start Page Management Tab */}
+        {activeTab === 'launch_url' && (
+          <AdminLaunchUrlManager />
+        )}
+
+        {/* 4. Desktop App Releases & Software Version Management Tab */}
         {activeTab === 'releases' && (
           <AdminSoftwareVersionManager />
         )}

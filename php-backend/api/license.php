@@ -268,6 +268,13 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
             'min_version' => $minVersion,
             'current_version' => $appVersion ?: '1.0.0',
             'is_supported' => true
+        ],
+        'launch_url_config' => [
+            'url' => $config['global_launch_url'] ?? '',
+            'enabled' => ($config['global_launch_url_enabled'] ?? 'false') === 'true',
+            'mode' => $config['global_launch_url_mode'] ?? 'enroll_all',
+            'lockOverride' => ($config['global_launch_url_lock_override'] ?? 'false') === 'true',
+            'additionalTabs' => !empty($config['global_launch_url_additional_tabs']) ? array_values(array_filter(array_map('trim', explode("\n", $config['global_launch_url_additional_tabs'])))) : []
         ]
     ];
 }

@@ -65,6 +65,12 @@ const api = {
   adminGetDesktopAppConfig: (token: string) => ipcRenderer.invoke('admin:get-desktop-app-config', token),
   adminSaveDesktopAppConfig: (token: string, config: Record<string, string>) =>
     ipcRenderer.invoke('admin:save-desktop-app-config', token, config),
+  adminGetLaunchUrlConfig: (token: string) => ipcRenderer.invoke('admin:get-launch-url-config', token),
+  adminSaveLaunchUrlConfig: (token: string, config: any) =>
+    ipcRenderer.invoke('admin:save-launch-url-config', token, config),
+  adminEnrollAllLaunchUrl: (token: string, launchUrl: string) =>
+    ipcRenderer.invoke('admin:enroll-all-launch-url', token, launchUrl),
+  getLaunchUrlConfig: () => ipcRenderer.invoke('launch-url:get-config'),
 
   // ── Profiles ──
   getProfiles: (sessionTokenOrSearch?: string, maybeSearch?: string, groupId?: string, status?: string) => {

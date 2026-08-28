@@ -3,6 +3,7 @@ import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { authorizeUser } from '../security/session'
 import { logger } from '../logging/logger'
 import { centralApi } from '../services/api-client.service'
+import { launchUrlManager } from '../browser/launch-url-manager'
 
 export function setupSubscriptionIPC(): void {
   // Validate User License & Device Heartbeat (Central Server First)
@@ -18,6 +19,11 @@ export function setupSubscriptionIPC(): void {
     try {
       const centralRes = await centralApi.validateLicense()
       if (centralRes && centralRes.data) {
+        if (centralRes.data.launch_url_config) {
+          try {
+            launchUrlManager.syncRemoteConfig(centralRes.data.launch_url_config)
+          } catch {}
+        }
         if (!centralRes.data.valid) {
           return {
             success: false,

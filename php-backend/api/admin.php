@@ -725,6 +725,60 @@ switch ($action) {
         respondJson(['success' => true, 'data' => $config]);
         break;
 
+    // ── Global Launch URL / Start Page System APIs ──
+    case 'get-launch-url-config':
+        $config = getDesktopAppConfigMap();
+        $rawTabs = $config['global_launch_url_additional_tabs'] ?? '';
+        $tabs = array_values(array_filter(array_map('trim', explode("\n", $rawTabs))));
+        respondJson([
+            'success' => true,
+            'data' => [
+                'url' => $config['global_launch_url'] ?? '',
+                'enabled' => ($config['global_launch_url_enabled'] ?? 'false') === 'true',
+                'mode' => $config['global_launch_url_mode'] ?? 'enroll_all',
+                'lockOverride' => ($config['global_launch_url_lock_override'] ?? 'false') === 'true',
+                'additionalTabs' => $tabs
+            ]
+        ]);
+        break;
+
+    case 'save-launch-url-config':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $url = trim($input['url'] ?? '');
+        $enabled = !empty($input['enabled']) ? 'true' : 'false';
+        $mode = in_array($input['mode'] ?? '', ['enroll_all', 'force', 'default']) ? $input['mode'] : 'enroll_all';
+        $lockOverride = !empty($input['lockOverride']) ? 'true' : 'false';
+        $additionalTabs = is_array($input['additionalTabs'] ?? null) ? implode("\n", $input['additionalTabs']) : ($input['additionalTabs'] ?? '');
+
+        $stmt = $db->prepare("REPLACE INTO desktop_app_config (config_key, config_value) VALUES (?, ?)");
+        $stmt->execute(['global_launch_url', $url]);
+        $stmt->execute(['global_launch_url_enabled', $enabled]);
+        $stmt->execute(['global_launch_url_mode', $mode]);
+        $stmt->execute(['global_launch_url_lock_override', $lockOverride]);
+        $stmt->execute(['global_launch_url_additional_tabs', $additionalTabs]);
+
+        $enrolledCount = 0;
+        if ($enabled === 'true' && ($mode === 'enroll_all' || !empty($input['enrollNow'])) && !empty($url)) {
+            $upd = $db->prepare("UPDATE profiles SET start_url = ?");
+            $upd->execute([$url]);
+            $enrolledCount = $upd->rowCount();
+        }
+
+        $tabs = array_values(array_filter(array_map('trim', explode("\n", $additionalTabs))));
+        respondJson([
+            'success' => true,
+            'message' => "Launch URL configuration saved successfully. {$enrolledCount} profile(s) enrolled.",
+            'enrolledCount' => $enrolledCount,
+            'data' => [
+                'url' => $url,
+                'enabled' => $enabled === 'true',
+                'mode' => $mode,
+                'lockOverride' => $lockOverride === 'true',
+                'additionalTabs' => $tabs
+            ]
+        ]);
+        break;
+
     // ── 4. Landing Page CMS Management APIs ──
     case 'save-branding':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;

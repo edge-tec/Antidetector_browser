@@ -1031,6 +1031,7 @@ export const ProfileModal: React.FC<Props> = ({
   const [groupId, setGroupId] = useState('')
   const [notes, setNotes] = useState('')
   const [startUrl, setStartUrl] = useState('')
+  const [adminLaunchConfig, setAdminLaunchConfig] = useState<any>(null)
   const [tagsStr, setTagsStr] = useState('')
 
   const selectedAndroidDevice = useMemo(() => {
@@ -1779,6 +1780,18 @@ export const ProfileModal: React.FC<Props> = ({
         setCookies([])
         handleGenerateNew('macos-arm')
       }
+
+      if ((window as any).api?.getLaunchUrlConfig) {
+        (window as any).api.getLaunchUrlConfig().then((res: any) => {
+          if (res?.success && res?.data?.enabled && res?.data?.url) {
+            setAdminLaunchConfig(res.data)
+            if (!initialProfile && res.data.url) {
+              setStartUrl(res.data.url)
+            }
+          }
+        }).catch(() => {})
+      }
+
       setActiveTab('overview')
     }
   }, [isOpen, initialProfile, existingProfiles])
@@ -1944,7 +1957,10 @@ export const ProfileModal: React.FC<Props> = ({
       finalFp.browser.extensions = extensions
       finalFp.browser.bookmarks = bookmarks
       finalFp.browser.cookies = cookies
-      finalFp.browser.startUrl = startUrl
+      const finalStartUrl = (adminLaunchConfig?.enabled && adminLaunchConfig?.lockOverride)
+        ? adminLaunchConfig.url
+        : startUrl
+      finalFp.browser.startUrl = finalStartUrl
 
       const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean)
 
@@ -1960,7 +1976,7 @@ export const ProfileModal: React.FC<Props> = ({
         timezone: effectiveTz,
         webrtcMode: webrtcSetting === 'off' ? 'disabled' : 'default',
         notes,
-        startUrl,
+        startUrl: finalStartUrl,
         tags,
         fingerprint: { ...finalFp, deviceTemplateId: deviceTemplateId || undefined },
         extensions,
@@ -2684,14 +2700,37 @@ export const ProfileModal: React.FC<Props> = ({
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Start Page / Launch URL</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '12px', color: '#94A3B8' }}>Start Page / Launch URL</label>
+                      {adminLaunchConfig?.enabled && (
+                        <span style={{ fontSize: '11px', color: adminLaunchConfig.lockOverride ? '#EF4444' : '#2DD4BF', fontWeight: 600 }}>
+                          {adminLaunchConfig.lockOverride ? '🔒 Admin Enforced (Locked)' : '🌐 Admin Default Active'}
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="text"
-                      value={startUrl}
+                      disabled={adminLaunchConfig?.enabled && adminLaunchConfig?.lockOverride}
+                      value={adminLaunchConfig?.enabled && adminLaunchConfig?.lockOverride ? adminLaunchConfig.url : startUrl}
                       onChange={e => setStartUrl(e.target.value)}
-                      placeholder="e.g. https://whoer.net or https://google.com"
-                      style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                      placeholder={adminLaunchConfig?.enabled && adminLaunchConfig?.url ? adminLaunchConfig.url : "e.g. https://whoer.net or https://google.com"}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        backgroundColor: (adminLaunchConfig?.enabled && adminLaunchConfig?.lockOverride) ? '#1A1A27' : '#14141F',
+                        border: `1px solid ${(adminLaunchConfig?.enabled && adminLaunchConfig?.lockOverride) ? '#4F46E560' : '#2C2C3E'}`,
+                        color: (adminLaunchConfig?.enabled && adminLaunchConfig?.lockOverride) ? '#94A3B8' : '#FFF',
+                        cursor: (adminLaunchConfig?.enabled && adminLaunchConfig?.lockOverride) ? 'not-allowed' : 'text'
+                      }}
                     />
+                    {adminLaunchConfig?.enabled && (
+                      <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px', marginBottom: 0 }}>
+                        {adminLaunchConfig.lockOverride
+                          ? `This start URL is mandated by the system administrator and will automatically open upon launch across all devices.`
+                          : `Organization default: "${adminLaunchConfig.url}". You may customize this for this specific profile.`}
+                      </p>
+                    )}
                   </div>
 
                   <div>
