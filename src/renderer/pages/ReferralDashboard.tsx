@@ -289,6 +289,8 @@ export const ReferralDashboard: React.FC = () => {
       })
     }
 
+    let unsubOffers: (() => void) | undefined
+
     if ((window as any).api?.onRealtimeSyncEvent) {
       unsubSync = (window as any).api.onRealtimeSyncEvent((_e: any, d: any) => {
         if (d?.eventType?.includes('affiliate') || d?.eventType?.includes('offer')) {
@@ -297,11 +299,18 @@ export const ReferralDashboard: React.FC = () => {
       })
     }
 
+    if ((window as any).api?.onAffiliateOffersUpdated) {
+      unsubOffers = (window as any).api.onAffiliateOffersUpdated(() => {
+        loadSummary()
+      })
+    }
+
     return () => {
       unsubComm?.()
       unsubRef?.()
       unsubWith?.()
       unsubSync?.()
+      unsubOffers?.()
     }
   }, [currentUser?.id])
 

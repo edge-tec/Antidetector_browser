@@ -494,7 +494,30 @@ switch ($action) {
         ");
         $stmt->execute([$offerId, $title, $description, $targetUrl, $payoutType, $revsharePercent, $fixedPayoutUsd, $status]);
 
-        respondJson(['success' => true, 'message' => "Offer '{$title}' saved successfully."]);
+        // Real-time broadcast to all connected desktop software instances
+        try {
+            $evStmt = $db->prepare("
+                INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                VALUES (?, 'affiliate.offer.updated', NULL, ?)
+            ");
+            $evStmt->execute([
+                'evt_' . uniqid(),
+                json_encode([
+                    'id' => $offerId,
+                    'title' => $title,
+                    'description' => $description,
+                    'target_url' => $targetUrl,
+                    'payout_type' => $payoutType,
+                    'revshare_percent' => $revsharePercent,
+                    'commission_rate' => $revsharePercent,
+                    'fixed_payout_usd' => $fixedPayoutUsd,
+                    'status' => $status,
+                    'timestamp' => time()
+                ])
+            ]);
+        } catch (Throwable $e) {}
+
+        respondJson(['success' => true, 'message' => "Offer '{$title}' saved successfully.", 'data' => ['id' => $offerId, 'title' => $title, 'status' => $status]]);
         break;
 
     case 'admin-delete-offer':
@@ -506,6 +529,19 @@ switch ($action) {
         }
         $stmt = $db->prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = NOW() WHERE id = ?");
         $stmt->execute([$offerId]);
+
+        // Real-time broadcast to all connected desktop software instances
+        try {
+            $evStmt = $db->prepare("
+                INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                VALUES (?, 'affiliate.offer.deleted', NULL, ?)
+            ");
+            $evStmt->execute([
+                'evt_' . uniqid(),
+                json_encode(['id' => $offerId, 'status' => 'archived', 'timestamp' => time()])
+            ]);
+        } catch (Throwable $e) {}
+
         respondJson(['success' => true, 'message' => 'Offer archived successfully.']);
         break;
 

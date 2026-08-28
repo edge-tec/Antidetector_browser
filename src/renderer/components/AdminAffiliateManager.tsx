@@ -120,22 +120,78 @@ export const AdminAffiliateManager: React.FC = () => {
     setTimeout(() => setToastMsg(null), 4000)
   }
 
+  // Unified API caller supporting both Electron Desktop IPC and Web Browser REST API
+  const callAffiliateApi = async (action: string, method = 'GET', payload?: any) => {
+    const token = localStorage.getItem('pv_session_token') || ''
+
+    try {
+      // 1. Electron IPC Environment
+      if (action === 'admin-get-overview' && (window as any).api?.affiliateGetAdminOverview) {
+        return await (window as any).api.affiliateGetAdminOverview(token)
+      }
+      if (action === 'admin-save-offer' && (window as any).api?.affiliateAdminSaveOffer) {
+        return await (window as any).api.affiliateAdminSaveOffer(token, payload)
+      }
+      if (action === 'admin-delete-offer' && (window as any).api?.affiliateAdminDeleteOffer) {
+        return await (window as any).api.affiliateAdminDeleteOffer(token, payload?.id)
+      }
+      if (action === 'admin-save-settings' && (window as any).api?.affiliateAdminSaveSettings) {
+        return await (window as any).api.affiliateAdminSaveSettings(token, payload)
+      }
+      if (action === 'admin-update-affiliate-status' && (window as any).api?.affiliateAdminUpdateStatus) {
+        return await (window as any).api.affiliateAdminUpdateStatus(token, payload.affiliateId, payload.status)
+      }
+      if (action === 'admin-update-withdrawal' && (window as any).api?.affiliateAdminUpdateWithdrawal) {
+        return await (window as any).api.affiliateAdminUpdateWithdrawal(token, payload.withdrawalId, payload.status, payload.adminNotes, payload.txRef)
+      }
+      if (action === 'admin-retry-postback' && (window as any).api?.affiliateRetryPostback) {
+        return await (window as any).api.affiliateRetryPostback(payload.postbackId, token)
+      }
+      if (action === 'admin-save-postback-config' && (window as any).api?.affiliateAdminSavePostbackConfig) {
+        return await (window as any).api.affiliateAdminSavePostbackConfig(token, payload.userId, payload.postbackUrl, payload.method, payload.isActive)
+      }
+      if (action === 'admin-test-postback' && (window as any).api?.affiliateAdminTestPostback) {
+        return await (window as any).api.affiliateAdminTestPostback(token, payload.postbackUrl, payload.method)
+      }
+      if (action === 'admin-reverse-commission' && (window as any).api?.affiliateAdminReverseCommission) {
+        return await (window as any).api.affiliateAdminReverseCommission(token, payload.commissionId, payload.reason)
+      }
+      if (action === 'admin-adjust-balance' && (window as any).api?.affiliateAdminAdjustBalance) {
+        return await (window as any).api.affiliateAdminAdjustBalance(token, payload.userId, payload.amount, payload.reason)
+      }
+    } catch {}
+
+    // 2. Web REST API Fallback
+    try {
+      const res = await fetch(`/api/affiliate.php?action=${encodeURIComponent(action)}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        ...(payload && method !== 'GET' ? { body: JSON.stringify(payload) } : {})
+      })
+      return await res.json()
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+
   const loadData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateGetAdminOverview) {
-        const res = await (window as any).api.affiliateGetAdminOverview(token)
-        if (res?.success && res?.data) {
-          setData(res.data)
-          setSettingsForm({
-            enabled: res.data.settings?.enabled !== false,
-            commission_rate_percent: res.data.settings?.commission_rate_percent || 10,
-            holding_period_days: res.data.settings?.holding_period_days || 7,
-            min_withdrawal_usd: res.data.settings?.min_withdrawal_usd || 20,
-            system_domain: res.data.settings?.system_domain || 'https://antiprofiles.com'
-          })
-        }
+      const res = await callAffiliateApi('admin-get-overview', 'GET')
+      if (res?.success && res?.data) {
+        setData(res.data)
+        setSettingsForm({
+          enabled: res.data.settings?.enabled !== false,
+          commission_rate_percent: res.data.settings?.commission_rate_percent || 10,
+          holding_period_days: res.data.settings?.holding_period_days || 7,
+          min_withdrawal_usd: res.data.settings?.min_withdrawal_usd || 20,
+          system_domain: res.data.settings?.system_domain || 'https://antiprofiles.com'
+        })
+      } else if (res?.error) {
+        showToast('error', res.error)
       }
     } catch (err: any) {
       showToast('error', 'Failed to load affiliate administration: ' + err.message)
@@ -146,21 +202,41 @@ export const AdminAffiliateManager: React.FC = () => {
 
   useEffect(() => {
     loadData()
+
+    // Real-time synchronization across Desktop & Web Admin instances
+    let unsubSync: (() => void) | undefined
+    let unsubOffers: (() => void) | undefined
+
+    if ((window as any).api?.onRealtimeSyncEvent) {
+      unsubSync = (window as any).api.onRealtimeSyncEvent((_e: any, d: any) => {
+        if (d?.eventType?.includes('affiliate') || d?.eventType?.includes('offer')) {
+          loadData()
+        }
+      })
+    }
+
+    if ((window as any).api?.onAffiliateOffersUpdated) {
+      unsubOffers = (window as any).api.onAffiliateOffersUpdated(() => {
+        loadData()
+      })
+    }
+
+    return () => {
+      if (unsubSync) unsubSync()
+      if (unsubOffers) unsubOffers()
+    }
   }, [])
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
     setSavingSettings(true)
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateAdminSaveSettings) {
-        const res = await (window as any).api.affiliateAdminSaveSettings(token, settingsForm)
-        if (res?.success) {
-          showToast('success', '✅ Affiliate system settings updated successfully!')
-          loadData()
-        } else {
-          showToast('error', res?.error || 'Failed to save settings')
-        }
+      const res = await callAffiliateApi('admin-save-settings', 'POST', settingsForm)
+      if (res?.success) {
+        showToast('success', '✅ Affiliate system settings updated successfully!')
+        loadData()
+      } else {
+        showToast('error', res?.error || 'Failed to save settings')
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -173,16 +249,18 @@ export const AdminAffiliateManager: React.FC = () => {
     e.preventDefault()
     setSavingOffer(true)
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateAdminSaveOffer) {
-        const res = await (window as any).api.affiliateAdminSaveOffer(token, offerModal)
-        if (res?.success) {
-          showToast('success', `✅ CPA Offer "${offerModal.title}" saved successfully!`)
-          setOfferModal({ ...offerModal, open: false })
-          loadData()
-        } else {
-          showToast('error', res?.error || 'Failed to save offer')
-        }
+      const payload = {
+        ...offerModal,
+        revshare_percent: offerModal.commission_rate,
+        fixed_payout_usd: offerModal.fixed_payout_usd
+      }
+      const res = await callAffiliateApi('admin-save-offer', 'POST', payload)
+      if (res?.success) {
+        showToast('success', `✅ CPA Offer "${offerModal.title}" saved successfully across Web & Desktop!`)
+        setOfferModal({ ...offerModal, open: false })
+        loadData()
+      } else {
+        showToast('error', res?.error || 'Failed to save offer')
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -193,15 +271,12 @@ export const AdminAffiliateManager: React.FC = () => {
 
   const handleUpdateAffiliateStatus = async (affiliateId: string, status: 'active' | 'suspended' | 'disabled') => {
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateAdminUpdateStatus) {
-        const res = await (window as any).api.affiliateAdminUpdateStatus(token, affiliateId, status)
-        if (res?.success) {
-          showToast('success', `Affiliate ${affiliateId} status updated to ${status.toUpperCase()}`)
-          loadData()
-        } else {
-          showToast('error', res?.error || 'Failed to update status')
-        }
+      const res = await callAffiliateApi('admin-update-affiliate-status', 'POST', { affiliateId, status })
+      if (res?.success) {
+        showToast('success', `Affiliate ${affiliateId} status updated to ${status.toUpperCase()}`)
+        loadData()
+      } else {
+        showToast('error', res?.error || 'Failed to update status')
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -213,22 +288,18 @@ export const AdminAffiliateManager: React.FC = () => {
     if (!actionModal.withdrawal) return
     setProcessingAction(true)
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateAdminUpdateWithdrawal) {
-        const res = await (window as any).api.affiliateAdminUpdateWithdrawal(
-          token,
-          actionModal.withdrawal.id,
-          actionModal.status,
-          actionModal.adminNotes,
-          actionModal.txRef
-        )
-        if (res?.success) {
-          showToast('success', `Withdrawal ${actionModal.withdrawal.id} marked as ${actionModal.status.toUpperCase()}`)
-          setActionModal({ ...actionModal, open: false })
-          loadData()
-        } else {
-          showToast('error', res?.error || 'Failed to update withdrawal')
-        }
+      const res = await callAffiliateApi('admin-update-withdrawal', 'POST', {
+        withdrawalId: actionModal.withdrawal.id,
+        status: actionModal.status,
+        adminNotes: actionModal.adminNotes,
+        txRef: actionModal.txRef
+      })
+      if (res?.success) {
+        showToast('success', `Withdrawal ${actionModal.withdrawal.id} marked as ${actionModal.status.toUpperCase()}`)
+        setActionModal({ ...actionModal, open: false })
+        loadData()
+      } else {
+        showToast('error', res?.error || 'Failed to update withdrawal')
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -239,15 +310,12 @@ export const AdminAffiliateManager: React.FC = () => {
 
   const handleRetryPostback = async (postbackId: string) => {
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateRetryPostback) {
-        const res = await (window as any).api.affiliateRetryPostback(postbackId, token)
-        if (res?.success) {
-          showToast('success', `Postback retried: Status is now ${res.data.status.toUpperCase()}`)
-          loadData()
-        } else {
-          showToast('error', res?.error || 'Failed to retry postback')
-        }
+      const res = await callAffiliateApi('admin-retry-postback', 'POST', { postbackId })
+      if (res?.success) {
+        showToast('success', `Postback retried: Status is now ${res.data?.status?.toUpperCase() || 'COMPLETED'}`)
+        loadData()
+      } else {
+        showToast('error', res?.error || 'Failed to retry postback')
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -273,22 +341,18 @@ export const AdminAffiliateManager: React.FC = () => {
     if (!postbackModal.userId) return
     setSavingPostback(true)
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateAdminSavePostbackConfig) {
-        const res = await (window as any).api.affiliateAdminSavePostbackConfig(
-          token,
-          postbackModal.userId,
-          postbackModal.postbackUrl,
-          postbackModal.httpMethod,
-          postbackModal.isActive
-        )
-        if (res?.success) {
-          showToast('success', 'User S2S Postback Configuration updated successfully!')
-          setPostbackModal(prev => ({ ...prev, open: false }))
-          loadData()
-        } else {
-          showToast('error', res?.error || 'Failed to update postback config')
-        }
+      const res = await callAffiliateApi('admin-save-postback-config', 'POST', {
+        userId: postbackModal.userId,
+        postbackUrl: postbackModal.postbackUrl,
+        method: postbackModal.httpMethod,
+        isActive: postbackModal.isActive
+      })
+      if (res?.success) {
+        showToast('success', 'User S2S Postback Configuration updated successfully!')
+        setPostbackModal(prev => ({ ...prev, open: false }))
+        loadData()
+      } else {
+        showToast('error', res?.error || 'Failed to update postback config')
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -305,21 +369,19 @@ export const AdminAffiliateManager: React.FC = () => {
     setTestingPostback(true)
     setTestPostbackResult(null)
     try {
-      const token = localStorage.getItem('pv_session_token') || ''
-      if ((window as any).api?.affiliateAdminTestPostback) {
-        const res = await (window as any).api.affiliateAdminTestPostback(
-          token,
-          postbackModal.postbackUrl,
-          postbackModal.httpMethod
-        )
-        if (res?.success && res.data) {
-          setTestPostbackResult(res.data)
-          if (res.data.statusCode >= 200 && res.data.statusCode < 300) {
-            showToast('success', `✓ Server returned HTTP ${res.data.statusCode} in ${res.data.responseTimeMs}ms!`)
-          } else {
-            showToast('error', `Server returned HTTP ${res.data.statusCode || 'ERR'}: ${res.data.error || 'Check endpoint'}`)
-          }
+      const res = await callAffiliateApi('admin-test-postback', 'POST', {
+        postbackUrl: postbackModal.postbackUrl,
+        method: postbackModal.httpMethod
+      })
+      if (res?.success && res.data) {
+        setTestPostbackResult(res.data)
+        if (res.data.statusCode >= 200 && res.data.statusCode < 300) {
+          showToast('success', `✓ Server returned HTTP ${res.data.statusCode} in ${res.data.responseTimeMs}ms!`)
+        } else {
+          showToast('error', `Server returned HTTP ${res.data.statusCode || 'ERR'}: ${res.data.error || 'Check endpoint'}`)
         }
+      } else {
+        showToast('error', res?.error || 'Test failed')
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -691,6 +753,22 @@ export const AdminAffiliateManager: React.FC = () => {
                         style={{ padding: '4px 10px', borderRadius: '4px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', cursor: 'pointer' }}
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to archive offer "${offer.title}"?`)) {
+                            const res = await callAffiliateApi('admin-delete-offer', 'POST', { id: offer.id })
+                            if (res?.success) {
+                              showToast('success', `Offer "${offer.title}" archived successfully across Web & Desktop!`)
+                              loadData()
+                            } else {
+                              showToast('error', res?.error || 'Failed to archive offer')
+                            }
+                          }
+                        }}
+                        style={{ marginLeft: '6px', padding: '4px 8px', borderRadius: '4px', background: '#EF444420', color: '#F87171', border: '1px solid #EF444440', fontSize: '11px', cursor: 'pointer' }}
+                      >
+                        Archive
                       </button>
                     </td>
                   </tr>

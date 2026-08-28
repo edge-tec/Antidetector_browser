@@ -436,6 +436,10 @@ const api = {
   onAffiliateWithdrawalUpdated: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('ui:affiliate-withdrawal-updated', callback)
     return () => ipcRenderer.removeListener('ui:affiliate-withdrawal-updated', callback)
+  },
+  onAffiliateOffersUpdated: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('affiliate:offers-updated', callback)
+    return () => ipcRenderer.removeListener('affiliate:offers-updated', callback)
   }
 }
 

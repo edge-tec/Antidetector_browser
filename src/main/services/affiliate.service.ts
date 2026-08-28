@@ -349,6 +349,20 @@ export class AffiliateService {
 
     this.recordAuditLog('offer_saved', adminUserId, offerId, `Saved CPA Offer: ${title} (${payoutType}: ${payoutType === 'percentage' ? commRate + '%' : '$' + fixedPayout})`)
 
+    // Broadcast to all active client windows
+    try {
+      const { BrowserWindow } = require('electron')
+      BrowserWindow.getAllWindows().forEach((win: any) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send('sync:realtime-event', {
+            eventType: 'affiliate.offer.updated',
+            payload: { id: offerId, title, status }
+          })
+          win.webContents.send('affiliate:offers-updated', { id: offerId, title, status })
+        }
+      })
+    } catch {}
+
     // Sync to remote central server
     centralApi.adminSaveAffiliateOffer({
       id: offerId,
@@ -370,6 +384,20 @@ export class AffiliateService {
     const db = getDatabase()
     db.prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = datetime('now') WHERE id = ?").run(offerId)
     this.recordAuditLog('offer_archived', adminUserId, offerId, `Archived CPA offer: ${offerId}`)
+
+    // Broadcast to all active client windows
+    try {
+      const { BrowserWindow } = require('electron')
+      BrowserWindow.getAllWindows().forEach((win: any) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send('sync:realtime-event', {
+            eventType: 'affiliate.offer.deleted',
+            payload: { id: offerId, status: 'archived' }
+          })
+          win.webContents.send('affiliate:offers-updated', { id: offerId, status: 'archived' })
+        }
+      })
+    } catch {}
 
     // Sync to remote central server
     centralApi.adminDeleteAffiliateOffer(offerId).catch(err => {
