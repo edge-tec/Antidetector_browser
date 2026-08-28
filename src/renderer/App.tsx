@@ -2383,19 +2383,21 @@ function AppContent() {
           const res = await (window as any).api.updaterCheckLatest()
           if (res.success && res.data?.hasUpdate && res.data.latestVersion) {
             const latest = res.data.latestVersion
-            const info: UpdateAvailablePayload = {
-              version: latest.version,
-              releaseTitle: latest.release_title,
-              releaseNotes: latest.release_notes,
-              publishedAt: latest.published_at,
-              forceUpdate: Boolean(res.data.forceUpdate),
-              mandatory: Boolean(res.data.mandatory || res.data.forceUpdate),
-              packageInfo: res.data.packageInfo
-            }
-            setAvailableUpdate(info)
-            const dismissed = sessionStorage.getItem('dismissed_update_' + latest.version)
-            if (!dismissed || res.data.forceUpdate) {
-              setShowUpdateModal(true)
+            if (latest.version && latest.version !== appVersion) {
+              const info: UpdateAvailablePayload = {
+                version: latest.version,
+                releaseTitle: latest.release_title,
+                releaseNotes: latest.release_notes,
+                publishedAt: latest.published_at,
+                forceUpdate: Boolean(res.data.forceUpdate),
+                mandatory: Boolean(res.data.mandatory || res.data.forceUpdate),
+                packageInfo: res.data.packageInfo
+              }
+              setAvailableUpdate(info)
+              const dismissed = sessionStorage.getItem('dismissed_update_' + latest.version)
+              if (!dismissed || res.data.forceUpdate) {
+                setShowUpdateModal(true)
+              }
             }
           }
         }
@@ -2406,7 +2408,7 @@ function AppContent() {
     let unsubUpdate: (() => void) | undefined
     if ((window as any).api?.onSoftwareUpdateAvailable) {
       unsubUpdate = (window as any).api.onSoftwareUpdateAvailable((_e: any, data: any) => {
-        if (data && data.version) {
+        if (data && data.version && data.version !== appVersion) {
           setAvailableUpdate(data)
           setShowUpdateModal(true)
           showToast('info', `🚀 Real-Time Update: Software release v${data.version} is now available!`)
@@ -2417,7 +2419,7 @@ function AppContent() {
     return () => {
       if (unsubUpdate) unsubUpdate()
     }
-  }, [showToast])
+  }, [showToast, appVersion])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)

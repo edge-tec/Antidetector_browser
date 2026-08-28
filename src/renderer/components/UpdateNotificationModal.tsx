@@ -37,7 +37,28 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
   onClose,
   onOpenChangelog
 }) => {
-  const isMandatory = Boolean(updateInfo.mandatory || updateInfo.forceUpdate)
+  const isStrictlyNewer = (() => {
+    if (!updateInfo?.version) return false
+    const cleanA = (updateInfo.version || '').replace(/^v/i, '').trim()
+    const cleanB = (currentVersion || '').replace(/^v/i, '').trim()
+    const partsA = cleanA.split(/[-+.]/).map(p => isNaN(Number(p)) ? p : Number(p))
+    const partsB = cleanB.split(/[-+.]/).map(p => isNaN(Number(p)) ? p : Number(p))
+    const maxLen = Math.max(partsA.length, partsB.length)
+    for (let i = 0; i < maxLen; i++) {
+      const a = partsA[i] !== undefined ? partsA[i] : 0
+      const b = partsB[i] !== undefined ? partsB[i] : 0
+      if (typeof a === 'number' && typeof b === 'number') {
+        if (a > b) return true
+        if (a < b) return false
+      } else {
+        if (String(a) > String(b)) return true
+        if (String(a) < String(b)) return false
+      }
+    }
+    return false
+  })()
+
+  const isMandatory = isStrictlyNewer && Boolean(updateInfo.mandatory || updateInfo.forceUpdate)
   const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'paused' | 'verifying' | 'ready_to_install' | 'installing' | 'error'>('idle')
   const [downloadedFilePath, setDownloadedFilePath] = useState<string | null>(null)
   const [progress, setProgress] = useState<{
@@ -249,9 +270,10 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
             </div>
           </div>
 
-          {!isMandatory && downloadState !== 'installing' && (
+          {(!isMandatory || downloadState === 'error') && downloadState !== 'installing' && (
             <button
               onClick={onClose}
+              title="Close update dialog"
               style={{
                 background: 'none',
                 border: 'none',
@@ -424,7 +446,7 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
           )}
 
           <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
-            {!isMandatory && downloadState === 'idle' && (
+            {(!isMandatory || downloadState === 'error') && downloadState !== 'downloading' && downloadState !== 'installing' && downloadState !== 'ready_to_install' && (
               <button
                 type="button"
                 onClick={onClose}
@@ -439,7 +461,7 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
                   cursor: 'pointer'
                 }}
               >
-                Later
+                {downloadState === 'error' ? 'Dismiss' : 'Later'}
               </button>
             )}
 

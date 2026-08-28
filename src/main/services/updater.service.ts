@@ -431,13 +431,14 @@ export class UpdaterService {
 
     const isNewer = compareSemver(latest.version, current) > 0
     const packageInfo = this.getPackageInfoForPlatform(latest)
-    const isForce = Boolean(latest.force_update) || Boolean(latest.mandatory) || compareSemver(latest.min_supported_version || '1.0.0', current) > 0
+    const isBelowMin = compareSemver(latest.min_supported_version || '1.0.0', current) > 0
+    const isMandatory = isNewer && (Boolean(latest.force_update) || Boolean(latest.mandatory) || isBelowMin)
 
     if (isNewer) {
       this.broadcastUpdateNotification(latest)
 
       // If auto_download is true and notify_only is false, trigger background download
-      if (settings.auto_download && !settings.notify_only && packageInfo.downloadUrl) {
+      if (settings.auto_download && !settings.notify_only && packageInfo.downloadUrl && packageInfo.downloadUrl.startsWith('http')) {
         this.downloadUpdatePackage(packageInfo.downloadUrl, packageInfo.sha256).catch(() => {})
       }
     }
@@ -447,8 +448,8 @@ export class UpdaterService {
       currentVersion: current,
       latestVersion: latest,
       packageInfo,
-      forceUpdate: isForce,
-      mandatory: isForce
+      forceUpdate: isMandatory,
+      mandatory: isMandatory
     }
   }
 
