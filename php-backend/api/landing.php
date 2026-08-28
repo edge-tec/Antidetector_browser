@@ -78,22 +78,22 @@ $config = getDesktopAppConfigMap();
 $releases = [
     'windows' => [
         'url' => $config['win_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe',
-        'version' => $config['win_app_version'] ?? '1.0.0',
+        'version' => $config['win_app_version'] ?? '2.0.0',
         'enabled' => ($config['win_enabled'] ?? 'true') !== 'false'
     ],
     'mac_intel' => [
         'url' => $config['mac_intel_download_url'] ?? $config['mac_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg',
-        'version' => $config['mac_intel_app_version'] ?? '1.0.0',
+        'version' => $config['mac_intel_app_version'] ?? '2.0.0',
         'enabled' => ($config['mac_intel_enabled'] ?? 'true') !== 'false'
     ],
     'mac_arm' => [
         'url' => $config['mac_arm_download_url'] ?? $config['mac_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg',
-        'version' => $config['mac_arm_app_version'] ?? '1.0.0',
+        'version' => $config['mac_arm_app_version'] ?? '2.0.0',
         'enabled' => ($config['mac_arm_enabled'] ?? 'true') !== 'false'
     ],
     'linux' => [
         'url' => $config['linux_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-Linux-x86_64.AppImage',
-        'version' => $config['linux_app_version'] ?? '1.0.0',
+        'version' => $config['linux_app_version'] ?? '2.0.0',
         'enabled' => ($config['linux_enabled'] ?? 'true') !== 'false'
     ]
 ];

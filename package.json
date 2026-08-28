@@ -1,6 +1,6 @@
 {
   "name": "antiprofiles",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "AntiProfiles — Professional Anti-Detect Browser Profile & Privacy Management Application",
   "main": "./out/main/index.js",
   "homepage": "https://antiprofiles.com",

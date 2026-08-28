@@ -109,7 +109,7 @@ export function compareSemver(vA: string, vB: string): number {
 
 export class UpdaterService {
   private static instance: UpdaterService
-  private currentAppVersion: string = '1.0.0'
+  private currentAppVersion: string = '2.0.0'
   private autoCheckTimer: NodeJS.Timeout | null = null
 
   // Active Download State
@@ -131,9 +131,9 @@ export class UpdaterService {
 
   private constructor() {
     try {
-      this.currentAppVersion = app ? app.getVersion() : '1.0.0'
+      this.currentAppVersion = app ? app.getVersion() : '2.0.0'
     } catch {
-      this.currentAppVersion = '1.0.0'
+      this.currentAppVersion = '2.0.0'
     }
   }
 

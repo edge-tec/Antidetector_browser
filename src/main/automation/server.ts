@@ -112,7 +112,7 @@ export function startApiServer(port: number = 37100): void {
   app.get('/api/v1/status', (_req, res) => {
     res.json({
       status: 'ok',
-      version: '1.0.0',
+      version: '2.0.0',
       runningProfiles: processTracker.getRunningCount()
     })
   })

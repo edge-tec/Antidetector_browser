@@ -2241,7 +2241,7 @@ function AppContent() {
   const [availableUpdate, setAvailableUpdate] = useState<UpdateAvailablePayload | null>(null)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [showChangelogModal, setShowChangelogModal] = useState(false)
-  const [appVersion, setAppVersion] = useState('1.0.0')
+  const [appVersion, setAppVersion] = useState('2.0.0')
 
   // Real-Time Custom Browser Branding State
   const [brandingConfig, setBrandingConfig] = useState<any>(null)
@@ -2300,7 +2300,7 @@ function AppContent() {
     if (!sessionToken || !isAuthenticated) return
     try {
       if (typeof window !== 'undefined' && (window as any).api?.getLicenseStatus) {
-        const res = await (window as any).api.getLicenseStatus(sessionToken, installationId, 'desktop', '1.0.0')
+        const res = await (window as any).api.getLicenseStatus(sessionToken, installationId, 'desktop', '2.0.0')
         if (res?.success && res.data) {
           setLicenseInfo(res.data)
         }
@@ -2858,7 +2858,7 @@ function AppContent() {
             {runningCount} profile{runningCount !== 1 ? 's' : ''} running
           </div>
           <div style={{ flex: 1 }} />
-          <span className="text-xs text-tertiary">AntiProfiles v1.0.0</span>
+          <span className="text-xs text-tertiary">AntiProfiles v2.0.0</span>
         </div>
       </main>
 

@@ -184,13 +184,13 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           if (isMounted && json?.success && json?.data?.platforms) {
             const plats = json.data.platforms
             setAppReleases({
-              win_app_version: plats['windows-x64']?.version || '1.0.0',
+              win_app_version: plats['windows-x64']?.version || '2.0.0',
               win_download_url: plats['windows-x64']?.download_url || '/api/releases?download=1&platform=windows-x64',
-              mac_arm_app_version: plats['macos-arm64']?.version || '1.0.0',
+              mac_arm_app_version: plats['macos-arm64']?.version || '2.0.0',
               mac_arm_download_url: plats['macos-arm64']?.download_url || '/api/releases?download=1&platform=macos-arm64',
-              mac_intel_app_version: plats['macos-x64']?.version || '1.0.0',
+              mac_intel_app_version: plats['macos-x64']?.version || '2.0.0',
               mac_intel_download_url: plats['macos-x64']?.download_url || '/api/releases?download=1&platform=macos-x64',
-              linux_app_version: plats['linux-x64']?.version || '1.0.0',
+              linux_app_version: plats['linux-x64']?.version || '2.0.0',
               linux_download_url: plats['linux-x64']?.download_url || '/api/releases?download=1&platform=linux-x64'
             })
           }
@@ -710,7 +710,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                 border: '1px solid #2C2C3E'
               }}
             >
-              Download Windows .exe (v{appReleases?.win_app_version || '1.0.0'})
+              Download Windows .exe (v{appReleases?.win_app_version || '2.0.0'})
             </a>
           </div>
 
@@ -759,7 +759,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                 border: '1px solid #2C2C3E'
               }}
             >
-              Download macOS Intel .dmg (v{appReleases?.mac_intel_app_version || appReleases?.mac_app_version || '1.0.0'})
+              Download macOS Intel .dmg (v{appReleases?.mac_intel_app_version || appReleases?.mac_app_version || '2.0.0'})
             </a>
           </div>
 
@@ -808,7 +808,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                 border: '1px solid #2C2C3E'
               }}
             >
-              Download Apple Silicon .dmg (v{appReleases?.mac_arm_app_version || appReleases?.mac_app_version || '1.0.0'})
+              Download Apple Silicon .dmg (v{appReleases?.mac_arm_app_version || appReleases?.mac_app_version || '2.0.0'})
             </a>
           </div>
         </div>
