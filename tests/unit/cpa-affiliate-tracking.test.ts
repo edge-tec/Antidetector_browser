@@ -104,7 +104,7 @@ describe('CPA Affiliate Tracking, Postback & Withdrawal System', () => {
         clickId
       })
 
-      // Record Conversion on $100 order (15% rate = $15)
+      // Record Conversion on $100 order (50% rate = $50)
       const convResult = await affiliateService.recordCpaConversion({
         clickId,
         orderAmount: 100.0,
@@ -115,7 +115,7 @@ describe('CPA Affiliate Tracking, Postback & Withdrawal System', () => {
 
       expect(convResult.success).toBe(true)
       expect(convResult.conversion?.click_id).toBe(clickId)
-      expect(convResult.conversion?.payout_amount).toBe(15.0)
+      expect(convResult.conversion?.payout_amount).toBe(50.0)
 
       // Verify Click marked as converted
       const db = getDatabase()

@@ -1017,6 +1017,17 @@ function ensureDatabaseTablesExist() {
             }
         }
 
+        // Auto-heal any legacy database rows with exact package-to-landing-page mappings
+        try {
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter', `price` = 19.00, `target_url` = '/offer/starter', `signup_url` = '/offer/starter', `landing_page_slug` = 'starter' WHERE `id` = 'offer_starter' OR (`title` LIKE '%Starter%' AND `title` NOT LIKE '%License%' AND `title` NOT LIKE '%Bounty%')");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter License', `price` = 19.00, `target_url` = '/offer/starter-license', `signup_url` = '/offer/starter-license', `landing_page_slug` = 'starter-license' WHERE `id` IN ('offer_starter_license', 'offer_starter_bounty') OR `title` LIKE '%Starter License%' OR `title` LIKE '%Starter Account Direct Bounty%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional', `price` = 49.00, `target_url` = '/offer/professional', `signup_url` = '/offer/professional', `landing_page_slug` = 'professional' WHERE `id` IN ('offer_main_saas', 'offer_pro') OR `title` LIKE '%Professional%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional Team', `price` = 49.00, `target_url` = '/offer/pro-team', `signup_url` = '/offer/pro-team', `landing_page_slug` = 'pro-team' WHERE `id` IN ('offer_pro_team') OR `title` LIKE '%Pro & Team%' OR `title` LIKE '%Pro + Team%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Enterprise Trial', `price` = 99.00, `target_url` = '/offer/enterprise-trial', `signup_url` = '/offer/enterprise-trial', `landing_page_slug` = 'enterprise-trial' WHERE `id` IN ('offer_enterprise_trial') OR `title` LIKE '%Enterprise Custom Trial%' OR `title` LIKE '%Enterprise Trial%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Enterprise', `price` = 99.00, `target_url` = '/offer/enterprise', `signup_url` = '/offer/enterprise', `landing_page_slug` = 'enterprise' WHERE `id` IN ('offer_business', 'offer_enterprise') OR `title` LIKE '%Enterprise Suite%' OR (`title` LIKE '%Enterprise%' AND `title` NOT LIKE '%Trial%')");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Custom Business', `price` = 99.00, `target_url` = '/offer/business-custom', `signup_url` = '/offer/business-custom', `landing_page_slug` = 'business-custom' WHERE `id` IN ('offer_business_custom') OR `title` LIKE '%Custom Business%'");
+        } catch (Throwable $e) {}
+
         // Seed Dynamic Landing Pages
         $defaultLandingPages = [
             [

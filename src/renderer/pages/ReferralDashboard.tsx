@@ -37,106 +37,187 @@ interface OfferItem {
   title: string
   description?: string
   target_url: string
+  signup_url?: string
+  landing_page_slug?: string
   payout_type: 'percentage' | 'fixed' | 'revshare'
   commission_rate?: number
   revshare_percent?: number
   fixed_payout_usd: number
+  package_id?: string
+  package_name?: string
+  price?: number
+  discount_value?: number
   currency?: string
   status: 'active' | 'paused' | 'archived'
 }
 
-interface ClickItem {
-  click_id: string
-  affiliate_id: string
-  offer_id: string
-  ip_address?: string
-  referrer?: string
-  landing_url: string
-  sub_id1?: string
-  converted: number
-  created_at: string
-}
+export function resolveOfferDetails(offer: any) {
+  const title = (offer?.title || '').toLowerCase()
+  const id = (offer?.id || '').toLowerCase()
+  const pkgId = (offer?.package_id || '').toLowerCase()
 
-interface ConversionItem {
-  conversion_id: string
-  click_id: string
-  affiliate_id: string
-  offer_id: string
-  order_amount: number
-  payout_amount: number
-  currency: string
-  status: string
-  created_at: string
-}
+  let packageName = 'Professional'
+  let price = 49.00
+  let landingSlug = 'professional'
+  let targetUrl = '/offer/professional'
 
-interface PostbackLogItem {
-  id: string
-  conversion_id: string
-  click_id: string
-  url: string
-  http_method: string
-  http_status?: number
-  response_body?: string
-  attempt_count: number
-  status: 'pending' | 'sent' | 'confirmed' | 'failed' | 'retrying'
-  error_message?: string
-  created_at: string
-}
+  if (id === 'offer_starter_license' || id === 'offer_starter_bounty' || title.includes('license') || title.includes('direct bounty')) {
+    packageName = 'Starter License'
+    price = 19.00
+    landingSlug = 'starter-license'
+    targetUrl = '/offer/starter-license'
+  } else if (id === 'offer_starter' || pkgId === 'plan_starter' || title.includes('starter')) {
+    packageName = 'Starter'
+    price = 19.00
+    landingSlug = 'starter'
+    targetUrl = '/offer/starter'
+  } else if (id === 'offer_enterprise_trial' || title.includes('enterprise custom trial') || title.includes('enterprise trial')) {
+    packageName = 'Enterprise Trial'
+    price = 99.00
+    landingSlug = 'enterprise-trial'
+    targetUrl = '/offer/enterprise-trial'
+  } else if (id === 'offer_business_custom' || title.includes('custom business')) {
+    packageName = 'Custom Business'
+    price = 99.00
+    landingSlug = 'business-custom'
+    targetUrl = '/offer/business-custom'
+  } else if (id === 'offer_business' || id.includes('enterprise') || pkgId === 'plan_business' || title.includes('enterprise') || title.includes('business')) {
+    packageName = 'Enterprise'
+    price = 99.00
+    landingSlug = 'enterprise'
+    targetUrl = '/offer/enterprise'
+  } else if (id === 'offer_pro_team' || title.includes('team')) {
+    packageName = 'Professional Team'
+    price = 49.00
+    landingSlug = 'pro-team'
+    targetUrl = '/offer/pro-team'
+  }
 
-interface AffiliateSummary {
-  affiliateId: string
-  affiliateStatus: 'active' | 'suspended' | 'disabled'
-  referralCode: string
-  referralLink: string
-  commissionRate: number
-  minWithdrawalUsd: number
-  holdingPeriodDays: number
-  totalClicks: number
-  uniqueClicks: number
-  totalConversions: number
-  conversionRate: number
-  totalReferredSales: number
-  totalEarned: number
-  pendingCommission: number
-  approvedCommission: number
-  paidCommission: number
-  availableBalance: number
-  withdrawnAmount: number
-  pendingWithdrawalAmount: number
-  enabledPayoutMethods: string[]
-  postbackConfig?: {
-    postback_url: string
-    http_method: 'GET' | 'POST'
-    is_active: number
-  } | null
-  offers: OfferItem[]
-  recentClicks: ClickItem[]
-  recentConversions: ConversionItem[]
-  recentCommissions: CommissionItem[]
-  recentWithdrawals: WithdrawalItem[]
-  recentPostbacks: PostbackLogItem[]
+  return {
+    packageName: offer?.package_name || packageName,
+    price: offer?.price || price,
+    landingSlug: offer?.landing_page_slug || landingSlug,
+    targetUrl: offer?.signup_url || offer?.target_url || targetUrl
+  }
 }
 
 const DEFAULT_FALLBACK_OFFERS: OfferItem[] = [
   {
-    id: 'offer_main_saas',
-    title: 'AntiProfiles Pro & Team Subscription Plan',
-    description: 'Earn 15% recurring lifetime revenue share on every monthly or annual plan purchased.',
-    target_url: 'https://antiprofiles.com/#pricing',
-    payout_type: 'percentage',
-    commission_rate: 15.0,
-    fixed_payout_usd: 0,
+    id: 'offer_starter_license',
+    title: 'AntiProfiles Starter License',
+    description: 'Fixed $10.00 instant CPA payout per verified first-time starter license purchase ($19/mo package).',
+    target_url: '/offer/starter-license',
+    signup_url: '/offer/starter-license',
+    landing_page_slug: 'starter-license',
+    payout_type: 'fixed',
+    commission_rate: 0,
+    revshare_percent: 0,
+    fixed_payout_usd: 10.0,
+    package_id: 'plan_starter',
+    package_name: 'Starter License',
+    price: 19.00,
     currency: 'USD',
     status: 'active'
   },
   {
-    id: 'offer_starter_bounty',
-    title: 'AntiProfiles Starter Account Direct Bounty',
-    description: 'Earn a $10.00 instant CPA bounty for every newly verified paying user.',
-    target_url: 'https://antiprofiles.com/register',
-    payout_type: 'fixed',
-    commission_rate: 0,
-    fixed_payout_usd: 10.0,
+    id: 'offer_starter',
+    title: 'AntiProfiles Starter Subscription',
+    description: 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).',
+    target_url: '/offer/starter',
+    signup_url: '/offer/starter',
+    landing_page_slug: 'starter',
+    payout_type: 'revshare',
+    commission_rate: 40.0,
+    revshare_percent: 40.0,
+    fixed_payout_usd: 0,
+    package_id: 'plan_starter',
+    package_name: 'Starter',
+    price: 19.00,
+    currency: 'USD',
+    status: 'active'
+  },
+  {
+    id: 'offer_main_saas',
+    title: 'AntiProfiles Professional',
+    description: 'Earn 50% lifetime recurring commissions on Professional browser subscription renewals ($49/mo).',
+    target_url: '/offer/professional',
+    signup_url: '/offer/professional',
+    landing_page_slug: 'professional',
+    payout_type: 'revshare',
+    commission_rate: 50.0,
+    revshare_percent: 50.0,
+    fixed_payout_usd: 0,
+    package_id: 'plan_pro',
+    package_name: 'Professional',
+    price: 49.00,
+    currency: 'USD',
+    status: 'active'
+  },
+  {
+    id: 'offer_pro_team',
+    title: 'AntiProfiles Pro + Team Plan',
+    description: 'Multi-seat team workspace with 50% lifetime recurring commissions ($49/mo).',
+    target_url: '/offer/pro-team',
+    signup_url: '/offer/pro-team',
+    landing_page_slug: 'pro-team',
+    payout_type: 'revshare',
+    commission_rate: 50.0,
+    revshare_percent: 50.0,
+    fixed_payout_usd: 0,
+    package_id: 'plan_pro',
+    package_name: 'Professional Team',
+    price: 49.00,
+    currency: 'USD',
+    status: 'active'
+  },
+  {
+    id: 'offer_enterprise_trial',
+    title: 'AntiProfiles Enterprise Trial',
+    description: 'Enterprise 7-day risk-free pilot with 50% recurring onboard commissions ($99/mo).',
+    target_url: '/offer/enterprise-trial',
+    signup_url: '/offer/enterprise-trial',
+    landing_page_slug: 'enterprise-trial',
+    payout_type: 'revshare',
+    commission_rate: 50.0,
+    revshare_percent: 50.0,
+    fixed_payout_usd: 0,
+    package_id: 'plan_business',
+    package_name: 'Enterprise Trial',
+    price: 99.00,
+    currency: 'USD',
+    status: 'active'
+  },
+  {
+    id: 'offer_business',
+    title: 'AntiProfiles Enterprise Suite',
+    description: 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).',
+    target_url: '/offer/enterprise',
+    signup_url: '/offer/enterprise',
+    landing_page_slug: 'enterprise',
+    payout_type: 'revshare',
+    commission_rate: 50.0,
+    revshare_percent: 50.0,
+    fixed_payout_usd: 0,
+    package_id: 'plan_business',
+    package_name: 'Enterprise',
+    price: 99.00,
+    currency: 'USD',
+    status: 'active'
+  },
+  {
+    id: 'offer_business_custom',
+    title: 'AntiProfiles Custom Business',
+    description: 'Custom high-volume business licensing with dedicated infrastructure and 50% revenue share.',
+    target_url: '/offer/business-custom',
+    signup_url: '/offer/business-custom',
+    landing_page_slug: 'business-custom',
+    payout_type: 'revshare',
+    commission_rate: 50.0,
+    revshare_percent: 50.0,
+    fixed_payout_usd: 0,
+    package_id: 'plan_business',
+    package_name: 'Custom Business',
+    price: 99.00,
     currency: 'USD',
     status: 'active'
   }
@@ -783,12 +864,13 @@ export const ReferralDashboard: React.FC = () => {
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                 >
                   {((summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS).map(o => {
+                    const details = resolveOfferDetails(o)
                     const isRev = o.payout_type === 'percentage' || o.payout_type === 'revshare'
                     const rate = o.commission_rate !== undefined ? o.commission_rate : (o.revshare_percent !== undefined ? o.revshare_percent : 0)
                     const label = isRev ? `${rate}% RevShare` : `$${Number(o.fixed_payout_usd || 0).toFixed(2)} Fixed Bounty`
                     return (
                       <option key={o.id} value={o.id}>
-                        {o.title} ({label})
+                        {o.title} — {details.packageName} (${details.price}/mo) • {label}
                       </option>
                     )
                   })}
@@ -883,7 +965,8 @@ export const ReferralDashboard: React.FC = () => {
 
           {/* Offers List */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
-            {summary?.offers?.map(offer => {
+            {((summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS).map(offer => {
+              const details = resolveOfferDetails(offer)
               const isRev = offer.payout_type === 'percentage' || offer.payout_type === 'revshare'
               const rate = offer.commission_rate !== undefined ? offer.commission_rate : (offer.revshare_percent !== undefined ? offer.revshare_percent : 0)
               const badgeText = isRev ? `${rate}% RECURRING` : `$${Number(offer.fixed_payout_usd || 0).toFixed(2)} CPA FIXED`
@@ -899,11 +982,11 @@ export const ReferralDashboard: React.FC = () => {
                     <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#FFF' }}>{offer.title}</h4>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <span style={{ color: '#2DD4BF', fontWeight: 700 }}>
-                        Package: {offer.package_name || (offer.package_id === 'plan_starter' ? 'Starter' : offer.package_id === 'plan_business' ? 'Business' : 'Professional')}
+                        Package: {details.packageName}
                       </span>
                       <span style={{ color: '#64748B' }}>•</span>
                       <span style={{ color: '#F1F5F9', fontWeight: 600 }}>
-                        Price: ${offer.price ? offer.price : (offer.package_id === 'plan_starter' ? 19 : offer.package_id === 'plan_business' ? 99 : 49)}/month
+                        Price: ${details.price}/month
                       </span>
                       {offer.discount_value && offer.discount_value > 0 ? (
                         <span style={{ color: '#4ADE80', fontSize: '10px', fontWeight: 700 }}>
@@ -917,7 +1000,7 @@ export const ReferralDashboard: React.FC = () => {
                   </div>
 
                   <div style={{ borderTop: '1px solid #1E293B', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Target: {offer.signup_url || offer.target_url}</span>
+                    <span style={{ fontSize: '11px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Target: {details.targetUrl}</span>
                     <button
                       onClick={() => {
                         setSelectedOfferForLink(offer.id)
