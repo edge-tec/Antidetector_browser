@@ -58,10 +58,17 @@ export const FingerprintPreview: React.FC<Props> = ({ osType, fingerprint, proxy
     'ios': 'iOS (iPhone)'
   }
 
-  const country = proxy?.country || geoData?.country
-  const region = proxy?.region || geoData?.region
-  const city = proxy?.city || geoData?.city
-  const isp = proxy?.isp || geoData?.isp
+  const effectiveProxy = proxy || fingerprint?.proxy || (fingerprint?.webrtc?.publicIp ? {
+    host: fingerprint.webrtc.publicIp,
+    port: 80,
+    type: 'http',
+    country: fingerprint?.timezone?.timezone?.split('/')[0] || undefined
+  } : null)
+
+  const country = effectiveProxy?.country || geoData?.country
+  const region = effectiveProxy?.region || geoData?.region
+  const city = effectiveProxy?.city || geoData?.city
+  const isp = effectiveProxy?.isp || geoData?.isp
 
   const locationParts: string[] = []
   if (country) locationParts.push(country)
@@ -71,12 +78,12 @@ export const FingerprintPreview: React.FC<Props> = ({ osType, fingerprint, proxy
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '11px' }}>
-      {proxy && proxy.host ? (
+      {effectiveProxy && effectiveProxy.host ? (
         <span
-          title={`Location: ${city ? `${city}, ` : ''}${region ? `${region}, ` : ''}${country || 'Unknown'} | ISP: ${isp || 'N/A'} | Host: ${proxy.host}:${proxy.port}`}
+          title={`Location: ${city ? `${city}, ` : ''}${region ? `${region}, ` : ''}${country || 'Unknown'} | ISP: ${isp || 'N/A'} | Host: ${effectiveProxy.host}:${effectiveProxy.port}`}
           style={{ padding: '2px 8px', borderRadius: '4px', background: '#1E293B', color: '#2DD4BF', border: '1px solid #2DD4BF50', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
         >
-          🔒 {getCountryFlag(country)} {locationStr ? `${locationStr} — ` : ''}{proxy.type || 'socks5'}://{proxy.host}:{proxy.port}
+          🔒 {getCountryFlag(country)} {locationStr ? `${locationStr} — ` : ''}{effectiveProxy.type || 'socks5'}://{effectiveProxy.host}:{effectiveProxy.port}
         </span>
       ) : (
         <span style={{ padding: '2px 8px', borderRadius: '4px', background: '#2A2A3C', color: '#94A3B8' }}>

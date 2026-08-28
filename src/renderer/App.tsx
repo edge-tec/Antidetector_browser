@@ -131,7 +131,7 @@ function ConfirmDialog({ state, onCancel }: { state: ConfirmState; onCancel: () 
 // Dashboard Page
 // ═══════════════════════════════════════════
 
-function DashboardPage({ onNavigate, showToast, brandingConfig }: { onNavigate: (page: Page) => void; showToast: (type: ToastItem['type'], message: string) => void; brandingConfig?: any }) {
+function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onNavigate: (page: Page) => void; showToast: (type: ToastItem['type'], message: string) => void; brandingConfig?: any; proxies?: ProxyDisplay[] }) {
   const { sessionToken } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -193,7 +193,7 @@ function DashboardPage({ onNavigate, showToast, brandingConfig }: { onNavigate: 
           <h3 className="section-title">Recently Used Profiles</h3>
           <div className="grid-profiles">
             {stats.recentProfiles.map((profile) => (
-              <ProfileCardComponent key={profile.id} profile={profile} brandingConfig={brandingConfig} onStart={async () => {
+              <ProfileCardComponent key={profile.id} profile={profile} proxies={proxies} brandingConfig={brandingConfig} onStart={async () => {
                 const r = await window.api.startProfile(sessionToken || '', profile.id)
                 if (r.success) showToast('success', `Started "${profile.name}"`)
                 else showToast('error', r.error || 'Failed to start')
@@ -548,6 +548,10 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
 
   const handleSaveProfile = async (input: any) => {
     if (!sessionToken) return
+    const refreshProxiesList = () => {
+      window.api.getProxies().then((r) => { if (r?.success && r.data) setProxies(r.data) }).catch(() => {})
+    }
+
     if (editId) {
       const result = await window.api.updateProfile(sessionToken, editId, input)
       if (result.success) {
@@ -559,6 +563,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
         setEditProfile(null)
         setShowCreate(false)
         loadProfiles()
+        refreshProxiesList()
       } else {
         showToast('error', result.error || 'Failed to update profile')
       }
@@ -581,6 +586,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
         }
         setShowCreate(false)
         loadProfiles()
+        refreshProxiesList()
       } else {
         showToast('error', result.error || 'Failed to create profile')
       }
@@ -2454,6 +2460,13 @@ function AppContent() {
   const [licenseInfo, setLicenseInfo] = useState<any | null>(null)
   const [userDevices, setUserDevices] = useState<any[]>([])
   const [showDevicesModal, setShowDevicesModal] = useState(false)
+  const [profilesProxies, setProfilesProxies] = useState<ProxyDisplay[]>([])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.api?.getProxies) {
+      window.api.getProxies().then((r) => { if (r?.success && r.data) setProfilesProxies(r.data) }).catch(() => {})
+    }
+  }, [currentPage])
 
   // Real-Time Software Update State
   const [availableUpdate, setAvailableUpdate] = useState<UpdateAvailablePayload | null>(null)
@@ -3044,7 +3057,7 @@ function AppContent() {
             <AdminDashboard initialTab={adminInitialTab} />
           ) : (
             <>
-              {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} brandingConfig={brandingConfig} />}
+              {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} brandingConfig={brandingConfig} proxies={profilesProxies} />}
               {currentPage === 'profiles' && <ProfilesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} brandingConfig={brandingConfig} />}
               {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}

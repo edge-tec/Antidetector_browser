@@ -68,11 +68,20 @@ export function registerProxyHandlers(): void {
         host: input.host?.trim() || '',
         port: input.port || 0,
         username: input.username?.trim() || undefined,
-        password: input.password || undefined
+        password: input.password || undefined,
+        country: input.country || undefined,
+        region: input.region || undefined,
+        city: input.city || undefined,
+        isp: input.isp || undefined,
+        asn: input.asn || undefined,
+        timezone: input.timezone || undefined,
+        latitude: typeof input.latitude === 'number' ? input.latitude : undefined,
+        longitude: typeof input.longitude === 'number' ? input.longitude : undefined,
+        publicIp: input.publicIp || undefined
       })
 
-      // Attempt async geo-lookup on create
-      if (proxy.host && proxy.type !== 'direct') {
+      // Attempt async geo-lookup on create if not provided
+      if (proxy.host && proxy.type !== 'direct' && !proxy.country) {
         lookupGeoIP(proxy.host).then(geo => {
           if (geo) {
             proxyRepo.update(proxy.id, {
@@ -80,7 +89,11 @@ export function registerProxyHandlers(): void {
               region: geo.region,
               city: geo.city,
               isp: geo.isp,
-              asn: geo.asn
+              asn: geo.asn,
+              timezone: geo.timezone,
+              latitude: geo.latitude,
+              longitude: geo.longitude,
+              publicIp: geo.publicIp
             } as any)
           }
         }).catch(() => {})
