@@ -131,9 +131,19 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
   return { success: true }
 }
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  initialTab?: 'users' | 'subscriptions' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab }) => {
   const { sessionToken, currentUser, impersonateUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>(initialTab || 'users')
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab)
+    }
+  }, [initialTab])
   const [users, setUsers] = useState<UserDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')

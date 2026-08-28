@@ -1377,12 +1377,13 @@ curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \\
 // Settings Page
 // ═══════════════════════════════════════════
 
-function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade }: {
+function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNavigateAdmin }: {
   theme: string
   setTheme: (t: string) => void
   showToast: (type: ToastItem['type'], msg: string) => void
   licenseInfo?: any
   onUpgrade?: () => void
+  onNavigateAdmin?: (tab: string) => void
 }) {
   const { currentUser, isAdmin } = useAuth()
   const [chromiumPath, setChromiumPath] = useState<string | null>(null)
@@ -1740,6 +1741,33 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade }: {
         </div>
       )}
 
+      {/* ── Start Page & Launch URL ── */}
+      <div className="section">
+        <h3 className="section-title">Start Page & Global Launch URL</h3>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <div style={{ fontWeight: 600, color: '#F1F5F9', marginBottom: 4 }}>Authoritative Start Page (Launch URL)</div>
+              <div className="text-sm text-secondary">
+                Configure the master launch URL that automatically opens upon browser startup across all profiles & devices.
+              </div>
+            </div>
+            {isAdmin && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#2DD4BF', color: '#0F172A', fontWeight: 700 }}
+                onClick={() => {
+                  if (onNavigateAdmin) onNavigateAdmin('launch_url')
+                }}
+              >
+                <span>🌐</span> Configure Global Launch URL
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── 6. About AntiProfiles ── */}
       <div className="section">
         <h3 className="section-title">About</h3>
@@ -2047,6 +2075,7 @@ function AppContent() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [currentPage, setCurrentPage] = useState<Page>('profiles')
   const [adminView, setAdminView] = useState(false)
+  const [adminInitialTab, setAdminInitialTab] = useState<'users' | 'subscriptions' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>('users')
   const [viewingPublicLanding, setViewingPublicLanding] = useState(false)
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const [confirmState, setConfirmState] = useState<ConfirmState>({
@@ -2367,7 +2396,7 @@ function AppContent() {
   }
 
   // 4. Authenticated & Verified user dashboard
-  const navItems: { page: Page; icon: JSX.Element; label: string; section?: string }[] = [
+  const navItems: { page: Page | 'admin' | 'launch_url'; icon: JSX.Element; label: string; section?: string }[] = [
     { page: 'dashboard', icon: Icons.dashboard, label: 'Dashboard' },
     { page: 'profiles', icon: Icons.profiles, label: 'Profiles', section: 'MANAGE' },
     { page: 'groups', icon: Icons.groups, label: 'Groups' },
@@ -2375,6 +2404,10 @@ function AppContent() {
     { page: 'automation', icon: Icons.automation, label: 'Automation', section: 'TOOLS' },
     { page: 'settings', icon: Icons.settings, label: 'Settings' },
     { page: 'logs', icon: Icons.logs, label: 'Logs' },
+    ...(isAdmin ? [
+      { page: 'launch_url' as any, icon: <span style={{ fontSize: 16 }}>🌐</span>, label: 'Global Launch URL', section: 'ADMIN' },
+      { page: 'admin' as any, icon: <span style={{ fontSize: 16 }}>👑</span>, label: 'Admin Dashboard' }
+    ] : []),
     { page: 'affiliate', icon: Icons.gift, label: 'Affiliates & Referrals', section: 'EARN' },
     { page: 'support', icon: Icons.chat, label: 'Live Support', section: 'HELP & SUPPORT' },
   ]
@@ -2440,8 +2473,23 @@ function AppContent() {
               <React.Fragment key={item.page}>
                 {showSection && <div className="sidebar-section-label">{item.section}</div>}
                 <button
-                  className={`sidebar-item ${!adminView && currentPage === item.page ? 'active' : ''}`}
-                  onClick={() => { setAdminView(false); setCurrentPage(item.page) }}
+                  className={`sidebar-item ${
+                    adminView
+                      ? ((item.page === 'launch_url' && adminInitialTab === 'launch_url') || (item.page === 'admin' && adminInitialTab !== 'launch_url') ? 'active' : '')
+                      : (!adminView && currentPage === item.page ? 'active' : '')
+                  }`}
+                  onClick={() => {
+                    if (item.page === 'launch_url') {
+                      setAdminInitialTab('launch_url')
+                      setAdminView(true)
+                    } else if (item.page === 'admin') {
+                      setAdminInitialTab('users')
+                      setAdminView(true)
+                    } else {
+                      setAdminView(false)
+                      setCurrentPage(item.page as Page)
+                    }
+                  }}
                 >
                   <span className="sidebar-item-icon">{item.icon}</span>
                   {item.label}
@@ -2519,7 +2567,10 @@ function AppContent() {
             {isAdmin && (
               <button
                 type="button"
-                onClick={() => setAdminView(!adminView)}
+                onClick={() => {
+                  setAdminInitialTab('users')
+                  setAdminView(!adminView)
+                }}
                 style={{
                   padding: '5px 10px',
                   borderRadius: '6px',
@@ -2613,7 +2664,7 @@ function AppContent() {
 
         <div className="app-content">
           {adminView && isAdmin ? (
-            <AdminDashboard />
+            <AdminDashboard initialTab={adminInitialTab} />
           ) : (
             <>
               {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} brandingConfig={brandingConfig} />}
@@ -2621,7 +2672,19 @@ function AppContent() {
               {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
-              {currentPage === 'settings' && <SettingsPage theme={theme} setTheme={setTheme} showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
+              {currentPage === 'settings' && (
+                <SettingsPage
+                  theme={theme}
+                  setTheme={setTheme}
+                  showToast={showToast}
+                  licenseInfo={licenseInfo}
+                  onUpgrade={() => setViewingPublicLanding(true)}
+                  onNavigateAdmin={(tab) => {
+                    setAdminInitialTab(tab as any)
+                    setAdminView(true)
+                  }}
+                />
+              )}
               {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'affiliate' && <ReferralDashboard />}
               {currentPage === 'support' && <SupportPage showToast={showToast} />}
