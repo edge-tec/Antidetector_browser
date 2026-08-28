@@ -15,6 +15,7 @@ import { decryptPassword } from '../security/encryption'
 import { ensureProfileDataDir, ensureFirefoxProfileDataDir } from './chromium-resolver'
 import { setupBrowserInjection } from './injection/injector'
 import { startProxyBridge } from '../network/proxy-bridge'
+import { lookupGeoIP } from '../network/geo-lookup'
 import { killProcessTree } from './process-tracker'
 import { logger } from '../logging/logger'
 
@@ -155,8 +156,14 @@ function setupFirefoxProfilePrefs(
     prefs.push('user_pref("media.peerconnection.enabled", false);')
   } else {
     prefs.push('user_pref("media.peerconnection.enabled", true);')
-    if (resolvedProfile.webrtcPolicy === 'disable_non_proxied_udp') {
+    if (proxy && proxy.type !== 'direct') {
       prefs.push('user_pref("media.peerconnection.ice.proxy_only", true);')
+      prefs.push('user_pref("media.peerconnection.ice.default_address_only", true);')
+      prefs.push('user_pref("media.peerconnection.ice.no_host", true);')
+    } else if (resolvedProfile.webrtcPolicy === 'disable_non_proxied_udp') {
+      prefs.push('user_pref("media.peerconnection.ice.proxy_only", true);')
+      prefs.push('user_pref("media.peerconnection.ice.default_address_only", true);')
+      prefs.push('user_pref("media.peerconnection.ice.no_host", true);')
     }
   }
 
@@ -546,13 +553,17 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     args.push(`--user-agent=${fingerprint.navigator.userAgent}`)
   }
 
-  // WebRTC configuration
+  // WebRTC configuration - STRICT PRIVACY FOR PROXIES
   if (fingerprint?.webrtc?.mode === 'disabled' || profile.webrtcMode === 'disabled' || (profile.webrtcMode as string) === 'off') {
     args.push('--disable-webrtc')
+  } else if (proxy && proxy.type !== 'direct' && proxy.host) {
+    // When using any proxy, strictly disable non-proxied UDP to eliminate WebRTC IP leaks
+    args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp')
+    args.push('--enforce-webrtc-ip-permission-check')
   } else if (fingerprint?.webrtc?.ipPolicy) {
     args.push(`--force-webrtc-ip-handling-policy=${fingerprint.webrtc.ipPolicy}`)
   } else {
-    args.push('--force-webrtc-ip-handling-policy=default_public_interface_only')
+    args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp')
   }
 
   // Hardware acceleration
@@ -828,6 +839,36 @@ export async function launchBrowser(
     }
   }
 
+  // ── Auto-Sync Timezone & Geolocation to Proxy Location ──
+  if (proxy && proxy.type !== 'direct' && proxy.host) {
+    const isAutoTz = !profile.timezone || profile.timezone === 'auto' || profile.timezone === 'America/New_York' || fingerprint?.timezone?.mode === 'auto'
+    const isAutoGeo = !fingerprint?.geolocation || fingerprint.geolocation.mode === 'ip-based' || fingerprint.geolocation.mode === 'auto'
+
+    if (isAutoTz || isAutoGeo) {
+      try {
+        const geo = await lookupGeoIP(proxy.host)
+        if (geo) {
+          if (isAutoTz && geo.timezone) {
+            fingerprint.timezone = fingerprint.timezone || { mode: 'auto', timezone: geo.timezone }
+            fingerprint.timezone.timezone = geo.timezone
+            fingerprint.timezone.mode = 'auto'
+            profile.timezone = geo.timezone
+            logger.info('proxy', `[ProxyTimezoneSync] ✓ Auto-matched browser timezone to "${geo.timezone}" for proxy host ${proxy.host}`)
+          }
+          if (isAutoGeo && geo.latitude !== undefined && geo.longitude !== undefined) {
+            fingerprint.geolocation = fingerprint.geolocation || { mode: 'ip-based', latitude: geo.latitude, longitude: geo.longitude, accuracy: 50 }
+            fingerprint.geolocation.latitude = geo.latitude
+            fingerprint.geolocation.longitude = geo.longitude
+            fingerprint.geolocation.mode = 'ip-based'
+            logger.info('proxy', `[ProxyGeoSync] ✓ Auto-matched geolocation coordinates (${geo.latitude}, ${geo.longitude}) for proxy host ${proxy.host}`)
+          }
+        }
+      } catch (err: any) {
+        logger.warn('proxy', `[ProxySync] Could not resolve proxy geo: ${err.message}`)
+      }
+    }
+  }
+
   // ── Segregated Diagnostic Logging: Profile Config vs Runtime Config vs Network Config ──
   logger.info('profile', `[ProfileConfig] Initializing profile "${profile.name}" (${profile.id})`, {
     profileId: profile.id,
@@ -895,6 +936,9 @@ export async function launchBrowser(
   if (effectiveBrowserType === 'firefox') {
     logger.info('browser', `[RuntimeConfig] Launching Firefox Quantum Gecko Engine runtime for profile "${profile.name}"`)
     const resolvedFf = resolveFirefoxProfile(profile)
+    if (fingerprint.timezone?.timezone) {
+      resolvedFf.timezone = fingerprint.timezone.timezone
+    }
     return launchFirefox(profile, executablePath, resolvedFf, launchProxy, startUrls)
   }
 
@@ -919,6 +963,7 @@ export async function launchBrowser(
   })
 
   try {
+    const effectiveTz = fingerprint?.timezone?.timezone || profile.timezone || 'America/New_York'
     const browser = await puppeteer.launch({
       executablePath: executablePath,
       userDataDir,
@@ -929,7 +974,11 @@ export async function launchBrowser(
       timeout: 60000,
       handleSIGINT: false,
       handleSIGTERM: false,
-      handleSIGHUP: false
+      handleSIGHUP: false,
+      env: {
+        ...process.env,
+        TZ: effectiveTz
+      }
     })
 
     const wsEndpoint = browser.wsEndpoint()
@@ -956,7 +1005,7 @@ export async function launchBrowser(
     }
 
     // Set timezone via CDP
-    const tz = fingerprint?.timezone?.timezone
+    const tz = fingerprint?.timezone?.timezone || profile.timezone || 'America/New_York'
     if (tz) {
       try {
         const pages = await browser.pages()

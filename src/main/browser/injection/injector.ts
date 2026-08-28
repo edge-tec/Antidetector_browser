@@ -23,6 +23,8 @@ import { buildNetworkInfoScript } from './scripts/network-info'
 import { buildPermissionsScript } from './scripts/permissions'
 import { buildFontsScript } from './scripts/fonts'
 import { buildGeolocationScript } from './scripts/geolocation'
+import { buildTimezoneScript } from './scripts/timezone'
+import { buildWebRTCScript } from './scripts/webrtc'
 import { buildGoogleRedirectBypassScript } from './scripts/google-redirect-bypass'
 import { setupGoogleRedirectInterceptor } from './google-redirect-interceptor'
 
@@ -45,6 +47,8 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     buildPermissionsScript(fingerprint.permissions),
     buildFontsScript(fingerprint.fonts),
     buildGeolocationScript(fingerprint.geolocation),
+    buildTimezoneScript(fingerprint.timezone),
+    buildWebRTCScript(fingerprint.webrtc),
     buildGoogleRedirectBypassScript()
   ]
 

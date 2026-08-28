@@ -1878,14 +1878,25 @@ export const ProfileModal: React.FC<Props> = ({
       const finalFp = ensureFpStructure(fp, osType, browserType, browserVersion)
 
       // Update timezone, geolocation & WebRTC in fingerprint object
+      const effectiveTz = (autoTimezone && proxyTestState?.timezone && proxyTestState.timezone !== 'N/A')
+        ? proxyTestState.timezone
+        : selectedTimezone
+
       finalFp.timezone.mode = autoTimezone ? 'auto' : 'manual'
-      finalFp.timezone.timezone = selectedTimezone
+      finalFp.timezone.timezone = effectiveTz
+
+      const effectiveLat = (autoGeo && proxyTestState?.latitude !== undefined) ? proxyTestState.latitude : latitude
+      const effectiveLon = (autoGeo && proxyTestState?.longitude !== undefined) ? proxyTestState.longitude : longitude
+
       finalFp.geolocation.mode = autoGeo ? 'ip-based' : (geoMode === 'allow' ? 'custom' : geoMode)
-      finalFp.geolocation.latitude = latitude
-      finalFp.geolocation.longitude = longitude
+      finalFp.geolocation.latitude = effectiveLat
+      finalFp.geolocation.longitude = effectiveLon
       finalFp.geolocation.accuracy = accuracy
+
+      const hasProxy = (proxyTab === 'saved' && !!selectedProxyId) || (proxyTab === 'custom' && !!customProxyHost)
       finalFp.webrtc.mode = webrtcSetting === 'off' ? 'disabled' : 'real'
-      finalFp.webrtc.ipPolicy = webrtcSetting === 'off' ? 'disable_non_proxied_udp' : 'default_public_interface_only'
+      // Strictly enforce non-proxied UDP disabling to eliminate STUN IP leaks
+      finalFp.webrtc.ipPolicy = (webrtcSetting === 'off' || hasProxy) ? 'disable_non_proxied_udp' : 'disable_non_proxied_udp'
 
       // Update Language & Locale in fingerprint object
       finalFp.locale = finalFp.locale || {}
@@ -1946,6 +1957,7 @@ export const ProfileModal: React.FC<Props> = ({
         deviceTemplateId: deviceTemplateId || null,
         groupId: groupId || null,
         proxyId: finalProxyId,
+        timezone: effectiveTz,
         webrtcMode: webrtcSetting === 'off' ? 'disabled' : 'default',
         notes,
         startUrl,
@@ -2788,6 +2800,13 @@ export const ProfileModal: React.FC<Props> = ({
                                     testing: false,
                                     ...res.data
                                   })
+                                  if (res.data.timezone && res.data.timezone !== 'N/A') {
+                                    setSelectedTimezone(res.data.timezone)
+                                  }
+                                  if (res.data.latitude !== undefined && res.data.longitude !== undefined) {
+                                    setLatitude(res.data.latitude)
+                                    setLongitude(res.data.longitude)
+                                  }
                                 } else {
                                   const errMsg = res?.error || res?.data?.error || 'Proxy connection failed'
                                   setProxyTestState({
@@ -2942,6 +2961,13 @@ export const ProfileModal: React.FC<Props> = ({
                                 testing: false,
                                 ...res.data
                               })
+                              if (res.data.timezone && res.data.timezone !== 'N/A') {
+                                setSelectedTimezone(res.data.timezone)
+                              }
+                              if (res.data.latitude !== undefined && res.data.longitude !== undefined) {
+                                setLatitude(res.data.latitude)
+                                setLongitude(res.data.longitude)
+                              }
                             } else {
                               const errMsg = res?.error || res?.data?.error || 'Proxy connection failed'
                               setProxyTestState({
