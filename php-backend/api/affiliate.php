@@ -285,11 +285,21 @@ switch ($action) {
         $offerId = trim($input['offer_id'] ?? 'offer_main_saas');
         $subId1 = trim($input['sub_id1'] ?? '');
         $subId2 = trim($input['sub_id2'] ?? '');
+        $landingPage = trim($input['landing_page'] ?? ($input['lp'] ?? ($input['target_url'] ?? '')));
+        $billing = trim($input['billing'] ?? '');
+        $utmSource = trim($input['utm_source'] ?? '');
+        $utmCampaign = trim($input['utm_campaign'] ?? '');
+        $utmMedium = trim($input['utm_medium'] ?? '');
 
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
         $trackUrl = $baseUrl . '/track?aff_id=' . urlencode($affId) . '&offer_id=' . urlencode($offerId);
+        if ($landingPage) $trackUrl .= '&lp=' . urlencode($landingPage);
+        if ($billing && $billing !== 'month') $trackUrl .= '&billing=' . urlencode($billing);
         if ($subId1) $trackUrl .= '&sub_id1=' . urlencode($subId1);
         if ($subId2) $trackUrl .= '&sub_id2=' . urlencode($subId2);
+        if ($utmSource) $trackUrl .= '&utm_source=' . urlencode($utmSource);
+        if ($utmCampaign) $trackUrl .= '&utm_campaign=' . urlencode($utmCampaign);
+        if ($utmMedium) $trackUrl .= '&utm_medium=' . urlencode($utmMedium);
 
         // Store custom tracking link
         $linkId = 'link_' . bin2hex(random_bytes(6));
@@ -303,7 +313,8 @@ switch ($action) {
             'data' => [
                 'trackingUrl' => $trackUrl,
                 'affiliateId' => $affId,
-                'offerId' => $offerId
+                'offerId' => $offerId,
+                'landingPage' => $landingPage
             ]
         ]);
         break;

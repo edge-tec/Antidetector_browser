@@ -299,6 +299,8 @@ export const ReferralDashboard: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [selectedOfferForLink, setSelectedOfferForLink] = useState<string>('offer_main_saas')
+  const [selectedLandingPage, setSelectedLandingPage] = useState<string>('offer_default')
+  const [customLandingPageUrl, setCustomLandingPageUrl] = useState<string>('')
   const [customSubId, setCustomSubId] = useState<string>('')
   const [customSubId2, setCustomSubId2] = useState<string>('')
   const [customBilling, setCustomBilling] = useState<'month' | 'year'>('month')
@@ -335,6 +337,20 @@ export const ReferralDashboard: React.FC = () => {
     setTimeout(() => setToastMsg(null), 4000)
   }
 
+  const getOfferLandingPageSlug = (off?: OfferItem): string => {
+    if (!off) return 'professional'
+    if (off.landing_page_slug) return off.landing_page_slug
+    if (off.target_url) {
+      const clean = off.target_url.replace(/^\/offer\//, '').replace(/^\//, '')
+      if (clean) return clean
+    }
+    const pkg = (off.package_id || '').toLowerCase()
+    if (pkg.includes('starter')) return 'starter'
+    if (pkg.includes('business') || pkg.includes('enterprise')) return 'business'
+    if (pkg.includes('free')) return 'free'
+    return 'professional'
+  }
+
   const loadSummary = async (silent: boolean = false) => {
     const uid = currentUser?.id || 'admin-default'
     if (!silent) setLoading(true)
@@ -352,7 +368,7 @@ export const ReferralDashboard: React.FC = () => {
           if (offersList.length > 0 && !selectedOfferForLink) {
             const validOfferId = offersList.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : offersList[0].id
             setSelectedOfferForLink(validOfferId)
-            handleGenerateLink(validOfferId, updatedSummary)
+            handleGenerateLink(validOfferId, 'offer_default', updatedSummary)
           }
         } else {
           // Fallback to fetching offers
@@ -498,10 +514,31 @@ export const ReferralDashboard: React.FC = () => {
     }
   }
 
-  const handleGenerateLink = async (offerId?: string, currentSummaryState?: AffiliateSummary) => {
+  const handleGenerateLink = async (offerId?: string, lpChoice?: string, currentSummaryState?: AffiliateSummary) => {
     const activeSummary = currentSummaryState || summary
     const targetOfferId = offerId || selectedOfferForLink || activeSummary?.offers?.[0]?.id || 'offer_main_saas'
     const uid = currentUser?.id || activeSummary?.affiliateId || 'admin-default'
+    const chosenOffer = (activeSummary?.offers || DEFAULT_FALLBACK_OFFERS).find(o => o.id === targetOfferId)
+    const offerSlug = getOfferLandingPageSlug(chosenOffer)
+
+    const activeLp = lpChoice !== undefined ? lpChoice : selectedLandingPage
+
+    let resolvedLp = ''
+    if (activeLp === 'offer_default') {
+      resolvedLp = `/offer/${offerSlug}`
+    } else if (activeLp === 'main_home') {
+      resolvedLp = '/'
+    } else if (activeLp === 'pricing') {
+      resolvedLp = '/pricing'
+    } else if (activeLp === 'signup') {
+      resolvedLp = '/signup'
+    } else if (activeLp === 'custom') {
+      resolvedLp = customLandingPageUrl.trim() || `/offer/${offerSlug}`
+    } else if (activeLp) {
+      resolvedLp = activeLp
+    } else {
+      resolvedLp = `/offer/${offerSlug}`
+    }
 
     try {
       const customParams: Record<string, string> = {}
@@ -511,6 +548,7 @@ export const ReferralDashboard: React.FC = () => {
       if (utmSource.trim()) customParams.utm_source = utmSource.trim()
       if (utmCampaign.trim()) customParams.utm_campaign = utmCampaign.trim()
       if (utmMedium.trim()) customParams.utm_medium = utmMedium.trim()
+      if (resolvedLp) customParams.landing_page = resolvedLp
 
       if ((window as any).api?.affiliateGenerateTrackingLink) {
         const res = await (window as any).api.affiliateGenerateTrackingLink(uid, targetOfferId, customParams)
@@ -528,6 +566,7 @@ export const ReferralDashboard: React.FC = () => {
         aff_id: affId,
         offer_id: targetOfferId
       })
+      if (resolvedLp) params.set('lp', resolvedLp.replace(/^\/offer\//, ''))
       if (customBilling && customBilling !== 'month') params.set('billing', customBilling)
       if (customSubId.trim()) params.set('sub_id1', customSubId.trim())
       if (customSubId2.trim()) params.set('sub_id2', customSubId2.trim())
@@ -928,101 +967,146 @@ export const ReferralDashboard: React.FC = () => {
       {activeTab === 'campaigns' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Tracking Link Generator Tool */}
-          <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
+          <div id="cpaLinkBuilderCard" style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#FFF' }}>⚡ CPA Tracking Link Builder</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#94A3B8' }}>
-              Select a CPA offer to generate your unique tracking URL with custom SubID tracking tags.
+              Select a CPA offer and landing page to generate your unique tracking URL with custom SubID tracking tags.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SELECT CPA CAMPAIGN / OFFER</label>
-                <select
-                  value={selectedOfferForLink}
-                  onChange={e => {
-                    const newOfferId = e.target.value
-                    setSelectedOfferForLink(newOfferId)
-                    handleGenerateLink(newOfferId)
-                  }}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                >
-                  {((summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS).map(o => {
-                    const details = resolveOfferDetails(o)
-                    const isRev = o.payout_type === 'percentage' || o.payout_type === 'revshare'
-                    const rate = o.commission_rate !== undefined ? o.commission_rate : (o.revshare_percent !== undefined ? o.revshare_percent : 0)
-                    const label = isRev ? `${rate}% RevShare` : `$${Number(o.fixed_payout_usd || 0).toFixed(2)} Fixed Bounty`
-                    return (
-                      <option key={o.id} value={o.id}>
-                        {o.title} — {details.packageName} (${details.price}/mo) • {label}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
+            {(() => {
+              const allOffers = (summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS
+              const currentOfferObj = allOffers.find(o => o.id === selectedOfferForLink) || allOffers[0]
+              const currentSlug = getOfferLandingPageSlug(currentOfferObj)
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>BILLING CYCLE</label>
-                <select
-                  value={customBilling}
-                  onChange={e => {
-                    const b = e.target.value as 'month' | 'year'
-                    setCustomBilling(b)
-                  }}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                >
-                  <option value="month">Monthly Subscription</option>
-                  <option value="year">Annual Subscription (Save 20%)</option>
-                </select>
-              </div>
+              return (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SELECT CPA CAMPAIGN / OFFER</label>
+                      <select
+                        value={selectedOfferForLink}
+                        onChange={e => {
+                          const newOfferId = e.target.value
+                          setSelectedOfferForLink(newOfferId)
+                          handleGenerateLink(newOfferId, selectedLandingPage)
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                      >
+                        {allOffers.map(o => {
+                          const details = resolveOfferDetails(o)
+                          const isRev = o.payout_type === 'percentage' || o.payout_type === 'revshare'
+                          const rate = o.commission_rate !== undefined ? o.commission_rate : (o.revshare_percent !== undefined ? o.revshare_percent : 0)
+                          const label = isRev ? `${rate}% RevShare` : `$${Number(o.fixed_payout_usd || 0).toFixed(2)} Fixed Bounty`
+                          return (
+                            <option key={o.id} value={o.id}>
+                              {o.title} — {details.packageName} (${details.price}/mo) • {label}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SUBID1 (CAMPAIGN / TAG)</label>
-                <input
-                  placeholder="e.g. facebook_ads, telegram"
-                  value={customSubId}
-                  onChange={e => setCustomSubId(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                />
-              </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: '#2DD4BF', marginBottom: '6px', fontWeight: 700 }}>
+                        🎯 TARGET LANDING PAGE
+                      </label>
+                      <select
+                        value={selectedLandingPage}
+                        onChange={e => {
+                          const lp = e.target.value
+                          setSelectedLandingPage(lp)
+                          handleGenerateLink(selectedOfferForLink, lp)
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #2DD4BF60', color: '#FFF', fontSize: '12px' }}
+                      >
+                        <option value="offer_default">🎯 Offer Landing Page (/offer/{currentSlug}) [Recommended]</option>
+                        <option value="main_home">🏠 Main Homepage (/)</option>
+                        <option value="pricing">💎 Pricing Table (/pricing)</option>
+                        <option value="signup">📝 Direct Signup & Checkout (/signup)</option>
+                        <option value="custom">⚙️ Custom Landing Page URL...</option>
+                      </select>
+                    </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SUBID2 (CREATIVE / ADSET)</label>
-                <input
-                  placeholder="e.g. video_ad_v2, banner_1"
-                  value={customSubId2}
-                  onChange={e => setCustomSubId2(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                />
-              </div>
+                    {selectedLandingPage === 'custom' && (
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>CUSTOM URL / PATH</label>
+                        <input
+                          placeholder="e.g. /offer/starter or https://..."
+                          value={customLandingPageUrl}
+                          onChange={e => {
+                            setCustomLandingPageUrl(e.target.value)
+                          }}
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                        />
+                      </div>
+                    )}
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>UTM SOURCE</label>
-                <input
-                  placeholder="e.g. google, youtube"
-                  value={utmSource}
-                  onChange={e => setUtmSource(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                />
-              </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>BILLING CYCLE</label>
+                      <select
+                        value={customBilling}
+                        onChange={e => {
+                          const b = e.target.value as 'month' | 'year'
+                          setCustomBilling(b)
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                      >
+                        <option value="month">Monthly Subscription</option>
+                        <option value="year">Annual Subscription (Save 20%)</option>
+                      </select>
+                    </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>UTM CAMPAIGN</label>
-                <input
-                  placeholder="e.g. summer_scale, q3_promo"
-                  value={utmCampaign}
-                  onChange={e => setUtmCampaign(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                />
-              </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SUBID1 (CAMPAIGN / TAG)</label>
+                      <input
+                        placeholder="e.g. facebook_ads, telegram"
+                        value={customSubId}
+                        onChange={e => setCustomSubId(e.target.value)}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                      />
+                    </div>
 
-              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                <button
-                  onClick={() => handleGenerateLink(selectedOfferForLink)}
-                  style={{ width: '100%', padding: '10px 16px', borderRadius: '6px', background: '#2563EB', color: '#FFF', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
-                >
-                  ⚡ Generate Tracking Link
-                </button>
-              </div>
-            </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SUBID2 (CREATIVE / ADSET)</label>
+                      <input
+                        placeholder="e.g. video_ad_v2, banner_1"
+                        value={customSubId2}
+                        onChange={e => setCustomSubId2(e.target.value)}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>UTM SOURCE</label>
+                      <input
+                        placeholder="e.g. google, youtube"
+                        value={utmSource}
+                        onChange={e => setUtmSource(e.target.value)}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>UTM CAMPAIGN</label>
+                      <input
+                        placeholder="e.g. summer_scale, q3_promo"
+                        value={utmCampaign}
+                        onChange={e => setUtmCampaign(e.target.value)}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                      <button
+                        onClick={() => handleGenerateLink(selectedOfferForLink, selectedLandingPage)}
+                        style={{ width: '100%', padding: '10px 16px', borderRadius: '6px', background: '#2563EB', color: '#FFF', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+                      >
+                        ⚡ Generate Tracking Link
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
 
             {generatedTrackingUrl && (
               <div style={{ background: '#0B0F19', border: '1px solid #38BDF840', borderRadius: '8px', padding: '12px', display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -1052,6 +1136,7 @@ export const ReferralDashboard: React.FC = () => {
               const isRev = offer.payout_type === 'percentage' || offer.payout_type === 'revshare'
               const rate = offer.commission_rate !== undefined ? offer.commission_rate : (offer.revshare_percent !== undefined ? offer.revshare_percent : 0)
               const badgeText = isRev ? `${rate}% RECURRING` : `$${Number(offer.fixed_payout_usd || 0).toFixed(2)} CPA FIXED`
+              const offerLpSlug = getOfferLandingPageSlug(offer)
               return (
                 <div key={offer.id} style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
@@ -1082,15 +1167,20 @@ export const ReferralDashboard: React.FC = () => {
                   </div>
 
                   <div style={{ borderTop: '1px solid #1E293B', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Target: {details.targetUrl}</span>
+                    <span style={{ fontSize: '11px', color: '#38BDF8', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                      🎯 Landing: /offer/{offerLpSlug}
+                    </span>
                     <button
                       onClick={() => {
                         setSelectedOfferForLink(offer.id)
-                        handleGenerateLink(offer.id)
+                        setSelectedLandingPage('offer_default')
+                        handleGenerateLink(offer.id, 'offer_default')
+                        const el = document.getElementById('cpaLinkBuilderCard')
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                       }}
                       style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
                     >
-                      Create Link
+                      ⚡ Create Link
                     </button>
                   </div>
                 </div>

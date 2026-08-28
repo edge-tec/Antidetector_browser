@@ -44,36 +44,63 @@ try {
         $resolvedOfferId = $offer['id'];
         $targetPlan = !empty($offer['package_id']) ? $offer['package_id'] : $targetPlan;
         
-        if (!empty($offer['signup_url']) && $offer['signup_url'] !== '/#pricing') {
-            $rawTarget = trim($offer['signup_url']);
-            if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
-                $targetUrl = $rawTarget;
-            } else {
-                $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
-            }
-        } elseif (!empty($offer['target_url']) && $offer['target_url'] !== '/#pricing') {
-            $rawTarget = trim($offer['target_url']);
-            if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
-                $targetUrl = $rawTarget;
-            } else {
-                $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
-            }
+// Determine Landing Page & Destination URL based on Offer and Query Params
+$customLp = trim($_GET['lp'] ?? ($_GET['landing_page'] ?? ($_GET['target_url'] ?? ($_GET['url'] ?? ''))));
+$landingPageSlug = '';
+$targetUrl = "$baseOrigin/offer/professional";
+
+if (!empty($customLp)) {
+    if (strpos($customLp, 'http://') === 0 || strpos($customLp, 'https://') === 0) {
+        $targetUrl = $customLp;
+        $parsedCustom = parse_url($customLp);
+        $pathParts = explode('/', trim($parsedCustom['path'] ?? '', '/'));
+        if (count($pathParts) >= 2 && $pathParts[0] === 'offer') {
+            $landingPageSlug = $pathParts[1];
         }
-    }
-} catch (Throwable $e) {
-    error_log('[CPA Track] Offer detection error: ' . $e->getMessage());
-}
-
-if (empty($targetPlan)) {
-    if (isset($_GET['plan'])) {
-        $targetPlan = trim($_GET['plan']);
+    } elseif (strpos($customLp, '/') === 0) {
+        $targetUrl = $baseOrigin . $customLp;
+        $pathParts = explode('/', trim($customLp, '/'));
+        if (count($pathParts) >= 2 && $pathParts[0] === 'offer') {
+            $landingPageSlug = $pathParts[1];
+        }
     } else {
-        $targetPlan = 'plan_pro';
+        $landingPageSlug = $customLp;
+        $targetUrl = "$baseOrigin/offer/{$landingPageSlug}";
     }
+} elseif (!empty($offer['landing_page_slug'])) {
+    $landingPageSlug = trim($offer['landing_page_slug']);
+    $targetUrl = "$baseOrigin/offer/{$landingPageSlug}";
+} elseif (!empty($offer['target_url']) && $offer['target_url'] !== '/#pricing') {
+    $rawTarget = trim($offer['target_url']);
+    if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
+        $targetUrl = $rawTarget;
+    } else {
+        $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
+    }
+    $pathParts = explode('/', trim(parse_url($targetUrl, PHP_URL_PATH) ?? '', '/'));
+    if (count($pathParts) >= 2 && $pathParts[0] === 'offer') {
+        $landingPageSlug = $pathParts[1];
+    }
+} elseif (!empty($offer['signup_url']) && $offer['signup_url'] !== '/#pricing') {
+    $rawTarget = trim($offer['signup_url']);
+    if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
+        $targetUrl = $rawTarget;
+    } else {
+        $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
+    }
+    $pathParts = explode('/', trim(parse_url($targetUrl, PHP_URL_PATH) ?? '', '/'));
+    if (count($pathParts) >= 2 && $pathParts[0] === 'offer') {
+        $landingPageSlug = $pathParts[1];
+    }
+} else {
+    // Default by package
+    $pkg = strtolower($targetPlan ?: ($offer['package_id'] ?? ''));
+    if (strpos($pkg, 'starter') !== false) $landingPageSlug = 'starter';
+    elseif (strpos($pkg, 'business') !== false || strpos($pkg, 'enterprise') !== false) $landingPageSlug = 'business';
+    elseif (strpos($pkg, 'free') !== false) $landingPageSlug = 'free';
+    else $landingPageSlug = 'professional';
+    $targetUrl = "$baseOrigin/offer/{$landingPageSlug}";
 }
-
-$landingPageSlug = $trackResult['landing_page_slug'] ?? ($offer['landing_page_slug'] ?? 'professional');
-$targetUrl = "$baseOrigin/offer/{$landingPageSlug}";
 
 // 30-Day Cookies for Client Attribution
 $cookieDuration = time() + (86400 * 30);

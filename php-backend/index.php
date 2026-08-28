@@ -3709,8 +3709,17 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <div style="display: flex; flex-direction: column; gap: 12px;">
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Select Offer / Campaign</label>
-                                        <select id="userLinkOfferSelect" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;" onchange="generateCustomAffiliateLink()">
+                                        <select id="userLinkOfferSelect" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;" onchange="onUserOfferChange()">
                                             <option value="offer_main_saas">AntiProfiles Pro & Team Subscription Plan (15% Recurring RevShare)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 12px; color: #2DD4BF; font-weight: 700;">🎯 Target Landing Page</label>
+                                        <select id="userLinkLandingPageSelect" style="width: 100%; background: var(--bg-input); border: 1px solid #2DD4BF60; border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;" onchange="generateCustomAffiliateLink()">
+                                            <option value="offer_default">🎯 Offer Dedicated Landing Page (Recommended)</option>
+                                            <option value="main_home">🏠 Main Homepage (/)</option>
+                                            <option value="pricing">💎 Pricing Table (/pricing)</option>
+                                            <option value="signup">📝 Direct Signup & Checkout (/signup)</option>
                                         </select>
                                     </div>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -11635,6 +11644,22 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             });
         }
 
+        function onUserOfferChange() {
+            const offerSelect = document.getElementById('userLinkOfferSelect');
+            const offerId = offerSelect ? offerSelect.value : '';
+            const allOffers = (_userAffiliateData && _userAffiliateData.offers) ? _userAffiliateData.offers : [];
+            const off = allOffers.find(o => o.id === offerId);
+            const lpSel = document.getElementById('userLinkLandingPageSelect');
+            if (lpSel && off) {
+                const lpSlug = off.landing_page_slug || (off.package_id ? off.package_id.replace('plan_', '') : 'starter');
+                const defaultOpt = lpSel.querySelector('option[value="offer_default"]');
+                if (defaultOpt) {
+                    defaultOpt.textContent = `🎯 Offer Dedicated Landing Page (/offer/${lpSlug}) [Recommended]`;
+                }
+            }
+            generateCustomAffiliateLink();
+        }
+
         function generateCustomAffiliateLink() {
             let affId = (_userAffiliateData && _userAffiliateData.affiliateId) ? _userAffiliateData.affiliateId : '';
             if (!affId) {
@@ -11652,11 +11677,28 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
             const offerSelect = document.getElementById('userLinkOfferSelect');
             const offerId = offerSelect ? offerSelect.value : 'offer_main_saas';
+            const lpSelect = document.getElementById('userLinkLandingPageSelect');
+            const lpVal = lpSelect ? lpSelect.value : 'offer_default';
             const subId1 = document.getElementById('userLinkSubId1') ? document.getElementById('userLinkSubId1').value.trim() : '';
             const subId2 = document.getElementById('userLinkSubId2') ? document.getElementById('userLinkSubId2').value.trim() : '';
 
             const origin = window.location.origin;
             let link = `${origin}/track?aff_id=${encodeURIComponent(affId)}&offer_id=${encodeURIComponent(offerId)}`;
+
+            const allOffers = (_userAffiliateData && _userAffiliateData.offers) ? _userAffiliateData.offers : [];
+            const off = allOffers.find(o => o.id === offerId);
+            const lpSlug = off?.landing_page_slug || (off?.package_id ? off.package_id.replace('plan_', '') : 'starter');
+
+            if (lpVal === 'offer_default') {
+                link += `&lp=${encodeURIComponent(lpSlug)}`;
+            } else if (lpVal === 'main_home') {
+                link += `&lp=/`;
+            } else if (lpVal === 'pricing') {
+                link += `&lp=/pricing`;
+            } else if (lpVal === 'signup') {
+                link += `&lp=/signup`;
+            }
+
             if (subId1) link += `&sub_id1=${encodeURIComponent(subId1)}`;
             if (subId2) link += `&sub_id2=${encodeURIComponent(subId2)}`;
 
