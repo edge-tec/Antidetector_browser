@@ -716,6 +716,34 @@ function ensureDatabaseTablesExist() {
             ");
         } catch (Throwable $e) {}
 
+        // Software Features Table
+        try {
+            $db->exec("
+                CREATE TABLE IF NOT EXISTS `software_features` (
+                  `id` VARCHAR(60) NOT NULL PRIMARY KEY,
+                  `category` VARCHAR(50) NOT NULL,
+                  `category_name` VARCHAR(100) NOT NULL,
+                  `name` VARCHAR(150) NOT NULL,
+                  `short_desc` TEXT NOT NULL,
+                  `full_desc` TEXT DEFAULT NULL,
+                  `icon` VARCHAR(100) NOT NULL,
+                  `platforms` VARCHAR(120) NOT NULL DEFAULT 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+                  `badge` VARCHAR(50) DEFAULT NULL,
+                  `sort_order` INT NOT NULL DEFAULT 0,
+                  `is_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+                  `keywords` TEXT DEFAULT NULL,
+                  `doc_url` VARCHAR(255) DEFAULT NULL,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+        } catch (Throwable $e) {}
+
+        try { $db->exec("ALTER TABLE `software_features` ADD COLUMN `platforms` VARCHAR(120) NOT NULL DEFAULT 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `software_features` ADD COLUMN `badge` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `software_features` ADD COLUMN `keywords` TEXT DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `software_features` ADD COLUMN `doc_url` VARCHAR(255) DEFAULT NULL"); } catch (Throwable $e) {}
+
         try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `retry_count` INT DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `last_attempt_at` DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `email_logs` ADD COLUMN `html_body` LONGTEXT DEFAULT NULL"); } catch (Throwable $e) {}
@@ -725,6 +753,9 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `reset_token_created_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` MODIFY COLUMN `reset_token_hash` VARCHAR(128) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `password_resets` MODIFY COLUMN `token_hash` VARCHAR(128) NOT NULL"); } catch (Throwable $e) {}
+
+        // Auto-seed default software features if empty
+        ensureDefaultSoftwareFeaturesSeeded($db);
     } catch (Throwable $e) {}
 }
 
@@ -2930,5 +2961,1183 @@ function runAccountExpirationAndRemindersCron(PDO $db): array {
     return $results;
 }
 
+// ──────────────────────────────────────────────
+// AntiProfiles — Dynamic Software Feature Management System
+// ──────────────────────────────────────────────
 
+function getDefaultSoftwareFeaturesList(): array {
+    return [
+        // 1. Browser Profiles & Core Lifecycle
+        [
+            'id' => 'feat_dual_engines',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Dual Browser Engines (Chromium & Firefox)',
+            'short_desc' => 'Native isolated runtimes for both Chromium and Firefox Gecko with dedicated profile sandboxing and engine switching.',
+            'full_desc' => 'Launch isolated browser profiles using modern Chromium or Gecko-based Firefox runtimes. Each engine supports full spoofing injection, custom flags, and independent cache partitions.',
+            'icon' => '🌐',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Dual Engine',
+            'sort_order' => 10,
+            'is_enabled' => 1,
+            'keywords' => 'chromium, firefox, gecko, dual engine, browser profile',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_bulk_creator',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Bulk Profile Generator',
+            'short_desc' => 'Generate 10, 50, or 100+ fully isolated browser profiles in seconds with realistic fingerprints and custom name templates.',
+            'full_desc' => 'Rapidly provision massive profile fleets with randomized hardware parameters, automated group assignment, and custom proxy bindings.',
+            'icon' => '⚡',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'High Concurrency',
+            'sort_order' => 20,
+            'is_enabled' => 1,
+            'keywords' => 'bulk profile creation, multi profile generator, mass account creator',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_profile_groups',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Color-Coded Groups & Folders',
+            'short_desc' => 'Organize profiles into structured folders, custom tags, and client project spaces for instant access.',
+            'full_desc' => 'Structure massive profile collections with customizable color tags, group permissions, and hierarchical folder categorization.',
+            'icon' => '📁',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Organization',
+            'sort_order' => 30,
+            'is_enabled' => 1,
+            'keywords' => 'profile folders, group manager, profile tags, workspace organization',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_multi_launch',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Multi-Profile Concurrent Launch',
+            'short_desc' => 'Launch and monitor dozens of isolated browser sessions simultaneously without memory leaks or cross-talk.',
+            'full_desc' => 'High-performance process orchestrator capable of running high concurrency instances with distinct proxy sockets and hardware contexts.',
+            'icon' => '🚀',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'High Speed',
+            'sort_order' => 40,
+            'is_enabled' => 1,
+            'keywords' => 'multi launch, concurrent browser profiles, simultaneous instances',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_profile_clone',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Instant Profile Duplication & Cloning',
+            'short_desc' => 'Duplicate cookies, localStorage, proxy bindings, and fingerprint parameters in a single click.',
+            'full_desc' => 'Clone entire profile environments or branch new profiles with randomized fingerprints while retaining active session tokens.',
+            'icon' => '📋',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Productivity',
+            'sort_order' => 50,
+            'is_enabled' => 1,
+            'keywords' => 'clone profile, duplicate cookies, duplicate browser session',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_profile_trash',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Recycle Bin & Trash Recovery',
+            'short_desc' => 'Safely restore accidentally deleted profiles with instant 1-click recovery and permanent purge controls.',
+            'full_desc' => 'Two-stage deletion protection with time-stamped recycling bin, automated retention policies, and bulk restore options.',
+            'icon' => '🗑️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Safety',
+            'sort_order' => 60,
+            'is_enabled' => 1,
+            'keywords' => 'trash recovery, restore profile, undelete profiles',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_pinned_profiles',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'VIP Pinned & Favorite Profiles',
+            'short_desc' => 'Pin high-priority accounts and critical store profiles to the top of your workspace for 1-click launching.',
+            'full_desc' => 'Keep your most important e-commerce, advertising, and crypto accounts persistently accessible at the top of your workspace.',
+            'icon' => '📌',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Convenience',
+            'sort_order' => 70,
+            'is_enabled' => 1,
+            'keywords' => 'favorite profiles, pin profile, quick access',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_custom_launch_url',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Custom Start Page & Global Launch URL',
+            'short_desc' => 'Set custom global or per-profile start pages, home URLs, and automated initial tabs upon browser launch.',
+            'full_desc' => 'Centrally configure company portals, ad accounts, or custom dashboard start URLs that automatically open upon session startup.',
+            'icon' => '🔗',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Customization',
+            'sort_order' => 80,
+            'is_enabled' => 1,
+            'keywords' => 'start page, launch url, default homepage, custom startup tabs',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_process_tracker',
+            'category' => 'browser_profiles',
+            'category_name' => 'Browser Profiles & Lifecycle',
+            'name' => 'Real-Time Process & Memory Tracker',
+            'short_desc' => 'Monitor live PID, RAM consumption, runtime health, and session uptime for every open profile window.',
+            'full_desc' => 'Built-in diagnostic monitor tracking process memory footprint, active tab count, and automated cleanup of zombie browser processes.',
+            'icon' => '📊',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Diagnostics',
+            'sort_order' => 90,
+            'is_enabled' => 1,
+            'keywords' => 'process tracker, memory monitor, task manager, pid monitor',
+            'doc_url' => '/#downloads'
+        ],
 
+        // 2. Advanced Fingerprint Protection
+        [
+            'id' => 'feat_canvas_noise',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Canvas 2D Rendering Noise Injection',
+            'short_desc' => 'Injects subtle mathematical sub-pixel noise into HTML5 2D canvas drawing operations to prevent Canvas hash tracking.',
+            'full_desc' => 'Defeats advanced anti-fraud scripts (CreepJS, Pixelscan, BrowserLeaks) by adding non-destructive randomized noise to getImageData and toDataURL.',
+            'icon' => '🎨',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Core Stealth',
+            'sort_order' => 100,
+            'is_enabled' => 1,
+            'keywords' => 'canvas fingerprinting, 2d canvas noise, canvas spoofing, antidetect canvas',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_webgl_masking',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'WebGL GPU Vendor & Renderer Masking',
+            'short_desc' => 'Spoofs authentic GPU hardware strings (NVIDIA, AMD, Apple Silicon M-Series, Intel) across WebGL shaders.',
+            'full_desc' => 'Intercepts UNMASKED_VENDOR_WEBGL, UNMASKED_RENDERER_WEBGL, shader precision formats, and WebGL extensions to perfectly mimic target hardware.',
+            'icon' => '🎮',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Hardware Level',
+            'sort_order' => 110,
+            'is_enabled' => 1,
+            'keywords' => 'webgl spoofing, gpu renderer, webgl noise, gpu vendor masking',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_audio_noise',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'WebAudio & AudioContext Protection',
+            'short_desc' => 'Randomizes acoustic waveform processing with microscopic buffer variations to defeat audio fingerprinting.',
+            'full_desc' => 'Virtually modulates dynamics compressor frequencies, oscillator nodes, and offline audio context processing to generate genuine, unique audio hashes.',
+            'icon' => '🔊',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Acoustic Defense',
+            'sort_order' => 120,
+            'is_enabled' => 1,
+            'keywords' => 'audiocontext fingerprint, webaudio spoofing, audio hash protection',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_webrtc_shield',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'WebRTC IP Leak Shield & Public IP Masking',
+            'short_desc' => 'Strictly blocks STUN/TURN UDP leaks and enforces remote proxy routing for zero real IP exposure.',
+            'full_desc' => 'Emulates matching public candidate IPs, controls ICE candidate policies, and overrides RTCPeerConnection to prevent ISP/VPN leakage.',
+            'icon' => '🛡️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Zero-Leak',
+            'sort_order' => 130,
+            'is_enabled' => 1,
+            'keywords' => 'webrtc leak protection, stun turn shield, ip masking, webrtc disable',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_client_rects',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'ClientRects & DOM Element Noise',
+            'short_desc' => 'Randomizes element bounding boxes and font rasterization coordinates at sub-pixel precision.',
+            'full_desc' => 'Defeats DOMRect and getClientRects tracking techniques by injecting organic micro-offsets into bounding box coordinates.',
+            'icon' => '📐',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Anti-Tracking',
+            'sort_order' => 140,
+            'is_enabled' => 1,
+            'keywords' => 'clientrects, domrect noise, font bounding box, getboundingclientrect',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_screen_emulation',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Screen Resolution & Retina Display Emulation',
+            'short_desc' => 'Emulates authentic screen resolutions, available workspace, and Retina 2x/3x display pixel ratios.',
+            'full_desc' => 'Coordinates screen.width, screen.availHeight, window.devicePixelRatio, and color depth (24/30-bit) seamlessly with OS window frames.',
+            'icon' => '🖥️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Visual Emulation',
+            'sort_order' => 150,
+            'is_enabled' => 1,
+            'keywords' => 'screen resolution, retina scaling, devicepixelratio, color depth',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_cpu_memory',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Hardware Concurrency & RAM Spoofing',
+            'short_desc' => 'Configurable CPU cores (2–32 cores) and device memory allocation (2–64 GB) matching natural device specs.',
+            'full_desc' => 'Controls navigator.hardwareConcurrency and navigator.deviceMemory to present legitimate hardware profiles matching target demographics.',
+            'icon' => '💾',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Hardware',
+            'sort_order' => 160,
+            'is_enabled' => 1,
+            'keywords' => 'hardwareconcurrency, devicememory, cpu spoofing, ram allocation',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_timezone_geoip',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Auto GeoIP Timezone & Locale Matching',
+            'short_desc' => 'Automatically aligns browser clock, UTC offset, languages, and locale to the connected proxy location.',
+            'full_desc' => 'Zero timezone mismatch fraud flags: Intl.DateTimeFormat, Date.prototype.getTimezoneOffset, and navigator.languages automatically align with proxy IP.',
+            'icon' => '🌍',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Auto-Align',
+            'sort_order' => 170,
+            'is_enabled' => 1,
+            'keywords' => 'timezone spoofing, geoip matching, locale alignment, intl datetime',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_client_hints',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'User-Agent Client Hints (Sec-CH-UA)',
+            'short_desc' => 'Generates consistent modern Client Hints headers matching browser version, platform, and architecture.',
+            'full_desc' => 'Full control over high-entropy Client Hints (Sec-CH-UA-Platform, Sec-CH-UA-Arch, Sec-CH-UA-Model, Sec-CH-UA-Bitness) eliminating header-DOM discrepancies.',
+            'icon' => '🧭',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Modern Web',
+            'sort_order' => 180,
+            'is_enabled' => 1,
+            'keywords' => 'client hints, sec-ch-ua, useragent data, browser headers',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_font_masking',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Font List Masking & Glyph Metrics',
+            'short_desc' => 'Shields system font enumeration and injects authentic native font tables for Windows, Mac, and Linux.',
+            'full_desc' => 'Protects against CSS font probing, Font Face API enumeration, and Canvas font measurement attacks.',
+            'icon' => '🔤',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Font Shield',
+            'sort_order' => 190,
+            'is_enabled' => 1,
+            'keywords' => 'font fingerprinting, font list spoofing, font probing protection',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_media_devices',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Media Devices Virtual Enumeration',
+            'short_desc' => 'Virtualizes microphones, speakers, and cameras with randomized persistent device IDs.',
+            'full_desc' => 'Intercepts navigator.mediaDevices.enumerateDevices() to output authentic virtual hardware lists while shielding real microphone/camera IDs.',
+            'icon' => '🎙️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Privacy',
+            'sort_order' => 200,
+            'is_enabled' => 1,
+            'keywords' => 'media devices spoofing, microphone masking, camera id protection',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_port_scan_shield',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Localhost Port Scan Protection',
+            'short_desc' => 'Blocks malicious WebSockets and WebRTC port scanning scripts attempting to detect automation.',
+            'full_desc' => 'Blocks invasive website scripts from probing internal loopback ports (127.0.0.1, localhost) used by automation drivers and debugging tools.',
+            'icon' => '🔒',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Security',
+            'sort_order' => 210,
+            'is_enabled' => 1,
+            'keywords' => 'port scan shield, websocket protection, localhost security',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_battery_speech',
+            'category' => 'fingerprint',
+            'category_name' => 'Fingerprint Protection',
+            'name' => 'Battery API & Speech Synthesis Shield',
+            'short_desc' => 'Spoofs battery charge levels and injects native speech synthesis voice engines per OS.',
+            'full_desc' => 'Virtualizes battery charging status and provides authentic OS-specific voice synthesizers matching selected locale and language parameters.',
+            'icon' => '🔋',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Full Shield',
+            'sort_order' => 220,
+            'is_enabled' => 1,
+            'keywords' => 'battery status api, speech synthesis voices, getbattery spoofing',
+            'doc_url' => '/#features'
+        ],
+
+        // 3. Proxy & Network Management
+        [
+            'id' => 'feat_proxy_protocols',
+            'category' => 'proxy_network',
+            'category_name' => 'Proxy & Network',
+            'name' => 'Multi-Protocol Proxy Support',
+            'short_desc' => 'Native high-speed support for HTTP, HTTPS, SOCKS4, SOCKS5, and SSH tunnel proxy protocols.',
+            'full_desc' => 'Connect any residential, mobile, datacenter, or dedicated proxy server with custom user authentication and secure socket tunneling.',
+            'icon' => '🌐',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Universal Proxy',
+            'sort_order' => 230,
+            'is_enabled' => 1,
+            'keywords' => 'socks5 proxy, http proxy, ssh tunnel, proxy manager',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_quickfill_parser',
+            'category' => 'proxy_network',
+            'category_name' => 'Proxy & Network',
+            'name' => 'Smart Quick-Fill Proxy String Parser',
+            'short_desc' => 'Instant 1-click parser for all proxy formats (host:port:user:pass, user:pass@host:port, ip:port).',
+            'full_desc' => 'Paste raw proxy lines in any standard syntax and AntiProfiles will automatically extract hostname, port, username, and password instantly.',
+            'icon' => '⚡',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Fast Setup',
+            'sort_order' => 240,
+            'is_enabled' => 1,
+            'keywords' => 'proxy parser, quick fill proxy, proxy string import',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_proxy_checker',
+            'category' => 'proxy_network',
+            'category_name' => 'Proxy & Network',
+            'name' => 'Live Latency & Connectivity Ping Test',
+            'short_desc' => 'Measures real-time connection latency, response speed, and live health before launching browser sessions.',
+            'full_desc' => 'Direct socket handshake testing validating proxy health, TCP connect duration, and DNS resolution speed in milliseconds.',
+            'icon' => '📶',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Live Health',
+            'sort_order' => 250,
+            'is_enabled' => 1,
+            'keywords' => 'proxy speed test, ping check, proxy latency, proxy health',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_geoip_lookup',
+            'category' => 'proxy_network',
+            'category_name' => 'Proxy & Network',
+            'name' => 'Instant Geo-IP & ASN Lookup',
+            'short_desc' => 'Detailed IP discovery displaying Country, Region, City, ISP, Postal Code, and Timezone.',
+            'full_desc' => 'Integrated geolocation database displaying exact IP location details with visual national flags and ASN carrier data.',
+            'icon' => '🗺️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Geo-IP',
+            'sort_order' => 260,
+            'is_enabled' => 1,
+            'keywords' => 'geoip lookup, ip country detection, isp info, asn lookup',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_proxy_pools',
+            'category' => 'proxy_network',
+            'category_name' => 'Proxy & Network',
+            'name' => 'Proxy Pools & Category Groups',
+            'short_desc' => 'Organize proxies into residential, mobile, datacenter, and ISP pools for quick assignment.',
+            'full_desc' => 'Maintain reusable proxy vaults, tag proxies by provider, and assign proxy groups to profile folders with 1 click.',
+            'icon' => '🗄️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Management',
+            'sort_order' => 270,
+            'is_enabled' => 1,
+            'keywords' => 'proxy pools, proxy groups, residential proxy manager',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_dns_leak_shield',
+            'category' => 'proxy_network',
+            'category_name' => 'Proxy & Network',
+            'name' => 'Zero-Leak Remote DNS Resolution',
+            'short_desc' => 'Routes all DNS queries through the remote proxy server to prevent local ISP DNS leaks.',
+            'full_desc' => 'Enforces remote proxy hostname resolution across SOCKS5 and HTTP protocols, eliminating DNS exposure on whoer.net and browserleaks.',
+            'icon' => '🛡️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Zero-Leak',
+            'sort_order' => 280,
+            'is_enabled' => 1,
+            'keywords' => 'dns leak protection, remote dns, secure socks5 dns',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_rotating_proxies',
+            'category' => 'proxy_network',
+            'category_name' => 'Proxy & Network',
+            'name' => 'Dynamic Rotating Proxy Integration',
+            'short_desc' => 'Seamless integration with rotating backconnect proxies and sticky IP change URLs.',
+            'full_desc' => 'Supports instant IP rotation triggers, sticky session timeouts, and automated proxy refresh endpoints.',
+            'icon' => '🔄',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Automation',
+            'sort_order' => 290,
+            'is_enabled' => 1,
+            'keywords' => 'rotating proxy, backconnect proxy, sticky ip, change ip url',
+            'doc_url' => '/#downloads'
+        ],
+
+        // 4. Automation & Developer APIs
+        [
+            'id' => 'feat_cdp_ports',
+            'category' => 'automation',
+            'category_name' => 'Automation & API',
+            'name' => 'Dedicated CDP Remote Debugging Ports',
+            'short_desc' => 'Dynamically allocates dedicated Chrome DevTools Protocol (CDP) ports for browser automation frameworks.',
+            'full_desc' => 'Automate browser instances with standard CDP endpoints (`--remote-debugging-port`) with automated port collision prevention.',
+            'icon' => '🔌',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Dev API',
+            'sort_order' => 300,
+            'is_enabled' => 1,
+            'keywords' => 'cdp port, remote debugging port, chrome devtools protocol',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_puppeteer',
+            'category' => 'automation',
+            'category_name' => 'Automation & API',
+            'name' => 'Native Puppeteer Automation Integration',
+            'short_desc' => 'Automate web scraping, multi-account interactions, and form submissions via Puppeteer.',
+            'full_desc' => 'Connect Puppeteer via `puppeteer.connect({ browserWSEndpoint })` directly into AntiProfiles profiles with active spoofing.',
+            'icon' => '🤖',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Automation',
+            'sort_order' => 310,
+            'is_enabled' => 1,
+            'keywords' => 'puppeteer automation, nodejs puppeteer, web scraping browser',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_playwright',
+            'category' => 'automation',
+            'category_name' => 'Automation & API',
+            'name' => 'Native Playwright Automation Support',
+            'short_desc' => 'Full support for Playwright automation scripts with persistent cookies and stealth profiles.',
+            'full_desc' => 'Connect Playwright Python or Node.js scripts via CDP endpoint to orchestrate complex multi-step browser workflows.',
+            'icon' => '🎭',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Automation',
+            'sort_order' => 320,
+            'is_enabled' => 1,
+            'keywords' => 'playwright automation, python playwright, playwright stealth',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_selenium',
+            'category' => 'automation',
+            'category_name' => 'Automation & API',
+            'name' => 'Selenium WebDriver Compatibility',
+            'short_desc' => 'Compatible with Selenium WebDriver endpoints for enterprise test automation and orchestration.',
+            'full_desc' => 'Attach ChromeDriver and GeckoDriver seamlessly to AntiProfiles managed browser processes for automated testing and tasks.',
+            'icon' => '⚙️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Enterprise',
+            'sort_order' => 330,
+            'is_enabled' => 1,
+            'keywords' => 'selenium webdriver, chromedriver, geckodriver, test automation',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_rest_api',
+            'category' => 'automation',
+            'category_name' => 'Automation & API',
+            'name' => 'Local & Remote REST API',
+            'short_desc' => 'Programmatically create, start, stop, update, and manage browser profiles via REST endpoints.',
+            'full_desc' => 'Complete REST API allowing full lifecycle management of profiles, proxies, groups, and automation launch triggers.',
+            'icon' => '💻',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'API First',
+            'sort_order' => 340,
+            'is_enabled' => 1,
+            'keywords' => 'rest api, headless api, profile management api',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_headless_mode',
+            'category' => 'automation',
+            'category_name' => 'Automation & API',
+            'name' => 'Headless & Headful Mode Switcher',
+            'short_desc' => 'Execute high-speed automated background tasks in headless mode or visual headful windows.',
+            'full_desc' => 'Switch between visual headful mode for manual verification and ultra-fast headless mode for high-throughput automated bots.',
+            'icon' => '⚡',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'High Speed',
+            'sort_order' => 350,
+            'is_enabled' => 1,
+            'keywords' => 'headless browser, headless chrome, background automation',
+            'doc_url' => '/#features'
+        ],
+
+        // 5. Cookies & Session Management
+        [
+            'id' => 'feat_cookie_import_export',
+            'category' => 'cookies_session',
+            'category_name' => 'Cookies & Sessions',
+            'name' => 'JSON & Netscape Cookie Import/Export',
+            'short_desc' => 'Import and export session cookies in JSON, Netscape, and Header string formats in 1 click.',
+            'full_desc' => 'Migrate account sessions with universal cookie parsers supporting EditThisCookie JSON, cURL Netscape cookiejar, and Base64 strings.',
+            'icon' => '🍪',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Universal',
+            'sort_order' => 360,
+            'is_enabled' => 1,
+            'keywords' => 'cookie import, cookie export, netscape cookies, json cookies',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_cookie_robot',
+            'category' => 'cookies_session',
+            'category_name' => 'Cookies & Sessions',
+            'name' => 'Automated Cookie Robot & Warm-up',
+            'short_desc' => 'Simulates natural human browsing across target websites to build realistic history and trust cookies.',
+            'full_desc' => 'Automated background warm-up visiting top Alexa domains, generating authentic third-party cookies, cache, and history before account login.',
+            'icon' => '🤖',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Warm-up Bot',
+            'sort_order' => 370,
+            'is_enabled' => 1,
+            'keywords' => 'cookie robot, account warm up, trust cookies, automated browsing',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_isolated_storage',
+            'category' => 'cookies_session',
+            'category_name' => 'Cookies & Sessions',
+            'name' => 'Isolated LocalStorage & IndexedDB',
+            'short_desc' => 'Physical separation of cookies, cache, IndexedDB, and service workers per profile.',
+            'full_desc' => 'Guarantees absolute sandbox isolation so websites cannot access cross-profile session state, token stores, or client database caches.',
+            'icon' => '📦',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Sandbox',
+            'sort_order' => 380,
+            'is_enabled' => 1,
+            'keywords' => 'localstorage isolation, indexeddb partition, browser cache sandbox',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_session_restore',
+            'category' => 'cookies_session',
+            'category_name' => 'Cookies & Sessions',
+            'name' => 'Session Auto-Restore & Persistence',
+            'short_desc' => 'Automatically restores active tabs, logins, and form state upon browser relaunch.',
+            'full_desc' => 'Resume exactly where you left off with persistent session restoration, saved logins, and active workspace tab synchronization.',
+            'icon' => '🔁',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Reliability',
+            'sort_order' => 390,
+            'is_enabled' => 1,
+            'keywords' => 'session restore, tab persistence, auto save login',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_cache_purge',
+            'category' => 'cookies_session',
+            'category_name' => 'Cookies & Sessions',
+            'name' => 'One-Click Cache & History Purge',
+            'short_desc' => 'Instantly clear profile browsing history, cache, and downloads while preserving the master fingerprint.',
+            'full_desc' => 'Deep clean profile storage on demand or automatically wipe temporary cache files on exit without losing fingerprint consistency.',
+            'icon' => '🧹',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Maintenance',
+            'sort_order' => 400,
+            'is_enabled' => 1,
+            'keywords' => 'cache purge, clear history, wipe storage, profile cleanup',
+            'doc_url' => '/#downloads'
+        ],
+
+        // 6. Team Collaboration & Workspaces
+        [
+            'id' => 'feat_rbac_roles',
+            'category' => 'team_collab',
+            'category_name' => 'Team Collaboration',
+            'name' => 'Granular Role-Based Access Control (RBAC)',
+            'short_desc' => 'Manage Super Admin, Admin, Manager, and Team Member permissions with granular controls.',
+            'full_desc' => 'Assign custom permission matrices controlling who can launch, edit, delete, export cookies, or view proxy credentials.',
+            'icon' => '👥',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Team Security',
+            'sort_order' => 410,
+            'is_enabled' => 1,
+            'keywords' => 'rbac, team roles, permission manager, team access control',
+            'doc_url' => '/#pricing'
+        ],
+        [
+            'id' => 'feat_profile_sharing',
+            'category' => 'team_collab',
+            'category_name' => 'Team Collaboration',
+            'name' => 'Profile Sharing & Workspace Transfers',
+            'short_desc' => 'Share profiles and folders with team members with customizable read, write, and launch rights.',
+            'full_desc' => 'Transfer ownership or delegate access to isolated browser profiles without sharing master account passwords or proxy credentials.',
+            'icon' => '🤝',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Collaboration',
+            'sort_order' => 420,
+            'is_enabled' => 1,
+            'keywords' => 'profile sharing, transfer profile, team workspace, delegate accounts',
+            'doc_url' => '/#pricing'
+        ],
+        [
+            'id' => 'feat_concurrency_lock',
+            'category' => 'team_collab',
+            'category_name' => 'Team Collaboration',
+            'name' => 'Real-Time Profile Concurrency Lock',
+            'short_desc' => 'Prevents multiple team members from launching the same profile simultaneously to stop session collision.',
+            'full_desc' => 'Real-time WebSocket lock showing who is currently operating a profile, preventing dual-login security bans from platforms.',
+            'icon' => '🔐',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Collision Shield',
+            'sort_order' => 430,
+            'is_enabled' => 1,
+            'keywords' => 'concurrency lock, session collision protection, team lock',
+            'doc_url' => '/#pricing'
+        ],
+        [
+            'id' => 'feat_team_audit',
+            'category' => 'team_collab',
+            'category_name' => 'Team Collaboration',
+            'name' => 'Team Activity & Operation Audit Logs',
+            'short_desc' => 'Comprehensive log recording profile launches, edits, proxy updates, and team changes.',
+            'full_desc' => 'Detailed immutable audit trail displaying timestamps, IP addresses, actor names, and modified parameters for complete organizational transparency.',
+            'icon' => '📜',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Audit Trail',
+            'sort_order' => 440,
+            'is_enabled' => 1,
+            'keywords' => 'audit logs, team activity, operation history, compliance',
+            'doc_url' => '/#pricing'
+        ],
+        [
+            'id' => 'feat_team_billing',
+            'category' => 'team_collab',
+            'category_name' => 'Team Collaboration',
+            'name' => 'Team Seats & Organization Billing',
+            'short_desc' => 'Invite members via email and manage organization seats and subscription renewals seamlessly.',
+            'full_desc' => 'Scale your team capacity on demand with centralized seat provisioning, invoice management, and automated invitation links.',
+            'icon' => '💳',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Enterprise',
+            'sort_order' => 450,
+            'is_enabled' => 1,
+            'keywords' => 'team seats, member invitations, organization billing',
+            'doc_url' => '/#pricing'
+        ],
+
+        // 7. Security & Privacy Protection
+        [
+            'id' => 'feat_aes_encryption',
+            'category' => 'security_privacy',
+            'category_name' => 'Security & Privacy',
+            'name' => 'AES-256 Database & Credential Encryption',
+            'short_desc' => 'Encrypts sensitive profile configuration, credentials, and tokens with AES-256 at rest.',
+            'full_desc' => 'Military-grade cryptographic protection securing proxy passwords, session tokens, and local database storage against extraction.',
+            'icon' => '🛡️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'AES-256',
+            'sort_order' => 460,
+            'is_enabled' => 1,
+            'keywords' => 'aes-256, database encryption, secure credential storage',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_zero_telemetry',
+            'category' => 'security_privacy',
+            'category_name' => 'Security & Privacy',
+            'name' => 'Zero-Telemetry Privacy Guarantee',
+            'short_desc' => '100% telemetry-free operation ensuring your browsing habits and IP history are never tracked.',
+            'full_desc' => 'AntiProfiles disables all Google/Mozilla telemetry, diagnostic pingbacks, and crash reporting for uncompromised privacy.',
+            'icon' => '🔕',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => '100% Private',
+            'sort_order' => 470,
+            'is_enabled' => 1,
+            'keywords' => 'zero telemetry, private browser, no tracking, strict privacy',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_profile_sandbox',
+            'category' => 'security_privacy',
+            'category_name' => 'Security & Privacy',
+            'name' => 'Isolated Physical User-Data Sandboxes',
+            'short_desc' => 'Each profile runs in a dedicated physical directory, completely preventing cross-profile leakage.',
+            'full_desc' => 'Separate filesystem sandbox partitions prevent file descriptor sharing, memory bleeding, and fingerprint correlation across instances.',
+            'icon' => '🏰',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Sandboxed',
+            'sort_order' => 480,
+            'is_enabled' => 1,
+            'keywords' => 'sandbox isolation, data partition, secure browser directories',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_auto_repair',
+            'category' => 'security_privacy',
+            'category_name' => 'Security & Privacy',
+            'name' => 'Database Self-Healing & Auto-Repair',
+            'short_desc' => 'Built-in self-healing engine detecting and repairing database index and profile anomalies.',
+            'full_desc' => 'Automated health verification routine that detects ungraceful crashes, reconstructs corrupted indexes, and maintains profile integrity.',
+            'icon' => '🩺',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Self-Healing',
+            'sort_order' => 490,
+            'is_enabled' => 1,
+            'keywords' => 'auto repair, database self healing, corruption recovery',
+            'doc_url' => '/#features'
+        ],
+
+        // 8. Sync & Cloud Features
+        [
+            'id' => 'feat_cloud_sync',
+            'category' => 'sync_cloud',
+            'category_name' => 'Sync & Cloud',
+            'name' => 'Real-Time Cloud Profile Synchronization',
+            'short_desc' => 'Synchronize profiles, tags, and settings across desktop workstations and laptops instantly.',
+            'full_desc' => 'Seamless cloud synchronization updating profile state, cookies, and tags in real-time across Windows, Mac, and Linux computers.',
+            'icon' => '☁️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Cloud Sync',
+            'sort_order' => 500,
+            'is_enabled' => 1,
+            'keywords' => 'cloud sync, cross device sync, profile backup, cloud browser',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_cloud_backups',
+            'category' => 'sync_cloud',
+            'category_name' => 'Sync & Cloud',
+            'name' => 'Encrypted Cloud Snapshots & Backups',
+            'short_desc' => 'Automated encrypted cloud backups protecting your valuable accounts from hardware failure.',
+            'full_desc' => 'Schedule automated daily or weekly encrypted snapshots with single-click point-in-time profile restoration.',
+            'icon' => '💾',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Backup',
+            'sort_order' => 510,
+            'is_enabled' => 1,
+            'keywords' => 'cloud backup, snapshot, account protection, disaster recovery',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_cloud_proxies',
+            'category' => 'sync_cloud',
+            'category_name' => 'Sync & Cloud',
+            'name' => 'Cloud Proxy Vault',
+            'short_desc' => 'Store, verify, and share proxy credentials securely across your entire organization.',
+            'full_desc' => 'Encrypted centralized proxy repository accessible across all authorized team devices with live status indicators.',
+            'icon' => '🔑',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Vault',
+            'sort_order' => 520,
+            'is_enabled' => 1,
+            'keywords' => 'proxy vault, cloud proxy sharing, proxy repository',
+            'doc_url' => '/#features'
+        ],
+
+        // 9. AI & Smart Tools
+        [
+            'id' => 'feat_ai_fingerprint',
+            'category' => 'ai_tools',
+            'category_name' => 'AI & Smart Tools',
+            'name' => 'AI Smart Fingerprint Generator',
+            'short_desc' => 'Algorithmic generator creating statistically accurate hardware and OS parameter combinations.',
+            'full_desc' => 'Leverages real-world hardware telemetry datasets to generate 100% natural, non-suspicious browser parameter combinations.',
+            'icon' => '🧠',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'AI-Powered',
+            'sort_order' => 530,
+            'is_enabled' => 1,
+            'keywords' => 'ai fingerprint generator, smart fingerprinting, machine learning spoofing',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_smart_ua_matcher',
+            'category' => 'ai_tools',
+            'category_name' => 'AI & Smart Tools',
+            'name' => 'Smart User-Agent & Version Matcher',
+            'short_desc' => 'Aligns User-Agent versions with matching engine builds, WebGL shaders, and audio signatures.',
+            'full_desc' => 'Eliminates detection flags by ensuring Chrome/Firefox User-Agent version strings precisely match internal JavaScript engine features.',
+            'icon' => '🎯',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Smart Match',
+            'sort_order' => 540,
+            'is_enabled' => 1,
+            'keywords' => 'smart useragent, ua generator, browser version matching',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_consistency_engine',
+            'category' => 'ai_tools',
+            'category_name' => 'AI & Smart Tools',
+            'name' => '100/100 Real-Time Consistency Engine',
+            'short_desc' => 'Real-time consistency checker guaranteeing zero contradictions across Canvas, WebGL, Fonts, and Navigator.',
+            'full_desc' => 'Pre-launch validation engine auditing 45+ fingerprint parameters to guarantee 100% pass score on CreepJS, Pixelscan, and IPHEY.',
+            'icon' => '💯',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Score 100%',
+            'sort_order' => 550,
+            'is_enabled' => 1,
+            'keywords' => 'consistency score, creepjs pass, pixelscan test, 100% stealth',
+            'doc_url' => '/#features'
+        ],
+
+        // 10. Extensions & Custom Integrations
+        [
+            'id' => 'feat_chrome_extensions',
+            'category' => 'extensions',
+            'category_name' => 'Extensions & Add-ons',
+            'name' => 'Chrome & Firefox Extension Support',
+            'short_desc' => 'Install any Chrome Web Store or Firefox Add-on with persistent per-profile storage.',
+            'full_desc' => 'Full native extension support for MetaMask, Phantom, 2FA authenticators, translation tools, and custom productivity plugins.',
+            'icon' => '🧩',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Extensible',
+            'sort_order' => 560,
+            'is_enabled' => 1,
+            'keywords' => 'chrome extensions, metamask, web3 wallets, browser add-ons',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_crx_installer',
+            'category' => 'extensions',
+            'category_name' => 'Extensions & Add-ons',
+            'name' => 'Drag & Drop CRX / XPI Extension Installer',
+            'short_desc' => 'Drag and drop .crx or .xpi files to install custom extensions into individual or bulk profiles.',
+            'full_desc' => 'Easily sideload offline packed extensions without requiring developer mode or Google Web Store approval.',
+            'icon' => '📥',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Drag & Drop',
+            'sort_order' => 570,
+            'is_enabled' => 1,
+            'keywords' => 'crx installer, xpi install, offline extension, sideload add-on',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_extension_toggle',
+            'category' => 'extensions',
+            'category_name' => 'Extensions & Add-ons',
+            'name' => 'Per-Profile Extension Toggling & Management',
+            'short_desc' => 'Enable or disable specific extensions per profile without affecting global browser instances.',
+            'full_desc' => 'Fine-grained extension control allowing distinct crypto wallets, ad-blockers, or scrapers on separate isolated profiles.',
+            'icon' => '🎛️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Customizable',
+            'sort_order' => 580,
+            'is_enabled' => 1,
+            'keywords' => 'extension manager, toggle extensions, per profile add-ons',
+            'doc_url' => '/#features'
+        ],
+
+        // 11. System, Performance & Custom Branding
+        [
+            'id' => 'feat_custom_branding',
+            'category' => 'system_performance',
+            'category_name' => 'Performance & Branding',
+            'name' => 'Custom Browser Window & Profile Branding',
+            'short_desc' => 'Upload custom browser window icons, engine logos, and white-label branding assets.',
+            'full_desc' => 'Enterprise white-labeling engine replacing default browser icons with your organization\'s custom branding across all windows and dock icons.',
+            'icon' => '🎨',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'White-Label',
+            'sort_order' => 590,
+            'is_enabled' => 1,
+            'keywords' => 'custom branding, browser logo, white label, profile icon',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_memory_optimizer',
+            'category' => 'system_performance',
+            'category_name' => 'Performance & Branding',
+            'name' => 'High-Concurrency Memory Optimizer',
+            'short_desc' => 'Lightweight footprint consuming minimal CPU and RAM per profile for maximum concurrency.',
+            'full_desc' => 'Smart tab discarding, background throttling, and optimized SQLite thread pools designed to comfortably run 50+ concurrent browser windows.',
+            'icon' => '⚡',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Optimized',
+            'sort_order' => 600,
+            'is_enabled' => 1,
+            'keywords' => 'memory optimization, low ram usage, high concurrency, cpu throttling',
+            'doc_url' => '/#features'
+        ],
+        [
+            'id' => 'feat_auto_updater',
+            'category' => 'system_performance',
+            'category_name' => 'Performance & Branding',
+            'name' => 'Background Auto-Update Engine',
+            'short_desc' => 'Automatic background updater for desktop client and browser runtimes with zero manual compilation.',
+            'full_desc' => 'Seamless in-app update delivery keeping your browser engines, fingerprint injection layers, and core client up to date automatically.',
+            'icon' => '🔄',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Auto-Update',
+            'sort_order' => 610,
+            'is_enabled' => 1,
+            'keywords' => 'auto update, desktop updater, runtime update, seamless patches',
+            'doc_url' => '/#downloads'
+        ],
+
+        // 12. Native Desktop Application
+        [
+            'id' => 'feat_multi_platform',
+            'category' => 'desktop_client',
+            'category_name' => 'Desktop Application',
+            'name' => '6-Platform Architecture Support',
+            'short_desc' => 'Native client builds for Windows x64/ARM64, macOS Apple Silicon/Intel, and Linux x64/ARM64.',
+            'full_desc' => 'Built with native C++/Node.js bindings for ultimate hardware performance across Windows, Mac, and Linux without virtualization overhead.',
+            'icon' => '💻',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Cross-Platform',
+            'sort_order' => 620,
+            'is_enabled' => 1,
+            'keywords' => 'windows antidetect, mac apple silicon, linux antidetect browser',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_tray_menu',
+            'category' => 'desktop_client',
+            'category_name' => 'Desktop Application',
+            'name' => 'System Tray Quick-Launch Menu',
+            'short_desc' => 'Access running profiles, start instances, and view account status right from the system tray.',
+            'full_desc' => 'Background tray icon with 1-click quick launch, active profile count badge, and instant pause/resume controls.',
+            'icon' => '🔔',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Quick Tray',
+            'sort_order' => 630,
+            'is_enabled' => 1,
+            'keywords' => 'system tray, background quick launch, taskbar menu',
+            'doc_url' => '/#downloads'
+        ],
+        [
+            'id' => 'feat_keyboard_shortcuts',
+            'category' => 'desktop_client',
+            'category_name' => 'Desktop Application',
+            'name' => 'Customizable Keyboard Hotkeys & Shortcuts',
+            'short_desc' => 'High-speed hotkeys for quick profile creation, launching, search, and workspace navigation.',
+            'full_desc' => 'Boost your operational speed with custom global hotkeys for profile launch (Cmd/Ctrl+Enter), new profile (Cmd/Ctrl+N), and instant filter (Cmd/Ctrl+F).',
+            'icon' => '⌨️',
+            'platforms' => 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+            'badge' => 'Hotkeys',
+            'sort_order' => 640,
+            'is_enabled' => 1,
+            'keywords' => 'keyboard shortcuts, hotkeys, fast navigation, quick actions',
+            'doc_url' => '/#downloads'
+        ]
+    ];
+}
+
+function ensureDefaultSoftwareFeaturesSeeded(PDO $db): void {
+    try {
+        $check = $db->query("SELECT COUNT(*) FROM software_features")->fetchColumn();
+        if ($check > 0) return;
+
+        $features = getDefaultSoftwareFeaturesList();
+        $ins = $db->prepare("
+            INSERT INTO `software_features` 
+            (`id`, `category`, `category_name`, `name`, `short_desc`, `full_desc`, `icon`, `platforms`, `badge`, `sort_order`, `is_enabled`, `keywords`, `doc_url`, `created_at`, `updated_at`)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON DUPLICATE KEY UPDATE 
+                `name`=VALUES(`name`),
+                `short_desc`=VALUES(`short_desc`),
+                `full_desc`=VALUES(`full_desc`),
+                `icon`=VALUES(`icon`),
+                `category_name`=VALUES(`category_name`),
+                `badge`=VALUES(`badge`),
+                `platforms`=VALUES(`platforms`);
+        ");
+
+        foreach ($features as $f) {
+            $ins->execute([
+                $f['id'],
+                $f['category'],
+                $f['category_name'],
+                $f['name'],
+                $f['short_desc'],
+                $f['full_desc'],
+                $f['icon'],
+                $f['platforms'],
+                $f['badge'],
+                $f['sort_order'],
+                $f['is_enabled'],
+                $f['keywords'],
+                $f['doc_url']
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('[Features] Seeding error: ' . $e->getMessage());
+    }
+}
+
+function getAllSoftwareFeatures(PDO $db, ?string $category = null, bool $enabledOnly = false, ?string $search = null): array {
+    ensureDatabaseTablesExist();
+    ensureDefaultSoftwareFeaturesSeeded($db);
+
+    $sql = "SELECT * FROM software_features WHERE 1=1";
+    $params = [];
+
+    if ($enabledOnly) {
+        $sql .= " AND is_enabled = 1";
+    }
+
+    if (!empty($category) && $category !== 'all') {
+        $sql .= " AND category = ?";
+        $params[] = $category;
+    }
+
+    if (!empty($search)) {
+        $sql .= " AND (name LIKE ? OR short_desc LIKE ? OR full_desc LIKE ? OR keywords LIKE ? OR category_name LIKE ?)";
+        $term = '%' . $search . '%';
+        $params[] = $term;
+        $params[] = $term;
+        $params[] = $term;
+        $params[] = $term;
+        $params[] = $term;
+    }
+
+    $sql .= " ORDER BY sort_order ASC, name ASC";
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return array_map(function($r) {
+        $r['is_enabled'] = (bool)($r['is_enabled'] ?? 1);
+        $r['sort_order'] = (int)($r['sort_order'] ?? 0);
+        return $r;
+    }, $rows);
+}
+
+function getSoftwareFeatureCategories(PDO $db): array {
+    ensureDatabaseTablesExist();
+    $stmt = $db->query("
+        SELECT category, category_name, COUNT(*) as total_count, SUM(is_enabled) as enabled_count, MIN(sort_order) as min_sort
+        FROM software_features
+        GROUP BY category, category_name
+        ORDER BY min_sort ASC
+    ");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function saveSoftwareFeature(PDO $db, array $data): array {
+    ensureDatabaseTablesExist();
+    $id = trim($data['id'] ?? '');
+    if (empty($id)) {
+        $id = 'feat_' . bin2hex(random_bytes(6));
+    }
+
+    $name = trim($data['name'] ?? '');
+    $category = trim($data['category'] ?? 'browser_profiles');
+    $categoryName = trim($data['category_name'] ?? '');
+    if (empty($categoryName)) {
+        $catMap = [
+            'browser_profiles' => 'Browser Profiles & Lifecycle',
+            'fingerprint' => 'Fingerprint Protection',
+            'proxy_network' => 'Proxy & Network',
+            'automation' => 'Automation & API',
+            'cookies_session' => 'Cookies & Sessions',
+            'team_collab' => 'Team Collaboration',
+            'security_privacy' => 'Security & Privacy',
+            'sync_cloud' => 'Sync & Cloud',
+            'ai_tools' => 'AI & Smart Tools',
+            'extensions' => 'Extensions & Add-ons',
+            'system_performance' => 'Performance & Branding',
+            'desktop_client' => 'Desktop Application'
+        ];
+        $categoryName = $catMap[$category] ?? ucfirst(str_replace('_', ' ', $category));
+    }
+
+    $shortDesc = trim($data['short_desc'] ?? '');
+    $fullDesc = trim($data['full_desc'] ?? $shortDesc);
+    $icon = trim($data['icon'] ?? '⚡');
+    $platforms = trim($data['platforms'] ?? 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm');
+    $badge = trim($data['badge'] ?? '');
+    $sortOrder = (int)($data['sort_order'] ?? 100);
+    $isEnabled = isset($data['is_enabled']) ? ($data['is_enabled'] ? 1 : 0) : 1;
+    $keywords = trim($data['keywords'] ?? '');
+    $docUrl = trim($data['doc_url'] ?? '/#features');
+
+    if (empty($name) || empty($shortDesc)) {
+        return ['success' => false, 'error' => 'Feature name and short description are required.'];
+    }
+
+    $stmt = $db->prepare("
+        INSERT INTO `software_features`
+        (`id`, `category`, `category_name`, `name`, `short_desc`, `full_desc`, `icon`, `platforms`, `badge`, `sort_order`, `is_enabled`, `keywords`, `doc_url`, `created_at`, `updated_at`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON DUPLICATE KEY UPDATE
+            `category`=VALUES(`category`),
+            `category_name`=VALUES(`category_name`),
+            `name`=VALUES(`name`),
+            `short_desc`=VALUES(`short_desc`),
+            `full_desc`=VALUES(`full_desc`),
+            `icon`=VALUES(`icon`),
+            `platforms`=VALUES(`platforms`),
+            `badge`=VALUES(`badge`),
+            `sort_order`=VALUES(`sort_order`),
+            `is_enabled`=VALUES(`is_enabled`),
+            `keywords`=VALUES(`keywords`),
+            `doc_url`=VALUES(`doc_url`),
+            `updated_at`=CURRENT_TIMESTAMP;
+    ");
+
+    $stmt->execute([
+        $id, $category, $categoryName, $name, $shortDesc, $fullDesc, $icon, $platforms, $badge, $sortOrder, $isEnabled, $keywords, $docUrl
+    ]);
+
+    return ['success' => true, 'id' => $id, 'message' => 'Feature saved successfully.'];
+}
+
+function toggleSoftwareFeature(PDO $db, string $id, ?bool $isEnabled = null): bool {
+    ensureDatabaseTablesExist();
+    if ($isEnabled === null) {
+        $stmt = $db->prepare("UPDATE software_features SET is_enabled = CASE WHEN is_enabled = 1 THEN 0 ELSE 1 END, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        return $stmt->execute([$id]);
+    } else {
+        $stmt = $db->prepare("UPDATE software_features SET is_enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        return $stmt->execute([$isEnabled ? 1 : 0, $id]);
+    }
+}
+
+function deleteSoftwareFeature(PDO $db, string $id): bool {
+    ensureDatabaseTablesExist();
+    $stmt = $db->prepare("DELETE FROM software_features WHERE id = ?");
+    return $stmt->execute([$id]);
+}
+
+function resetAllSoftwareFeaturesToDefault(PDO $db): bool {
+    ensureDatabaseTablesExist();
+    try {
+        $db->exec("DELETE FROM software_features");
+        ensureDefaultSoftwareFeaturesSeeded($db);
+        return true;
+    } catch (Throwable $e) {
+        return false;
+    }
+}

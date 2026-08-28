@@ -919,7 +919,29 @@ CREATE TABLE IF NOT EXISTS `affiliate_audit_logs` (
   KEY `idx_aff_audit_action` (`action`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `software_features` (
+  `id` VARCHAR(60) NOT NULL PRIMARY KEY,
+  `category` VARCHAR(50) NOT NULL,
+  `category_name` VARCHAR(100) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `short_desc` TEXT NOT NULL,
+  `full_desc` TEXT DEFAULT NULL,
+  `icon` VARCHAR(100) NOT NULL,
+  `platforms` VARCHAR(120) NOT NULL DEFAULT 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm',
+  `badge` VARCHAR(50) DEFAULT NULL,
+  `sort_order` INT NOT NULL DEFAULT 0,
+  `is_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `keywords` TEXT DEFAULT NULL,
+  `doc_url` VARCHAR(255) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_feat_cat` (`category`),
+  KEY `idx_feat_enabled` (`is_enabled`),
+  KEY `idx_feat_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;
+
 
 
 

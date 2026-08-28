@@ -219,6 +219,18 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
         exit();
     }
 
+    // Software Features APIs (/api/features, /api/features/*)
+    if (strpos($requestUri, '/api/features') === 0) {
+        $action = str_replace('/api/features/', '', $requestUri);
+        $action = str_replace('/api/features', '', $action);
+        $action = trim($action, '/');
+        if (!empty($action)) {
+            $_GET['action'] = $action;
+        }
+        require_once __DIR__ . '/api/features.php';
+        exit();
+    }
+
     respondJson(['success' => false, 'error' => 'API endpoint not found.'], 404);
 }
 
@@ -373,6 +385,21 @@ try {
         }
     }
 } catch (Throwable $e) {}
+
+// Dynamic Software Features for Showcase & SEO
+$landingFeatures = [];
+$landingFeatureCategories = [];
+try {
+    if ($pdo) {
+        $landingFeatures = getAllSoftwareFeatures($pdo, null, true);
+        $landingFeatureCategories = getSoftwareFeatureCategories($pdo);
+    }
+} catch (Throwable $e) {
+    $landingFeatures = getDefaultSoftwareFeaturesList();
+}
+if (empty($landingFeatures)) {
+    $landingFeatures = getDefaultSoftwareFeaturesList();
+}
 
 // Server-Side Device & OS Auto-Detection for Instant Recommendation
 $httpUa = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
@@ -1888,55 +1915,272 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         </div>
     </section>
 
-    <!-- 3. Features Section (8 Cards Grid) -->
+    <!-- 3. All AntiProfiles Features Showcase Section (Dynamic, Filterable & Searchable) -->
     <section id="features" class="section container">
         <div class="section-title">
-            <h2>Built for Privacy, Security & Isolation</h2>
-            <p>Comprehensive environment control tools designed to keep your browser profiles completely isolated.</p>
+            <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); color: #2DD4BF; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">
+                <span>⚡ 100% Comprehensive Feature Audit</span>
+            </div>
+            <h2>All AntiProfiles Desktop Capabilities, Tools & Shields</h2>
+            <p>Explore every advanced privacy layer, hardware spoofing engine, proxy manager, automation driver, and collaboration tool built into the software.</p>
         </div>
-        <div class="features-section-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">🔒</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Isolated Browser Profiles</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Keep cookies, local storage, sessions, and browser data completely separated between profiles.</p>
+
+        <!-- Interactive Search & Category Filter Toolbar -->
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 24px; margin-bottom: 32px; backdrop-filter: blur(16px); box-shadow: 0 12px 36px rgba(0,0,0,0.25);">
+            <!-- Search Bar -->
+            <div style="position: relative; margin-bottom: 20px;">
+                <input 
+                    type="text" 
+                    id="featureSearchInput" 
+                    placeholder="🔍 Search all features (e.g., WebRTC, Canvas, WebGL, Puppeteer, SOCKS5, Cookie Robot, RBAC, Cloud Sync...)" 
+                    oninput="filterSoftwareFeaturesLive()"
+                    style="width: 100%; padding: 14px 20px 14px 44px; background: rgba(2, 6, 23, 0.8); border: 1px solid rgba(45, 212, 191, 0.25); border-radius: 12px; color: #FFF; font-size: 15px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;"
+                    onfocus="this.style.borderColor='#2DD4BF'; this.style.boxShadow='0 0 0 3px rgba(45, 212, 191, 0.15)';"
+                    onblur="this.style.borderColor='rgba(45, 212, 191, 0.25)'; this.style.boxShadow='none';"
+                />
+                <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 18px; pointer-events: none; opacity: 0.7;">🔎</span>
+                <button 
+                    id="featureSearchClearBtn" 
+                    onclick="clearFeatureSearch()" 
+                    style="display: none; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #94A3B8; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; cursor: pointer; align-items: center; justify-content: center;">✕</button>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">🛡️</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Fingerprint Management</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Configure browser and device environment parameters including WebGL, Canvas, and User-Agents.</p>
+
+            <!-- Category Filter Pills -->
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;" id="featureCategoryPillsContainer">
+                <button 
+                    class="feature-cat-pill active" 
+                    onclick="setFeatureCategoryFilter('all', this)"
+                    style="padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid rgba(45, 212, 191, 0.4); background: rgba(45, 212, 191, 0.15); color: #2DD4BF; transition: all 0.2s;">
+                    ✨ All Features (<span id="totalPillCount"><?php echo count($landingFeatures); ?></span>)
+                </button>
+                <?php
+                $catMeta = [
+                    'browser_profiles' => ['icon' => '🌐', 'name' => 'Browser Profiles'],
+                    'fingerprint' => ['icon' => '🛡️', 'name' => 'Fingerprint Protection'],
+                    'proxy_network' => ['icon' => '🔌', 'name' => 'Proxy & Network'],
+                    'automation' => ['icon' => '🤖', 'name' => 'Automation & API'],
+                    'cookies_session' => ['icon' => '🍪', 'name' => 'Cookies & Sessions'],
+                    'team_collab' => ['icon' => '👥', 'name' => 'Team Collaboration'],
+                    'security_privacy' => ['icon' => '🔒', 'name' => 'Security & Privacy'],
+                    'sync_cloud' => ['icon' => '☁️', 'name' => 'Sync & Cloud'],
+                    'ai_tools' => ['icon' => '🧠', 'name' => 'AI & Smart Tools'],
+                    'extensions' => ['icon' => '🧩', 'name' => 'Extensions & Add-ons'],
+                    'system_performance' => ['icon' => '⚡', 'name' => 'Performance & Branding'],
+                    'desktop_client' => ['icon' => '💻', 'name' => 'Desktop Application']
+                ];
+                
+                // Count per category from current feature list
+                $catCounts = [];
+                foreach ($landingFeatures as $f) {
+                    $cKey = $f['category'] ?? 'other';
+                    $catCounts[$cKey] = ($catCounts[$cKey] ?? 0) + 1;
+                }
+
+                foreach ($catMeta as $cKey => $cData) {
+                    $cnt = $catCounts[$cKey] ?? 0;
+                    if ($cnt === 0) continue;
+                    echo '<button class="feature-cat-pill" data-category="' . htmlspecialchars($cKey) . '" onclick="setFeatureCategoryFilter(\'' . htmlspecialchars($cKey) . '\', this)" style="padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.03); color: var(--text-muted); transition: all 0.2s;">' . $cData['icon'] . ' ' . htmlspecialchars($cData['name']) . ' (' . $cnt . ')</button>';
+                }
+                ?>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">🌐</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Proxy Management System</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Seamlessly assign and test HTTP, HTTPS, SOCKS4, and SOCKS5 proxy configurations per profile.</p>
+
+            <!-- Active Filter Status Indicator -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; color: var(--text-muted);">
+                <div>
+                    Showing <strong id="featuresCountVisible" style="color: #2DD4BF;"><?php echo count($landingFeatures); ?></strong> of <strong id="featuresCountTotal" style="color: #FFF;"><?php echo count($landingFeatures); ?></strong> verified software capabilities
+                </div>
+                <div id="activeFilterBadge" style="display: none;">
+                    <span style="background: rgba(45, 212, 191, 0.1); color: #2DD4BF; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;" id="activeFilterText">All</span>
+                    <button onclick="resetFeatureFilters()" style="background: none; border: none; color: #94A3B8; cursor: pointer; text-decoration: underline; margin-left: 8px; font-size: 12px;">Reset</button>
+                </div>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">📋</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Reusable Profile Templates</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Create standardized profile templates for fast batch provisioning across your operations.</p>
+        </div>
+
+        <!-- 52 Features Showcase Grid -->
+        <div id="allFeaturesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px;">
+            <?php foreach ($landingFeatures as $feat): 
+                $fCat = $feat['category'] ?? 'browser_profiles';
+                $fCatName = $feat['category_name'] ?? 'Feature';
+                $fName = $feat['name'] ?? 'Feature Name';
+                $fDesc = $feat['short_desc'] ?? '';
+                $fIcon = $feat['icon'] ?? '⚡';
+                $fBadge = $feat['badge'] ?? '';
+                $fKeywords = $feat['keywords'] ?? '';
+                $fPlatforms = $feat['platforms'] ?? 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm';
+                $fDocUrl = $feat['doc_url'] ?? '#features';
+            ?>
+            <div class="software-feature-card" 
+                 data-id="<?php echo htmlspecialchars($feat['id']); ?>"
+                 data-category="<?php echo htmlspecialchars($fCat); ?>"
+                 data-name="<?php echo htmlspecialchars(strtolower($fName)); ?>"
+                 data-desc="<?php echo htmlspecialchars(strtolower($fDesc)); ?>"
+                 data-keywords="<?php echo htmlspecialchars(strtolower($fKeywords)); ?>"
+                 style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;"
+                 onmouseenter="this.style.transform='translateY(-4px)'; this.style.borderColor='rgba(45, 212, 191, 0.4)'; this.style.boxShadow='0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(45, 212, 191, 0.1)';"
+                 onmouseleave="this.style.transform='translateY(0)'; this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
+                
+                <div>
+                    <!-- Top Header Badges -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 8px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 9px; border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: #94A3B8; border: 1px solid rgba(255, 255, 255, 0.08);">
+                            <?php echo htmlspecialchars($fCatName); ?>
+                        </span>
+                        <?php if (!empty($fBadge)): ?>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3);">
+                            <?php echo htmlspecialchars($fBadge); ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Icon & Title -->
+                    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.25); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;">
+                            <?php echo $fIcon; ?>
+                        </div>
+                        <h3 style="font-size: 17px; font-weight: 700; color: #FFF; line-height: 1.35; margin: 0;">
+                            <?php echo htmlspecialchars($fName); ?>
+                        </h3>
+                    </div>
+
+                    <!-- Description -->
+                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 18px;">
+                        <?php echo htmlspecialchars($fDesc); ?>
+                    </p>
+                </div>
+
+                <!-- Footer Platforms & Learn More -->
+                <div style="padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.06); display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
+                    <div style="color: #64748B; display: flex; align-items: center; gap: 6px;" title="Available on Windows (x64/ARM64), macOS (Apple Silicon/Intel), Linux (x64/ARM64)">
+                        <span>💻</span>
+                        <span style="font-weight: 600; color: #94A3B8;">Win • Mac • Linux (64/ARM)</span>
+                    </div>
+                    <a href="<?php echo htmlspecialchars($fDocUrl); ?>" style="color: #2DD4BF; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: gap 0.2s;" onmouseenter="this.style.gap='7px';" onmouseleave="this.style.gap='4px';">
+                        <span>Details</span>
+                        <span>→</span>
+                    </a>
+                </div>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">👥</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Team Access Controls</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Share browser profiles securely across team members with granular permission levels.</p>
-            </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">⚡</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Automation API</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Access local REST endpoints and automation drivers for Puppeteer and Selenium workflows.</p>
-            </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">💾</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Encrypted Local Storage</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">All session data and cookies are stored with high-standard AES-256 local database encryption.</p>
-            </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="font-size: 32px; margin-bottom: 16px;">💻</div>
-                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Cross-Platform Compatibility</h3>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">Native desktop support tailored for macOS, Windows, and Linux operating systems.</p>
-            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- No Features Found Empty State -->
+        <div id="noFeaturesFoundMessage" style="display: none; background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 18px; padding: 48px 24px; text-align: center; margin-top: 20px;">
+            <div style="font-size: 44px; margin-bottom: 14px;">🔍</div>
+            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 8px;">No matching features found</h3>
+            <p style="color: var(--text-muted); font-size: 14px; max-width: 480px; margin: 0 auto 20px;">
+                We couldn't find any software feature matching your search term. Try another keyword or reset the filter.
+            </p>
+            <button onclick="resetFeatureFilters()" class="btn btn-primary" style="padding: 10px 24px; font-size: 14px;">
+                🔄 Reset Search & Show All 52 Features
+            </button>
         </div>
     </section>
+
+    <!-- Interactive Client-Side Features Filter & Search Script -->
+    <script>
+    (function() {
+        let currentCategory = 'all';
+
+        window.setFeatureCategoryFilter = function(category, btnElement) {
+            currentCategory = category;
+            
+            // Update active pill UI
+            document.querySelectorAll('.feature-cat-pill').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                btn.style.background = 'rgba(255, 255, 255, 0.03)';
+                btn.style.color = 'var(--text-muted)';
+            });
+
+            if (btnElement) {
+                btnElement.classList.add('active');
+                btnElement.style.border = '1px solid rgba(45, 212, 191, 0.4)';
+                btnElement.style.background = 'rgba(45, 212, 191, 0.15)';
+                btnElement.style.color = '#2DD4BF';
+            }
+
+            filterSoftwareFeaturesLive();
+        };
+
+        window.filterSoftwareFeaturesLive = function() {
+            const searchInput = document.getElementById('featureSearchInput');
+            const clearBtn = document.getElementById('featureSearchClearBtn');
+            const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+            
+            if (clearBtn) {
+                clearBtn.style.display = query.length > 0 ? 'inline-flex' : 'none';
+            }
+
+            const cards = document.querySelectorAll('.software-feature-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const cardCat = card.getAttribute('data-category') || '';
+                const cardName = card.getAttribute('data-name') || '';
+                const cardDesc = card.getAttribute('data-desc') || '';
+                const cardKeywords = card.getAttribute('data-keywords') || '';
+
+                const matchesCat = (currentCategory === 'all' || cardCat === currentCategory);
+                const matchesSearch = (!query || cardName.indexOf(query) !== -1 || cardDesc.indexOf(query) !== -1 || cardKeywords.indexOf(query) !== -1 || cardCat.indexOf(query) !== -1);
+
+                if (matchesCat && matchesSearch) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Update counter
+            const countVisibleEl = document.getElementById('featuresCountVisible');
+            if (countVisibleEl) {
+                countVisibleEl.textContent = visibleCount;
+            }
+
+            // Update active filter badge
+            const activeFilterBadge = document.getElementById('activeFilterBadge');
+            const activeFilterText = document.getElementById('activeFilterText');
+            if (activeFilterBadge && activeFilterText) {
+                if (currentCategory !== 'all' || query.length > 0) {
+                    activeFilterBadge.style.display = 'inline-flex';
+                    activeFilterText.textContent = (currentCategory !== 'all' ? currentCategory.replace('_', ' ').toUpperCase() : '') + (query ? ' ("' + query + '")' : '');
+                } else {
+                    activeFilterBadge.style.display = 'none';
+                }
+            }
+
+            // Handle empty state
+            const noFeaturesMsg = document.getElementById('noFeaturesFoundMessage');
+            const featuresGrid = document.getElementById('allFeaturesGrid');
+            if (noFeaturesMsg && featuresGrid) {
+                if (visibleCount === 0) {
+                    noFeaturesMsg.style.display = 'block';
+                    featuresGrid.style.display = 'none';
+                } else {
+                    noFeaturesMsg.style.display = 'none';
+                    featuresGrid.style.display = 'grid';
+                }
+            }
+        };
+
+        window.clearFeatureSearch = function() {
+            const searchInput = document.getElementById('featureSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            filterSoftwareFeaturesLive();
+        };
+
+        window.resetFeatureFilters = function() {
+            const searchInput = document.getElementById('featureSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            const allBtn = document.querySelector('.feature-cat-pill');
+            window.setFeatureCategoryFilter('all', allBtn);
+        };
+    })();
+    </script>
 
     <!-- 4. How It Works Section (4 Steps) -->
     <section id="how-it-works" class="section container">
@@ -3218,6 +3462,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('seo', this)">🔍 SEO & Meta Manager</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('landing', this)">🎨 Landing CMS & Pricing</button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabSoftwareFeatures" onclick="switchAdminTab('software-features', this)">✨ Software Features CMS</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('roles', this)">🔑 Roles & Permissions</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('security', this)">🛡️ Security Logs</button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('audit', this)">📜 System Audit Logs</button>
@@ -5088,6 +5333,193 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         </div>
                     </div>
 
+                    <!-- TAB: SOFTWARE FEATURES CMS -->
+                    <div id="tab-software-features" class="admin-tab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h3 style="font-size: 20px; color: #FFF; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                                    <span>✨</span> Software Features CMS & Showcase Controller
+                                </h3>
+                                <p style="font-size: 13px; color: var(--text-muted);">Manage all desktop application capabilities displayed on the public landing page and SEO schemas. Enable, disable, edit, reorder, or add new tools.</p>
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-outline" onclick="loadAdminFeaturesTable()" style="font-size: 12px; padding: 7px 14px;">🔄 Refresh List</button>
+                                <button class="btn btn-outline" onclick="resetDefaultFeaturesAdmin()" style="font-size: 12px; padding: 7px 14px; border-color: rgba(239, 68, 68, 0.4); color: #FCA5A5;">🔄 Restore 52 Defaults</button>
+                                <button class="btn btn-primary" onclick="openAddFeatureModal()" style="font-size: 12px; padding: 7px 16px;">➕ Add New Feature</button>
+                            </div>
+                        </div>
+
+                        <!-- Status Alert Box -->
+                        <div id="featuresAdminMsg" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 18px; font-size: 13px;"></div>
+
+                        <!-- Summary Counter Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">TOTAL AUDITED FEATURES</div>
+                                <div id="adminStatTotalFeats" style="font-size: 24px; font-weight: 800; color: #FFF; margin-top: 4px;">52</div>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 16px;">
+                                <div style="font-size: 11px; color: #2DD4BF; font-weight: 700; text-transform: uppercase;">LIVE ON LANDING PAGE</div>
+                                <div id="adminStatEnabledFeats" style="font-size: 24px; font-weight: 800; color: #2DD4BF; margin-top: 4px;">52</div>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">FEATURE CATEGORIES</div>
+                                <div id="adminStatCategoriesCount" style="font-size: 24px; font-weight: 800; color: #818CF8; margin-top: 4px;">12</div>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">SUPPORTED ARCHITECTURES</div>
+                                <div style="font-size: 16px; font-weight: 700; color: #F59E0B; margin-top: 8px;">6 (Win/Mac/Linux)</div>
+                            </div>
+                        </div>
+
+                        <!-- Filter Toolbar -->
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1;">
+                                <input 
+                                    type="text" 
+                                    id="adminFeatureSearchInput" 
+                                    placeholder="🔍 Search features by name, keyword or description..." 
+                                    oninput="filterAdminFeaturesTable()" 
+                                    style="min-width: 240px; flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; color: #FFF; font-size: 13px;"
+                                />
+                                <select id="adminFeatureCategorySelect" onchange="filterAdminFeaturesTable()" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; color: #FFF; font-size: 13px;">
+                                    <option value="all">All 12 Categories</option>
+                                    <option value="browser_profiles">🌐 Browser Profiles & Lifecycle</option>
+                                    <option value="fingerprint">🛡️ Fingerprint Protection</option>
+                                    <option value="proxy_network">🔌 Proxy & Network</option>
+                                    <option value="automation">🤖 Automation & API</option>
+                                    <option value="cookies_session">🍪 Cookies & Sessions</option>
+                                    <option value="team_collab">👥 Team Collaboration</option>
+                                    <option value="security_privacy">🔒 Security & Privacy</option>
+                                    <option value="sync_cloud">☁️ Sync & Cloud</option>
+                                    <option value="ai_tools">🧠 AI & Smart Tools</option>
+                                    <option value="extensions">🧩 Extensions & Add-ons</option>
+                                    <option value="system_performance">⚡ Performance & Branding</option>
+                                    <option value="desktop_client">💻 Desktop Application</option>
+                                </select>
+                                <select id="adminFeatureStatusSelect" onchange="filterAdminFeaturesTable()" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; color: #FFF; font-size: 13px;">
+                                    <option value="all">All Statuses</option>
+                                    <option value="enabled">Active / Enabled Only</option>
+                                    <option value="disabled">Hidden / Disabled Only</option>
+                                </select>
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-muted);">
+                                Showing <strong id="adminFeatureTableCount" style="color: #2DD4BF;">0</strong> features
+                            </div>
+                        </div>
+
+                        <!-- Features Table -->
+                        <div class="admin-table-container">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted);">
+                                        <th style="padding: 10px 12px; width: 60px;">Sort</th>
+                                        <th style="padding: 10px 12px;">Feature Name & Icon</th>
+                                        <th style="padding: 10px 12px;">Category</th>
+                                        <th style="padding: 10px 12px;">Short Description</th>
+                                        <th style="padding: 10px 12px;">Badge</th>
+                                        <th style="padding: 10px 12px;">Visibility</th>
+                                        <th style="padding: 10px 12px; text-align: right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminFeaturesTableBody">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">Loading software features catalog...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Add / Edit Feature Modal -->
+                    <div id="featureEditModal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
+                        <div style="background: #0F172A; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; max-width: 680px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); position: relative;">
+                            <button onclick="closeFeatureEditModal()" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.08); border: none; color: #FFF; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 14px;">✕</button>
+                            
+                            <h3 id="featureModalTitle" style="font-size: 18px; color: #FFF; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                <span>✨</span> Edit Software Feature
+                            </h3>
+                            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Configure feature title, description, category, and display badge.</p>
+
+                            <form id="featureEditForm" onsubmit="saveFeatureFromModal(event)">
+                                <input type="hidden" id="editFeatureId" value="">
+
+                                <div style="display: grid; grid-template-columns: 80px 1fr; gap: 14px; margin-bottom: 14px;">
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Icon</label>
+                                        <input type="text" id="editFeatureIcon" value="⚡" required style="width: 100%; text-align: center; font-size: 20px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Feature Name</label>
+                                        <input type="text" id="editFeatureName" placeholder="e.g., Canvas 2D Rendering Noise Injection" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Category</label>
+                                        <select id="editFeatureCategory" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                            <option value="browser_profiles">🌐 Browser Profiles & Lifecycle</option>
+                                            <option value="fingerprint">🛡️ Fingerprint Protection</option>
+                                            <option value="proxy_network">🔌 Proxy & Network</option>
+                                            <option value="automation">🤖 Automation & API</option>
+                                            <option value="cookies_session">🍪 Cookies & Sessions</option>
+                                            <option value="team_collab">👥 Team Collaboration</option>
+                                            <option value="security_privacy">🔒 Security & Privacy</option>
+                                            <option value="sync_cloud">☁️ Sync & Cloud</option>
+                                            <option value="ai_tools">🧠 AI & Smart Tools</option>
+                                            <option value="extensions">🧩 Extensions & Add-ons</option>
+                                            <option value="system_performance">⚡ Performance & Branding</option>
+                                            <option value="desktop_client">💻 Desktop Application</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Highlight Badge (Optional)</label>
+                                        <input type="text" id="editFeatureBadge" placeholder="e.g., Core Stealth, AI-Powered, Zero-Leak" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 14px;">
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Short Description (1-2 lines for landing card)</label>
+                                    <textarea id="editFeatureShortDesc" rows="2" placeholder="Brief 1-2 sentence description..." required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;"></textarea>
+                                </div>
+
+                                <div style="margin-bottom: 14px;">
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Full Technical Description (Optional / Extended)</label>
+                                    <textarea id="editFeatureFullDesc" rows="3" placeholder="In-depth technical explanation of how this feature functions..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;"></textarea>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Sort Order</label>
+                                        <input type="number" id="editFeatureSort" value="100" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Display Status</label>
+                                        <select id="editFeatureEnabled" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                            <option value="1">✅ Enabled / Active</option>
+                                            <option value="0">❌ Disabled / Hidden</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Docs Link</label>
+                                        <input type="text" id="editFeatureDocUrl" value="/#features" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 20px;">
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Search Keywords (Comma separated)</label>
+                                    <input type="text" id="editFeatureKeywords" placeholder="e.g. canvas, fingerprinting, antidetect, 2d noise" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px;">
+                                </div>
+
+                                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                                    <button type="button" onclick="closeFeatureEditModal()" class="btn btn-outline" style="padding: 9px 18px; font-size: 13px;">Cancel</button>
+                                    <button type="submit" id="btnSaveFeatureModal" class="btn btn-primary" style="padding: 9px 22px; font-size: 13px;">💾 Save Feature</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <!-- TAB 12: ROLES & PERMISSIONS -->
                     <div id="tab-roles" class="admin-tab-content" style="display: none;">
                         <div style="margin-bottom: 20px;">
@@ -6844,6 +7276,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 loadEmailLogs(1);
             }
             if (tabName === 'landing') loadBrandingSettings();
+            if (tabName === 'software-features') loadAdminFeaturesTable();
         }
 
         function initDownloadOsDetection() {
@@ -8239,6 +8672,329 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             } catch(e) {
                 alert('Landing CMS updated!');
             }
+        }
+
+        // ──────────────────────────────────────────────
+        // AntiProfiles — Software Features CMS Controller
+        // ──────────────────────────────────────────────
+        let _allAdminFeatures = [];
+
+        async function loadAdminFeaturesTable() {
+            const token = localStorage.getItem('sessionToken');
+            const tbody = document.getElementById('adminFeaturesTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">Loading software features catalog...</td></tr>';
+
+            try {
+                const res = await fetch('/api/features?all=1', {
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.features)) {
+                    _allAdminFeatures = data.features;
+                    
+                    // Update stats
+                    const totalEl = document.getElementById('adminStatTotalFeats');
+                    const enabledEl = document.getElementById('adminStatEnabledFeats');
+                    const catEl = document.getElementById('adminStatCategoriesCount');
+                    if (totalEl) totalEl.textContent = data.total_features || data.features.length;
+                    if (enabledEl) enabledEl.textContent = data.enabled_features || data.features.filter(f => f.is_enabled).length;
+                    if (catEl && Array.isArray(data.categories)) catEl.textContent = data.categories.length;
+
+                    filterAdminFeaturesTable();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #F87171;">Failed to load features: ' + (data.error || 'Unknown error') + '</td></tr>';
+                }
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #F87171;">Network error loading features catalog.</td></tr>';
+            }
+        }
+
+        function filterAdminFeaturesTable() {
+            const tbody = document.getElementById('adminFeaturesTableBody');
+            if (!tbody) return;
+
+            const search = (document.getElementById('adminFeatureSearchInput')?.value || '').trim().toLowerCase();
+            const category = document.getElementById('adminFeatureCategorySelect')?.value || 'all';
+            const status = document.getElementById('adminFeatureStatusSelect')?.value || 'all';
+
+            const filtered = _allAdminFeatures.filter(f => {
+                const matchesCat = (category === 'all' || f.category === category);
+                const matchesStatus = (status === 'all' || (status === 'enabled' && f.is_enabled) || (status === 'disabled' && !f.is_enabled));
+                const nameStr = (f.name || '').toLowerCase();
+                const descStr = (f.short_desc || '').toLowerCase();
+                const keyStr = (f.keywords || '').toLowerCase();
+                const matchesSearch = (!search || nameStr.includes(search) || descStr.includes(search) || keyStr.includes(search) || (f.category_name || '').toLowerCase().includes(search));
+                return matchesCat && matchesStatus && matchesSearch;
+            });
+
+            const countEl = document.getElementById('adminFeatureTableCount');
+            if (countEl) countEl.textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">No features found matching the criteria.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(f => {
+                const isChecked = f.is_enabled ? 'checked' : '';
+                const statusBadge = f.is_enabled 
+                    ? '<span style="background: rgba(45,212,191,0.15); color: #2DD4BF; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">Active</span>'
+                    : '<span style="background: rgba(239,68,68,0.15); color: #F87171; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">Hidden</span>';
+                
+                const highlightBadge = f.badge 
+                    ? '<span style="background: rgba(129,140,248,0.15); color: #818CF8; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">' + escapeHtml(f.badge) + '</span>'
+                    : '<span style="color: var(--text-muted); font-size: 11px;">—</span>';
+
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s;">
+                        <td style="padding: 12px; font-weight: 700; color: var(--text-muted);">${f.sort_order}</td>
+                        <td style="padding: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 18px; width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">${f.icon || '⚡'}</span>
+                                <div>
+                                    <strong style="color: #FFF; font-size: 13.5px;">${escapeHtml(f.name)}</strong>
+                                    <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${escapeHtml(f.id)}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="padding: 12px;">
+                            <span style="font-size: 12px; color: #CBD5E1; background: rgba(255,255,255,0.04); padding: 4px 8px; border-radius: 6px;">
+                                ${escapeHtml(f.category_name || f.category)}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; max-width: 280px; color: var(--text-muted); font-size: 12.5px; line-height: 1.4;">
+                            ${escapeHtml(f.short_desc)}
+                        </td>
+                        <td style="padding: 12px;">${highlightBadge}</td>
+                        <td style="padding: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="position: relative; display: inline-block; width: 36px; height: 20px;">
+                                    <input type="checkbox" ${isChecked} onchange="toggleFeatureVisibilityAdmin('${f.id}', this.checked)" style="opacity: 0; width: 0; height: 0;">
+                                    <span style="position: absolute; cursor: pointer; inset: 0; background-color: ${f.is_enabled ? '#2DD4BF' : 'rgba(255,255,255,0.2)'}; transition: .2s; border-radius: 20px;"></span>
+                                    <span style="position: absolute; content: ''; height: 14px; width: 14px; left: ${f.is_enabled ? '19px' : '3px'}; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%;"></span>
+                                </label>
+                                ${statusBadge}
+                            </div>
+                        </td>
+                        <td style="padding: 12px; text-align: right;">
+                            <div style="display: inline-flex; gap: 6px;">
+                                <button class="btn btn-outline" onclick="openEditFeatureModal('${f.id}')" style="padding: 4px 10px; font-size: 11px;">✏️ Edit</button>
+                                <button class="btn btn-outline" onclick="deleteFeatureAdmin('${f.id}')" style="padding: 4px 10px; font-size: 11px; border-color: rgba(239,68,68,0.3); color: #F87171;">🗑️ Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddFeatureModal() {
+            document.getElementById('featureModalTitle').innerHTML = '<span>➕</span> Add New Software Feature';
+            document.getElementById('editFeatureId').value = '';
+            document.getElementById('editFeatureIcon').value = '⚡';
+            document.getElementById('editFeatureName').value = '';
+            document.getElementById('editFeatureCategory').value = 'browser_profiles';
+            document.getElementById('editFeatureBadge').value = '';
+            document.getElementById('editFeatureShortDesc').value = '';
+            document.getElementById('editFeatureFullDesc').value = '';
+            document.getElementById('editFeatureSort').value = (_allAdminFeatures.length + 1) * 10;
+            document.getElementById('editFeatureEnabled').value = '1';
+            document.getElementById('editFeatureDocUrl').value = '/#features';
+            document.getElementById('editFeatureKeywords').value = '';
+            
+            const modal = document.getElementById('featureEditModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function openEditFeatureModal(fId) {
+            const feat = _allAdminFeatures.find(f => f.id === fId);
+            if (!feat) return;
+
+            document.getElementById('featureModalTitle').innerHTML = '<span>✏️</span> Edit Software Feature: ' + escapeHtml(feat.name);
+            document.getElementById('editFeatureId').value = feat.id;
+            document.getElementById('editFeatureIcon').value = feat.icon || '⚡';
+            document.getElementById('editFeatureName').value = feat.name || '';
+            document.getElementById('editFeatureCategory').value = feat.category || 'browser_profiles';
+            document.getElementById('editFeatureBadge').value = feat.badge || '';
+            document.getElementById('editFeatureShortDesc').value = feat.short_desc || '';
+            document.getElementById('editFeatureFullDesc').value = feat.full_desc || feat.short_desc || '';
+            document.getElementById('editFeatureSort').value = feat.sort_order || 10;
+            document.getElementById('editFeatureEnabled').value = feat.is_enabled ? '1' : '0';
+            document.getElementById('editFeatureDocUrl').value = feat.doc_url || '/#features';
+            document.getElementById('editFeatureKeywords').value = feat.keywords || '';
+
+            const modal = document.getElementById('featureEditModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeFeatureEditModal() {
+            const modal = document.getElementById('featureEditModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function saveFeatureFromModal(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                alert('Please log in as administrator.');
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveFeatureModal');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Saving...';
+            }
+
+            const payload = {
+                action: 'save',
+                id: document.getElementById('editFeatureId').value.trim(),
+                name: document.getElementById('editFeatureName').value.trim(),
+                icon: document.getElementById('editFeatureIcon').value.trim(),
+                category: document.getElementById('editFeatureCategory').value,
+                badge: document.getElementById('editFeatureBadge').value.trim(),
+                short_desc: document.getElementById('editFeatureShortDesc').value.trim(),
+                full_desc: document.getElementById('editFeatureFullDesc').value.trim(),
+                sort_order: parseInt(document.getElementById('editFeatureSort').value, 10) || 10,
+                is_enabled: document.getElementById('editFeatureEnabled').value === '1' ? 1 : 0,
+                doc_url: document.getElementById('editFeatureDocUrl').value.trim(),
+                keywords: document.getElementById('editFeatureKeywords').value.trim()
+            };
+
+            try {
+                const res = await fetch('/api/features', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeFeatureEditModal();
+                    showFeaturesAdminMessage('✅ ' + (data.message || 'Feature saved successfully!'), 'success');
+                    await loadAdminFeaturesTable();
+                } else {
+                    alert('Failed to save feature: ' + (data.error || 'Unknown error'));
+                }
+            } catch(err) {
+                alert('Network error saving feature.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '💾 Save Feature';
+                }
+            }
+        }
+
+        async function toggleFeatureVisibilityAdmin(fId, isEnabled) {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                alert('Administrator login required.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/features', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        action: 'toggle',
+                        id: fId,
+                        is_enabled: isEnabled ? 1 : 0
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showFeaturesAdminMessage('✅ Feature visibility toggled successfully.', 'success');
+                    // update local object and re-render
+                    const feat = _allAdminFeatures.find(f => f.id === fId);
+                    if (feat) feat.is_enabled = isEnabled;
+                    filterAdminFeaturesTable();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to toggle visibility.'));
+                }
+            } catch(e) {
+                alert('Network error updating visibility.');
+            }
+        }
+
+        async function deleteFeatureAdmin(fId) {
+            if (!confirm('Are you sure you want to delete this feature from the software catalog?')) return;
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/features', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        action: 'delete',
+                        id: fId
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showFeaturesAdminMessage('✅ Feature removed successfully.', 'success');
+                    _allAdminFeatures = _allAdminFeatures.filter(f => f.id !== fId);
+                    filterAdminFeaturesTable();
+                } else {
+                    alert('Failed to delete feature: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error deleting feature.');
+            }
+        }
+
+        async function resetDefaultFeaturesAdmin() {
+            if (!confirm('This will restore all 52 audited default features into the database. Continue?')) return;
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/features', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ action: 'reset_defaults' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showFeaturesAdminMessage('✅ ' + (data.message || 'All 52 default features restored.'), 'success');
+                    await loadAdminFeaturesTable();
+                } else {
+                    alert('Failed to reset: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error resetting features.');
+            }
+        }
+
+        function showFeaturesAdminMessage(text, type) {
+            const box = document.getElementById('featuresAdminMsg');
+            if (!box) return;
+            box.style.display = 'block';
+            if (type === 'success') {
+                box.style.background = 'rgba(45,212,191,0.15)';
+                box.style.border = '1px solid rgba(45,212,191,0.4)';
+                box.style.color = '#2DD4BF';
+            } else {
+                box.style.background = 'rgba(239,68,68,0.15)';
+                box.style.border = '1px solid rgba(239,68,68,0.4)';
+                box.style.color = '#F87171';
+            }
+            box.textContent = text;
+            setTimeout(() => { box.style.display = 'none'; }, 4000);
         }
 
         let seoPagesCache = [];
