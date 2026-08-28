@@ -117,10 +117,53 @@ export class AffiliateService {
   public ensureSchemaExists(): void {
     try {
       const db = getDatabase()
+      // Users schema
       try { db.exec("ALTER TABLE users ADD COLUMN affiliate_id TEXT;") } catch {}
       try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_affiliate_id ON users(affiliate_id);") } catch {}
       try { db.exec("ALTER TABLE users ADD COLUMN affiliate_status TEXT DEFAULT 'active';") } catch {}
       try { db.exec("ALTER TABLE users ADD COLUMN referral_code TEXT;") } catch {}
+      try { db.exec("ALTER TABLE users ADD COLUMN referred_by_offer_id TEXT;") } catch {}
+      try { db.exec("ALTER TABLE users ADD COLUMN referred_by_package_id TEXT;") } catch {}
+      try { db.exec("ALTER TABLE users ADD COLUMN referred_by_link_id TEXT;") } catch {}
+
+      // Affiliate Offers schema
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN package_id TEXT DEFAULT 'plan_pro';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN package_name TEXT DEFAULT 'Professional';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN price REAL DEFAULT 49.0;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN original_price REAL DEFAULT 49.0;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN discount_type TEXT DEFAULT 'none';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN discount_value REAL DEFAULT 0.0;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN discounted_price REAL DEFAULT 49.0;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN trial_days INTEGER DEFAULT 7;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN trial_enabled INTEGER DEFAULT 0;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN cta_text TEXT DEFAULT 'Subscribe';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN badge_text TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN landing_page_slug TEXT DEFAULT 'professional';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN banner_url TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN currency TEXT DEFAULT 'USD';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN billing_interval TEXT DEFAULT 'month';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN signup_url TEXT DEFAULT '/signup';") } catch {}
+
+      // Affiliate Clicks schema
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN affiliate_link_id TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN tracking_link_id TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN package_id TEXT DEFAULT 'plan_pro';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN device TEXT DEFAULT 'Desktop';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN browser TEXT DEFAULT 'Chrome';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN os TEXT DEFAULT 'Windows';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN processor TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN country TEXT DEFAULT 'US';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN city TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN unique_click INTEGER DEFAULT 1;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN is_fraud INTEGER DEFAULT 0;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN fraud_reason TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN fingerprint_hash TEXT;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN converted_at TEXT;") } catch {}
+
+      // Tracking Links schema
+      try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN package_id TEXT DEFAULT 'plan_pro';") } catch {}
+      try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN clicks INTEGER DEFAULT 0;") } catch {}
+      try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN conversions INTEGER DEFAULT 0;") } catch {}
     } catch {}
   }
 
@@ -430,6 +473,7 @@ export class AffiliateService {
   }
 
   public createOrUpdateOffer(offer: Partial<AffiliateOffer>, adminUserId: string = 'admin-default'): AffiliateOffer {
+    this.ensureSchemaExists()
     const db = getDatabase()
     const offerId = offer.id || `offer_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
     const title = offer.title || 'Untitled CPA Offer'
