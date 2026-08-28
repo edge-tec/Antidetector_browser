@@ -5,10 +5,14 @@
 // Also supports /r/{refCode} or /track/{affId}
 // ──────────────────────────────────────────────
 
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../helpers.php';
+// When loaded from index.php, helpers.php is already loaded.
+// When loaded standalone, load it now.
+if (!function_exists('ensureDatabaseTablesExist')) {
+    require_once __DIR__ . '/../config.php';
+    require_once __DIR__ . '/../db.php';
+    require_once __DIR__ . '/../helpers.php';
+}
 
-ensureDatabaseTablesExist();
 $db = Database::getConnection();
 
 // Extract parameters from Query String or URI path
@@ -44,9 +48,10 @@ $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
 $baseOrigin = defined('APP_URL') && !empty(APP_URL) ? rtrim(APP_URL, '/') : "$scheme://$host";
 
 $targetUrl = "$baseOrigin/#pricing";
+$resolvedOfferId = $offerId;
 
 try {
-    // 1. Resolve Affiliate from Code if needed
+    // 1. Resolve Affiliate from referral code or affiliate_id
     if (!empty($affId)) {
         $uStmt = $db->prepare("SELECT affiliate_id, referral_code FROM users WHERE affiliate_id = ? OR referral_code = ? LIMIT 1");
         $uStmt->execute([$affId, $affId]);
@@ -57,54 +62,89 @@ try {
     }
 
     // 2. Resolve Offer
-    $stmtOffer = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ? AND status = 'active' LIMIT 1");
-    $stmtOffer->execute([$offerId]);
-    $offer = $stmtOffer->fetch(PDO::FETCH_ASSOC);
+    $offer = null;
+    try {
+        $stmtOffer = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ? AND status = 'active' LIMIT 1");
+        $stmtOffer->execute([$offerId]);
+        $offer = $stmtOffer->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {}
 
     if (!$offer) {
-        $stmtDefault = $db->query("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC LIMIT 1");
-        $offer = $stmtDefault->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmtDefault = $db->query("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC LIMIT 1");
+            $offer = $stmtDefault->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {}
     }
 
-    if ($offer && !empty($offer['target_url'])) {
-        $rawTarget = trim($offer['target_url']);
-        if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
-            $targetUrl = $rawTarget;
-        } else {
-            $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
+    if ($offer) {
+        $resolvedOfferId = $offer['id'];
+        if (!empty($offer['target_url'])) {
+            $rawTarget = trim($offer['target_url']);
+            if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
+                $targetUrl = $rawTarget;
+            } else {
+                $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
+            }
         }
     }
 
     // 3. Record Click in Database
-    $stmtClick = $db->prepare("
-        INSERT INTO affiliate_clicks (
-            click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
-            sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, created_at
-        ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
-        )
-        ON DUPLICATE KEY UPDATE ip_address = VALUES(ip_address), user_agent = VALUES(user_agent)
-    ");
-    $stmtClick->execute([
-        $clickId, $affId ?: 'AFF-DIRECT', $offer ? $offer['id'] : $offerId, $ipAddress, $userAgent, $referrer, $targetUrl,
-        $subId1 ?: null, $subId2 ?: null, $subId3 ?: null, $subId4 ?: null, $subId5 ?: null
-    ]);
+    $effectiveAffId = !empty($affId) ? $affId : 'AFF-DIRECT';
 
+    try {
+        $stmtClick = $db->prepare("
+            INSERT INTO affiliate_clicks (
+                click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+                sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, created_at
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+            )
+            ON DUPLICATE KEY UPDATE ip_address = VALUES(ip_address), user_agent = VALUES(user_agent)
+        ");
+        $stmtClick->execute([
+            $clickId, $effectiveAffId, $resolvedOfferId, $ipAddress, $userAgent, $referrer, $targetUrl,
+            $subId1 ?: null, $subId2 ?: null, $subId3 ?: null, $subId4 ?: null, $subId5 ?: null
+        ]);
+    } catch (Throwable $e) {
+        error_log('[CPA Track] Click insert error: ' . $e->getMessage());
+        // Fallback: try with minimal columns (in case some columns are missing)
+        try {
+            $stmtClickMin = $db->prepare("
+                INSERT INTO affiliate_clicks (
+                    click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                )
+                ON DUPLICATE KEY UPDATE ip_address = VALUES(ip_address)
+            ");
+            $stmtClickMin->execute([
+                $clickId, $effectiveAffId, $resolvedOfferId, $ipAddress, $userAgent, $referrer
+            ]);
+        } catch (Throwable $e2) {
+            error_log('[CPA Track] Click insert fallback error: ' . $e2->getMessage());
+        }
+    }
+
+    // 4. Increment offer total_clicks (safe — ignore if column missing)
     if ($offer) {
-        $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$offer['id']]);
+        try {
+            $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$offer['id']]);
+        } catch (Throwable $e) {
+            error_log('[CPA Track] total_clicks update skipped: ' . $e->getMessage());
+        }
     }
 } catch (Throwable $e) {
     error_log('[CPA Track Error] ' . $e->getMessage());
 }
 
-// 4. Set 30-Day Cookies for Client Attribution
+// 5. Set 30-Day Cookies for Client Attribution
 $cookieDuration = time() + (86400 * 30);
 if (!empty($affId)) {
     @setcookie('aff_id', $affId, $cookieDuration, '/', '', false, false);
 }
 @setcookie('click_id', $clickId, $cookieDuration, '/', '', false, false);
-@setcookie('offer_id', $offer ? $offer['id'] : $offerId, $cookieDuration, '/', '', false, false);
+@setcookie('offer_id', $resolvedOfferId, $cookieDuration, '/', '', false, false);
 if (!empty($subId1)) {
     @setcookie('sub_id1', $subId1, $cookieDuration, '/', '', false, false);
 }
@@ -112,7 +152,7 @@ if (!empty($subId2)) {
     @setcookie('sub_id2', $subId2, $cookieDuration, '/', '', false, false);
 }
 
-// 5. Preserve click_id, aff_id, offer_id in destination redirect
+// 6. Preserve click_id, aff_id, offer_id in destination redirect
 $parsed = parse_url($targetUrl);
 $query = [];
 if (!empty($parsed['query'])) {
@@ -120,7 +160,7 @@ if (!empty($parsed['query'])) {
 }
 if (!empty($affId)) $query['aff_id'] = $affId;
 $query['click_id'] = $clickId;
-$query['offer_id'] = $offer ? $offer['id'] : $offerId;
+$query['offer_id'] = $resolvedOfferId;
 if (!empty($subId1)) $query['sub_id1'] = $subId1;
 if (!empty($subId2)) $query['sub_id2'] = $subId2;
 
@@ -133,6 +173,6 @@ $fragment   = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
 
 $finalDestination = "$destScheme$destHost$destPort$destPath$newQuery$fragment";
 
-// 6. 302 Redirect
+// 7. 302 Redirect
 header("Location: $finalDestination", true, 302);
 exit();

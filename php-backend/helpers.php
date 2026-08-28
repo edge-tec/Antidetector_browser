@@ -508,10 +508,13 @@ function ensureDatabaseTablesExist() {
               `description` TEXT DEFAULT NULL,
               `target_url` VARCHAR(500) NOT NULL,
               `payout_type` VARCHAR(20) NOT NULL DEFAULT 'revshare',
+              `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 15.00,
               `revshare_percent` DECIMAL(5,2) NOT NULL DEFAULT 15.00,
               `fixed_payout_usd` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
               `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
               `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+              `total_clicks` INT NOT NULL DEFAULT 0,
+              `total_conversions` INT NOT NULL DEFAULT 0,
               `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
               `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -620,6 +623,9 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id4` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id5` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `conversion_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `total_clicks` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `total_conversions` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 15.00"); } catch (Throwable $e) {}
 
         // Seed default CPA offer if empty
         try {

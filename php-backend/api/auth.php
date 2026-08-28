@@ -159,6 +159,7 @@ switch ($action) {
         $isAdmin = ($userCount === 0 || $lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false);
         $role = $isAdmin ? 'admin' : 'user';
         $emailVerified = $isAdmin ? 1 : 0;
+        $accountStatus = $isAdmin ? 'active' : 'pending_verification';
         $refAffId = trim($input['aff_id'] ?? $input['ref'] ?? $_COOKIE['aff_id'] ?? $_COOKIE['ref'] ?? '');
         $refClickId = trim($input['click_id'] ?? $_COOKIE['click_id'] ?? '');
 
@@ -326,6 +327,10 @@ switch ($action) {
             // Register new Google user automatically
             $userId = 'usr_g_' . bin2hex(random_bytes(6));
             $passwordHash = hashUserPassword('google_oauth_' . bin2hex(random_bytes(16)));
+
+            $userCount = (int)$db->query("SELECT COUNT(*) FROM users")->fetchColumn();
+            $lowerEmail = strtolower($email);
+            $role = ($userCount === 0 || $lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false) ? 'admin' : 'user';
 
             $refAffId = trim($input['aff_id'] ?? $input['ref'] ?? $_COOKIE['aff_id'] ?? $_COOKIE['ref'] ?? '');
             $refClickId = trim($input['click_id'] ?? $_COOKIE['click_id'] ?? '');

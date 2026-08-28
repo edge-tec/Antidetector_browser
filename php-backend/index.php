@@ -78,14 +78,14 @@ if ($requestUri === '/verify-email' || $requestUri === '/verify') {
     exit();
 }
 
-// ── 0.3 Public CPA Click Tracking Redirect (/track, /r) ──
-if ($requestUri === '/track' || strpos($requestUri, '/track?') === 0 || strpos($requestUri, '/track/') === 0 || strpos($requestUri, '/r/') === 0 || $requestUri === '/r') {
+// ── 0.3 Public CPA Click Tracking Redirect (/track, /r, /api/track) ──
+if ($requestUri === '/track' || strpos($requestUri, '/track/') === 0 || strpos($requestUri, '/r/') === 0 || $requestUri === '/r' || $requestUri === '/api/track' || strpos($requestUri, '/api/track/') === 0) {
     require_once __DIR__ . '/api/track.php';
     exit();
 }
 
-// ── 0.4 Server-to-Server Postback Ingestion (/postback) ──
-if ($requestUri === '/postback' || strpos($requestUri, '/postback?') === 0 || strpos($requestUri, '/postback/') === 0) {
+// ── 0.4 Server-to-Server Postback Ingestion (/postback, /api/postback) ──
+if ($requestUri === '/postback' || strpos($requestUri, '/postback/') === 0 || $requestUri === '/api/postback' || strpos($requestUri, '/api/postback/') === 0) {
     require_once __DIR__ . '/api/postback.php';
     exit();
 }
