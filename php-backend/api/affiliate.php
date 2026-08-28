@@ -22,25 +22,34 @@ function ensureUserAffiliateId(PDO $db, array $user): array {
             $uRow = $st->fetch(PDO::FETCH_ASSOC);
             if (!empty($uRow['affiliate_id'])) {
                 $affId = $uRow['affiliate_id'];
-                $refCode = $uRow['referral_code'] ?? ('REF_' . substr($affId, 4));
+                $refCode = $uRow['referral_code'] ?? '';
                 $status = $uRow['affiliate_status'] ?? 'active';
             }
         } catch (Throwable $e) {}
     }
 
-    if (empty($affId)) {
-        $cleanId = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $user['id'] ?? 'USER'), 0, 8));
-        $affId = 'AFF-' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
-        $refCode = 'REF_' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
-        
-        try {
-            $stmt = $db->prepare("UPDATE users SET affiliate_id = ?, referral_code = ?, affiliate_status = ? WHERE id = ?");
-            $stmt->execute([$affId, $refCode, $status, $user['id']]);
-        } catch (Throwable $e) {}
+    $rawUid = preg_replace('/^usr_/i', '', $user['id'] ?? 'USER');
+    $cleanId = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $rawUid), 0, 6));
+    if (strlen($cleanId) < 4) {
+        $cleanId = strtoupper(substr(md5($user['id'] ?? 'USER'), 0, 6));
     }
+
+    if (empty($affId) || str_ends_with($affId, '_') || strlen($affId) < 6) {
+        $affId = 'AFF-' . $cleanId;
+    }
+
+    if (empty($refCode) || str_ends_with($refCode, '_') || strlen($refCode) < 6) {
+        $refCode = 'REF_' . $cleanId;
+    }
+
+    try {
+        $stmt = $db->prepare("UPDATE users SET affiliate_id = ?, referral_code = ?, affiliate_status = ? WHERE id = ?");
+        $stmt->execute([$affId, $refCode, $status, $user['id']]);
+    } catch (Throwable $e) {}
+
     return [
         'affiliate_id' => $affId,
-        'referral_code' => $refCode ?: ('REF_' . substr($affId, 4)),
+        'referral_code' => $refCode,
         'status' => $status ?: 'active'
     ];
 }

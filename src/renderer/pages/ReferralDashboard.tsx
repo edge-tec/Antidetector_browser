@@ -143,8 +143,10 @@ const DEFAULT_FALLBACK_OFFERS: OfferItem[] = [
 ]
 
 const createDefaultSummary = (userId?: string): AffiliateSummary => {
-  const affId = userId ? `AFF-${userId.slice(0, 6).toUpperCase()}` : 'AFF-1001'
-  const refCode = userId ? `REF_${userId.slice(0, 4).toUpperCase()}` : 'REF_PROMO'
+  const clean = (userId || 'PARTNER').replace(/^usr_/i, '').replace(/[^a-zA-Z0-9]/g, '')
+  const defaultSuffix = clean.length >= 4 ? clean.slice(0, 6).toUpperCase() : (clean + '8888').slice(0, 6).toUpperCase()
+  const affId = `AFF-${defaultSuffix}`
+  const refCode = `REF_${defaultSuffix}`
   return {
     affiliateId: affId,
     affiliateStatus: 'active',
@@ -251,8 +253,22 @@ export const ReferralDashboard: React.FC = () => {
     }
   }
 
-  const activeReferralCode = summary?.referralCode || (currentUser?.id ? `REF_${currentUser.id.slice(0, 4).toUpperCase()}` : 'REF_PROMO')
-  const activeReferralLink = summary?.referralLink || `https://antiprofiles.com/register?ref=${activeReferralCode}`
+  const cleanId = (currentUser?.id || 'PARTNER').replace(/^usr_/i, '').replace(/[^a-zA-Z0-9]/g, '')
+  const fallbackSuffix = cleanId.length >= 4 ? cleanId.slice(0, 6).toUpperCase() : (cleanId + '8888').slice(0, 6).toUpperCase()
+
+  const rawRefCode = summary?.referralCode
+  const activeReferralCode = (rawRefCode && !rawRefCode.endsWith('_') && rawRefCode !== 'REF_USR' && rawRefCode !== 'REF_USER' && rawRefCode.length > 5)
+    ? rawRefCode
+    : `REF_${fallbackSuffix}`
+
+  const rawAffId = summary?.affiliateId
+  const activeAffiliateId = (rawAffId && !rawAffId.endsWith('_') && rawAffId !== 'AFF-USR' && rawAffId !== 'AFF-USER' && rawAffId.length > 5)
+    ? rawAffId
+    : `AFF-${fallbackSuffix}`
+
+  const activeReferralLink = (summary?.referralLink && !summary.referralLink.endsWith('_') && !summary.referralLink.includes('REF_USR_'))
+    ? summary.referralLink
+    : `https://antiprofiles.com/register?ref=${activeReferralCode}`
 
   useEffect(() => {
     loadSummary()
@@ -529,7 +545,7 @@ export const ReferralDashboard: React.FC = () => {
               </span>
             </div>
             <h1 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: 800, color: '#FFF' }}>
-              Affiliate ID: <span style={{ color: '#38BDF8', fontFamily: 'monospace' }}>{summary?.affiliateId || 'AFF-ID'}</span>
+              Affiliate ID: <span style={{ color: '#38BDF8', fontFamily: 'monospace' }}>{activeAffiliateId}</span>
             </h1>
             <p style={{ margin: 0, fontSize: '13px', color: '#94A3B8' }}>
               Earn recurring commissions and fixed CPA bounties on every customer referral with real-time postback sync.

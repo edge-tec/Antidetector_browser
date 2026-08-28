@@ -196,18 +196,22 @@ export class AffiliateService {
     let affId = user?.affiliate_id
     const affStatus: AffiliateAccountStatus = user?.affiliate_status || 'active'
 
-    if (!refCode) {
-      const prefix = userId && userId.length >= 4 ? userId.slice(0, 4).toUpperCase() : 'USER'
-      refCode = 'REF_' + prefix + '_' + Math.random().toString(36).substring(2, 6).toUpperCase()
+    const cleanId = (userId || 'PARTNER').replace(/^usr_/i, '').replace(/[^a-zA-Z0-9]/g, '')
+    const defaultSuffix = cleanId.length >= 4 ? cleanId.slice(0, 6).toUpperCase() : (cleanId + '8888').slice(0, 6).toUpperCase()
+
+    const isInvalidRefCode = !refCode || refCode.endsWith('_') || refCode === 'REF_USR' || refCode === 'REF_USER' || refCode.length < 6
+    if (isInvalidRefCode) {
+      refCode = 'REF_' + defaultSuffix
       if (user) {
-        db.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(refCode, userId)
+        try { db.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(refCode, userId) } catch {}
       }
     }
 
-    if (!affId) {
-      affId = 'AFF-' + (refCode ? refCode.replace(/^REF_/, '') : userId.slice(0, 6).toUpperCase())
+    const isInvalidAffId = !affId || affId.endsWith('_') || affId === 'AFF-USR' || affId === 'AFF-USER' || affId.length < 6
+    if (isInvalidAffId) {
+      affId = 'AFF-' + (refCode ? refCode.replace(/^REF_/, '') : defaultSuffix)
       if (user) {
-        db.prepare('UPDATE users SET affiliate_id = ? WHERE id = ?').run(affId, userId)
+        try { db.prepare('UPDATE users SET affiliate_id = ? WHERE id = ?').run(affId, userId) } catch {}
       } else {
         try {
           db.prepare(`
