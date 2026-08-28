@@ -349,8 +349,8 @@ switch ($action) {
     case 'admin-get-overview':
         $admin = requireAdmin();
 
-        // 1. Total Affiliates
-        $stmtAff = $db->prepare("SELECT COUNT(*) as total, COUNT(CASE WHEN affiliate_status = 'active' THEN 1 END) as active FROM users WHERE affiliate_id IS NOT NULL");
+        // 1. Total Affiliates (All registered platform users)
+        $stmtAff = $db->prepare("SELECT COUNT(*) as total, COUNT(CASE WHEN COALESCE(affiliate_status, 'active') = 'active' THEN 1 END) as active FROM users");
         $stmtAff->execute();
         $affCounts = $stmtAff->fetch(PDO::FETCH_ASSOC);
 
@@ -410,15 +410,29 @@ switch ($action) {
         $search = trim($_GET['search'] ?? '');
         $status = trim($_GET['status'] ?? '');
 
+        // Auto-provision missing affiliate IDs
+        try {
+            $missingSt = $db->query("SELECT id, name, email, affiliate_id, referral_code FROM users WHERE affiliate_id IS NULL OR referral_code IS NULL OR affiliate_id LIKE '%_' OR referral_code LIKE '%_'");
+            if ($missingSt) {
+                while ($mRow = $missingSt->fetch(PDO::FETCH_ASSOC)) {
+                    ensureUserAffiliateId($db, $mRow);
+                }
+            }
+        } catch (Throwable $e) {}
+
         $sql = "
-            SELECT u.id, u.name, u.email, u.affiliate_id, u.referral_code, u.affiliate_status, u.created_at,
+            SELECT u.id, u.name, u.email, 
+                   COALESCE(u.affiliate_id, CONCAT('AFF-', UPPER(SUBSTRING(REPLACE(u.id, 'usr_', ''), 1, 6)))) as affiliate_id, 
+                   COALESCE(u.referral_code, CONCAT('REF_', UPPER(SUBSTRING(REPLACE(u.id, 'usr_', ''), 1, 6)))) as referral_code, 
+                   COALESCE(u.affiliate_status, 'active') as affiliate_status, 
+                   u.created_at,
                    COUNT(DISTINCT c.id) as total_clicks,
                    COUNT(DISTINCT v.id) as total_conversions,
                    COALESCE(SUM(DISTINCT v.payout_amount), 0) as total_earnings
             FROM users u
             LEFT JOIN affiliate_clicks c ON c.affiliate_id = u.affiliate_id
             LEFT JOIN affiliate_conversions v ON v.affiliate_id = u.affiliate_id AND v.status = 'approved'
-            WHERE u.affiliate_id IS NOT NULL
+            WHERE 1=1
         ";
         $params = [];
 
@@ -429,7 +443,7 @@ switch ($action) {
             $params[] = '%' . strtolower($search) . '%';
         }
         if ($status) {
-            $sql .= " AND u.affiliate_status = ?";
+            $sql .= " AND COALESCE(u.affiliate_status, 'active') = ?";
             $params[] = $status;
         }
 

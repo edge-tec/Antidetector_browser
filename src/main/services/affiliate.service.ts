@@ -1246,18 +1246,27 @@ export class AffiliateService {
     const db = getDatabase()
     const settings = this.getSettings()
 
+    // Auto-provision and heal affiliate_id and referral_code for all users
+    try {
+      const allUsers = db.prepare('SELECT id, affiliate_id, referral_code FROM users').all() as { id: string; affiliate_id?: string; referral_code?: string }[]
+      for (const u of allUsers) {
+        if (!u.affiliate_id || !u.referral_code || u.affiliate_id.endsWith('_') || u.referral_code.endsWith('_') || u.affiliate_id.length < 6 || u.referral_code.length < 6) {
+          this.getOrCreateAffiliateId(u.id)
+        }
+      }
+    } catch {}
+
     let affiliates: any[] = []
     try {
       affiliates = db.prepare(`
-        SELECT u.id, u.name, u.email, u.affiliate_id, u.affiliate_status, u.referral_code, u.created_at,
+        SELECT u.id, u.name, u.email, u.affiliate_id, COALESCE(u.affiliate_status, 'active') as affiliate_status, u.referral_code, u.created_at,
                COALESCE((SELECT COUNT(*) FROM affiliate_clicks WHERE affiliate_id = u.affiliate_id), 0) as clicks_count,
                COALESCE((SELECT COUNT(*) FROM affiliate_conversions WHERE affiliate_id = u.affiliate_id), 0) as conversions_count,
                COALESCE((SELECT SUM(commission_amount) FROM affiliate_commissions WHERE referrer_user_id = u.id AND status IN ('pending','available','withdrawn')), 0) as total_earned,
                COALESCE((SELECT SUM(amount) FROM affiliate_withdrawals WHERE user_id = u.id AND status = 'paid'), 0) as total_withdrawn
         FROM users u
-        WHERE u.affiliate_id IS NOT NULL OR u.referral_code IS NOT NULL
         ORDER BY u.created_at DESC
-        LIMIT 100
+        LIMIT 500
       `).all()
     } catch {
       affiliates = []
