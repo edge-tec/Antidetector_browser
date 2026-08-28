@@ -2,7 +2,7 @@
 // AntiProfiles — Admin SEO & AI Search Optimization (AEO/GEO) Manager
 // ──────────────────────────────────────────────
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 
 interface AdminSeoManagerProps {
   sessionToken: string
@@ -61,6 +61,30 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
   const [syncResult, setSyncResult] = useState<any | null>(null)
   const [sitemapXmlPreview, setSitemapXmlPreview] = useState<string>('')
   const [robotsTxtPreview, setRobotsTxtPreview] = useState<string>('')
+
+  // Top-level filtered keywords calculation
+  const filteredKeywords = useMemo(() => {
+    return (keywordsData.keywords || []).filter((k: any) => {
+      const text = (k.keyword || '').toLowerCase()
+      if (kwSearch && !text.includes(kwSearch.toLowerCase())) return false
+      if (kwCategoryFilter === 'affiliate') {
+        return text.includes('affiliate') || text.includes('cpa') || text.includes('marketing') || text.includes('media buying') || text.includes('facebook') || text.includes('tiktok') || text.includes('instagram') || text.includes('ads') || text.includes('dropshipping') || text.includes('amazon') || text.includes('e-commerce') || text.includes('agency')
+      }
+      if (kwCategoryFilter === 'privacy') {
+        return text.includes('fingerprint') || text.includes('canvas') || text.includes('webgl') || text.includes('audio') || text.includes('user agent') || text.includes('timezone') || text.includes('font') || text.includes('screen') || text.includes('webrtc') || text.includes('dns') || text.includes('isolation') || text.includes('cookie') || text.includes('privacy') || text.includes('anonymous') || text.includes('masking')
+      }
+      if (kwCategoryFilter === 'proxy') {
+        return text.includes('proxy') || text.includes('socks') || text.includes('http') || text.includes('residential') || text.includes('mobile') || text.includes('rotating')
+      }
+      if (kwCategoryFilter === 'competitor') {
+        return text.includes('alternative') || text.includes('gologin') || text.includes('adspower') || text.includes('multilogin') || text.includes('dolphin') || text.includes('incogniton') || text.includes('vmlogin') || text.includes('kameleo') || text.includes('hidemyacc') || text.includes('octo') || text.includes('morelogin')
+      }
+      if (kwCategoryFilter === 'os') {
+        return text.includes('windows') || text.includes('mac') || text.includes('linux') || text.includes('silicon') || text.includes('cross platform')
+      }
+      return true
+    })
+  }, [keywordsData.keywords, kwSearch, kwCategoryFilter])
 
   const loadSeoData = async () => {
     setLoading(true)
@@ -740,30 +764,8 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
       )}
 
       {/* ── TAB 5: KEYWORDS & CANNIBALIZATION ── */}
-      {activeTab === 'keywords' && (() => {
-        const filteredKeywords = (keywordsData.keywords || []).filter((k: any) => {
-          const text = (k.keyword || '').toLowerCase()
-          if (kwSearch && !text.includes(kwSearch.toLowerCase())) return false
-          if (kwCategoryFilter === 'affiliate') {
-            return text.includes('affiliate') || text.includes('cpa') || text.includes('marketing') || text.includes('media buying') || text.includes('facebook') || text.includes('tiktok') || text.includes('instagram') || text.includes('ads') || text.includes('dropshipping') || text.includes('amazon') || text.includes('e-commerce') || text.includes('agency')
-          }
-          if (kwCategoryFilter === 'privacy') {
-            return text.includes('fingerprint') || text.includes('canvas') || text.includes('webgl') || text.includes('audio') || text.includes('user agent') || text.includes('timezone') || text.includes('font') || text.includes('screen') || text.includes('webrtc') || text.includes('dns') || text.includes('isolation') || text.includes('cookie') || text.includes('privacy') || text.includes('anonymous') || text.includes('masking')
-          }
-          if (kwCategoryFilter === 'proxy') {
-            return text.includes('proxy') || text.includes('socks') || text.includes('http') || text.includes('residential') || text.includes('mobile') || text.includes('rotating')
-          }
-          if (kwCategoryFilter === 'competitor') {
-            return text.includes('alternative') || text.includes('gologin') || text.includes('adspower') || text.includes('multilogin') || text.includes('dolphin') || text.includes('incogniton') || text.includes('vmlogin') || text.includes('kameleo') || text.includes('hidemyacc') || text.includes('octo') || text.includes('morelogin')
-          }
-          if (kwCategoryFilter === 'os') {
-            return text.includes('windows') || text.includes('mac') || text.includes('linux') || text.includes('silicon') || text.includes('cross platform')
-          }
-          return true
-        })
-
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {activeTab === 'keywords' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Header with Seeding Action Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -944,8 +946,7 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
               </table>
             </div>
           </div>
-        )
-      })()}
+        )}
 
       {/* ── TAB 6: ENTITY & BRAND PROFILE ── */}
       {activeTab === 'entity' && (
