@@ -2449,6 +2449,13 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  useEffect(() => {
+    if (impersonatedBy) {
+      setAdminView(false)
+      setCurrentPage('profiles')
+    }
+  }, [impersonatedBy])
+
   // 1. Loading state
   if (isLoading) {
     return (
@@ -2560,13 +2567,6 @@ function AppContent() {
     { page: 'affiliate', icon: Icons.gift, label: 'Affiliates & Referrals', section: 'EARN' },
     { page: 'support', icon: Icons.chat, label: 'Live Support', section: 'HELP & SUPPORT' },
   ]
-
-  useEffect(() => {
-    if (impersonatedBy) {
-      setAdminView(false)
-      setCurrentPage('profiles')
-    }
-  }, [impersonatedBy])
 
   let renderedSections: string[] = []
 
