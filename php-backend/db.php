@@ -22,6 +22,17 @@ class Database {
                     ]);
                 }
             } catch (PDOException $e) {
+                // Fallback to SQLite if MySQL fails (e.g., local offline dev environment)
+                if (DB_DRIVER === 'mysql' && defined('SQLITE_PATH')) {
+                    try {
+                        self::$instance = new PDO('sqlite:' . SQLITE_PATH);
+                        self::$instance->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                        self::$instance->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                        return self::$instance;
+                    } catch (PDOException $sqliteErr) {
+                        // ignore and report original error
+                    }
+                }
                 error_log('[Database] Connection failed: ' . $e->getMessage());
                 http_response_code(500);
                 header('Content-Type: application/json');

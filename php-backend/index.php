@@ -380,7 +380,7 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc); ?>">
     <meta name="robots" content="<?php echo htmlspecialchars($pageRobots); ?>">
@@ -571,10 +571,18 @@ try {
             justify-content: space-between; 
             box-sizing: border-box;
         }
-        .logo { font-size: 22px; font-weight: 800; color: #FFF; text-decoration: none; display: flex; align-items: center; gap: 10px; }
-        .nav-links { display: flex; align-items: center; gap: 24px; list-style: none; }
+        .logo { font-size: 22px; font-weight: 800; color: #FFF; text-decoration: none; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .nav-links { display: flex; align-items: center; gap: 24px; list-style: none; margin: 0; padding: 0; }
         .nav-links a { color: var(--text-muted); text-decoration: none; font-weight: 500; font-size: 14px; transition: 0.2s; white-space: nowrap; }
         .nav-links a:hover { color: #FFF; }
+        
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: nowrap !important;
+            flex-shrink: 0;
+        }
         
         .mobile-nav-toggle {
             display: none;
@@ -586,6 +594,9 @@ try {
             border-radius: 8px;
             cursor: pointer;
             line-height: 1;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
         
         .mobile-nav-drawer {
@@ -925,21 +936,172 @@ try {
             .admin-viewport-wrapper { padding: 20px 16px 50px 16px; }
         }
 
+        /* ═══════════════════════════════════════════════
+           RESPONSIVE DESIGN — ALL DEVICES & BREAKPOINTS
+           ═══════════════════════════════════════════════ */
+
+        /* ── Fullscreen Admin Modal Base Rules ── */
+        #adminDashboardModal {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100% !important;
+            height: 100dvh !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            overflow: hidden !important;
+            z-index: 2000 !important;
+            background: #0B0C10 !important;
+        }
+        #adminDashboardModal .modal-box,
+        .admin-modal-fullscreen {
+            position: relative !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100% !important;
+            max-height: 100% !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+            box-shadow: none !important;
+            background: #0B0C10 !important;
+            box-sizing: border-box !important;
+        }
+
+        .admin-top-bar {
+            padding: 12px 20px;
+            background: #151720;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1000 !important;
+            flex-shrink: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .admin-top-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: nowrap !important;
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+        .admin-top-left .admin-top-logo {
+            height: 32px;
+            width: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .admin-top-info {
+            min-width: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .admin-top-info h2 {
+            font-size: 15px;
+            color: #FFF;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 700;
+        }
+        .admin-top-info p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .admin-top-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            flex-wrap: nowrap !important;
+        }
+        .admin-btn-logout {
+            border-color: #EF4444 !important;
+            color: #F87171 !important;
+            padding: 6px 12px !important;
+            font-size: 12px !important;
+            white-space: nowrap !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            border-radius: 8px !important;
+        }
+        .admin-btn-close {
+            position: static !important;
+            font-size: 13px !important;
+            padding: 5px 10px !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            color: #FFF !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+        }
+
+        /* ── Large Desktop (≤1200px) ── */
+        @media(max-width: 1200px) {
+            .admin-tab-content { max-width: 100%; }
+            .admin-viewport-wrapper { padding: 20px 16px 50px 16px; }
+        }
+
         /* ── Tablet & Small Laptop (≤900px) ── */
         @media(max-width: 900px) {
             .navbar { padding: 12px 18px; }
             .nav-links { display: none; }
-            .mobile-nav-toggle { display: flex; }
+            .mobile-nav-toggle { display: inline-flex !important; }
+            .mobile-nav-drawer {
+                top: 58px;
+                max-height: calc(100dvh - 58px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
             
             .container { padding-left: 16px; padding-right: 16px; }
-            .section { padding: 50px 0; }
-            .hero { padding-top: 100px !important; padding-bottom: 40px !important; gap: 32px !important; }
-            .hero h1 { font-size: 32px !important; line-height: 1.25 !important; }
+            .section { padding: 44px 0; }
+            .hero { padding-top: 96px !important; padding-bottom: 36px !important; gap: 28px !important; }
+            .hero h1 { font-size: 30px !important; line-height: 1.25 !important; }
             .status-box { flex-direction: column; gap: 16px; text-align: center; }
             
             /* Admin Dashboard Layout — Left Slide-Out Sidebar Drawer */
             .admin-sidebar-toggle {
                 display: inline-flex !important;
+                background: rgba(99, 102, 241, 0.15) !important;
+                border: 1px solid rgba(99, 102, 241, 0.35) !important;
+                color: #818CF8 !important;
+                font-size: 14px !important;
+                padding: 6px 10px !important;
+                border-radius: 8px !important;
+                cursor: pointer !important;
+                line-height: 1 !important;
+                align-items: center !important;
+                gap: 5px !important;
+                font-weight: 700 !important;
+                flex-shrink: 0 !important;
             }
             .admin-sidebar-close-row {
                 display: block !important;
@@ -947,77 +1109,89 @@ try {
             .admin-workspace-layout {
                 flex-direction: row;
                 position: relative;
+                height: calc(100% - 50px);
+                overflow: hidden;
             }
             .admin-sidebar {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 270px;
-                min-width: 270px;
-                height: 100vh;
-                z-index: 9999;
-                background: #0F1016;
-                border-right: 1px solid var(--border);
-                transform: translateX(-100%);
-                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                overflow-y: auto;
-                overflow-x: hidden;
-                padding: 16px 10px;
-                display: flex;
-                flex-direction: column;
-                box-sizing: border-box;
-                box-shadow: none;
-                -webkit-overflow-scrolling: touch;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 280px !important;
+                max-width: 85vw !important;
+                height: 100% !important;
+                height: 100dvh !important;
+                z-index: 10005 !important;
+                background: #0F1016 !important;
+                border-right: 1px solid var(--border) !important;
+                transform: translateX(-100%) !important;
+                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                padding: 16px 12px 60px 12px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                box-sizing: border-box !important;
+                box-shadow: none !important;
+                -webkit-overflow-scrolling: touch !important;
             }
             .admin-sidebar.mobile-open {
-                transform: translateX(0);
-                box-shadow: 8px 0 40px rgba(0, 0, 0, 0.7);
+                transform: translateX(0) !important;
+                box-shadow: 12px 0 50px rgba(0, 0, 0, 0.85) !important;
             }
             .admin-sidebar-header {
                 display: block !important;
             }
             .admin-sidebar-btn {
                 width: 100% !important;
-                padding: 10px 12px;
-                font-size: 13px;
-                border-radius: 8px;
-                background: transparent;
-                border: none;
-                text-align: left;
-                white-space: normal;
+                padding: 10px 12px !important;
+                font-size: 13px !important;
+                border-radius: 8px !important;
+                background: transparent !important;
+                border: none !important;
+                text-align: left !important;
+                white-space: normal !important;
             }
             .admin-sidebar-btn.active {
-                background: linear-gradient(135deg, var(--primary), #4F46E5);
-                border-color: transparent;
+                background: linear-gradient(135deg, var(--primary), #4F46E5) !important;
+                border-color: transparent !important;
             }
             /* Dark overlay behind sidebar */
             .admin-sidebar-overlay {
                 display: none;
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.6);
-                backdrop-filter: blur(4px);
-                z-index: 9998;
+                position: fixed !important;
+                inset: 0 !important;
+                background: rgba(0, 0, 0, 0.65) !important;
+                backdrop-filter: blur(4px) !important;
+                z-index: 10000 !important;
             }
             .admin-sidebar-overlay.active {
-                display: block;
+                display: block !important;
             }
+
             .admin-viewport-wrapper {
-                padding: 14px 12px 60px 12px;
-                width: 100%;
+                flex: 1 !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                padding: 16px 14px 100px 14px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
             }
             .admin-grid-2col {
-                grid-template-columns: 1fr;
-                gap: 16px;
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
             }
 
             /* Tables: Horizontal Scroll Container */
-            .admin-table-container {
-                -webkit-overflow-scrolling: touch;
-                overflow-x: auto;
+            .admin-table-container,
+            div[style*="overflow-x: auto"] {
+                -webkit-overflow-scrolling: touch !important;
+                overflow-x: auto !important;
+                width: 100% !important;
             }
-            .admin-table-container table, table.admin-table {
-                min-width: 600px;
+            .admin-table-container table,
+            table.admin-table,
+            .admin-tab-content table {
+                min-width: 520px;
             }
 
             /* Center Footer Brand & Logo on Mobile */
@@ -1060,118 +1234,53 @@ try {
 
         /* ── Small Tablet / Large Phone (≤768px) ── */
         @media(max-width: 768px) {
-            /* Admin Top Bar: Stack Logo & Buttons */
-            .admin-viewport-wrapper {
-                padding: 12px 10px 50px 10px;
-            }
-
-            /* All inline flex containers: force wrap on small screens */
-            [style*="display: flex"][style*="gap"] {
-                flex-wrap: wrap !important;
-            }
-
-            /* KPI stats in affiliate portal — stack */
-            .admin-card-box [style*="grid-template-columns"] {
-                grid-template-columns: repeat(2, 1fr) !important;
-            }
-
-            /* Modal sizing */
-            .modal-box {
+            /* Generic dialog modals (login, register, etc.) */
+            .modal-box:not(.admin-modal-fullscreen) {
                 padding: 22px 16px;
                 border-radius: 14px;
-                width: 96vw;
-                max-width: 96vw;
+                width: 94vw;
+                max-width: 440px;
                 box-sizing: border-box;
                 max-height: 90vh;
                 overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
             }
 
-            /* Features grid */
-            .features-grid {
-                grid-template-columns: 1fr;
+            /* Top Bar Header on small screens */
+            .admin-top-bar {
+                padding: 10px 12px !important;
+                gap: 8px !important;
+            }
+            .admin-top-left {
+                gap: 8px !important;
+            }
+            .admin-top-left .admin-top-logo {
+                height: 26px !important;
+            }
+            .admin-top-info h2 {
+                font-size: 13px !important;
+            }
+            .admin-top-info p {
+                font-size: 10.5px !important;
             }
 
-            /* Pricing grid */
-            .pricing-grid {
-                grid-template-columns: 1fr;
-            }
-
-            /* Download grid */
+            /* Collapse large-width grids to 1-column cards */
+            [style*="grid-template-columns: repeat(auto-fit, minmax(3"],
+            [style*="grid-template-columns: repeat(auto-fill, minmax(3"],
+            [style*="grid-template-columns: repeat(auto-fit, minmax(28"],
+            [style*="grid-template-columns: repeat(auto-fill, minmax(28"],
+            .features-section-grid,
+            .how-it-works-grid,
+            .pricing-section-grid,
+            .support-showcase-grid,
+            .contact-section-grid,
+            .features-grid,
+            .pricing-grid,
             .download-cards-grid {
                 grid-template-columns: 1fr !important;
             }
 
-            /* Admin table font size */
-            .admin-table-container th,
-            table.admin-table th {
-                padding: 10px 12px;
-                font-size: 11px;
-            }
-            .admin-table-container td,
-            table.admin-table td {
-                padding: 10px 12px;
-                font-size: 12px;
-            }
-
-            /* Button size adjustments */
-            .btn {
-                padding: 10px 16px;
-                font-size: 13px;
-            }
-        }
-
-        /* ── Mobile Phone (≤640px) ── */
-        @media(max-width: 640px) {
-            .hero h1 { font-size: 26px !important; }
-            .hero p { font-size: 14px; }
-            .hero-actions { flex-direction: column; width: 100%; }
-            .hero-actions .btn { width: 100%; justify-content: center; }
-
-            /* Admin Dashboard Full-Width Modal */
-            #adminDashboardModal .modal-box {
-                border-radius: 0 !important;
-            }
-
-            /* Admin Card Box */
-            .admin-card-box {
-                padding: 14px 12px;
-                border-radius: 12px;
-                margin-bottom: 14px;
-            }
-            .admin-card-box h3,
-            .admin-card-box h4 {
-                font-size: 15px !important;
-            }
-
-            /* Left Drawer menu buttons on mobile */
-            .admin-sidebar-btn {
-                padding: 9px 12px;
-                font-size: 12.5px;
-            }
-
-            /* Tables need smaller min-width on mobile */
-            .admin-table-container table, table.admin-table {
-                min-width: 500px;
-                font-size: 12px;
-            }
-
-            /* Modals inside dashboard (edit release, etc.) */
-            .modal-box {
-                padding: 18px 12px;
-                border-radius: 12px;
-                width: 96vw;
-                max-width: 96vw;
-                box-sizing: border-box;
-            }
-
-            /* Input fields inside admin cards */
-            .admin-card-box input,
-            .admin-card-box select,
-            .admin-card-box textarea {
-                font-size: 13px !important;
-            }
-
-            /* Affiliate KPI grid: 2 columns on mobile */
+            /* Affiliate stats in portal */
             .admin-card-box [style*="grid-template-columns: repeat(3"],
             .admin-card-box [style*="grid-template-columns: repeat(4"],
             .admin-card-box [style*="grid-template-columns: repeat(6"] {
@@ -1179,137 +1288,264 @@ try {
                 gap: 10px !important;
             }
 
-            /* Live Chat Widget */
-            #liveChatWidgetTrigger { bottom: 16px; right: 16px; padding: 10px 16px; font-size: 13px; }
+            .admin-table-container th,
+            table.admin-table th,
+            .admin-tab-content th {
+                padding: 10px 10px;
+                font-size: 11px;
+            }
+            .admin-table-container td,
+            table.admin-table td,
+            .admin-tab-content td {
+                padding: 10px 10px;
+                font-size: 12px;
+            }
+
+            .btn {
+                padding: 9px 14px;
+                font-size: 13px;
+            }
+        }
+
+        /* ── Mobile Phone (≤640px) ── */
+        @media(max-width: 640px) {
+            /* 1. Landing Page Navbar Fix (Screenshot 2) */
+            .navbar {
+                padding: 10px 14px !important;
+            }
+            .brand-logo-img {
+                height: 28px !important;
+                width: auto !important;
+            }
+            .nav-actions {
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                flex-wrap: nowrap !important;
+            }
+            /* Hide Sign In on mobile navbar (it is prominently placed in the drawer) */
+            .nav-btn-signin {
+                display: none !important;
+            }
+            .nav-btn-getstarted {
+                padding: 6px 12px !important;
+                font-size: 12px !important;
+                font-weight: 800 !important;
+                white-space: nowrap !important;
+                border-radius: 8px !important;
+            }
+            .mobile-nav-toggle {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 34px !important;
+                height: 34px !important;
+                padding: 0 !important;
+                font-size: 18px !important;
+                border-radius: 8px !important;
+            }
+            .mobile-nav-drawer {
+                top: 50px !important;
+                max-height: calc(100dvh - 50px) !important;
+                padding: 16px 18px 24px 18px !important;
+                gap: 10px !important;
+            }
+            .mobile-nav-drawer a {
+                padding: 10px 0 !important;
+                font-size: 14px !important;
+            }
+
+            /* 2. Hero Section Adjustments */
+            .hero { padding-top: 80px !important; padding-bottom: 28px !important; }
+            .hero h1 { font-size: 24px !important; line-height: 1.25 !important; }
+            .hero p { font-size: 13.5px !important; line-height: 1.55 !important; }
+            .hero-actions {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                width: 100% !important;
+                gap: 10px !important;
+            }
+            .hero-actions .btn {
+                flex: 1 1 130px !important;
+                text-align: center !important;
+                justify-content: center !important;
+                padding: 11px 16px !important;
+                font-size: 13.5px !important;
+            }
+
+            /* 3. Admin Card Boxes */
+            .admin-card-box {
+                padding: 14px 12px !important;
+                border-radius: 12px !important;
+                margin-bottom: 12px !important;
+            }
+            .admin-card-box h3,
+            .admin-card-box h4 {
+                font-size: 15px !important;
+            }
+            .admin-card-box input,
+            .admin-card-box select,
+            .admin-card-box textarea {
+                font-size: 14px !important;
+            }
+
+            .admin-sidebar-btn {
+                padding: 9px 12px !important;
+                font-size: 12.5px !important;
+            }
+
+            /* 4. Floating Live Chat Fix (Screenshot 1 & 2) */
+            #liveChatWidgetTrigger {
+                bottom: 14px !important;
+                right: 14px !important;
+                padding: 8px 14px !important;
+                font-size: 12px !important;
+                border-radius: 30px !important;
+                gap: 6px !important;
+                box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6) !important;
+            }
+            #liveChatWidgetTrigger span#liveChatBtnText {
+                font-size: 12px !important;
+            }
             #liveChatWidgetWindow {
-                bottom: 70px !important;
+                bottom: 62px !important;
                 right: 8px !important;
                 left: 8px !important;
                 width: calc(100vw - 16px) !important;
                 max-width: 100% !important;
-                height: 75vh !important;
-                max-height: 500px !important;
+                height: calc(100dvh - 80px) !important;
+                max-height: 520px !important;
+                border-radius: 16px !important;
             }
 
-            /* Security highlights */
-            .security-highlights-grid {
-                grid-template-columns: 1fr !important;
-                padding: 14px !important;
+            /* 5. 2-Column Grids on Mobile (Stats & Ecosystem) */
+            .stats-grid,
+            .ecosystem-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
             }
-        }
-
-        /* ── Smallest Phone (≤480px) ── */
-        @media(max-width: 480px) {
-            .hero { padding-top: 80px !important; }
-            .hero h1 { font-size: 22px !important; }
-            .hero p { font-size: 13px; }
-            .badge { font-size: 11px; padding: 4px 12px; }
-            .section-title h2 { font-size: 22px !important; }
-
-            /* Admin top bar */
-            #adminDashboardModal [style*="padding: 12px 20px"] {
-                padding: 10px 12px !important;
-            }
-            #adminDashboardModal [style*="font-size: 15px"] {
-                font-size: 13px !important;
-            }
-
-            /* Admin card shrink */
-            .admin-card-box {
-                padding: 12px 10px;
-                border-radius: 10px;
-                margin-bottom: 10px;
-            }
-
-            /* Viewport wrapper */
-            .admin-viewport-wrapper {
-                padding: 10px 8px 40px 8px;
-            }
-
-            /* Tables shrink further */
-            .admin-table-container table, table.admin-table {
-                min-width: 440px;
-                font-size: 11px;
-            }
-            .admin-table-container th,
-            table.admin-table th {
-                padding: 8px 8px;
-                font-size: 10px;
-            }
-            .admin-table-container td,
-            table.admin-table td {
-                padding: 8px 8px;
-                font-size: 11px;
-            }
-
-            /* All buttons smaller */
-            .btn {
-                padding: 8px 14px;
-                font-size: 12px;
-            }
-            .btn-primary, .btn-outline {
-                padding: 8px 14px;
-                font-size: 12px;
-            }
-
-            /* Modals full-width */
-            .modal-box {
-                padding: 14px 10px;
-                width: 98vw;
-                max-width: 98vw;
-                border-radius: 10px;
-            }
-
-            /* Affiliate stats grid: single column on very small phones */
-            .admin-card-box [style*="grid-template-columns"] {
-                grid-template-columns: 1fr !important;
-            }
-
-            /* Footer */
-            footer {
-                padding: 28px 12px;
-                font-size: 12px;
-            }
-
-            /* Plan card */
-            .plan-card {
-                padding: 22px 16px;
-            }
-            .plan-price {
-                font-size: 30px;
-            }
-
-            /* Status box items */
-            .status-box {
-                padding: 14px 16px !important;
+            .platform-chip {
+                padding: 14px 8px !important;
                 border-radius: 12px !important;
             }
+            .platform-chip > div {
+                font-size: 18px !important;
+            }
+            .platform-chip span {
+                font-size: 10px !important;
+            }
+
+            /* 6. Collapse any 200px+ minmax grids that should be 1-column on phones */
+            [style*="grid-template-columns: repeat(auto-fit, minmax(2"],
+            [style*="grid-template-columns: repeat(auto-fill, minmax(2"] {
+                grid-template-columns: 1fr !important;
+            }
+            /* Keep 2 columns for quick metric KPI boxes if inside admin cards */
+            .admin-card-box [style*="grid-template-columns: repeat(auto-fit, minmax(200px"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
+            }
         }
 
-        /* ── Touch & Scroll Helpers (All Mobile) ── */
+        /* ── Smallest Phone (≤440px / ≤480px) ── */
+        @media(max-width: 480px) {
+            .hero h1 { font-size: 22px !important; }
+            .hero p { font-size: 13px !important; }
+            .badge { font-size: 11px !important; padding: 4px 10px !important; }
+            .section-title h2 { font-size: 21px !important; }
+
+            /* Admin Top Bar ultra-compact styling */
+            .admin-top-bar {
+                padding: 8px 10px !important;
+                gap: 6px !important;
+            }
+            .admin-sidebar-toggle {
+                padding: 5px 8px !important;
+                font-size: 13px !important;
+                border-radius: 6px !important;
+            }
+            .admin-sidebar-toggle .btn-text-menu {
+                display: none !important;
+            }
+            .admin-top-left .admin-top-logo {
+                height: 24px !important;
+            }
+            .admin-top-info h2 {
+                font-size: 12px !important;
+            }
+            .admin-top-info p {
+                font-size: 9.5px !important;
+                max-width: 140px !important;
+            }
+            .admin-btn-logout {
+                padding: 5px 8px !important;
+                font-size: 11px !important;
+                border-radius: 6px !important;
+            }
+            .admin-btn-logout .btn-text-logout {
+                display: none !important;
+            }
+            .admin-btn-close {
+                padding: 5px 8px !important;
+                font-size: 11px !important;
+                border-radius: 6px !important;
+            }
+            .admin-btn-close .btn-text-close {
+                display: none !important;
+            }
+
+            .admin-viewport-wrapper {
+                padding: 12px 10px 100px 10px !important;
+            }
+
+            /* Affiliate stats single column on ultra-narrow phones */
+            .admin-card-box [style*="grid-template-columns: repeat(auto-fit, minmax(200px"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            #liveChatWidgetTrigger {
+                bottom: 10px !important;
+                right: 10px !important;
+                padding: 6px 11px !important;
+                font-size: 11px !important;
+            }
+
+            .modal-box:not(.admin-modal-fullscreen) {
+                padding: 16px 12px !important;
+                width: 95vw !important;
+            }
+
+            footer {
+                padding: 28px 12px !important;
+                font-size: 12px !important;
+            }
+        }
+
+        /* ── Touch & Scroll Helpers (All Mobile Devices) ── */
         @media(hover: none) and (pointer: coarse) {
             .admin-sidebar {
-                scroll-snap-type: x mandatory;
+                scroll-snap-type: y mandatory;
                 scroll-behavior: smooth;
             }
-            .admin-sidebar-btn {
-                scroll-snap-align: start;
-            }
-            .admin-table-container {
+            .admin-table-container,
+            div[style*="overflow-x: auto"] {
                 -webkit-overflow-scrolling: touch;
                 scroll-behavior: smooth;
             }
-            /* Bigger tap targets on touch */
-            .admin-sidebar-btn {
-                min-height: 36px;
+            /* 16px font-size prevents iOS Safari auto-zoom on input focus */
+            input, select, textarea {
+                font-size: 16px !important;
             }
-            .btn, .admin-sidebar-btn, button {
-                min-height: 36px;
+            /* Comfortable touch target sizes */
+            button, .btn, .admin-sidebar-btn, .mobile-nav-toggle {
+                min-height: 38px;
+                touch-action: manipulation;
             }
-            /* Remove hover effects on touch */
+            /* Remove desktop hover translations on touch */
             .feature-card:hover,
-            .platform-download-card:hover {
-                transform: none;
+            .platform-download-card:hover,
+            .platform-chip:hover {
+                transform: none !important;
             }
         }
 
@@ -1349,9 +1585,9 @@ try {
             <li><a href="#faq">FAQ</a></li>
             <li><a href="#contact">Contact</a></li>
         </ul>
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <a href="/login" class="btn btn-outline" style="padding: 7px 14px; font-size: 12.5px; text-decoration: none;" onclick="openModal('login'); return false;">Sign In</a>
-            <a href="/register" class="btn btn-primary" style="padding: 7px 16px; font-size: 12.5px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; text-decoration: none;" onclick="openModal('register'); return false;">Get Started</a>
+        <div class="nav-actions">
+            <a href="/login" class="btn btn-outline nav-btn-signin" style="padding: 7px 14px; font-size: 12.5px; text-decoration: none;" onclick="openModal('login'); return false;">Sign In</a>
+            <a href="/register" class="btn btn-primary nav-btn-getstarted" style="padding: 7px 16px; font-size: 12.5px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; text-decoration: none;" onclick="openModal('register'); return false;">Get Started</a>
             <button class="mobile-nav-toggle" id="mobileNavToggle" onclick="toggleMobileNav()" aria-label="Toggle Navigation">☰</button>
         </div>
     </nav>
@@ -1384,7 +1620,7 @@ try {
             <p style="font-size: 16px; color: var(--text-muted); line-height: 1.6; margin-bottom: 32px; max-width: 520px;">
                 Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.
             </p>
-            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
+            <div class="hero-actions" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
                 <a href="/register" class="btn btn-primary" style="padding: 14px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; text-decoration: none;" onclick="openModal('register'); return false;">Start Free</a>
                 <a href="#pricing" class="btn btn-outline" style="padding: 14px 28px; font-size: 15px;">View Pricing</a>
             </div>
@@ -1432,7 +1668,7 @@ try {
 
     <!-- 2. Stats Bar Section -->
     <section style="background: rgba(21, 23, 32, 0.6); border-y: 1px solid var(--border); padding: 40px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
-        <div class="container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; text-align: center;">
+        <div class="container stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; text-align: center;">
             <div>
                 <div style="font-size: 28px; margin-bottom: 6px;">🌐</div>
                 <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">10K+</h3>
@@ -1466,7 +1702,7 @@ try {
         </div>
 
         <!-- 16-Service Grid Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 1100px; margin: 0 auto;">
+        <div class="ecosystem-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 1100px; margin: 0 auto;">
             
             <!-- 1. Facebook -->
             <div class="platform-chip" style="background: rgba(24, 27, 38, 0.7); border: 1px solid var(--border); border-radius: 14px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.25s ease;">
@@ -1595,7 +1831,7 @@ try {
             <h2>Built for Privacy, Security & Isolation</h2>
             <p>Comprehensive environment control tools designed to keep your browser profiles completely isolated.</p>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+        <div class="features-section-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
                 <div style="font-size: 32px; margin-bottom: 16px;">🔒</div>
                 <h3 style="font-size: 18px; color: #FFF; margin-bottom: 8px;">Isolated Browser Profiles</h3>
@@ -1645,7 +1881,7 @@ try {
             <h2>How AntiProfiles Works</h2>
             <p>Get started in four easy steps and launch your isolated browser profiles in seconds.</p>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+        <div class="how-it-works-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
                 <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 01</span>
                 <div style="font-size: 32px; margin-bottom: 14px;">📋</div>
@@ -1752,7 +1988,7 @@ try {
             <h2>Transparent & Flexible Pricing</h2>
             <p>Choose the plan that fits your workflow. Scale or downgrade anytime.</p>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+        <div class="pricing-section-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
             <!-- Free Plan -->
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column;">
                 <h3 style="font-size: 18px; color: #FFF;">Free</h3>
@@ -1881,7 +2117,7 @@ try {
             <!-- Background Glow -->
             <div style="position: absolute; top: -100px; right: -100px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(45, 212, 191, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 48px; align-items: center; position: relative; z-index: 1;">
+            <div class="support-showcase-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 48px; align-items: center; position: relative; z-index: 1;">
                 
                 <!-- Left Column: Support Info & Channels -->
                 <div>
@@ -2157,7 +2393,7 @@ try {
             <h2>Get in Touch with Our Team</h2>
             <p>Have custom enterprise requirements or need technical assistance? Contact our team directly.</p>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: start;">
+        <div class="contact-section-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: start;">
             <div style="display: flex; flex-direction: column; gap: 20px;">
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
                     <div style="font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">✉️ EMAIL SUPPORT</div>
@@ -2491,24 +2727,24 @@ try {
     </div>
 
     <!-- Admin Dashboard Overlay Modal -->
-    <div class="modal-overlay" id="adminDashboardModal" style="padding: 0;">
-        <div class="modal-box" style="width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; border-radius: 0; border: none; padding: 0; display: flex; flex-direction: column; background: #0B0C10;">
+    <div class="modal-overlay" id="adminDashboardModal">
+        <div class="modal-box admin-modal-fullscreen" id="adminDashboardBox">
             
             <!-- Top Bar Header -->
-            <div style="padding: 12px 20px; background: #151720; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <button class="admin-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="Toggle Menu" style="display:none; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #818CF8; font-size: 15px; padding: 6px 10px; border-radius: 8px; cursor: pointer; line-height: 1; align-items: center; gap: 6px; font-weight: 700;" id="adminSidebarToggleBtn">
-                        <span>☰</span> <span style="font-size: 12px;">Menu</span>
+            <div class="admin-top-bar" id="adminTopBar">
+                <div class="admin-top-left">
+                    <button class="admin-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="Toggle Menu" id="adminSidebarToggleBtn">
+                        <span style="font-size: 15px; line-height: 1;">☰</span> <span class="btn-text-menu" style="font-size: 12px;">Menu</span>
                     </button>
-                    <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 34px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
-                    <div>
-                        <h2 style="font-size: 15px; color: #FFF; margin: 0;">Central Web Control Center</h2>
-                        <p style="font-size: 11px; color: var(--text-muted); margin: 0;" id="adminUserInfo">Logged in as System Admin</p>
+                    <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img admin-top-logo" onerror="this.onerror=null; this.src='/logo.png';">
+                    <div class="admin-top-info">
+                        <h2>Central Web Control Center</h2>
+                        <p id="adminUserInfo">Logged in as System Admin</p>
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="btn btn-outline" style="border-color: #EF4444; color: #F87171; padding: 6px 12px; font-size: 12px;" onclick="handleLogout()">🚪 Logout</button>
-                    <button class="close-modal" onclick="closeAdminDashboard()" style="position: static; font-size: 14px; padding: 4px 8px;">✕ Close</button>
+                <div class="admin-top-right">
+                    <button class="btn btn-outline admin-btn-logout" onclick="handleLogout()">🚪 <span class="btn-text-logout">Logout</span></button>
+                    <button class="close-modal admin-btn-close" onclick="closeAdminDashboard()">✕ <span class="btn-text-close">Close</span></button>
                 </div>
             </div>
 
