@@ -68,6 +68,15 @@ if (!$landingPage && $offer) {
         $stmt->execute([$offer['id'], $offer['package_id'] ?? '']);
         $landingPage = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {}
+
+    if (!$landingPage && function_exists('autoGenerateLandingPageForOffer')) {
+        autoGenerateLandingPageForOffer($db, $offer);
+        try {
+            $stmt = $db->prepare("SELECT * FROM affiliate_landing_pages WHERE slug = ? OR offer_id = ? LIMIT 1");
+            $stmt->execute([$slugClean, $offer['id']]);
+            $landingPage = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {}
+    }
 }
 
 // Built-in Dynamic Offer & Package Catalogs (Comprehensive presets for all offers)

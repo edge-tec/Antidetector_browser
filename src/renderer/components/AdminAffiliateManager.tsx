@@ -1714,57 +1714,188 @@ export const AdminAffiliateManager: React.FC = () => {
               <div>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#FFF' }}>🌐 Dynamic Package Landing Pages</h3>
                 <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
-                  Every affiliate offer automatically generates a tailored landing page with OS detection and custom pricing.
+                  Every affiliate offer automatically generates a tailored landing page with OS detection, live pricing, and conversion tracking.
                 </p>
               </div>
+              <button
+                onClick={() => setOfferModal({
+                  open: true,
+                  isEdit: false,
+                  id: '',
+                  title: '',
+                  description: '',
+                  target_url: '/offer/custom-plan',
+                  landing_page_slug: '',
+                  banner_url: '',
+                  currency: 'USD',
+                  package_id: 'plan_starter',
+                  package_name: 'Starter',
+                  price: 19,
+                  original_price: 39,
+                  discount_percent: 51,
+                  discount_start_date: '',
+                  discount_end_date: '',
+                  cta_text: 'Subscribe Now',
+                  badge_text: 'LIMITED DEAL',
+                  trial_enabled: false,
+                  trial_days: 7,
+                  payout_type: 'percentage',
+                  commission_rate: 40,
+                  fixed_payout_usd: 0,
+                  status: 'active'
+                })}
+                style={{
+                  background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                  border: 'none',
+                  color: '#FFF',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>➕</span> Create New Offer & Auto-Generate Page
+              </button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-              {[
-                { slug: 'starter-license', title: 'Starter License', price: '$19/mo', badge: '$10 CPA Fixed', theme: '#38BDF8', url: '/offer/starter-license' },
-                { slug: 'starter', title: 'Starter Subscription', price: '$19/mo', badge: '40% Recurring', theme: '#2DD4BF', url: '/offer/starter' },
-                { slug: 'professional', title: 'Professional', price: '$49/mo', badge: '50% Recurring • Most Popular', theme: '#2DD4BF', url: '/offer/professional' },
-                { slug: 'pro-team', title: 'Pro + Team Plan', price: '$49/mo', badge: '50% Recurring • Team', theme: '#818CF8', url: '/offer/pro-team' },
-                { slug: 'enterprise-trial', title: 'Enterprise Trial', price: '$99/mo', badge: '7-Day Enterprise Pilot', theme: '#C084FC', url: '/offer/enterprise-trial' },
-                { slug: 'enterprise', title: 'Enterprise Suite', price: '$99/mo', badge: '50% Recurring', theme: '#A855F7', url: '/offer/enterprise' },
-                { slug: 'business-custom', title: 'Custom Business', price: '$99/mo', badge: '50% RevShare', theme: '#EC4899', url: '/offer/business-custom' }
-              ].map(lp => (
-                <div key={lp.slug} style={{ background: '#0B0F19', border: `1px solid ${lp.theme}40`, borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFF' }}>{lp.title}</span>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: lp.theme, background: `${lp.theme}15`, padding: '3px 8px', borderRadius: '12px', border: `1px solid ${lp.theme}30` }}>
-                        {lp.badge}
-                      </span>
+              {((data?.offers && data.offers.length > 0) ? data.offers : [
+                { id: 'offer_starter_license', landing_page_slug: 'starter-license', title: 'Starter License', price: 19, original_price: 39, badge_text: '$10 CPA Fixed', package_name: 'Starter License', package_id: 'plan_starter', trial_enabled: 0, status: 'active', payout_type: 'fixed', fixed_payout_usd: 10 },
+                { id: 'offer_starter', landing_page_slug: 'starter', title: 'Starter Subscription', price: 19, original_price: 39, badge_text: '40% Recurring', package_name: 'Starter', package_id: 'plan_starter', trial_enabled: 0, status: 'active', payout_type: 'percentage', commission_rate: 40 },
+                { id: 'offer_pro', landing_page_slug: 'professional', title: 'Professional', price: 39, original_price: 79, badge_text: '50% Recurring • Most Popular', package_name: 'Professional', package_id: 'plan_pro', trial_enabled: 0, status: 'active', payout_type: 'percentage', commission_rate: 50 },
+                { id: 'offer_pro_team', landing_page_slug: 'pro-team', title: 'Pro + Team Plan', price: 49, original_price: 79, badge_text: '50% Recurring • Team', package_name: 'Pro + Team', package_id: 'plan_pro_team', trial_enabled: 0, status: 'active', payout_type: 'percentage', commission_rate: 50 },
+                { id: 'offer_enterprise_trial', landing_page_slug: 'enterprise-trial', title: 'Enterprise Trial', price: 99, original_price: 199, badge_text: '7-Day Enterprise Pilot', package_name: 'Enterprise Trial', package_id: 'plan_enterprise', trial_enabled: 1, status: 'active', payout_type: 'percentage', commission_rate: 50 },
+                { id: 'offer_enterprise', landing_page_slug: 'enterprise', title: 'Enterprise Suite', price: 99, original_price: 199, badge_text: '50% Recurring', package_name: 'Enterprise', package_id: 'plan_enterprise', trial_enabled: 0, status: 'active', payout_type: 'percentage', commission_rate: 50 },
+                { id: 'offer_business_custom', landing_page_slug: 'business-custom', title: 'Custom Business', price: 69, original_price: 129, badge_text: '50% RevShare', package_name: 'Business', package_id: 'plan_business', trial_enabled: 0, status: 'active', payout_type: 'percentage', commission_rate: 50 }
+              ]).map(offer => {
+                const rawSlug = (offer.landing_page_slug || offer.id?.replace(/^offer_/, '') || offer.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^\/?(offer\/)?/, '')
+                const url = `/offer/${rawSlug}`
+                const orig = Number(offer.original_price || offer.price || 0)
+                const cur = Number(offer.price || 0)
+                const disc = (orig > cur && orig > 0) ? Math.round(((orig - cur) / orig) * 100) : Number(offer.discount_percent || 0)
+                const currSym = (offer.currency === 'EUR') ? '€' : ((offer.currency === 'GBP') ? '£' : ((offer.currency === 'AUD') ? 'A$' : ((offer.currency === 'CAD') ? 'C$' : '$')))
+
+                const lowerKey = (rawSlug + ' ' + (offer.title || '') + ' ' + (offer.package_name || '') + ' ' + (offer.package_id || '')).toLowerCase()
+                let theme = '#2DD4BF'
+                if (lowerKey.includes('starter')) theme = '#38BDF8'
+                else if (lowerKey.includes('team') || lowerKey.includes('pro-team')) theme = '#818CF8'
+                else if (lowerKey.includes('enterprise')) theme = '#C084FC'
+                else if (lowerKey.includes('business')) theme = '#EC4899'
+                else if (lowerKey.includes('free')) theme = '#64748B'
+
+                const badge = offer.badge_text || (offer.payout_type === 'percentage' ? `${offer.commission_rate || offer.revshare_percent || 50}% RevShare` : `$${offer.fixed_payout_usd || 10} Fixed CPA`)
+
+                return (
+                  <div key={offer.id || rawSlug} style={{ background: '#0B0F19', border: `1px solid ${theme}40`, borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '8px' }}>
+                        <div>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFF', display: 'block' }}>{offer.title}</span>
+                          <span style={{ fontSize: '11px', color: theme, fontWeight: 600 }}>{offer.package_name || 'Plan'}</span>
+                        </div>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: theme, background: `${theme}15`, padding: '3px 8px', borderRadius: '12px', border: `1px solid ${theme}30`, whiteSpace: 'nowrap' }}>
+                          {badge}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '8px' }}>
+                        Slug: <code style={{ color: '#38BDF8', fontFamily: 'monospace' }}>{url}</code>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '8px' }}>
+                        {orig > cur && (
+                          <span style={{ textDecoration: 'line-through', color: '#64748B', fontSize: '12px' }}>
+                            {currSym}{orig.toFixed(2)}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '18px', fontWeight: 800, color: '#FFF' }}>
+                          {currSym}{cur.toFixed(2)}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>/mo</span>
+                        {disc > 0 && (
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#4ADE80', background: 'rgba(74, 222, 128, 0.15)', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px' }}>
+                            Save {disc}%
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                        <span style={{
+                          padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700,
+                          background: offer.trial_enabled ? 'rgba(56, 189, 248, 0.15)' : 'rgba(148, 163, 184, 0.1)',
+                          color: offer.trial_enabled ? '#38BDF8' : '#94A3B8'
+                        }}>
+                          {offer.trial_enabled ? '⚡ 7-Day Free Trial' : '🔒 Direct Checkout'}
+                        </span>
+                        <span style={{
+                          padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700,
+                          background: 'rgba(168, 85, 247, 0.15)',
+                          color: '#C084FC'
+                        }}>
+                          ✨ Auto-Generated
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '8px' }}>
-                      Path: <code style={{ color: '#38BDF8', fontFamily: 'monospace' }}>{lp.url}</code>
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#FFF', marginBottom: '12px' }}>
-                      {lp.price}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <a
+                          href={`https://antiprofiles.com${url}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ flex: 1, padding: '7px 10px', textAlign: 'center', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', fontSize: '11px', fontWeight: 600, textDecoration: 'none', border: '1px solid #334155' }}
+                        >
+                          🔗 Preview Page
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`https://antiprofiles.com${url}`)
+                            showToast('success', `Copied URL: https://antiprofiles.com${url}`)
+                          }}
+                          style={{ padding: '7px 12px', borderRadius: '6px', background: '#2563EB', color: '#FFF', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                        >
+                          Copy URL
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setOfferModal({
+                          open: true,
+                          isEdit: true,
+                          id: offer.id,
+                          title: offer.title,
+                          description: offer.description || '',
+                          target_url: offer.target_url || url,
+                          landing_page_slug: rawSlug,
+                          banner_url: offer.banner_url || '',
+                          currency: offer.currency || 'USD',
+                          package_id: offer.package_id || 'plan_starter',
+                          package_name: offer.package_name || 'Starter',
+                          price: cur,
+                          original_price: orig,
+                          discount_percent: disc,
+                          discount_start_date: offer.discount_start_date || '',
+                          discount_end_date: offer.discount_end_date || '',
+                          cta_text: offer.cta_text || 'Subscribe',
+                          badge_text: offer.badge_text || '',
+                          trial_enabled: Boolean(offer.trial_enabled),
+                          trial_days: offer.trial_days || 7,
+                          payout_type: offer.payout_type || 'percentage',
+                          commission_rate: offer.commission_rate || offer.revshare_percent || 40,
+                          fixed_payout_usd: offer.fixed_payout_usd || 0,
+                          status: offer.status || 'active'
+                        })}
+                        style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', color: '#CBD5E1', fontSize: '11px', fontWeight: 600, border: '1px solid #334155', cursor: 'pointer', textAlign: 'center' }}
+                      >
+                        ✏️ Edit Offer & Page Details
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <a
-                      href={`https://antiprofiles.com${lp.url}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ flex: 1, padding: '7px 12px', textAlign: 'center', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', fontSize: '11px', fontWeight: 600, textDecoration: 'none', border: '1px solid #334155' }}
-                    >
-                      🔗 Preview Page
-                    </a>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`https://antiprofiles.com${lp.url}`)
-                        showToast('success', `Copied URL: https://antiprofiles.com${lp.url}`)
-                      }}
-                      style={{ padding: '7px 12px', borderRadius: '6px', background: '#2563EB', color: '#FFF', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
-                    >
-                      Copy URL
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>

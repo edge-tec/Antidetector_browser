@@ -548,25 +548,110 @@ switch ($action) {
         $title = trim($input['title'] ?? '');
         $description = trim($input['description'] ?? '');
         $targetUrl = trim($input['target_url'] ?? '');
-        $payoutType = in_array($input['payout_type'] ?? '', ['fixed', 'revshare']) ? $input['payout_type'] : 'revshare';
-        $revsharePercent = (float)($input['revshare_percent'] ?? 15.0);
+        $payoutType = in_array($input['payout_type'] ?? '', ['fixed', 'revshare', 'percentage']) ? ($input['payout_type'] === 'percentage' ? 'revshare' : $input['payout_type']) : 'revshare';
+        $revsharePercent = (float)($input['revshare_percent'] ?? $input['commission_rate'] ?? 15.0);
         $fixedPayoutUsd = (float)($input['fixed_payout_usd'] ?? 0.0);
         $status = in_array($input['status'] ?? '', ['active', 'paused', 'archived']) ? $input['status'] : 'active';
+        $price = isset($input['price']) ? (float)$input['price'] : 19.00;
+        $originalPrice = isset($input['original_price']) ? (float)$input['original_price'] : $price;
+        $packageId = trim($input['package_id'] ?? 'plan_starter');
+        $packageName = trim($input['package_name'] ?? 'Starter');
+        $currency = trim($input['currency'] ?? 'USD');
+        $trialEnabled = !empty($input['trial_enabled']) ? 1 : 0;
+        $trialDays = isset($input['trial_days']) ? (int)$input['trial_days'] : 7;
+        $ctaText = trim($input['cta_text'] ?? ($trialEnabled ? 'Start 7-Day Free Trial' : 'Subscribe'));
+        $badgeText = trim($input['badge_text'] ?? '');
+        $landingPageSlug = trim($input['landing_page_slug'] ?? '');
+        $bannerUrl = trim($input['banner_url'] ?? '');
 
-        if (!$title || !$targetUrl) {
-            respondJson(['success' => false, 'error' => 'Title and Target URL are required.'], 400);
+        if (!$title) {
+            respondJson(['success' => false, 'error' => 'Title is required.'], 400);
         }
 
         if (empty($offerId)) {
             $offerId = 'offer_' . bin2hex(random_bytes(6));
         }
 
+        if (empty($landingPageSlug)) {
+            $landingPageSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', trim($title)));
+            $landingPageSlug = trim($landingPageSlug, '-');
+            if (empty($landingPageSlug)) {
+                $landingPageSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $offerId));
+            }
+        }
+        $landingPageSlug = preg_replace('#^/?(offer/)?#', '', $landingPageSlug);
+
+        if (empty($targetUrl)) {
+            $targetUrl = "/offer/{$landingPageSlug}";
+        }
+
+        $discountPercent = ($originalPrice > $price && $originalPrice > 0) ? round((($originalPrice - $price) / $originalPrice) * 100) : (float)($input['discount_percent'] ?? 0);
+
         $stmt = $db->prepare("
-            INSERT INTO affiliate_offers (id, title, description, target_url, payout_type, revshare_percent, fixed_payout_usd, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-            ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), target_url = VALUES(target_url), payout_type = VALUES(payout_type), revshare_percent = VALUES(revshare_percent), fixed_payout_usd = VALUES(fixed_payout_usd), status = VALUES(status), updated_at = NOW()
+            INSERT INTO affiliate_offers (
+                id, title, description, target_url, signup_url, payout_type, revshare_percent, commission_rate,
+                fixed_payout_usd, package_id, package_name, price, original_price, discount_value, discounted_price,
+                trial_days, trial_enabled, cta_text, badge_text, landing_page_slug, banner_url, currency, status,
+                created_at, updated_at
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?,
+                NOW(), NOW()
+            ) ON DUPLICATE KEY UPDATE
+                title = VALUES(title),
+                description = VALUES(description),
+                target_url = VALUES(target_url),
+                signup_url = VALUES(signup_url),
+                payout_type = VALUES(payout_type),
+                revshare_percent = VALUES(revshare_percent),
+                commission_rate = VALUES(commission_rate),
+                fixed_payout_usd = VALUES(fixed_payout_usd),
+                package_id = VALUES(package_id),
+                package_name = VALUES(package_name),
+                price = VALUES(price),
+                original_price = VALUES(original_price),
+                discount_value = VALUES(discount_value),
+                discounted_price = VALUES(discounted_price),
+                trial_days = VALUES(trial_days),
+                trial_enabled = VALUES(trial_enabled),
+                cta_text = VALUES(cta_text),
+                badge_text = VALUES(badge_text),
+                landing_page_slug = VALUES(landing_page_slug),
+                banner_url = VALUES(banner_url),
+                currency = VALUES(currency),
+                status = VALUES(status),
+                updated_at = NOW()
         ");
-        $stmt->execute([$offerId, $title, $description, $targetUrl, $payoutType, $revsharePercent, $fixedPayoutUsd, $status]);
+        $stmt->execute([
+            $offerId, $title, $description, $targetUrl, $targetUrl, $payoutType, $revsharePercent, $revsharePercent,
+            $fixedPayoutUsd, $packageId, $packageName, $price, $originalPrice, $discountPercent, $price,
+            $trialDays, $trialEnabled, $ctaText, $badgeText, $landingPageSlug, $bannerUrl, $currency, $status
+        ]);
+
+        // Auto-generate dynamic landing page for this offer
+        $offerData = [
+            'id' => $offerId,
+            'title' => $title,
+            'description' => $description,
+            'target_url' => $targetUrl,
+            'payout_type' => $payoutType,
+            'revshare_percent' => $revsharePercent,
+            'commission_rate' => $revsharePercent,
+            'fixed_payout_usd' => $fixedPayoutUsd,
+            'package_id' => $packageId,
+            'package_name' => $packageName,
+            'price' => $price,
+            'original_price' => $originalPrice,
+            'discount_percent' => $discountPercent,
+            'trial_enabled' => $trialEnabled,
+            'trial_days' => $trialDays,
+            'cta_text' => $ctaText,
+            'badge_text' => $badgeText,
+            'landing_page_slug' => $landingPageSlug,
+            'currency' => $currency
+        ];
+        $lpData = autoGenerateLandingPageForOffer($db, $offerData);
 
         // Real-time broadcast to all connected desktop software instances
         try {
@@ -576,22 +661,25 @@ switch ($action) {
             ");
             $evStmt->execute([
                 'evt_' . uniqid(),
-                json_encode([
-                    'id' => $offerId,
-                    'title' => $title,
-                    'description' => $description,
-                    'target_url' => $targetUrl,
-                    'payout_type' => $payoutType,
-                    'revshare_percent' => $revsharePercent,
-                    'commission_rate' => $revsharePercent,
-                    'fixed_payout_usd' => $fixedPayoutUsd,
-                    'status' => $status,
+                json_encode(array_merge($offerData, [
+                    'landing_page' => $lpData,
                     'timestamp' => time()
-                ])
+                ]))
             ]);
         } catch (Throwable $e) {}
 
-        respondJson(['success' => true, 'message' => "Offer '{$title}' saved successfully.", 'data' => ['id' => $offerId, 'title' => $title, 'status' => $status]]);
+        respondJson([
+            'success' => true,
+            'message' => "Offer '{$title}' saved and dynamic landing page auto-generated successfully.",
+            'data' => [
+                'id' => $offerId,
+                'title' => $title,
+                'status' => $status,
+                'landing_page_slug' => $landingPageSlug,
+                'preview_url' => "https://antiprofiles.com/offer/{$landingPageSlug}",
+                'landing_page' => $lpData
+            ]
+        ]);
         break;
 
     case 'admin-delete-offer':

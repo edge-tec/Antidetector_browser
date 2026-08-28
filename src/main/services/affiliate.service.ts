@@ -164,6 +164,37 @@ export class AffiliateService {
       try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN package_id TEXT DEFAULT 'plan_pro';") } catch {}
       try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN clicks INTEGER DEFAULT 0;") } catch {}
       try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN conversions INTEGER DEFAULT 0;") } catch {}
+
+      // Landing Pages schema
+      try {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS affiliate_landing_pages (
+            id                 TEXT PRIMARY KEY,
+            slug               TEXT UNIQUE NOT NULL,
+            offer_id           TEXT NOT NULL,
+            package_id         TEXT DEFAULT 'plan_pro',
+            package_name       TEXT DEFAULT 'Professional',
+            hero_title         TEXT NOT NULL,
+            hero_subtitle      TEXT,
+            price_monthly      REAL NOT NULL DEFAULT 49.0,
+            price_yearly       REAL NOT NULL DEFAULT 490.0,
+            original_price     REAL NOT NULL DEFAULT 49.0,
+            discount_percent   REAL DEFAULT 0.0,
+            badge_text         TEXT,
+            trial_enabled      INTEGER DEFAULT 0,
+            features_json      TEXT,
+            faq_json           TEXT,
+            reviews_json       TEXT,
+            cta_text           TEXT DEFAULT 'Subscribe',
+            theme_color        TEXT DEFAULT '#2DD4BF',
+            is_active          INTEGER DEFAULT 1,
+            seo_title          TEXT,
+            meta_desc          TEXT,
+            created_at         TEXT DEFAULT (datetime('now')),
+            updated_at         TEXT DEFAULT (datetime('now'))
+          );
+        `)
+      } catch {}
     } catch {}
   }
 
@@ -478,7 +509,18 @@ export class AffiliateService {
     const offerId = offer.id || `offer_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
     const title = offer.title || 'Untitled CPA Offer'
     const desc = offer.description || ''
-    const targetUrl = offer.target_url || '/offer/professional'
+    let landingPageSlug = (offer.landing_page_slug || '').replace(/^\/?(offer\/)?/, '')
+    if (!landingPageSlug) {
+      if (offer.target_url && offer.target_url.includes('/offer/')) {
+        landingPageSlug = offer.target_url.split('/offer/')[1].split('?')[0].split('/')[0]
+      } else if (title) {
+        landingPageSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      }
+      if (!landingPageSlug) {
+        landingPageSlug = packageId === 'plan_starter' ? 'starter' : packageId === 'plan_business' ? 'business' : packageId === 'plan_free' ? 'free' : 'professional'
+      }
+    }
+    const targetUrl = offer.target_url || `/offer/${landingPageSlug}`
     const signupUrl = offer.signup_url || targetUrl
     const payoutType = offer.payout_type || 'percentage'
     const commRate = offer.commission_rate !== undefined ? offer.commission_rate : 10.0
@@ -494,7 +536,6 @@ export class AffiliateService {
     const trialEnabled = offer.trial_enabled ? 1 : 0
     const ctaText = offer.cta_text || 'Subscribe'
     const badgeText = offer.badge_text || null
-    const landingPageSlug = offer.landing_page_slug || (packageId === 'plan_starter' ? 'starter' : packageId === 'plan_business' ? 'business' : packageId === 'plan_free' ? 'free' : 'professional')
     const bannerUrl = offer.banner_url || null
     const currency = offer.currency || 'USD'
     const status = offer.status || 'active'

@@ -5369,3 +5369,238 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
         return null;
     }
 }
+
+/**
+ * Auto-generate and persist a custom landing page for any CPA / Affiliate offer
+ */
+function autoGenerateLandingPageForOffer(PDO $db, array $offer): array {
+    $offerId = trim($offer['id'] ?? '');
+    $title = trim($offer['title'] ?? 'Exclusive Deal');
+    $description = trim($offer['description'] ?? '');
+    $targetUrl = trim($offer['target_url'] ?? '');
+    $payoutType = $offer['payout_type'] ?? 'revshare';
+    $revsharePercent = (float)($offer['revshare_percent'] ?? $offer['commission_rate'] ?? 0);
+    $fixedPayoutUsd = (float)($offer['fixed_payout_usd'] ?? 0);
+    $price = isset($offer['price']) ? (float)$offer['price'] : 0.0;
+    $origPrice = isset($offer['original_price']) ? (float)$offer['original_price'] : 0.0;
+    $trialEnabled = !empty($offer['trial_enabled']) ? 1 : 0;
+    $currency = trim($offer['currency'] ?? 'USD');
+    $currencySymbol = ($currency === 'EUR') ? '€' : (($currency === 'GBP') ? '£' : (($currency === 'AUD') ? 'A$' : (($currency === 'CAD') ? 'C$' : '$')));
+
+    // 1. Resolve slug
+    $slug = trim($offer['landing_page_slug'] ?? '');
+    if (empty($slug)) {
+        if (!empty($targetUrl) && preg_match('#/offer/([a-zA-Z0-9_-]+)#', $targetUrl, $m)) {
+            $slug = $m[1];
+        } else {
+            $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', trim($title)));
+            $slug = trim($slug, '-');
+            if (empty($slug)) {
+                $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $offerId));
+            }
+        }
+    }
+    $slug = preg_replace('#^/?(offer/)?#', '', $slug);
+    if (empty($slug)) {
+        $slug = 'custom-deal';
+    }
+
+    // 2. Determine Package & Styling
+    $lowerTitle = strtolower($title . ' ' . $slug . ' ' . ($offer['package_id'] ?? '') . ' ' . ($offer['package_name'] ?? ''));
+    if (strpos($lowerTitle, 'starter') !== false) {
+        $packageId = 'plan_starter';
+        $packageName = 'Starter';
+        $themeColor = '#38BDF8';
+        $defaultMonthly = 19.00;
+        $defaultOrig = 39.00;
+        $features = [
+            '20 Isolated Browser Profiles',
+            'HTTP / HTTPS / SOCKS5 Proxy Support',
+            'Canvas, WebGL & Audio Spoofing',
+            '1 Team Member Access',
+            'Cloud Profile Syncing',
+            'Standard Support'
+        ];
+    } elseif (strpos($lowerTitle, 'pro-team') !== false || strpos($lowerTitle, 'team') !== false) {
+        $packageId = 'plan_pro_team';
+        $packageName = 'Professional + Team';
+        $themeColor = '#818CF8';
+        $defaultMonthly = 49.00;
+        $defaultOrig = 79.00;
+        $features = [
+            '100 Isolated Browser Profiles',
+            'HTTP / HTTPS / SOCKS5 Proxy Support',
+            'Full Hardware Fingerprint Masking',
+            '5 Team Members Included',
+            'Team Role Permissions & Sharing',
+            'Fast Priority Cloud Sync',
+            'REST API & Headless Automation Access'
+        ];
+    } elseif (strpos($lowerTitle, 'enterprise') !== false) {
+        $packageId = 'plan_enterprise';
+        $packageName = 'Enterprise';
+        $themeColor = '#C084FC';
+        $defaultMonthly = 99.00;
+        $defaultOrig = 199.00;
+        $features = [
+            'Unlimited Browser Profiles',
+            'Full Hardware & WebGL Spoofing',
+            'Unlimited Team Members',
+            'Dedicated Private Sync Relays',
+            'Full Custom API & Automation',
+            '24/7 VIP SLA & Dedicated Account Manager'
+        ];
+    } elseif (strpos($lowerTitle, 'business') !== false) {
+        $packageId = 'plan_business';
+        $packageName = 'Business';
+        $themeColor = '#EC4899';
+        $defaultMonthly = 69.00;
+        $defaultOrig = 129.00;
+        $features = [
+            '500 Isolated Browser Profiles',
+            'HTTP / HTTPS / SOCKS5 Proxy Support',
+            'Full Hardware Spoofing',
+            '25 Team Users',
+            'Unlimited API Access',
+            'Dedicated Account Manager'
+        ];
+    } elseif (strpos($lowerTitle, 'free') !== false) {
+        $packageId = 'plan_free';
+        $packageName = 'Free Trial';
+        $themeColor = '#64748B';
+        $defaultMonthly = 0.00;
+        $defaultOrig = 0.00;
+        $features = [
+            '3 Active Browser Profiles',
+            'Standard Fingerprint Protection',
+            'Community Support'
+        ];
+    } else {
+        $packageId = !empty($offer['package_id']) ? $offer['package_id'] : 'plan_professional';
+        $packageName = !empty($offer['package_name']) ? $offer['package_name'] : 'Professional';
+        $themeColor = '#2DD4BF';
+        $defaultMonthly = 39.00;
+        $defaultOrig = 79.00;
+        $features = [
+            '100 Isolated Browser Profiles',
+            'HTTP / HTTPS / SOCKS5 Proxy Support',
+            'Full Hardware Fingerprint Masking',
+            '5 Team Members Included',
+            'Fast Priority Cloud Sync',
+            'REST API & Headless Automation Access'
+        ];
+    }
+
+    if ($price <= 0 && $packageId !== 'plan_free') $price = $defaultMonthly;
+    if ($origPrice <= 0 && $packageId !== 'plan_free') $origPrice = $defaultOrig;
+    $discountPercent = ($origPrice > $price && $origPrice > 0) ? round((($origPrice - $price) / $origPrice) * 100) : (float)($offer['discount_percent'] ?? 0);
+
+    $badgeText = trim($offer['badge_text'] ?? '');
+    if (empty($badgeText)) {
+        if ($discountPercent > 0) {
+            $badgeText = "SAVE {$discountPercent}% • " . ($payoutType === 'revshare' ? ($revsharePercent > 0 ? "{$revsharePercent}% RevShare" : "Limited Deal") : ($fixedPayoutUsd > 0 ? "{$currencySymbol}{$fixedPayoutUsd} CPA Bonus" : "Exclusive Deal"));
+        } else {
+            $badgeText = ($payoutType === 'revshare' && $revsharePercent > 0) ? "{$revsharePercent}% Recurring" : ($fixedPayoutUsd > 0 ? "{$currencySymbol}{$fixedPayoutUsd} CPA Bonus" : "Exclusive Offer");
+        }
+    }
+
+    $ctaText = trim($offer['cta_text'] ?? '');
+    if (empty($ctaText)) {
+        $ctaText = $trialEnabled ? "Start 7-Day Free Trial" : "Claim Offer Now";
+    }
+
+    $heroTitle = "AntiProfiles {$packageName} — " . ($discountPercent > 0 ? "Save {$discountPercent}% Today" : "Exclusive Offer");
+    $heroSubtitle = !empty($description) ? $description : "Engineered for high-performance multi-accounting, fingerprint spoofing, and automated stealth operations.";
+
+    $lpId = 'lp_' . md5($slug);
+    $priceYearly = $price * 10;
+
+    $featuresJson = json_encode($features);
+    $faqJson = json_encode([
+        ['q' => "What is included with AntiProfiles {$packageName}?", 'a' => "You get access to full hardware isolation, fingerprint spoofing, and priority access based on the {$packageName} specifications."],
+        ['q' => "How does the discount apply?", 'a' => "The special discounted rate of {$currencySymbol}{$price}/mo is locked in when you activate through this official page."],
+        ['q' => "Can I use team members?", 'a' => "Yes, team seats and profile synchronization are configured according to your {$packageName} tier."]
+    ]);
+    $reviewsJson = json_encode([
+        ['name' => 'Alex M.', 'role' => 'E-Commerce Growth Lead', 'comment' => 'Switching to this plan completely solved our account bans. Essential tool!'],
+        ['name' => 'Sara K.', 'role' => 'Lead Automation Engineer', 'comment' => 'Flawless fingerprint spoofing and the fast proxy sync makes managing multi-accounts effortless.']
+    ]);
+
+    $seoTitle = "AntiProfiles {$packageName} Plan | {$heroTitle}";
+    $metaDesc = "Unlock AntiProfiles {$packageName}. {$heroSubtitle}";
+
+    try {
+        $st = $db->prepare("
+            INSERT INTO `affiliate_landing_pages` (
+                `id`, `slug`, `offer_id`, `package_id`, `package_name`, `hero_title`, `hero_subtitle`,
+                `price_monthly`, `price_yearly`, `original_price`, `discount_percent`, `badge_text`,
+                `trial_enabled`, `features_json`, `faq_json`, `reviews_json`, `cta_text`, `theme_color`, `is_active`,
+                `seo_title`, `meta_desc`
+            ) VALUES (
+                :id, :slug, :offer_id, :package_id, :package_name, :hero_title, :hero_subtitle,
+                :price_monthly, :price_yearly, :original_price, :discount_percent, :badge_text,
+                :trial_enabled, :features_json, :faq_json, :reviews_json, :cta_text, :theme_color, 1,
+                :seo_title, :meta_desc
+            ) ON DUPLICATE KEY UPDATE
+                `offer_id` = VALUES(`offer_id`),
+                `package_id` = VALUES(`package_id`),
+                `package_name` = VALUES(`package_name`),
+                `hero_title` = VALUES(`hero_title`),
+                `hero_subtitle` = VALUES(`hero_subtitle`),
+                `price_monthly` = VALUES(`price_monthly`),
+                `price_yearly` = VALUES(`price_yearly`),
+                `original_price` = VALUES(`original_price`),
+                `discount_percent` = VALUES(`discount_percent`),
+                `badge_text` = VALUES(`badge_text`),
+                `trial_enabled` = VALUES(`trial_enabled`),
+                `features_json` = VALUES(`features_json`),
+                `faq_json` = VALUES(`faq_json`),
+                `reviews_json` = VALUES(`reviews_json`),
+                `cta_text` = VALUES(`cta_text`),
+                `theme_color` = VALUES(`theme_color`),
+                `seo_title` = VALUES(`seo_title`),
+                `meta_desc` = VALUES(`meta_desc`),
+                `is_active` = 1
+        ");
+        $st->execute([
+            ':id' => $lpId,
+            ':slug' => $slug,
+            ':offer_id' => $offerId,
+            ':package_id' => $packageId,
+            ':package_name' => $packageName,
+            ':hero_title' => $heroTitle,
+            ':hero_subtitle' => $heroSubtitle,
+            ':price_monthly' => $price,
+            ':price_yearly' => $priceYearly,
+            ':original_price' => $origPrice,
+            ':discount_percent' => $discountPercent,
+            ':badge_text' => $badgeText,
+            ':trial_enabled' => $trialEnabled,
+            ':features_json' => $featuresJson,
+            ':faq_json' => $faqJson,
+            ':reviews_json' => $reviewsJson,
+            ':cta_text' => $ctaText,
+            ':theme_color' => $themeColor,
+            ':seo_title' => $seoTitle,
+            ':meta_desc' => $metaDesc
+        ]);
+    } catch (Throwable $e) {
+        error_log('[autoGenerateLandingPageForOffer Error] ' . $e->getMessage());
+    }
+
+    return [
+        'id' => $lpId,
+        'slug' => $slug,
+        'url' => "/offer/{$slug}",
+        'full_url' => "https://antiprofiles.com/offer/{$slug}",
+        'package_id' => $packageId,
+        'package_name' => $packageName,
+        'price_monthly' => $price,
+        'original_price' => $origPrice,
+        'discount_percent' => $discountPercent,
+        'badge_text' => $badgeText,
+        'cta_text' => $ctaText,
+        'theme_color' => $themeColor
+    ];
+}
+
