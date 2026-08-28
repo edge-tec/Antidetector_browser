@@ -601,8 +601,17 @@ switch ($action) {
         if (!$offerId) {
             respondJson(['success' => false, 'error' => 'Offer ID is required.'], 400);
         }
-        $stmt = $db->prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$offerId]);
+        
+        $permanent = !isset($input['permanent']) || !empty($input['permanent']) || !empty($input['force']) || (isset($input['type']) && $input['type'] === 'delete');
+        if ($permanent) {
+            $stmt = $db->prepare("DELETE FROM affiliate_offers WHERE id = ?");
+            $stmt->execute([$offerId]);
+            $msg = "Offer '{$offerId}' permanently deleted successfully.";
+        } else {
+            $stmt = $db->prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$offerId]);
+            $msg = "Offer '{$offerId}' archived successfully.";
+        }
 
         // Real-time broadcast to all connected desktop software instances
         try {
@@ -612,11 +621,11 @@ switch ($action) {
             ");
             $evStmt->execute([
                 'evt_' . uniqid(),
-                json_encode(['id' => $offerId, 'status' => 'archived', 'timestamp' => time()])
+                json_encode(['id' => $offerId, 'status' => $permanent ? 'deleted' : 'archived', 'timestamp' => time()])
             ]);
         } catch (Throwable $e) {}
 
-        respondJson(['success' => true, 'message' => 'Offer archived successfully.']);
+        respondJson(['success' => true, 'message' => $msg]);
         break;
 
     case 'get-clicks':

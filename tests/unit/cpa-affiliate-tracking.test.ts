@@ -39,6 +39,16 @@ describe('CPA Affiliate Tracking, Postback & Withdrawal System', () => {
 
       const retrieved = affiliateService.getOfferById('offer_cpa_test_1')
       expect(retrieved?.title).toBe('Test CPA Campaign Pro')
+
+      // Test Permanent Delete
+      const deleted = affiliateService.deleteOffer('offer_cpa_test_1', true, 'admin_test')
+      expect(deleted).toBe(true)
+
+      const afterDelete = affiliateService.getOfferById('offer_cpa_test_1')
+      expect(afterDelete).toBeNull()
+
+      const allOffersAfter = affiliateService.getOffers(false)
+      expect(allOffersAfter.some(o => o.id === 'offer_cpa_test_1')).toBe(false)
     })
 
     it('allows admin to activate, suspend, or disable affiliate accounts', () => {

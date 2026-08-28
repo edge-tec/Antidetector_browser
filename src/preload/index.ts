@@ -425,8 +425,8 @@ const api = {
     ipcRenderer.invoke('affiliate:adminSaveSettings', token, settings),
   affiliateAdminSaveOffer: (token: string, offer: any) =>
     ipcRenderer.invoke('affiliate:adminSaveOffer', token, offer),
-  affiliateAdminDeleteOffer: (token: string, offerId: string) =>
-    ipcRenderer.invoke('affiliate:adminDeleteOffer', token, offerId),
+  affiliateAdminDeleteOffer: (token: string, offerId: string, permanent?: boolean) =>
+    ipcRenderer.invoke('affiliate:adminDeleteOffer', token, offerId, permanent ?? true),
   affiliateAdminUpdateStatus: (token: string, affiliateId: string, status: any) =>
     ipcRenderer.invoke('affiliate:adminUpdateStatus', token, affiliateId, status),
   affiliateAdminUpdateWithdrawal: (token: string, withdrawalId: string, status: any, adminNotes?: string, txRef?: string) =>

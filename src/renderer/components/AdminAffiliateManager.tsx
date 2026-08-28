@@ -1011,48 +1011,50 @@ export const AdminAffiliateManager: React.FC = () => {
                           {offer.status.toUpperCase()}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <button
-                          onClick={() => setOfferModal({
-                            open: true, isEdit: true, id: offer.id,
-                            title: offer.title, description: offer.description || '',
-                            target_url: offer.target_url || `/offer/${offer.landing_page_slug || 'starter'}`,
-                            package_id: offer.package_id || 'plan_starter',
-                            package_name: offer.package_name || 'Starter',
-                            price: Number(offer.price || 19),
-                            original_price: Number(offer.original_price || offer.price || 19),
-                            discount_percent: disc,
-                            discount_start_date: offer.discount_start_date || '',
-                            discount_end_date: offer.discount_end_date || '',
-                            cta_text: offer.cta_text || 'Subscribe Starter',
-                            badge_text: offer.badge_text || 'Starter',
-                            trial_enabled: Boolean(offer.trial_enabled),
-                            billing_interval: offer.billing_interval || 'month',
-                            payout_type: offer.payout_type,
-                            commission_rate: offer.commission_rate,
-                            fixed_payout_usd: offer.fixed_payout_usd,
-                            status: offer.status
-                          })}
-                          style={{ padding: '4px 10px', borderRadius: '4px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (confirm(`Are you sure you want to archive offer "${offer.title}"?`)) {
-                              const res = await callAffiliateApi('admin-delete-offer', 'POST', { id: offer.id })
-                              if (res?.success) {
-                                showToast('success', `Offer "${offer.title}" archived successfully across Web & Desktop!`)
-                                loadData()
-                              } else {
-                                showToast('error', res?.error || 'Failed to archive offer')
+                      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            onClick={() => setOfferModal({
+                              open: true, isEdit: true, id: offer.id,
+                              title: offer.title, description: offer.description || '',
+                              target_url: offer.target_url || `/offer/${offer.landing_page_slug || 'starter'}`,
+                              package_id: offer.package_id || 'plan_starter',
+                              package_name: offer.package_name || 'Starter',
+                              price: Number(offer.price || 19),
+                              original_price: Number(offer.original_price || offer.price || 19),
+                              discount_percent: disc,
+                              discount_start_date: offer.discount_start_date || '',
+                              discount_end_date: offer.discount_end_date || '',
+                              cta_text: offer.cta_text || 'Subscribe Starter',
+                              badge_text: offer.badge_text || 'Starter',
+                              trial_enabled: Boolean(offer.trial_enabled),
+                              billing_interval: offer.billing_interval || 'month',
+                              payout_type: offer.payout_type,
+                              commission_rate: offer.commission_rate,
+                              fixed_payout_usd: offer.fixed_payout_usd,
+                              status: offer.status
+                            })}
+                            style={{ padding: '5px 10px', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`Are you sure you want to permanently delete offer "${offer.title}" (${offer.id})?\n\nThis will remove this offer/package plan from the system.`)) {
+                                const res = await callAffiliateApi('admin-delete-offer', 'POST', { id: offer.id, permanent: true })
+                                if (res?.success) {
+                                  showToast('success', `🗑️ Offer "${offer.title}" deleted successfully!`)
+                                  loadData()
+                                } else {
+                                  showToast('error', res?.error || 'Failed to delete offer')
+                                }
                               }
-                            }
-                          }}
-                          style={{ marginLeft: '6px', padding: '4px 8px', borderRadius: '4px', background: '#EF444420', color: '#F87171', border: '1px solid #EF444440', fontSize: '11px', cursor: 'pointer' }}
-                        >
-                          Archive
-                        </button>
+                            }}
+                            style={{ padding: '5px 10px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.4)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -1888,7 +1890,29 @@ export const AdminAffiliateManager: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
+                {offerModal.isEdit && offerModal.id && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm(`Are you sure you want to permanently delete "${offerModal.title}" (${offerModal.id})?\n\nThis cannot be undone.`)) {
+                        setSavingOffer(true)
+                        const res = await callAffiliateApi('admin-delete-offer', 'POST', { id: offerModal.id, permanent: true })
+                        setSavingOffer(false)
+                        if (res?.success) {
+                          showToast('success', `🗑️ Offer deleted successfully!`)
+                          setOfferModal(prev => ({ ...prev, open: false }))
+                          loadData()
+                        } else {
+                          showToast('error', res?.error || 'Failed to delete offer')
+                        }
+                      }
+                    }}
+                    style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.4)', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    🗑️ Delete Offer
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setOfferModal(prev => ({ ...prev, open: false }))}

@@ -197,13 +197,13 @@ export function registerAffiliateHandlers(): void {
   })
 
   // ── 13. Admin: Delete / Archive CPA Offer ──
-  ipcMain.handle('affiliate:adminDeleteOffer', async (_event, token: string, offerId: string) => {
+  ipcMain.handle('affiliate:adminDeleteOffer', async (_event, token: string, offerId: string, permanent: boolean = true) => {
     try {
       if (!verifyAdminSession(token)) {
         return { success: false, error: 'Unauthorized. Admin access required.' }
       }
       const adminId = getAdminUserId(token)
-      const ok = affiliateService.deleteOffer(offerId, adminId)
+      const ok = affiliateService.deleteOffer(offerId, permanent, adminId)
       return { success: ok }
     } catch (err: any) {
       return { success: false, error: err.message }

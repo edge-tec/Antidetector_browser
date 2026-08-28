@@ -1024,60 +1024,27 @@ function ensureDatabaseTablesExist() {
             ]
         ];
 
-        foreach ($defaultOffers as $do) {
-            try {
-                $st = $db->prepare("
-                    INSERT INTO `affiliate_offers` (
-                        `id`, `title`, `description`, `target_url`, `signup_url`, `landing_page_slug`, `payout_type`, `commission_rate`, `revshare_percent`,
-                        `fixed_payout_usd`, `package_id`, `package_name`, `price`, `original_price`, `discount_type`,
-                        `discount_value`, `discounted_price`, `trial_days`, `trial_enabled`, `cta_text`, `badge_text`, `billing_interval`, `status`
-                    ) VALUES (
-                        :id, :title, :description, :target_url, :signup_url, :landing_page_slug, :payout_type, :commission_rate, :revshare_percent,
-                        :fixed_payout_usd, :package_id, :package_name, :price, :original_price, :discount_type,
-                        :discount_value, :discounted_price, :trial_days, :trial_enabled, :cta_text, :badge_text, :billing_interval, :status
-                    )
-                ");
-                $st->execute($do);
-            } catch (Throwable $e) {
+        $existingOfferCount = 0;
+        try {
+            $existingOfferCount = (int)$db->query("SELECT COUNT(*) FROM `affiliate_offers`")->fetchColumn();
+        } catch (Throwable $e) {}
+
+        if ($existingOfferCount === 0) {
+            foreach ($defaultOffers as $do) {
                 try {
-                    $up = $db->prepare("
-                        UPDATE `affiliate_offers` SET
-                            `target_url` = :target_url,
-                            `signup_url` = :signup_url,
-                            `landing_page_slug` = :landing_page_slug,
-                            `package_id` = :package_id,
-                            `package_name` = :package_name,
-                            `price` = :price,
-                            `original_price` = :original_price,
-                            `discount_type` = :discount_type,
-                            `discount_value` = :discount_value,
-                            `discounted_price` = :discounted_price,
-                            `trial_days` = :trial_days,
-                            `trial_enabled` = :trial_enabled,
-                            `cta_text` = :cta_text,
-                            `badge_text` = :badge_text,
-                            `billing_interval` = :billing_interval
-                        WHERE `id` = :id
+                    $st = $db->prepare("
+                        INSERT INTO `affiliate_offers` (
+                            `id`, `title`, `description`, `target_url`, `signup_url`, `landing_page_slug`, `payout_type`, `commission_rate`, `revshare_percent`,
+                            `fixed_payout_usd`, `package_id`, `package_name`, `price`, `original_price`, `discount_type`,
+                            `discount_value`, `discounted_price`, `trial_days`, `trial_enabled`, `cta_text`, `badge_text`, `billing_interval`, `status`
+                        ) VALUES (
+                            :id, :title, :description, :target_url, :signup_url, :landing_page_slug, :payout_type, :commission_rate, :revshare_percent,
+                            :fixed_payout_usd, :package_id, :package_name, :price, :original_price, :discount_type,
+                            :discount_value, :discounted_price, :trial_days, :trial_enabled, :cta_text, :badge_text, :billing_interval, :status
+                        )
                     ");
-                    $up->execute([
-                        ':id' => $do['id'],
-                        ':target_url' => $do['target_url'],
-                        ':signup_url' => $do['signup_url'],
-                        ':landing_page_slug' => $do['landing_page_slug'],
-                        ':package_id' => $do['package_id'],
-                        ':package_name' => $do['package_name'],
-                        ':price' => $do['price'],
-                        ':original_price' => $do['original_price'],
-                        ':discount_type' => $do['discount_type'],
-                        ':discount_value' => $do['discount_value'],
-                        ':discounted_price' => $do['discounted_price'],
-                        ':trial_days' => $do['trial_days'],
-                        ':trial_enabled' => $do['trial_enabled'] ?? 0,
-                        ':cta_text' => $do['cta_text'] ?? 'Subscribe',
-                        ':badge_text' => $do['badge_text'] ?? null,
-                        ':billing_interval' => $do['billing_interval']
-                    ]);
-                } catch (Throwable $e2) {}
+                    $st->execute($do);
+                } catch (Throwable $e) {}
             }
         }
 

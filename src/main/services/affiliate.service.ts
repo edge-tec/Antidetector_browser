@@ -378,6 +378,16 @@ export class AffiliateService {
 
   public getOffers(onlyActive: boolean = false): AffiliateOffer[] {
     const db = getDatabase()
+    
+    // Retrieve any deleted offer IDs to ensure they are never resurrected
+    let deletedOfferIds: string[] = []
+    try {
+      const deletedRow = db.prepare("SELECT value FROM affiliate_settings WHERE key = 'deleted_offer_ids'").get() as { value: string } | undefined
+      if (deletedRow?.value) {
+        deletedOfferIds = JSON.parse(deletedRow.value)
+      }
+    } catch {}
+    
     const defaultOffersToSeed = [
       ['offer_starter_license', 'AntiProfiles Starter License', 'Fixed $10.00 instant CPA payout per verified first-time starter license purchase ($19/mo package).', '/offer/starter-license', '/offer/starter-license', 'fixed', 0.0, 10.0, 'plan_starter', 'Starter License', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'],
       ['offer_starter', 'AntiProfiles Starter Subscription', 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).', '/offer/starter', '/offer/starter', 'percentage', 40.0, 0.0, 'plan_starter', 'Starter', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'],
@@ -390,42 +400,21 @@ export class AffiliateService {
     ]
 
     for (const dof of defaultOffersToSeed) {
+      if (deletedOfferIds.includes(dof[0])) continue
       try {
         db.prepare(`
           INSERT INTO affiliate_offers (
             id, title, description, target_url, signup_url, payout_type, commission_rate, fixed_payout_usd,
             package_id, package_name, price, original_price, discount_type, discount_value, discounted_price, trial_days, status, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-          ON CONFLICT(id) DO UPDATE SET
-            target_url = excluded.target_url,
-            signup_url = excluded.signup_url,
-            package_id = excluded.package_id,
-            package_name = excluded.package_name,
-            price = excluded.price,
-            original_price = excluded.original_price,
-            commission_rate = excluded.commission_rate,
-            fixed_payout_usd = excluded.fixed_payout_usd,
-            updated_at = datetime('now')
+          ON CONFLICT(id) DO NOTHING
         `).run(...dof)
       } catch {}
     }
 
-    // Auto-repair legacy SQLite records
-    try {
-      db.exec(`
-        UPDATE affiliate_offers SET package_id = 'plan_starter', package_name = 'Starter', price = 19.0, target_url = '/offer/starter', signup_url = '/offer/starter' WHERE id = 'offer_starter';
-        UPDATE affiliate_offers SET package_id = 'plan_starter', package_name = 'Starter License', price = 19.0, target_url = '/offer/starter-license', signup_url = '/offer/starter-license' WHERE id IN ('offer_starter_license', 'offer_starter_bounty');
-        UPDATE affiliate_offers SET package_id = 'plan_pro', package_name = 'Professional', price = 49.0, target_url = '/offer/professional', signup_url = '/offer/professional' WHERE id = 'offer_main_saas';
-        UPDATE affiliate_offers SET package_id = 'plan_pro', package_name = 'Professional Team', price = 49.0, target_url = '/offer/pro-team', signup_url = '/offer/pro-team' WHERE id = 'offer_pro_team';
-        UPDATE affiliate_offers SET package_id = 'plan_business', package_name = 'Enterprise Trial', price = 99.0, target_url = '/offer/enterprise-trial', signup_url = '/offer/enterprise-trial' WHERE id = 'offer_enterprise_trial';
-        UPDATE affiliate_offers SET package_id = 'plan_business', package_name = 'Enterprise', price = 99.0, target_url = '/offer/enterprise', signup_url = '/offer/enterprise' WHERE id = 'offer_business';
-        UPDATE affiliate_offers SET package_id = 'plan_business', package_name = 'Custom Business', price = 99.0, target_url = '/offer/business-custom', signup_url = '/offer/business-custom' WHERE id = 'offer_business_custom';
-      `)
-    } catch {}
-
     const query = onlyActive
       ? "SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at DESC"
-      : "SELECT * FROM affiliate_offers ORDER BY created_at DESC"
+      : "SELECT * FROM affiliate_offers WHERE status != 'archived' ORDER BY created_at DESC"
     const offers = db.prepare(query).all() as AffiliateOffer[]
     return offers
   }
@@ -434,7 +423,7 @@ export class AffiliateService {
     const db = getDatabase()
     let offer = db.prepare('SELECT * FROM affiliate_offers WHERE id = ?').get(offerId) as AffiliateOffer | undefined
     if (!offer) {
-      this.getOffers() // Trigger auto-seed
+      this.getOffers() // Trigger auto-seed if empty
       offer = db.prepare('SELECT * FROM affiliate_offers WHERE id = ?').get(offerId) as AffiliateOffer | undefined
     }
     return offer || null
@@ -451,19 +440,16 @@ export class AffiliateService {
     const commRate = offer.commission_rate !== undefined ? offer.commission_rate : 10.0
     const fixedPayout = offer.fixed_payout_usd !== undefined ? offer.fixed_payout_usd : 0.0
     const packageId = offer.package_id || 'plan_pro'
-    const packageName = offer.package_name || (packageId === 'plan_starter' ? 'Starter' : packageId === 'plan_business' ? 'Enterprise' : 'Professional')
-    const price = offer.price !== undefined ? offer.price : (packageId === 'plan_starter' ? 19.0 : packageId === 'plan_business' ? 99.0 : 49.0)
+    const packageName = offer.package_name || 'Professional'
+    const price = offer.price !== undefined ? offer.price : 49.0
     const currency = offer.currency || 'USD'
     const status = offer.status || 'active'
 
     db.prepare(`
       INSERT INTO affiliate_offers (
         id, title, description, target_url, signup_url, payout_type, commission_rate, fixed_payout_usd,
-        package_id, package_name, price, currency, status, updated_at
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, datetime('now')
-      )
+        package_id, package_name, price, currency, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         description = excluded.description,
@@ -513,10 +499,30 @@ export class AffiliateService {
     return this.getOfferById(offerId)!
   }
 
-  public deleteOffer(offerId: string, adminUserId: string = 'admin-default'): boolean {
+  public deleteOffer(offerId: string, permanent: boolean = true, adminUserId: string = 'admin-default'): boolean {
     const db = getDatabase()
-    db.prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = datetime('now') WHERE id = ?").run(offerId)
-    this.recordAuditLog('offer_archived', adminUserId, offerId, `Archived CPA offer: ${offerId}`)
+
+    // Store in deleted_offer_ids so it won't be resurrected
+    try {
+      let deletedOfferIds: string[] = []
+      const deletedRow = db.prepare("SELECT value FROM affiliate_settings WHERE key = 'deleted_offer_ids'").get() as { value: string } | undefined
+      if (deletedRow?.value) {
+        deletedOfferIds = JSON.parse(deletedRow.value)
+      }
+      if (!deletedOfferIds.includes(offerId)) {
+        deletedOfferIds.push(offerId)
+        db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('deleted_offer_ids', ?, datetime('now'))")
+          .run(JSON.stringify(deletedOfferIds))
+      }
+    } catch {}
+
+    if (permanent) {
+      db.prepare("DELETE FROM affiliate_offers WHERE id = ?").run(offerId)
+      this.recordAuditLog('offer_deleted', adminUserId, offerId, `Permanently deleted CPA offer: ${offerId}`)
+    } else {
+      db.prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = datetime('now') WHERE id = ?").run(offerId)
+      this.recordAuditLog('offer_archived', adminUserId, offerId, `Archived CPA offer: ${offerId}`)
+    }
 
     // Broadcast to all active client windows
     try {
@@ -525,9 +531,9 @@ export class AffiliateService {
         if (!win.isDestroyed()) {
           win.webContents.send('sync:realtime-event', {
             eventType: 'affiliate.offer.deleted',
-            payload: { id: offerId, status: 'archived' }
+            payload: { id: offerId, status: permanent ? 'deleted' : 'archived' }
           })
-          win.webContents.send('affiliate:offers-updated', { id: offerId, status: 'archived' })
+          win.webContents.send('affiliate:offers-updated', { id: offerId, status: permanent ? 'deleted' : 'archived' })
         }
       })
     } catch {}
