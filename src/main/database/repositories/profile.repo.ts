@@ -350,6 +350,13 @@ export class ProfileRepository {
     return rows.map(profileFromRow)
   }
 
+  getByProxyId(proxyId: string): Profile[] {
+    if (!proxyId) return []
+    const db = getDatabase()
+    const rows = db.prepare('SELECT * FROM profiles WHERE proxy_id = ?').all(proxyId) as ProfileRow[]
+    return rows.map(profileFromRow)
+  }
+
   resetAllStatuses(): void {
     const db = getDatabase()
     db.prepare("UPDATE profiles SET status = 'stopped', pid = NULL WHERE status = 'running'").run()

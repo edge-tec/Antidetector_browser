@@ -35,7 +35,7 @@ export class ProxyRepository {
 
   create(input: ProxyCreateInput): ProxyDisplay {
     const db = getDatabase()
-    const id = uuidv4()
+    const id = (input as any).id || uuidv4()
     let encryptedPwd: Buffer | null = null
 
     if (input.password) {
@@ -43,8 +43,8 @@ export class ProxyRepository {
     }
 
     db.prepare(`
-      INSERT INTO proxies (id, name, type, host, port, username, encrypted_password, country, region, city, isp, asn)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO proxies (id, name, type, host, port, username, encrypted_password, country, region, city, isp, asn, timezone, latitude, longitude, public_ip, proxy_version, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).run(
       id,
       input.name,
@@ -57,7 +57,12 @@ export class ProxyRepository {
       input.region ?? '',
       input.city ?? '',
       input.isp ?? '',
-      input.asn ?? ''
+      input.asn ?? '',
+      input.timezone ?? '',
+      typeof input.latitude === 'number' ? input.latitude : null,
+      typeof input.longitude === 'number' ? input.longitude : null,
+      input.publicIp ?? '',
+      input.proxyVersion ?? 1
     )
 
     return this.getDisplayById(id)!
@@ -85,12 +90,99 @@ export class ProxyRepository {
     if (input.city !== undefined) { sets.push('city = ?'); params.push(input.city) }
     if (input.isp !== undefined) { sets.push('isp = ?'); params.push(input.isp) }
     if (input.asn !== undefined) { sets.push('asn = ?'); params.push(input.asn) }
+    if (input.timezone !== undefined) { sets.push('timezone = ?'); params.push(input.timezone) }
+    if (input.latitude !== undefined) { sets.push('latitude = ?'); params.push(input.latitude) }
+    if (input.longitude !== undefined) { sets.push('longitude = ?'); params.push(input.longitude) }
+    if (input.publicIp !== undefined) { sets.push('public_ip = ?'); params.push(input.publicIp) }
 
-    if (sets.length === 0) return proxyToDisplay(existing)
+    // Always bump version and updated_at
+    const newVersion = (existing.proxyVersion || 1) + 1
+    const now = new Date().toISOString()
+    sets.push('proxy_version = ?')
+    params.push(newVersion)
+    sets.push('updated_at = ?')
+    params.push(now)
 
     params.push(id)
     db.prepare(`UPDATE proxies SET ${sets.join(', ')} WHERE id = ?`).run(...params)
     return this.getDisplayById(id)
+  }
+
+  upsertFromRemote(remoteProxy: any): ProxyDisplay | null {
+    if (!remoteProxy || !remoteProxy.id) return null
+    const existing = this.getById(remoteProxy.id)
+    if (!existing) {
+      return this.create({
+        ...remoteProxy,
+        id: remoteProxy.id,
+        proxyVersion: remoteProxy.proxy_version || remoteProxy.proxyVersion || 1,
+        publicIp: remoteProxy.public_ip || remoteProxy.publicIp || ''
+      })
+    }
+
+    const db = getDatabase()
+    const sets: string[] = []
+    const params: any[] = []
+
+    if (remoteProxy.name !== undefined) { sets.push('name = ?'); params.push(remoteProxy.name) }
+    if (remoteProxy.type !== undefined) { sets.push('type = ?'); params.push(remoteProxy.type) }
+    if (remoteProxy.host !== undefined) { sets.push('host = ?'); params.push(remoteProxy.host) }
+    if (remoteProxy.port !== undefined) { sets.push('port = ?'); params.push(remoteProxy.port) }
+    if (remoteProxy.username !== undefined) { sets.push('username = ?'); params.push(remoteProxy.username) }
+    if (remoteProxy.password !== undefined && remoteProxy.password !== '') {
+      sets.push('encrypted_password = ?')
+      params.push(encryptPassword(remoteProxy.password))
+    }
+    if (remoteProxy.country !== undefined) { sets.push('country = ?'); params.push(remoteProxy.country) }
+    if (remoteProxy.region !== undefined) { sets.push('region = ?'); params.push(remoteProxy.region) }
+    if (remoteProxy.city !== undefined) { sets.push('city = ?'); params.push(remoteProxy.city) }
+    if (remoteProxy.isp !== undefined) { sets.push('isp = ?'); params.push(remoteProxy.isp) }
+    if (remoteProxy.asn !== undefined) { sets.push('asn = ?'); params.push(remoteProxy.asn) }
+    if (remoteProxy.timezone !== undefined) { sets.push('timezone = ?'); params.push(remoteProxy.timezone) }
+    if (remoteProxy.latitude !== undefined) { sets.push('latitude = ?'); params.push(remoteProxy.latitude) }
+    if (remoteProxy.longitude !== undefined) { sets.push('longitude = ?'); params.push(remoteProxy.longitude) }
+    if (remoteProxy.public_ip !== undefined || remoteProxy.publicIp !== undefined) {
+      sets.push('public_ip = ?')
+      params.push(remoteProxy.public_ip ?? remoteProxy.publicIp ?? '')
+    }
+    if (remoteProxy.proxy_version !== undefined || remoteProxy.proxyVersion !== undefined) {
+      sets.push('proxy_version = ?')
+      params.push(remoteProxy.proxy_version ?? remoteProxy.proxyVersion)
+    }
+    if (remoteProxy.updated_at || remoteProxy.updatedAt) {
+      sets.push('updated_at = ?')
+      params.push(remoteProxy.updated_at ?? remoteProxy.updatedAt)
+    } else {
+      sets.push("updated_at = datetime('now')")
+    }
+
+    if (sets.length > 0) {
+      params.push(remoteProxy.id)
+      db.prepare(`UPDATE proxies SET ${sets.join(', ')} WHERE id = ?`).run(...params)
+    }
+
+    return this.getDisplayById(remoteProxy.id)
+  }
+
+  getByHost(host: string): Proxy | null {
+    if (!host) return null
+    const db = getDatabase()
+    const row = db.prepare('SELECT * FROM proxies WHERE host = ? ORDER BY created_at DESC LIMIT 1').get(host) as ProxyRow | undefined
+    return row ? proxyFromRow(row) : null
+  }
+
+  updateGeoLocation(id: string, geo: { country?: string; region?: string; city?: string; isp?: string; asn?: string; timezone?: string; latitude?: number; longitude?: number; publicIp?: string }): ProxyDisplay | null {
+    return this.update(id, {
+      country: geo.country,
+      region: geo.region,
+      city: geo.city,
+      isp: geo.isp,
+      asn: geo.asn,
+      timezone: geo.timezone,
+      latitude: geo.latitude,
+      longitude: geo.longitude,
+      publicIp: geo.publicIp
+    })
   }
 
   delete(id: string): boolean {
@@ -103,7 +195,7 @@ export class ProxyRepository {
 
   updateTestStatus(id: string, status: string): void {
     const db = getDatabase()
-    db.prepare('UPDATE proxies SET test_status = ?, last_tested = datetime(\'now\') WHERE id = ?')
+    db.prepare("UPDATE proxies SET test_status = ?, last_tested = datetime('now') WHERE id = ?")
       .run(status, id)
   }
 

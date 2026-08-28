@@ -205,6 +205,8 @@ declare global {
       createProfile: (input: any) => Promise<IpcResult<Profile>>
       updateProfile: (id: string, input: any) => Promise<IpcResult<Profile>>
       deleteProfile: (id: string) => Promise<IpcResult>
+      reloadProfile: (id: string) => Promise<IpcResult<Profile>>
+      refreshProfileProxy: (id: string) => Promise<IpcResult<Profile>>
       duplicateProfile: (id: string) => Promise<IpcResult<Profile>>
       exportProfile: (id: string) => Promise<IpcResult<any>>
       importProfile: (data: any) => Promise<IpcResult<Profile>>
@@ -219,6 +221,8 @@ declare global {
       createProxy: (input: any) => Promise<IpcResult<ProxyDisplay>>
       updateProxy: (id: string, input: any) => Promise<IpcResult<ProxyDisplay>>
       deleteProxy: (id: string) => Promise<IpcResult>
+      refreshProxy: (id: string) => Promise<IpcResult<ProxyDisplay>>
+      syncProfileProxy: (profileId: string) => Promise<IpcResult<Profile>>
       testProxy: (id: string) => Promise<IpcResult<ProxyTestResult>>
       testCustomProxy: (input: any) => Promise<IpcResult<ProxyTestResult>>
       getGroups: () => Promise<IpcResult<Group[]>>

@@ -762,7 +762,39 @@ function ensureDatabaseTablesExist() {
               `details_json` TEXT DEFAULT NULL,
               `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `proxies` (
+              `id` VARCHAR(64) PRIMARY KEY,
+              `user_id` VARCHAR(64) NOT NULL DEFAULT 'admin-default',
+              `name` VARCHAR(255) NOT NULL,
+              `type` VARCHAR(32) NOT NULL DEFAULT 'http',
+              `host` VARCHAR(255) NOT NULL DEFAULT '',
+              `port` INT NOT NULL DEFAULT 80,
+              `username` VARCHAR(255) DEFAULT '',
+              `password` VARCHAR(255) DEFAULT '',
+              `country` VARCHAR(64) DEFAULT '',
+              `region` VARCHAR(128) DEFAULT '',
+              `city` VARCHAR(128) DEFAULT '',
+              `isp` VARCHAR(255) DEFAULT '',
+              `asn` VARCHAR(64) DEFAULT '',
+              `timezone` VARCHAR(128) DEFAULT '',
+              `latitude` DECIMAL(10, 7) DEFAULT NULL,
+              `longitude` DECIMAL(10, 7) DEFAULT NULL,
+              `public_ip` VARCHAR(64) DEFAULT '',
+              `proxy_version` INT NOT NULL DEFAULT 1,
+              `test_status` VARCHAR(32) DEFAULT 'untested',
+              `last_tested` DATETIME DEFAULT NULL,
+              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
+
+        try { $db->exec("ALTER TABLE `proxies` ADD COLUMN `timezone` VARCHAR(128) DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `proxies` ADD COLUMN `latitude` DECIMAL(10, 7) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `proxies` ADD COLUMN `longitude` DECIMAL(10, 7) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `proxies` ADD COLUMN `public_ip` VARCHAR(64) DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `proxies` ADD COLUMN `proxy_version` INT NOT NULL DEFAULT 1"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `proxies` ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"); } catch (Throwable $e) {}
 
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `affiliate_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `referral_code` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}

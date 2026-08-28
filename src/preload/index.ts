@@ -159,6 +159,17 @@ const api = {
     const token = typeof sessionTokenOrData === 'string' && maybeData !== undefined ? sessionTokenOrData : getSavedToken()
     return ipcRenderer.invoke('profiles:import', token, data)
   },
+  // ── Profiles ──
+  reloadProfile: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:reload', token, id)
+  },
+  refreshProfileProxy: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:refreshProxy', token, id)
+  },
   getProfileSize: (sessionTokenOrId: string, maybeId?: string) => {
     const id = maybeId || sessionTokenOrId
     const token = maybeId ? sessionTokenOrId : getSavedToken()
@@ -188,6 +199,8 @@ const api = {
   createProxy: (input: any) => ipcRenderer.invoke('proxies:create', input),
   updateProxy: (id: string, input: any) => ipcRenderer.invoke('proxies:update', id, input),
   deleteProxy: (id: string) => ipcRenderer.invoke('proxies:delete', id),
+  refreshProxy: (id: string) => ipcRenderer.invoke('proxies:refresh', id),
+  syncProfileProxy: (profileId: string) => ipcRenderer.invoke('proxies:syncProfileProxy', profileId),
   testProxy: (id: string) => ipcRenderer.invoke('proxies:test', id),
   testCustomProxy: (input: any) => ipcRenderer.invoke('proxies:testCustom', input),
   verifyProxyBeforeLaunch: (proxyId: string) => ipcRenderer.invoke('proxies:verifyBeforeLaunch', proxyId),

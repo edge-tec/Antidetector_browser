@@ -460,6 +460,38 @@ export class CentralApiClient {
       body: JSON.stringify(config)
     })
   }
+
+  // ── Central Proxy Management APIs ──
+  public async getProxies(search?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    let url = '/api/proxies?action=list'
+    if (search) url += `&search=${encodeURIComponent(search)}`
+    return await this.request(url, { method: 'GET' })
+  }
+
+  public async getProxyById(id: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    return await this.request(`/api/proxies?action=get&id=${encodeURIComponent(id)}`, { method: 'GET' })
+  }
+
+  public async saveProxy(proxyData: any): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    return await this.request('/api/proxies?action=save', {
+      method: 'POST',
+      body: JSON.stringify(proxyData)
+    })
+  }
+
+  public async updateProxyLocation(id: string, locationData: any): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    return await this.request(`/api/proxies?action=update-location&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: JSON.stringify(locationData)
+    })
+  }
+
+  public async deleteRemoteProxy(id: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.request(`/api/proxies?action=delete&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: JSON.stringify({ id })
+    })
+  }
 }
 
 export const centralApi = new CentralApiClient()

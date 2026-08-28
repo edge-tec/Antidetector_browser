@@ -238,6 +238,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onSto
   onStart?: () => void
   onStop?: () => void
   onClearCookies?: () => void
+  onRefreshProxy?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -320,6 +321,16 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onSto
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
           </button>
         )}
+        {profile.proxyId && onRefreshProxy && (
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={onRefreshProxy}
+            title="Reload & Synchronize Proxy Location (Timezone, Coordinates, Geolocation)"
+            style={{ color: '#38BDF8' }}
+          >
+            🔄
+          </button>
+        )}
         {onClearCookies && (
           <button
             className="btn btn-sm btn-ghost"
@@ -338,13 +349,14 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onSto
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
   onStart?: () => void
   onStop?: () => void
   onClearCookies?: () => void
+  onRefreshProxy?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -428,6 +440,16 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, on
         ) : (
           <button className="btn btn-sm btn-success" onClick={onStart} disabled={isLaunching}>
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
+          </button>
+        )}
+        {profile.proxyId && onRefreshProxy && (
+          <button
+            className="btn btn-sm btn-ghost btn-icon"
+            onClick={onRefreshProxy}
+            title="Reload & Synchronize Proxy Location (Timezone, Coordinates, Geolocation)"
+            style={{ color: '#38BDF8', fontSize: 13 }}
+          >
+            🔄
           </button>
         )}
         {onClearCookies && (
@@ -650,16 +672,24 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              padding: '4px 10px',
+              background: profiles.length >= (licenseLimits.profiles ?? 3) ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+              color: profiles.length >= (licenseLimits.profiles ?? 3) ? '#EF4444' : '#60A5FA',
+              border: `1px solid ${profiles.length >= (licenseLimits.profiles ?? 3) ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
               borderRadius: 'var(--radius-md)',
+              padding: '4px 12px',
               fontSize: '12px',
-              fontWeight: 600,
-              background: profiles.length >= licenseLimits.profiles ? 'rgba(239, 68, 68, 0.15)' : 'rgba(45, 212, 191, 0.12)',
-              color: profiles.length >= licenseLimits.profiles ? '#F87171' : '#2DD4BF',
-              border: profiles.length >= licenseLimits.profiles ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(45, 212, 191, 0.25)'
+              fontWeight: 600
             }}>
-              <span>{profiles.length >= licenseLimits.profiles ? '⚠️ Quota Limit:' : '📊 Quota:'}</span>
-              <span>{profiles.length} / {licenseLimits.profiles} Profiles</span>
+              <span>Profiles: {profiles.length} / {licenseLimits.profiles ?? 3}</span>
+              {profiles.length >= (licenseLimits.profiles ?? 3) && (
+                <button
+                  className="btn btn-sm btn-primary"
+                  style={{ padding: '2px 8px', fontSize: '11px', height: 'auto', marginLeft: 4 }}
+                  onClick={onUpgrade}
+                >
+                  Upgrade
+                </button>
+              )}
             </div>
           )}
           <button className="btn btn-ghost btn-icon" onClick={loadProfiles} title="Refresh">
@@ -767,6 +797,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
                 else showToast('error', r.error || 'Failed to stop')
                 loadProfiles()
               }}
+              onRefreshProxy={() => handleRefreshProxy(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
@@ -821,6 +852,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
                 else showToast('error', r.error || 'Failed to stop')
                 loadProfiles()
               }}
+              onRefreshProxy={() => handleRefreshProxy(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
@@ -1021,9 +1053,27 @@ function ProxiesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast
   const isFreePlan = licenseInfo?.features?.proxy_support === 'basic' || licenseInfo?.plan?.id === 'plan_free' || (licenseInfo?.limits?.profiles === 3 && !licenseInfo?.features?.advanced_fingerprint)
   const [proxies, setProxies] = useState<ProxyDisplay[]>([])
   const [showCreate, setShowCreate] = useState(false)
+  const [editProxy, setEditProxy] = useState<ProxyDisplay | null>(null)
   const [testing, setTesting] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState<string | null>(null)
   const [testResults, setTestResults] = useState<Record<string, ProxyTestResult>>({})
   const [form, setForm] = useState({ name: '', type: 'http' as string, host: '', port: 8080, username: '', password: '' })
+  const [editForm, setEditForm] = useState({
+    name: '',
+    type: 'http' as string,
+    host: '',
+    port: 8080,
+    username: '',
+    password: '',
+    country: '',
+    region: '',
+    city: '',
+    isp: '',
+    asn: '',
+    timezone: '',
+    latitude: '' as any,
+    longitude: '' as any
+  })
 
   const load = useCallback(async () => {
     const r = await window.api.getProxies()
@@ -1046,6 +1096,75 @@ function ProxiesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast
       if (r.lockedFeature === 'proxy_support') {
         onUpgrade()
       }
+    }
+  }
+
+  const handleOpenEdit = (px: ProxyDisplay) => {
+    setEditProxy(px)
+    setEditForm({
+      name: px.name || '',
+      type: px.type || 'http',
+      host: px.host || '',
+      port: px.port || 8080,
+      username: px.username || '',
+      password: '',
+      country: px.country || '',
+      region: px.region || '',
+      city: px.city || '',
+      isp: px.isp || '',
+      asn: px.asn || '',
+      timezone: px.timezone || '',
+      latitude: px.latitude !== undefined && px.latitude !== null ? String(px.latitude) : '',
+      longitude: px.longitude !== undefined && px.longitude !== null ? String(px.longitude) : ''
+    })
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editProxy) return
+    const lat = editForm.latitude !== '' && !isNaN(Number(editForm.latitude)) ? Number(editForm.latitude) : undefined
+    const lon = editForm.longitude !== '' && !isNaN(Number(editForm.longitude)) ? Number(editForm.longitude) : undefined
+
+    const r = await window.api.updateProxy(editProxy.id, {
+      name: editForm.name.trim(),
+      type: editForm.type,
+      host: editForm.host.trim(),
+      port: Number(editForm.port) || 80,
+      username: editForm.username.trim() || undefined,
+      password: editForm.password ? editForm.password : undefined,
+      country: editForm.country.trim() || undefined,
+      region: editForm.region.trim() || undefined,
+      city: editForm.city.trim() || undefined,
+      isp: editForm.isp.trim() || undefined,
+      asn: editForm.asn.trim() || undefined,
+      timezone: editForm.timezone.trim() || undefined,
+      latitude: lat,
+      longitude: lon
+    })
+
+    if (r.success) {
+      showToast('success', `✓ Proxy location updated & synchronized across linked browser profiles`)
+      setEditProxy(null)
+      load()
+    } else {
+      showToast('error', r.error || 'Failed to update proxy')
+    }
+  }
+
+  const handleRefreshProxy = async (id: string) => {
+    setSyncing(id)
+    try {
+      const r = await window.api.refreshProxy(id)
+      if (r.success && r.data) {
+        const count = r.updatedProfilesCount !== undefined ? r.updatedProfilesCount : 0
+        showToast('success', `✓ Proxy synced: ${r.data.city || 'N/A'}, ${r.data.region || 'N/A'}, ${r.data.country || 'N/A'} (Updated ${count} linked profile${count === 1 ? '' : 's'})`)
+      } else {
+        showToast('error', r.error || 'Failed to sync proxy')
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Sync failed')
+    } finally {
+      setSyncing(null)
+      load()
     }
   }
 
@@ -1075,11 +1194,16 @@ function ProxiesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast
       <div className="page-header">
         <div>
           <h1 className="page-title">Proxies</h1>
-          <p className="page-subtitle">Manage proxy configurations & verify live geographic data</p>
+          <p className="page-subtitle">Manage proxy configurations, real-time location sync & fingerprint coordinates</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.plus}</span> Add Proxy
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={load} title="Refresh Proxy List">
+            🔄 Refresh All
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.plus}</span> Add Proxy
+          </button>
+        </div>
       </div>
 
       {proxies.length === 0 ? (
@@ -1105,6 +1229,9 @@ function ProxiesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast
               region: px.region,
               regionName: px.region,
               isp: px.isp,
+              timezone: px.timezone,
+              latitude: px.latitude,
+              longitude: px.longitude,
               zip: 'N/A'
             } : null)
 
@@ -1114,15 +1241,29 @@ function ProxiesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{px.name}</span>
-                      {px.country && <span style={{ fontSize: '12px', color: '#94A3B8' }}>• {px.country} {px.city ? `/ ${px.city}` : ''}</span>}
+                      {px.country && <span style={{ fontSize: '12px', color: '#94A3B8' }}>• {px.country} {px.city ? `/ ${px.city}` : ''} {px.region ? `(${px.region})` : ''}</span>}
+                      {px.timezone && <span style={{ fontSize: '11px', background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', padding: '2px 6px', borderRadius: '4px' }}>TZ: {px.timezone}</span>}
                     </div>
                     <div className="text-sm text-secondary" style={{ marginTop: 2 }}>
                       {px.type}://{px.host}:{px.port}{px.username ? ` (auth: ${px.username})` : ''}
+                      {px.latitude !== undefined && px.longitude !== undefined ? ` • [${Number(px.latitude).toFixed(4)}, ${Number(px.longitude).toFixed(4)}]` : ''}
                     </div>
                   </div>
                   {statusBadge(px.testStatus)}
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => handleRefreshProxy(px.id)}
+                    disabled={syncing === px.id}
+                    title="Reload and synchronize proxy location to all linked browser profiles"
+                    style={{ color: '#38BDF8' }}
+                  >
+                    {syncing === px.id ? <div className="loading-spinner" style={{ width: 14, height: 14 }} /> : '🔄 Sync'}
+                  </button>
                   <button className="btn btn-sm btn-secondary" onClick={() => handleTest(px.id)} disabled={testing === px.id}>
                     {testing === px.id ? <div className="loading-spinner" style={{ width: 14, height: 14 }} /> : 'Check Proxy'}
+                  </button>
+                  <button className="btn btn-sm btn-ghost" onClick={() => handleOpenEdit(px)} title="Edit Location / Proxy Settings">
+                    <span style={{ width: 14, height: 14, display: 'flex' }}>{Icons.edit}</span>
                   </button>
                   <button className="btn btn-sm btn-ghost" onClick={() => confirm({
                     title: 'Delete Proxy', message: `Delete "${px.name}"? Profiles using this proxy will switch to direct connection.`,
@@ -1145,6 +1286,83 @@ function ProxiesPage({ showToast, confirm, licenseInfo, onUpgrade }: { showToast
             )
           })}
         </div>
+      )}
+
+      {/* Edit Proxy / Geo Location Modal */}
+      {editProxy && (
+        <>
+          <div className="modal-backdrop" onClick={() => setEditProxy(null)} />
+          <div className="modal" style={{ maxWidth: 560 }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Edit Proxy & Geo Location</h3>
+              <button className="btn btn-ghost btn-icon" onClick={() => setEditProxy(null)}><span style={{ width: 18, height: 18, display: 'flex' }}>{Icons.x}</span></button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="form-group">
+                  <label className="form-label">Proxy Name</label>
+                  <input className="form-input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                </div>
+                <div className="grid-form">
+                  <div className="form-group">
+                    <label className="form-label">Type</label>
+                    <select className="form-select" value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}>
+                      <option value="http">HTTP</option>
+                      <option value="https">HTTPS</option>
+                      <option value="socks5">SOCKS5</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Port</label>
+                    <input className="form-input" type="number" value={editForm.port} onChange={(e) => setEditForm({ ...editForm, port: parseInt(e.target.value) || 0 })} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Host</label>
+                  <input className="form-input" value={editForm.host} onChange={(e) => setEditForm({ ...editForm, host: e.target.value })} />
+                </div>
+                <div className="grid-form">
+                  <div className="form-group">
+                    <label className="form-label">City</label>
+                    <input className="form-input" placeholder="e.g. Los Angeles, Chicago, New York" value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">State / Region</label>
+                    <input className="form-input" placeholder="e.g. CA, IL, NY, England" value={editForm.region} onChange={(e) => setEditForm({ ...editForm, region: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid-form">
+                  <div className="form-group">
+                    <label className="form-label">Country Code</label>
+                    <input className="form-input" placeholder="e.g. US, GB, DE" value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value.toUpperCase() })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Timezone</label>
+                    <input className="form-input" placeholder="e.g. America/Los_Angeles" value={editForm.timezone} onChange={(e) => setEditForm({ ...editForm, timezone: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid-form">
+                  <div className="form-group">
+                    <label className="form-label">Latitude (optional)</label>
+                    <input className="form-input" placeholder="e.g. 34.0522" value={editForm.latitude} onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Longitude (optional)</label>
+                    <input className="form-input" placeholder="e.g. -118.2437" value={editForm.longitude} onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ISP / Organization</label>
+                  <input className="form-input" placeholder="e.g. AT&T Services, Comcast" value={editForm.isp} onChange={(e) => setEditForm({ ...editForm, isp: e.target.value })} />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setEditProxy(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSaveEdit} disabled={!editForm.name.trim() || !editForm.host.trim()}>Save & Sync Profiles</button>
+            </div>
+          </div>
+        </>
       )}
 
       {showCreate && (

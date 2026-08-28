@@ -10,6 +10,7 @@ import { profileManager } from '../browser/profile-manager'
 import { validateProfileName, validateId } from '../security/validators'
 import { authorizeUser, normalizeUserRole } from '../security/session'
 import { centralApi } from '../services/api-client.service'
+import { proxySyncService } from '../services/proxy-sync.service'
 import { logger } from '../logging/logger'
 
 function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string; locked?: boolean; expired?: boolean } {
@@ -400,6 +401,37 @@ export function registerProfileHandlers(): void {
       }
 
       return { success: true, data: profileManager.getProfileSize(id) }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Profile Reload & Proxy Synchronization ──
+  ipcMain.handle('profiles:reload', async (_event, sessionToken: string, id: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(id)
+
+      await proxySyncService.syncProfileProxy(id, true)
+      const profile = profileRepo.getById(id)
+      if (!profile) return { success: false, error: 'Profile not found' }
+      return { success: true, data: profile }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:refreshProxy', async (_event, sessionToken: string, id: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(id)
+
+      await proxySyncService.syncProfileProxy(id, true)
+      const profile = profileRepo.getById(id)
+      if (!profile) return { success: false, error: 'Profile not found' }
+      return { success: true, data: profile }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

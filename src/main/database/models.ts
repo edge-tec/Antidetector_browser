@@ -175,9 +175,15 @@ export interface Proxy {
   city?: string
   isp?: string
   asn?: string
+  timezone?: string
+  latitude?: number
+  longitude?: number
+  publicIp?: string
+  proxyVersion?: number
   lastTested: string | null
   testStatus: ProxyTestStatus
   createdAt: string
+  updatedAt?: string
 }
 
 export interface ProxyCreateInput {
@@ -192,6 +198,11 @@ export interface ProxyCreateInput {
   city?: string
   isp?: string
   asn?: string
+  timezone?: string
+  latitude?: number
+  longitude?: number
+  publicIp?: string
+  proxyVersion?: number
 }
 
 export interface ProxyUpdateInput extends Partial<ProxyCreateInput> {}
@@ -322,9 +333,15 @@ export interface ProxyRow {
   city?: string
   isp?: string
   asn?: string
+  timezone?: string
+  latitude?: number
+  longitude?: number
+  public_ip?: string
+  proxy_version?: number
   last_tested: string | null
   test_status: string
   created_at: string
+  updated_at?: string
 }
 
 export interface GroupRow {
@@ -460,9 +477,15 @@ export function proxyFromRow(row: ProxyRow): Proxy {
     city: row.city || '',
     isp: row.isp || '',
     asn: row.asn || '',
+    timezone: row.timezone || '',
+    latitude: typeof row.latitude === 'number' ? row.latitude : undefined,
+    longitude: typeof row.longitude === 'number' ? row.longitude : undefined,
+    publicIp: row.public_ip || '',
+    proxyVersion: row.proxy_version || 1,
     lastTested: row.last_tested,
     testStatus: row.test_status as ProxyTestStatus,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at
   }
 }
 

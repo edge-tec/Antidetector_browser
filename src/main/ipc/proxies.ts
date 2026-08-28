@@ -7,6 +7,8 @@ import { proxyRepo } from '../database/repositories/proxy.repo'
 import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { testProxyConnection, testRawProxyConnection } from '../network/proxy-tester'
 import { lookupGeoIP, getCountryFlag } from '../network/geo-lookup'
+import { proxySyncService } from '../services/proxy-sync.service'
+import { centralApi } from '../services/api-client.service'
 import { validateId, validateNonEmpty, validatePort } from '../security/validators'
 import { logger } from '../logging/logger'
 
@@ -129,10 +131,36 @@ export function registerProxyHandlers(): void {
         username: input.username !== undefined ? (input.username?.trim() || null) : undefined,
         password: input.password !== undefined ? (input.password || undefined) : undefined,
         country: input.country,
-        city: input.city
+        region: input.region,
+        city: input.city,
+        isp: input.isp,
+        asn: input.asn,
+        timezone: input.timezone,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        publicIp: input.publicIp
       })
 
-      logger.info('proxy', `Updated proxy ${id}`)
+      // Sync changes and update all linked profiles immediately
+      try {
+        await proxySyncService.syncProxy(id, true)
+      } catch {}
+
+      // Broadcast remote update if connected
+      try {
+        centralApi.updateProxyLocation(id, {
+          name: input.name?.trim(),
+          country: input.country,
+          region: input.region,
+          city: input.city,
+          isp: input.isp,
+          timezone: input.timezone,
+          latitude: input.latitude,
+          longitude: input.longitude
+        }).catch(() => {})
+      } catch {}
+
+      logger.info('proxy', `Updated proxy ${id} and synchronized linked browser profiles`)
       return { success: true, data: updated }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -143,6 +171,7 @@ export function registerProxyHandlers(): void {
     try {
       validateId(id)
       proxyRepo.delete(id)
+      centralApi.deleteRemoteProxy(id).catch(() => {})
       logger.info('proxy', `Deleted proxy ${id}`)
       return { success: true }
     } catch (err: any) {
@@ -150,6 +179,31 @@ export function registerProxyHandlers(): void {
     }
   })
 
+  // ── Refresh & Sync Proxy Handlers ──
+  ipcMain.handle('proxies:refresh', async (_event, id: string) => {
+    try {
+      validateId(id)
+      const res = await proxySyncService.syncProxy(id, true)
+      if (!res.success) {
+        return { success: false, error: res.error || 'Failed to refresh proxy' }
+      }
+      return { success: true, data: res.proxy, updatedProfilesCount: res.updatedProfilesCount }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('proxies:syncProfileProxy', async (_event, profileId: string) => {
+    try {
+      validateId(profileId)
+      const profile = await proxySyncService.syncProfileProxy(profileId, true)
+      return { success: true, data: profile }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Test proxy connection (raw or saved)
   ipcMain.handle('proxies:test', async (_event, id: string) => {
     try {
       validateId(id)
@@ -160,23 +214,16 @@ export function registerProxyHandlers(): void {
     }
   })
 
-  ipcMain.handle('proxies:geoLookup', async (_event, host: string) => {
+  // Test raw proxy without saving
+  ipcMain.handle('proxies:testRaw', async (_event, input: any) => {
     try {
-      const geo = await lookupGeoIP(host)
-      return { success: true, data: geo }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  })
-
-  ipcMain.handle('proxies:testCustom', async (_event, input: any) => {
-    try {
-      const { type, host, port, username, password, name } = input || {}
-      if (!host) throw new Error('Proxy host is required')
+      const { type, host, port, username, password, name } = input
+      validateNonEmpty(host, 'Host')
+      validatePort(Number(port))
 
       const result = await testRawProxyConnection({
-        type: type || 'socks5',
-        host,
+        type: type || 'http',
+        host: host.trim(),
         port: Number(port) || 80,
         username,
         password,

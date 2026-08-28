@@ -16,6 +16,7 @@ import { ensureProfileDataDir, ensureFirefoxProfileDataDir } from './chromium-re
 import { setupBrowserInjection } from './injection/injector'
 import { startProxyBridge } from '../network/proxy-bridge'
 import { lookupGeoIP } from '../network/geo-lookup'
+import { proxySyncService } from '../services/proxy-sync.service'
 import { killProcessTree } from './process-tracker'
 import { logger } from '../logging/logger'
 import { getGlobalLaunchUrlConfig } from './launch-url-manager'
@@ -802,6 +803,15 @@ export async function launchBrowser(
     deviceTemplateId
   )
 
+  // Real-time synchronization of proxy configuration & location data before launch
+  if (profile.proxyId) {
+    try {
+      await proxySyncService.syncProfileProxy(profile.id)
+    } catch (err: any) {
+      logger.warn('proxy', `[ProxyPreSync] Profile proxy sync: ${err.message}`)
+    }
+  }
+
   // Resolve proxy
   let proxy: Proxy | null = null
   if (profile.proxyId) {
@@ -833,33 +843,42 @@ export async function launchBrowser(
     }
   }
 
-  // ── Auto-Sync Timezone & Geolocation to Proxy Location ──
+  // ── Auto-Sync Timezone, Geolocation & WebRTC to Proxy Location ──
   if (proxy && proxy.type !== 'direct' && proxy.host) {
-    const isAutoTz = !profile.timezone || profile.timezone === 'auto' || profile.timezone === 'America/New_York' || fingerprint?.timezone?.mode === 'auto'
-    const isAutoGeo = !fingerprint?.geolocation || fingerprint.geolocation.mode === 'ip-based' || fingerprint.geolocation.mode === 'auto'
+    try {
+      const geo = await lookupGeoIP(proxy.host, {
+        country: proxy.country,
+        region: proxy.region,
+        city: proxy.city,
+        isp: proxy.isp,
+        asn: proxy.asn,
+        timezone: proxy.timezone,
+        latitude: proxy.latitude,
+        longitude: proxy.longitude,
+        publicIp: proxy.publicIp || proxy.host
+      })
 
-    if (isAutoTz || isAutoGeo) {
-      try {
-        const geo = await lookupGeoIP(proxy.host)
-        if (geo) {
-          if (isAutoTz && geo.timezone) {
-            fingerprint.timezone = fingerprint.timezone || { mode: 'auto', timezone: geo.timezone }
-            fingerprint.timezone.timezone = geo.timezone
-            fingerprint.timezone.mode = 'auto'
-            profile.timezone = geo.timezone
-            logger.info('proxy', `[ProxyTimezoneSync] ✓ Auto-matched browser timezone to "${geo.timezone}" for proxy host ${proxy.host}`)
-          }
-          if (isAutoGeo && geo.latitude !== undefined && geo.longitude !== undefined) {
-            fingerprint.geolocation = fingerprint.geolocation || { mode: 'ip-based', latitude: geo.latitude, longitude: geo.longitude, accuracy: 50 }
-            fingerprint.geolocation.latitude = geo.latitude
-            fingerprint.geolocation.longitude = geo.longitude
-            fingerprint.geolocation.mode = 'ip-based'
-            logger.info('proxy', `[ProxyGeoSync] ✓ Auto-matched geolocation coordinates (${geo.latitude}, ${geo.longitude}) for proxy host ${proxy.host}`)
-          }
+      if (geo) {
+        if (geo.timezone) {
+          fingerprint.timezone = fingerprint.timezone || { mode: 'custom', timezone: geo.timezone }
+          fingerprint.timezone.timezone = geo.timezone
+          profile.timezone = geo.timezone
+          logger.info('proxy', `[ProxyTimezoneSync] ✓ Auto-matched browser timezone to "${geo.timezone}" for proxy host ${proxy.host} (${proxy.city || geo.city}, ${proxy.region || geo.region})`)
         }
-      } catch (err: any) {
-        logger.warn('proxy', `[ProxySync] Could not resolve proxy geo: ${err.message}`)
+        if (geo.latitude !== undefined && geo.longitude !== undefined) {
+          fingerprint.geolocation = fingerprint.geolocation || { mode: 'ip-based', latitude: geo.latitude, longitude: geo.longitude, accuracy: 50 }
+          fingerprint.geolocation.latitude = geo.latitude
+          fingerprint.geolocation.longitude = geo.longitude
+          fingerprint.geolocation.mode = 'ip-based'
+          logger.info('proxy', `[ProxyGeoSync] ✓ Auto-matched geolocation coordinates (${geo.latitude}, ${geo.longitude}) for proxy host ${proxy.host} (${proxy.city || geo.city}, ${proxy.region || geo.region})`)
+        }
+        if (geo.ip) {
+          if (!fingerprint.webrtc) fingerprint.webrtc = {}
+          fingerprint.webrtc.publicIp = geo.ip
+        }
       }
+    } catch (err: any) {
+      logger.warn('proxy', `[ProxySync] Could not resolve proxy geo: ${err.message}`)
     }
   }
 

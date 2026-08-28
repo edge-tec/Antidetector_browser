@@ -75,9 +75,22 @@ export function initDatabase(): any {
     db.exec("ALTER TABLE profiles ADD COLUMN user_id TEXT DEFAULT 'admin-default'")
   } catch {}
 
-  try {
-    db.exec("ALTER TABLE proxies ADD COLUMN region TEXT DEFAULT ''")
-  } catch {}
+  const proxyColumns = [
+    "ALTER TABLE proxies ADD COLUMN country TEXT DEFAULT ''",
+    "ALTER TABLE proxies ADD COLUMN region TEXT DEFAULT ''",
+    "ALTER TABLE proxies ADD COLUMN city TEXT DEFAULT ''",
+    "ALTER TABLE proxies ADD COLUMN isp TEXT DEFAULT ''",
+    "ALTER TABLE proxies ADD COLUMN asn TEXT DEFAULT ''",
+    "ALTER TABLE proxies ADD COLUMN timezone TEXT DEFAULT ''",
+    "ALTER TABLE proxies ADD COLUMN latitude REAL DEFAULT NULL",
+    "ALTER TABLE proxies ADD COLUMN longitude REAL DEFAULT NULL",
+    "ALTER TABLE proxies ADD COLUMN public_ip TEXT DEFAULT ''",
+    "ALTER TABLE proxies ADD COLUMN proxy_version INTEGER DEFAULT 1",
+    "ALTER TABLE proxies ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))"
+  ]
+  for (const colSql of proxyColumns) {
+    try { db.exec(colSql) } catch {}
+  }
 
   return db
 }
