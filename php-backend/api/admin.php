@@ -779,6 +779,201 @@ switch ($action) {
         ]);
         break;
 
+    // ── Enterprise Software Version & Release Management APIs ──
+    case 'get-software-versions':
+        $stmt = $db->query("SELECT * FROM software_versions ORDER BY created_at DESC");
+        $versions = $stmt->fetchAll();
+        respondJson(['success' => true, 'data' => $versions]);
+        break;
+
+    case 'save-software-version':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $ver = trim($input['version'] ?? '');
+        if (empty($ver)) respondJson(['success' => false, 'error' => 'Version number is required'], 400);
+
+        $id = $input['id'] ?? ('ver_' . preg_replace('/[^a-zA-Z0-9]/', '_', $ver) . '_' . time());
+        $build = $input['build'] ?? '1';
+        $channel = in_array($input['channel'] ?? '', ['stable', 'beta', 'alpha', 'internal']) ? $input['channel'] : 'stable';
+        $title = $input['release_title'] ?? "AntiProfiles v{$ver} Release";
+        $notes = $input['release_notes'] ?? '';
+        $mandatory = !empty($input['mandatory']) ? 1 : 0;
+        $minSupported = $input['min_supported_version'] ?? '1.0.0';
+        $status = in_array($input['status'] ?? '', ['draft', 'published', 'disabled', 'archived']) ? $input['status'] : 'draft';
+        $publishedAt = ($status === 'published') ? (date('Y-m-d H:i:s')) : null;
+
+        $winUrl = $input['win_download_url'] ?? '';
+        $winSize = (int)($input['win_file_size'] ?? 0);
+        $winSha = $input['win_sha256'] ?? '';
+
+        $macArmUrl = $input['mac_arm_download_url'] ?? '';
+        $macArmSize = (int)($input['mac_arm_file_size'] ?? 0);
+        $macArmSha = $input['mac_arm_sha256'] ?? '';
+
+        $macIntelUrl = $input['mac_intel_download_url'] ?? '';
+        $macIntelSize = (int)($input['mac_intel_file_size'] ?? 0);
+        $macIntelSha = $input['mac_intel_sha256'] ?? '';
+
+        $linuxUrl = $input['linux_download_url'] ?? '';
+        $linuxSize = (int)($input['linux_file_size'] ?? 0);
+        $linuxSha = $input['linux_sha256'] ?? '';
+
+        $signature = $input['signature'] ?? '';
+        $adminUser = $adminUserEmail ?? 'admin';
+
+        $stmt = $db->prepare("
+            INSERT INTO software_versions (
+                id, version, build, channel, release_title, release_notes, mandatory, min_supported_version,
+                win_download_url, win_file_size, win_sha256,
+                mac_arm_download_url, mac_arm_file_size, mac_arm_sha256,
+                mac_intel_download_url, mac_intel_file_size, mac_intel_sha256,
+                linux_download_url, linux_file_size, linux_sha256,
+                signature, status, published_at, created_by
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?, ?
+            )
+            ON DUPLICATE KEY UPDATE
+                version = VALUES(version),
+                build = VALUES(build),
+                channel = VALUES(channel),
+                release_title = VALUES(release_title),
+                release_notes = VALUES(release_notes),
+                mandatory = VALUES(mandatory),
+                min_supported_version = VALUES(min_supported_version),
+                win_download_url = VALUES(win_download_url),
+                win_file_size = VALUES(win_file_size),
+                win_sha256 = VALUES(win_sha256),
+                mac_arm_download_url = VALUES(mac_arm_download_url),
+                mac_arm_file_size = VALUES(mac_arm_file_size),
+                mac_arm_sha256 = VALUES(mac_arm_sha256),
+                mac_intel_download_url = VALUES(mac_intel_download_url),
+                mac_intel_file_size = VALUES(mac_intel_file_size),
+                mac_intel_sha256 = VALUES(mac_intel_sha256),
+                linux_download_url = VALUES(linux_download_url),
+                linux_file_size = VALUES(linux_file_size),
+                linux_sha256 = VALUES(linux_sha256),
+                signature = VALUES(signature),
+                status = VALUES(status),
+                published_at = COALESCE(VALUES(published_at), published_at),
+                updated_at = NOW()
+        ");
+
+        $stmt->execute([
+            $id, $ver, $build, $channel, $title, $notes, $mandatory, $minSupported,
+            $winUrl, $winSize, $winSha,
+            $macArmUrl, $macArmSize, $macArmSha,
+            $macIntelUrl, $macIntelSize, $macIntelSha,
+            $linuxUrl, $linuxSize, $linuxSha,
+            $signature, $status, $publishedAt, $adminUser
+        ]);
+
+        // If published, trigger real-time sync event
+        if ($status === 'published') {
+            try {
+                $evStmt = $db->prepare("
+                    INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                    VALUES (?, 'app.update.published', NULL, ?)
+                ");
+                $evStmt->execute([
+                    'evt_' . uniqid(),
+                    json_encode([
+                        'version' => $ver,
+                        'release_title' => $title,
+                        'release_notes' => $notes,
+                        'mandatory' => (bool)$mandatory,
+                        'channel' => $channel,
+                        'timestamp' => time()
+                    ])
+                ]);
+            } catch (Throwable $e) {}
+        }
+
+        $stmt = $db->prepare("SELECT * FROM software_versions WHERE id = ?");
+        $stmt->execute([$id]);
+        $saved = $stmt->fetch();
+
+        respondJson(['success' => true, 'data' => $saved]);
+        break;
+
+    case 'publish-software-version':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $id = $input['id'] ?? '';
+        if (empty($id)) respondJson(['success' => false, 'error' => 'Version ID is required'], 400);
+
+        $stmt = $db->prepare("UPDATE software_versions SET status = 'published', published_at = NOW() WHERE id = ?");
+        $stmt->execute([$id]);
+
+        $stmt = $db->prepare("SELECT * FROM software_versions WHERE id = ?");
+        $stmt->execute([$id]);
+        $pub = $stmt->fetch();
+
+        if ($pub) {
+            try {
+                $evStmt = $db->prepare("
+                    INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                    VALUES (?, 'app.update.published', NULL, ?)
+                ");
+                $evStmt->execute([
+                    'evt_' . uniqid(),
+                    json_encode([
+                        'version' => $pub['version'],
+                        'release_title' => $pub['release_title'],
+                        'release_notes' => $pub['release_notes'],
+                        'mandatory' => (bool)$pub['mandatory'],
+                        'channel' => $pub['channel'],
+                        'timestamp' => time()
+                    ])
+                ]);
+            } catch (Throwable $e) {}
+        }
+
+        respondJson(['success' => true, 'data' => $pub]);
+        break;
+
+    case 'rollback-software-version':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $currentId = $input['id'] ?? '';
+
+        // Disable current version
+        if (!empty($currentId)) {
+            $db->prepare("UPDATE software_versions SET status = 'disabled' WHERE id = ?")->execute([$currentId]);
+        }
+
+        // Find previous version and re-publish
+        $stmt = $db->query("SELECT * FROM software_versions WHERE id != " . $db->quote($currentId) . " ORDER BY created_at DESC LIMIT 1");
+        $prev = $stmt->fetch();
+
+        if ($prev) {
+            $db->prepare("UPDATE software_versions SET status = 'published', published_at = NOW() WHERE id = ?")->execute([$prev['id']]);
+            $stmt = $db->prepare("SELECT * FROM software_versions WHERE id = ?");
+            $stmt->execute([$prev['id']]);
+            $republished = $stmt->fetch();
+            respondJson(['success' => true, 'message' => "Successfully rolled back to v{$republished['version']}", 'data' => $republished]);
+        } else {
+            respondJson(['success' => false, 'error' => 'No previous version found to rollback to']);
+        }
+        break;
+
+    case 'delete-software-version':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $id = $input['id'] ?? '';
+        if (empty($id)) respondJson(['success' => false, 'error' => 'Version ID is required'], 400);
+
+        $stmt = $db->prepare("DELETE FROM software_versions WHERE id = ?");
+        $stmt->execute([$id]);
+        respondJson(['success' => true]);
+        break;
+
+    case 'get-update-logs':
+        $stmt = $db->query("SELECT * FROM software_update_logs ORDER BY created_at DESC LIMIT 100");
+        $logs = $stmt->fetchAll();
+        respondJson(['success' => true, 'data' => $logs]);
+        break;
+
     // ── 4. Landing Page CMS Management APIs ──
     case 'save-branding':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;

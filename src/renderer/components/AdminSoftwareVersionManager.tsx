@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// AntiProfiles — Admin Software Version Management & Release Controller
+// AntiProfiles — Admin Software Version Management & Enterprise Release Controller
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react'
@@ -7,11 +7,14 @@ import React, { useState, useEffect } from 'react'
 export interface SoftwareVersionItem {
   id: string
   version: string
+  build?: string
+  channel?: 'stable' | 'beta' | 'alpha' | 'internal'
   release_title: string
   release_notes: string
-  status: 'draft' | 'published' | 'disabled'
+  status: 'draft' | 'published' | 'disabled' | 'archived'
   min_supported_version: string
-  force_update: number
+  mandatory?: number
+  force_update?: number
   
   win_download_url: string
   win_file_size: number
@@ -29,6 +32,8 @@ export interface SoftwareVersionItem {
   linux_file_size: number
   linux_sha256: string
   
+  signature?: string
+  download_count?: number
   published_at?: string | null
   created_at: string
   updated_at: string
@@ -70,7 +75,7 @@ export const AdminSoftwareVersionManager: React.FC = () => {
 
   const handleSave = async (publishImmediately = false) => {
     if (!editingVersion?.version?.trim()) {
-      showToast('error', 'Please specify a version number (e.g. 1.1.0)')
+      showToast('error', 'Please specify a version number (e.g. 2.5.0)')
       return
     }
     setSaving(true)
@@ -101,13 +106,32 @@ export const AdminSoftwareVersionManager: React.FC = () => {
       const token = localStorage.getItem('pv_session_token') || ''
       const res = await (window as any).api.updaterPublishVersion(token, v.id)
       if (res.success) {
-        showToast('success', `🚀 Version v${v.version} is now PUBLISHED! Real-time notification sent to all active clients.`)
+        showToast('success', `🚀 Version v${v.version} is now LIVE and pushed to all active devices!`)
         await loadVersions()
       } else {
-        showToast('error', res.error || 'Failed to publish version.')
+        showToast('error', res.error || 'Failed to publish.')
       }
     } catch (err: any) {
-      showToast('error', err.message || 'Error publishing version.')
+      showToast('error', err.message)
+    }
+  }
+
+  const handleRollback = async (v: SoftwareVersionItem) => {
+    if (!confirm(`Are you sure you want to rollback v${v.version}? This will disable v${v.version} and re-activate the previous stable version.`)) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('pv_session_token') || ''
+      const res = await (window as any).api.updaterRollbackVersion(token, v.id)
+      if (res?.success) {
+        showToast('success', `✓ Successfully rolled back to v${res.rolledBackTo?.version || 'previous version'}!`)
+        await loadVersions()
+      } else {
+        showToast('error', res?.error || 'Rollback failed.')
+      }
+    } catch (err: any) {
+      showToast('error', 'Rollback error: ' + err.message)
     }
   }
 
@@ -118,401 +142,542 @@ export const AdminSoftwareVersionManager: React.FC = () => {
       if (res.success) {
         showToast('success', `Version v${v.version} disabled.`)
         await loadVersions()
-      } else {
-        showToast('error', res.error || 'Failed to disable version.')
       }
     } catch (err: any) {
-      showToast('error', err.message || 'Error disabling version.')
+      showToast('error', err.message)
     }
   }
 
   const handleDelete = async (v: SoftwareVersionItem) => {
-    if (!confirm(`Are you sure you want to delete release version v${v.version}?`)) return
+    if (!confirm(`Are you sure you want to delete version v${v.version}?`)) return
     try {
       const token = localStorage.getItem('pv_session_token') || ''
       const res = await (window as any).api.updaterDeleteVersion(token, v.id)
       if (res.success) {
-        showToast('success', `Deleted version v${v.version}`)
+        showToast('success', `Version v${v.version} deleted.`)
         await loadVersions()
-      } else {
-        showToast('error', res.error || 'Failed to delete version.')
       }
     } catch (err: any) {
-      showToast('error', err.message || 'Error deleting version.')
+      showToast('error', err.message)
     }
   }
 
-  const latestPublished = versions.find(v => v.status === 'published')
+  const startCreate = () => {
+    setEditingVersion({
+      version: '',
+      build: '1',
+      channel: 'stable',
+      release_title: 'AntiProfiles Production Release',
+      release_notes: '• Security enhancements and fingerprint updates.\n• Proxy performance improvements.\n• Cross-platform compatibility fixes.',
+      status: 'draft',
+      min_supported_version: '1.0.0',
+      mandatory: 0,
+      force_update: 0,
+      win_download_url: '',
+      win_file_size: 118000000,
+      win_sha256: '',
+      mac_arm_download_url: '',
+      mac_arm_file_size: 113000000,
+      mac_arm_sha256: '',
+      mac_intel_download_url: '',
+      mac_intel_file_size: 118000000,
+      mac_intel_sha256: '',
+      linux_download_url: '',
+      linux_file_size: 123000000,
+      linux_sha256: ''
+    })
+    setIsCreating(true)
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Toast Notification */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Toast */}
       {toastMsg && (
-        <div style={{
-          padding: '12px 16px',
-          borderRadius: '8px',
-          backgroundColor: toastMsg.type === 'success' ? '#065F46' : '#991B1B',
-          color: '#FFF',
-          fontSize: '13px',
-          fontWeight: 600,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span>{toastMsg.text}</span>
-          <button onClick={() => setToastMsg(null)} style={{ background: 'none', border: 'none', color: '#FFF', cursor: 'pointer', fontSize: '14px' }}>✕</button>
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: 99999,
+            padding: '12px 20px',
+            borderRadius: '8px',
+            backgroundColor: toastMsg.type === 'success' ? '#065F46' : '#7F1D1D',
+            color: '#FFF',
+            border: `1px solid ${toastMsg.type === 'success' ? '#10B981' : '#EF4444'}`,
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+            fontWeight: 600,
+            fontSize: '13px'
+          }}
+        >
+          {toastMsg.text}
         </div>
       )}
 
-      {/* Header & Stats Banner */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        background: '#161622',
-        border: '1px solid #2C2C3E',
-        borderRadius: '12px',
-        padding: '20px'
-      }}>
+      {/* Header Banner */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '24px',
+          backgroundColor: '#1E1E2E',
+          borderRadius: '12px',
+          border: '1px solid #2C2C3E',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}
+      >
         <div>
-          <h3 style={{ margin: 0, fontSize: '18px', color: '#FFF', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>📦</span> Software Releases & Real-Time Auto-Update Controller
-          </h3>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94A3B8' }}>
-            Publish multi-OS releases and instantly notify all active user clients via real-time SSE stream.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '24px' }}>🚀</span>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#F1F5F9', margin: 0 }}>
+              Enterprise Software Release & Auto-Update Controller
+            </h2>
+          </div>
+          <p style={{ color: '#94A3B8', fontSize: '13px', margin: '6px 0 0' }}>
+            Publish official application releases, manage update channels, enforce mandatory updates, and broadcast instant real-time updates to all connected devices.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ textAlign: 'right', marginRight: '8px' }}>
-            <div style={{ fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase' }}>Active Version</div>
-            <div style={{ fontSize: '14px', color: '#2DD4BF', fontWeight: 700 }}>
-              {latestPublished ? `v${latestPublished.version}` : 'None Published'}
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setEditingVersion({
-                version: '',
-                release_title: '',
-                release_notes: '',
-                status: 'draft',
-                min_supported_version: '1.0.0',
-                force_update: 0,
-                win_download_url: 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe',
-                win_file_size: 85000000,
-                mac_intel_download_url: 'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg',
-                mac_intel_file_size: 92000000,
-                mac_arm_download_url: 'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg',
-                mac_arm_file_size: 89000000,
-                linux_download_url: 'https://releases.antiprofiles.com/AntiProfiles-Linux-x86_64.AppImage',
-                linux_file_size: 81000000
-              })
-              setIsCreating(true)
-            }}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '8px',
-              backgroundColor: '#2DD4BF',
-              color: '#0F172A',
-              fontWeight: 700,
-              fontSize: '13px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>+</span> Create New Release
-          </button>
-        </div>
+
+        <button
+          type="button"
+          onClick={startCreate}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 20px',
+            borderRadius: '8px',
+            backgroundColor: '#2DD4BF',
+            color: '#0F172A',
+            border: 'none',
+            fontWeight: 700,
+            fontSize: '13px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(45, 212, 191, 0.3)'
+          }}
+        >
+          <span>➕</span>
+          <span>Publish New Version</span>
+        </button>
       </div>
 
-      {/* Editor Modal / Card */}
+      {/* Release Editor Modal */}
       {(isCreating || editingVersion) && (
-        <div style={{
-          background: '#161622',
-          border: '1px solid #2DD4BF50',
-          borderRadius: '12px',
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '18px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h4 style={{ margin: 0, fontSize: '16px', color: '#FFF', fontWeight: 700 }}>
-              {editingVersion?.id ? `✏️ Edit Release v${editingVersion.version}` : '🚀 Author New Software Release'}
-            </h4>
-            <button
-              onClick={() => { setEditingVersion(null); setIsCreating(false) }}
-              style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '16px' }}
-            >
-              ✕
-            </button>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '14px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Version Number *</label>
-              <input
-                type="text"
-                placeholder="e.g. 1.1.0"
-                value={editingVersion?.version || ''}
-                onChange={e => setEditingVersion({ ...editingVersion, version: e.target.value })}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Release Title *</label>
-              <input
-                type="text"
-                placeholder="e.g. AntiProfiles v1.1.0 — Performance & Anti-Detection Overhaul"
-                value={editingVersion?.release_title || ''}
-                onChange={e => setEditingVersion({ ...editingVersion, release_title: e.target.value })}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Status</label>
-              <select
-                value={editingVersion?.status || 'draft'}
-                onChange={e => setEditingVersion({ ...editingVersion, status: e.target.value as any })}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '850px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              backgroundColor: '#181824',
+              borderRadius: '16px',
+              border: '1px solid #2C2C3E',
+              padding: '28px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.6)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2C2C3E', paddingBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#FFF' }}>
+                {isCreating ? '📦 Create & Publish Software Release' : `✏️ Edit Release v${editingVersion?.version}`}
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setEditingVersion(null); setIsCreating(false) }}
+                style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '20px', cursor: 'pointer' }}
               >
-                <option value="draft">Draft (Private)</option>
-                <option value="published">Published (Live & Broadcasted)</option>
-                <option value="disabled">Disabled</option>
-              </select>
+                ✕
+              </button>
             </div>
-          </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: '6px' }}>Release Notes / "What's New" *</label>
-            <textarea
-              rows={4}
-              placeholder="• Feature 1: Multi-profile proxy routing&#10;• Feature 2: Firefox Quantum engine support&#10;• Security: SHA-256 integrity verification"
-              value={editingVersion?.release_notes || ''}
-              onChange={e => setEditingVersion({ ...editingVersion, release_notes: e.target.value })}
-              style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px', lineHeight: 1.6 }}
-            />
-          </div>
+            {/* Core Version Information */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Version Number (e.g. 2.5.0) *
+                </label>
+                <input
+                  type="text"
+                  value={editingVersion?.version || ''}
+                  onChange={e => setEditingVersion(prev => ({ ...prev!, version: e.target.value }))}
+                  placeholder="e.g. 2.5.0"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#101018', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
 
-          <div style={{ borderTop: '1px solid #2C2C3E', paddingTop: '16px' }}>
-            <h5 style={{ margin: '0 0 12px', fontSize: '14px', color: '#E2E8F0' }}>📦 Operating System Binary Packages & Checksums</h5>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Build Number
+                </label>
+                <input
+                  type="text"
+                  value={editingVersion?.build || '1'}
+                  onChange={e => setEditingVersion(prev => ({ ...prev!, build: e.target.value }))}
+                  placeholder="e.g. 250"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#101018', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Release Channel
+                </label>
+                <select
+                  value={editingVersion?.channel || 'stable'}
+                  onChange={e => setEditingVersion(prev => ({ ...prev!, channel: e.target.value as any }))}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#101018', color: '#FFF', fontSize: '13px' }}
+                >
+                  <option value="stable">Stable (Production)</option>
+                  <option value="beta">Beta (Preview)</option>
+                  <option value="alpha">Alpha (Experimental)</option>
+                  <option value="internal">Internal Testing</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Title & Minimum Version */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Release Title
+                </label>
+                <input
+                  type="text"
+                  value={editingVersion?.release_title || ''}
+                  onChange={e => setEditingVersion(prev => ({ ...prev!, release_title: e.target.value }))}
+                  placeholder="e.g. AntiProfiles v2.5.0 — Major Performance & Privacy Update"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#101018', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Min Supported Version
+                </label>
+                <input
+                  type="text"
+                  value={editingVersion?.min_supported_version || '1.0.0'}
+                  onChange={e => setEditingVersion(prev => ({ ...prev!, min_supported_version: e.target.value }))}
+                  placeholder="e.g. 1.0.0"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#101018', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
+            </div>
+
+            {/* Mandatory Update Toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', backgroundColor: '#101018', borderRadius: '8px', border: '1px solid #28283C' }}>
+              <input
+                type="checkbox"
+                id="mandatoryUpdate"
+                checked={Boolean(editingVersion?.mandatory || editingVersion?.force_update)}
+                onChange={e => setEditingVersion(prev => ({ ...prev!, mandatory: e.target.checked ? 1 : 0, force_update: e.target.checked ? 1 : 0 }))}
+                style={{ width: '18px', height: '18px', accentColor: '#EF4444', cursor: 'pointer' }}
+              />
+              <label htmlFor="mandatoryUpdate" style={{ fontSize: '13px', color: '#FFF', cursor: 'pointer' }}>
+                <strong style={{ color: '#EF4444' }}>🚨 Mandatory Update:</strong> If enabled, client applications will block access until users update to this release.
+              </label>
+            </div>
+
+            {/* Release Notes */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                Changelog / Release Notes (Markdown supported)
+              </label>
+              <textarea
+                rows={4}
+                value={editingVersion?.release_notes || ''}
+                onChange={e => setEditingVersion(prev => ({ ...prev!, release_notes: e.target.value }))}
+                placeholder="• Feature 1\n• Bug fix 2\n• Performance improvement 3"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#101018', color: '#FFF', fontSize: '13px', fontFamily: 'monospace' }}
+              />
+            </div>
+
+            {/* Platform Binaries */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid #2C2C3E', paddingTop: '16px' }}>
+              <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#2DD4BF' }}>
+                Platform Installer Binaries & SHA-256 Checksums
+              </h4>
+
               {/* Windows */}
-              <div style={{ background: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontWeight: 600, color: '#60A5FA', fontSize: '13px', marginBottom: '8px' }}>🪟 Windows (x64)</div>
-                <input
-                  type="text"
-                  placeholder="Download URL (.exe)"
-                  value={editingVersion?.win_download_url || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, win_download_url: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '11px', marginBottom: '6px' }}
-                />
-                <input
-                  type="text"
-                  placeholder="SHA-256 Checksum (Optional)"
-                  value={editingVersion?.win_sha256 || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, win_sha256: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#94A3B8', fontSize: '11px', fontFamily: 'monospace' }}
-                />
+              <div style={{ padding: '12px', backgroundColor: '#101018', borderRadius: '8px', border: '1px solid #232336' }}>
+                <div style={{ fontWeight: 600, fontSize: '12px', color: '#60A5FA', marginBottom: '6px' }}>🪟 Windows (64-bit .exe)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: '10px' }}>
+                  <input
+                    type="text"
+                    placeholder="Download URL (e.g. https://.../AntiProfiles-Setup.exe)"
+                    value={editingVersion?.win_download_url || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, win_download_url: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Size (bytes)"
+                    value={editingVersion?.win_file_size || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, win_file_size: Number(e.target.value) }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="SHA-256 Hash"
+                    value={editingVersion?.win_sha256 || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, win_sha256: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px', fontFamily: 'monospace' }}
+                  />
+                </div>
               </div>
 
               {/* macOS Apple Silicon */}
-              <div style={{ background: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontWeight: 600, color: '#F59E0B', fontSize: '13px', marginBottom: '8px' }}>⚡ macOS Apple Silicon (arm64)</div>
-                <input
-                  type="text"
-                  placeholder="Download URL (.dmg)"
-                  value={editingVersion?.mac_arm_download_url || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, mac_arm_download_url: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '11px', marginBottom: '6px' }}
-                />
-                <input
-                  type="text"
-                  placeholder="SHA-256 Checksum (Optional)"
-                  value={editingVersion?.mac_arm_sha256 || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, mac_arm_sha256: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#94A3B8', fontSize: '11px', fontFamily: 'monospace' }}
-                />
+              <div style={{ padding: '12px', backgroundColor: '#101018', borderRadius: '8px', border: '1px solid #232336' }}>
+                <div style={{ fontWeight: 600, fontSize: '12px', color: '#34D399', marginBottom: '6px' }}>🍎 macOS Apple Silicon (ARM64 M1-M4 .dmg)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: '10px' }}>
+                  <input
+                    type="text"
+                    placeholder="Download URL (e.g. https://.../AntiProfiles-arm64.dmg)"
+                    value={editingVersion?.mac_arm_download_url || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, mac_arm_download_url: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Size (bytes)"
+                    value={editingVersion?.mac_arm_file_size || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, mac_arm_file_size: Number(e.target.value) }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="SHA-256 Hash"
+                    value={editingVersion?.mac_arm_sha256 || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, mac_arm_sha256: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px', fontFamily: 'monospace' }}
+                  />
+                </div>
               </div>
 
               {/* macOS Intel */}
-              <div style={{ background: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontWeight: 600, color: '#10B981', fontSize: '13px', marginBottom: '8px' }}>🍏 macOS Intel (x64)</div>
-                <input
-                  type="text"
-                  placeholder="Download URL (.dmg)"
-                  value={editingVersion?.mac_intel_download_url || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, mac_intel_download_url: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '11px', marginBottom: '6px' }}
-                />
-                <input
-                  type="text"
-                  placeholder="SHA-256 Checksum (Optional)"
-                  value={editingVersion?.mac_intel_sha256 || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, mac_intel_sha256: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#94A3B8', fontSize: '11px', fontFamily: 'monospace' }}
-                />
+              <div style={{ padding: '12px', backgroundColor: '#101018', borderRadius: '8px', border: '1px solid #232336' }}>
+                <div style={{ fontWeight: 600, fontSize: '12px', color: '#A78BFA', marginBottom: '6px' }}>🍎 macOS Intel (x64 .dmg)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: '10px' }}>
+                  <input
+                    type="text"
+                    placeholder="Download URL (e.g. https://.../AntiProfiles-x64.dmg)"
+                    value={editingVersion?.mac_intel_download_url || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, mac_intel_download_url: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Size (bytes)"
+                    value={editingVersion?.mac_intel_file_size || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, mac_intel_file_size: Number(e.target.value) }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="SHA-256 Hash"
+                    value={editingVersion?.mac_intel_sha256 || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, mac_intel_sha256: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px', fontFamily: 'monospace' }}
+                  />
+                </div>
               </div>
 
               {/* Linux */}
-              <div style={{ background: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontWeight: 600, color: '#A78BFA', fontSize: '13px', marginBottom: '8px' }}>🐧 Linux (x64 AppImage)</div>
-                <input
-                  type="text"
-                  placeholder="Download URL (.AppImage)"
-                  value={editingVersion?.linux_download_url || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, linux_download_url: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '11px', marginBottom: '6px' }}
-                />
-                <input
-                  type="text"
-                  placeholder="SHA-256 Checksum (Optional)"
-                  value={editingVersion?.linux_sha256 || ''}
-                  onChange={e => setEditingVersion({ ...editingVersion, linux_sha256: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#0F0F17', border: '1px solid #2C2C3E', color: '#94A3B8', fontSize: '11px', fontFamily: 'monospace' }}
-                />
+              <div style={{ padding: '12px', backgroundColor: '#101018', borderRadius: '8px', border: '1px solid #232336' }}>
+                <div style={{ fontWeight: 600, fontSize: '12px', color: '#FBBF24', marginBottom: '6px' }}>🐧 Linux (x64 .AppImage / .deb)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: '10px' }}>
+                  <input
+                    type="text"
+                    placeholder="Download URL (e.g. https://.../AntiProfiles.AppImage)"
+                    value={editingVersion?.linux_download_url || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, linux_download_url: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Size (bytes)"
+                    value={editingVersion?.linux_file_size || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, linux_file_size: Number(e.target.value) }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="SHA-256 Hash"
+                    value={editingVersion?.linux_sha256 || ''}
+                    onChange={e => setEditingVersion(prev => ({ ...prev!, linux_sha256: e.target.value }))}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#181824', color: '#FFF', fontSize: '12px', fontFamily: 'monospace' }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #2C2C3E', paddingTop: '16px' }}>
-            <button
-              onClick={() => { setEditingVersion(null); setIsCreating(false) }}
-              style={{ padding: '10px 18px', borderRadius: '8px', backgroundColor: '#2C2C3E', color: '#FFF', border: 'none', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button
-              disabled={saving}
-              onClick={() => handleSave(false)}
-              style={{ padding: '10px 18px', borderRadius: '8px', backgroundColor: '#334155', color: '#FFF', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-            >
-              {saving ? 'Saving...' : '💾 Save Draft'}
-            </button>
-            <button
-              disabled={saving}
-              onClick={() => handleSave(true)}
-              style={{ padding: '10px 20px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F172A', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-            >
-              {saving ? 'Publishing...' : '🚀 Publish & Broadcast to All Clients'}
-            </button>
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #2C2C3E', paddingTop: '16px' }}>
+              <button
+                type="button"
+                onClick={() => { setEditingVersion(null); setIsCreating(false) }}
+                style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1E293B', color: '#CBD5E1', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave(false)}
+                style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid #6366F1', backgroundColor: '#6366F125', color: '#A5B4FC', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+              >
+                {saving ? 'Saving...' : '💾 Save as Draft'}
+              </button>
+
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave(true)}
+                style={{ padding: '10px 22px', borderRadius: '8px', border: 'none', backgroundColor: '#2DD4BF', color: '#0F172A', fontWeight: 700, fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(45, 212, 191, 0.4)' }}
+              >
+                {saving ? 'Publishing...' : '🚀 Publish & Broadcast to All Users'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Releases History Table */}
-      <div style={{
-        background: '#161622',
-        border: '1px solid #2C2C3E',
-        borderRadius: '12px',
-        overflow: 'hidden'
-      }}>
+      {/* Version History Table */}
+      <div style={{ backgroundColor: '#1E1E2E', borderRadius: '12px', border: '1px solid #2C2C3E', overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #2C2C3E', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h4 style={{ margin: 0, fontSize: '14px', color: '#F1F5F9', fontWeight: 700 }}>
-            Release History & Version Control ({versions.length})
-          </h4>
-          <button onClick={loadVersions} style={{ background: 'none', border: 'none', color: '#2DD4BF', cursor: 'pointer', fontSize: '12px' }}>
-            🔄 Refresh
-          </button>
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFF' }}>All Published & Draft Releases</h3>
+          <span style={{ fontSize: '12px', color: '#94A3B8' }}>{versions.length} release(s) registered</span>
         </div>
 
         {loading ? (
-          <div style={{ padding: '30px', textAlign: 'center', color: '#94A3B8' }}>Loading versions...</div>
+          <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>Loading software versions...</div>
         ) : versions.length === 0 ? (
-          <div style={{ padding: '30px', textAlign: 'center', color: '#94A3B8' }}>No software versions created yet.</div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #2C2C3E', color: '#94A3B8', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '12px 16px' }}>Version</th>
-                  <th style={{ padding: '12px 16px' }}>Title & What's New</th>
-                  <th style={{ padding: '12px 16px' }}>Status</th>
-                  <th style={{ padding: '12px 16px' }}>Packages</th>
-                  <th style={{ padding: '12px 16px' }}>Published Date</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {versions.map(v => {
-                  const isPub = v.status === 'published'
-                  const isDis = v.status === 'disabled'
-                  return (
-                    <tr key={v.id} style={{ borderBottom: '1px solid #1F1F2E' }}>
-                      <td style={{ padding: '14px 16px', fontWeight: 700, color: isPub ? '#2DD4BF' : '#FFF' }}>
-                        v{v.version}
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ fontWeight: 600, color: '#F1F5F9' }}>{v.release_title}</div>
-                        <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px', maxWidth: '340px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {v.release_notes}
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          backgroundColor: isPub ? 'rgba(45,212,191,0.15)' : isDis ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
-                          color: isPub ? '#2DD4BF' : isDis ? '#EF4444' : '#F59E0B'
-                        }}>
-                          {isPub ? '● Published' : isDis ? 'Disabled' : 'Draft'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', gap: '6px', fontSize: '12px' }}>
-                          <span title={v.win_download_url ? 'Windows Available' : 'Missing'} style={{ opacity: v.win_download_url ? 1 : 0.3 }}>🪟</span>
-                          <span title={v.mac_arm_download_url ? 'macOS arm64 Available' : 'Missing'} style={{ opacity: v.mac_arm_download_url ? 1 : 0.3 }}>⚡</span>
-                          <span title={v.mac_intel_download_url ? 'macOS Intel Available' : 'Missing'} style={{ opacity: v.mac_intel_download_url ? 1 : 0.3 }}>🍏</span>
-                          <span title={v.linux_download_url ? 'Linux Available' : 'Missing'} style={{ opacity: v.linux_download_url ? 1 : 0.3 }}>🐧</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 16px', color: '#94A3B8', fontSize: '12px' }}>
-                        {v.published_at ? new Date(v.published_at).toLocaleDateString() : 'Unpublished'}
-                      </td>
-                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                          {!isPub && (
-                            <button
-                              onClick={() => handlePublish(v)}
-                              style={{ padding: '4px 10px', borderRadius: '4px', backgroundColor: 'rgba(45,212,191,0.15)', color: '#2DD4BF', border: '1px solid #2DD4BF', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
-                            >
-                              🚀 Publish
-                            </button>
-                          )}
-                          {isPub && (
-                            <button
-                              onClick={() => handleDisable(v)}
-                              style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#2C2C3E', color: '#EF4444', border: 'none', fontSize: '11px', cursor: 'pointer' }}
-                            >
-                              Disable
-                            </button>
-                          )}
-                          <button
-                            onClick={() => { setEditingVersion(v); setIsCreating(false) }}
-                            style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#2C2C3E', color: '#FFF', border: 'none', fontSize: '11px', cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(v)}
-                            style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#2C2C3E', color: '#EF4444', border: 'none', fontSize: '11px', cursor: 'pointer' }}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>
+            No software releases created yet. Click "Publish New Version" above to create your first release!
           </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#161622', color: '#94A3B8', borderBottom: '1px solid #2C2C3E' }}>
+                <th style={{ padding: '12px 16px' }}>VERSION</th>
+                <th style={{ padding: '12px 16px' }}>CHANNEL</th>
+                <th style={{ padding: '12px 16px' }}>STATUS</th>
+                <th style={{ padding: '12px 16px' }}>MANDATORY</th>
+                <th style={{ padding: '12px 16px' }}>TITLE</th>
+                <th style={{ padding: '12px 16px' }}>DATE</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {versions.map((v) => (
+                <tr key={v.id} style={{ borderBottom: '1px solid #252538', color: '#E2E8F0' }}>
+                  <td style={{ padding: '14px 16px', fontWeight: 700, color: '#FFF' }}>
+                    v{v.version} {v.build ? <span style={{ fontSize: '11px', color: '#64748B' }}>({v.build})</span> : null}
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#6366F120', color: '#A5B4FC' }}>
+                      {(v.channel || 'stable').toUpperCase()}
+                    </span>
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: v.status === 'published' ? '#10B98125' : (v.status === 'disabled' ? '#EF444425' : '#F59E0B25'),
+                        color: v.status === 'published' ? '#10B981' : (v.status === 'disabled' ? '#EF4444' : '#F59E0B')
+                      }}
+                    >
+                      {v.status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>
+                    {(v.mandatory || v.force_update) ? (
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#EF4444' }}>🚨 MANDATORY</span>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: '#64748B' }}>Optional</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '14px 16px', color: '#CBD5E1' }}>{v.release_title}</td>
+                  <td style={{ padding: '14px 16px', color: '#64748B', fontSize: '12px' }}>
+                    {v.published_at ? v.published_at.split('T')[0] : 'Unpublished'}
+                  </td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                      {v.status !== 'published' && (
+                        <button
+                          type="button"
+                          onClick={() => handlePublish(v)}
+                          style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', backgroundColor: '#10B98125', color: '#10B981', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          🚀 Publish
+                        </button>
+                      )}
+
+                      {v.status === 'published' && (
+                        <button
+                          type="button"
+                          onClick={() => handleRollback(v)}
+                          title="Disable this version and revert to previous stable release"
+                          style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #F59E0B50', backgroundColor: '#F59E0B20', color: '#FBBF24', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          ⏪ Rollback
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setEditingVersion(v)}
+                        style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#1E293B', color: '#CBD5E1', fontSize: '11px', cursor: 'pointer' }}
+                      >
+                        ✏️ Edit
+                      </button>
+
+                      {v.status !== 'disabled' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDisable(v)}
+                          style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', backgroundColor: '#EF444420', color: '#F87171', fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          Disable
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(v)}
+                        style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', color: '#64748B', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

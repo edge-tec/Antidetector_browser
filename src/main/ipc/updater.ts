@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// AntiProfiles — Software Update & Release IPC Handlers
+// AntiProfiles — Enterprise Software Update & Release IPC Handlers
 // ──────────────────────────────────────────────
 
 import { ipcMain } from 'electron'
@@ -20,17 +20,101 @@ function verifyAdminSession(token?: string): boolean {
 }
 
 export function registerUpdaterHandlers(): void {
+  // Start the automated 6-hour scheduler
+  updaterService.initScheduler()
+
   // ── 1. Check for Latest Available Version ──
   ipcMain.handle('updater:checkLatest', async (_event, currentVer?: string) => {
     try {
-      const res = updaterService.checkForUpdate(currentVer)
+      const res = await updaterService.checkForUpdate(currentVer)
       return { success: true, data: res }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
   })
 
-  // ── 2. Admin: Get All Software Versions ──
+  // ── 2. Client Update Settings ──
+  ipcMain.handle('updater:getSettings', async () => {
+    try {
+      const settings = updaterService.getUpdateSettings()
+      const platform = updaterService.detectClientPlatform()
+      return { success: true, data: { ...settings, platform, currentVersion: updaterService.getCurrentVersion() } }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('updater:saveSettings', async (_event, settings: any) => {
+    try {
+      const saved = updaterService.saveUpdateSettings(settings)
+      return { success: true, data: saved }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 3. Download Controls (Start, Pause, Resume, Cancel) ──
+  ipcMain.handle('updater:downloadUpdate', async (event, urlStr: string, expectedSha256?: string) => {
+    try {
+      const result = await updaterService.downloadUpdatePackage(urlStr, expectedSha256, (progress) => {
+        event.sender.send('updater:download-progress', progress)
+      })
+      return result
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('updater:pauseDownload', async () => {
+    try {
+      const paused = updaterService.pauseDownload()
+      return { success: true, data: paused }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('updater:resumeDownload', async (event) => {
+    try {
+      const result = await updaterService.resumeDownload((progress) => {
+        event.sender.send('updater:download-progress', progress)
+      })
+      return result
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('updater:cancelDownload', async () => {
+    try {
+      const cancelled = updaterService.cancelDownload()
+      return { success: true, data: cancelled }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 4. Install Update Package ──
+  ipcMain.handle('updater:installUpdate', async (_event, filePath: string) => {
+    try {
+      const result = await updaterService.installUpdate(filePath)
+      return result
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 5. Platform Detection ──
+  ipcMain.handle('updater:detectPlatform', async () => {
+    try {
+      const plat = updaterService.detectClientPlatform()
+      return { success: true, data: plat }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 6. Admin: Software Version Management ──
   ipcMain.handle('updater:getAllVersions', async (_event, token?: string) => {
     try {
       if (!verifyAdminSession(token)) {
@@ -43,7 +127,6 @@ export function registerUpdaterHandlers(): void {
     }
   })
 
-  // ── 3. Admin: Save or Update Version ──
   ipcMain.handle('updater:saveVersion', async (_event, token: string, versionData: any) => {
     try {
       if (!verifyAdminSession(token)) {
@@ -56,7 +139,6 @@ export function registerUpdaterHandlers(): void {
     }
   })
 
-  // ── 4. Admin: Publish Version (Real-Time Broadcast) ──
   ipcMain.handle('updater:publishVersion', async (_event, token: string, versionId: string) => {
     try {
       if (!verifyAdminSession(token)) {
@@ -69,7 +151,18 @@ export function registerUpdaterHandlers(): void {
     }
   })
 
-  // ── 5. Admin: Disable Version ──
+  ipcMain.handle('updater:rollbackVersion', async (_event, token: string, currentVersionId: string) => {
+    try {
+      if (!verifyAdminSession(token)) {
+        return { success: false, error: 'Unauthorized. Admin access required.' }
+      }
+      const res = updaterService.rollbackVersion(currentVersionId)
+      return res
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
   ipcMain.handle('updater:disableVersion', async (_event, token: string, versionId: string) => {
     try {
       if (!verifyAdminSession(token)) {
@@ -82,7 +175,6 @@ export function registerUpdaterHandlers(): void {
     }
   })
 
-  // ── 6. Admin: Delete Version ──
   ipcMain.handle('updater:deleteVersion', async (_event, token: string, versionId: string) => {
     try {
       if (!verifyAdminSession(token)) {
@@ -90,28 +182,6 @@ export function registerUpdaterHandlers(): void {
       }
       const deleted = updaterService.deleteVersion(versionId)
       return { success: true, data: deleted }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  })
-
-  // ── 7. Download Update Package ──
-  ipcMain.handle('updater:downloadUpdate', async (event, urlStr: string, expectedSha256?: string) => {
-    try {
-      const result = await updaterService.downloadUpdatePackage(urlStr, expectedSha256, (progress) => {
-        event.sender.send('updater:download-progress', progress)
-      })
-      return result
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  })
-
-  // ── 8. Install Update Package ──
-  ipcMain.handle('updater:installUpdate', async (_event, filePath: string) => {
-    try {
-      const result = await updaterService.installUpdate(filePath)
-      return result
     } catch (err: any) {
       return { success: false, error: err.message }
     }

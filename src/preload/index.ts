@@ -360,13 +360,20 @@ const api = {
 
   // ── Software Release Management & Auto-Updates ──
   updaterCheckLatest: (currentVer?: string) => ipcRenderer.invoke('updater:checkLatest', currentVer),
+  updaterGetSettings: () => ipcRenderer.invoke('updater:getSettings'),
+  updaterSaveSettings: (settings: any) => ipcRenderer.invoke('updater:saveSettings', settings),
   updaterGetAllVersions: (token?: string) => ipcRenderer.invoke('updater:getAllVersions', token),
   updaterSaveVersion: (token: string, versionData: any) => ipcRenderer.invoke('updater:saveVersion', token, versionData),
   updaterPublishVersion: (token: string, versionId: string) => ipcRenderer.invoke('updater:publishVersion', token, versionId),
+  updaterRollbackVersion: (token: string, versionId: string) => ipcRenderer.invoke('updater:rollbackVersion', token, versionId),
   updaterDisableVersion: (token: string, versionId: string) => ipcRenderer.invoke('updater:disableVersion', token, versionId),
   updaterDeleteVersion: (token: string, versionId: string) => ipcRenderer.invoke('updater:deleteVersion', token, versionId),
   updaterDownloadUpdate: (url: string, expectedSha256?: string) => ipcRenderer.invoke('updater:downloadUpdate', url, expectedSha256),
+  updaterPauseDownload: () => ipcRenderer.invoke('updater:pauseDownload'),
+  updaterResumeDownload: () => ipcRenderer.invoke('updater:resumeDownload'),
+  updaterCancelDownload: () => ipcRenderer.invoke('updater:cancelDownload'),
   updaterInstallUpdate: (filePath: string) => ipcRenderer.invoke('updater:installUpdate', filePath),
+  updaterDetectPlatform: () => ipcRenderer.invoke('updater:detectPlatform'),
   onSoftwareUpdateAvailable: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('ui:software-update-available', callback)
     return () => ipcRenderer.removeListener('ui:software-update-available', callback)

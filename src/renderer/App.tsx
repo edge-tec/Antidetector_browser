@@ -18,7 +18,8 @@ import { AdminDashboard } from './pages/AdminDashboard'
 import { LandingPage } from './pages/LandingPage'
 import { SupportChatWidget } from './components/SupportChatWidget'
 import { BrowserSetupModal } from './components/BrowserSetupModal'
-import { SoftwareUpdateModal, UpdateInfoPayload } from './components/SoftwareUpdateModal'
+import { UpdateNotificationModal, UpdateAvailablePayload } from './components/UpdateNotificationModal'
+import { VersionHistoryModal } from './components/VersionHistoryModal'
 import { ReferralDashboard } from './pages/ReferralDashboard'
 import { BrowserRuntimeManager } from './components/BrowserRuntimeManager'
 import { RuntimeProvisioningModal, ProvisioningProgressData } from './components/RuntimeProvisioningModal'
@@ -1377,13 +1378,14 @@ curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \\
 // Settings Page
 // ═══════════════════════════════════════════
 
-function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNavigateAdmin }: {
+function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNavigateAdmin, onOpenChangelog }: {
   theme: string
   setTheme: (t: string) => void
   showToast: (type: ToastItem['type'], msg: string) => void
   licenseInfo?: any
   onUpgrade?: () => void
   onNavigateAdmin?: (tab: string) => void
+  onOpenChangelog?: () => void
 }) {
   const { currentUser, isAdmin } = useAuth()
   const [chromiumPath, setChromiumPath] = useState<string | null>(null)
@@ -1395,6 +1397,74 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
   const [diagnostics, setDiagnostics] = useState<any | null>(null)
   const [discoveredBrowsers, setDiscoveredBrowsers] = useState<any[]>([])
   const [clearingCache, setClearingCache] = useState(false)
+
+  // Enterprise Auto-Update Settings State
+  const [updateSettings, setUpdateSettings] = useState<any>(null)
+  const [updatePlatform, setUpdatePlatform] = useState<any>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+
+  const loadUpdateSettings = useCallback(async () => {
+    try {
+      if ((window as any).api?.updaterGetSettings) {
+        const res = await (window as any).api.updaterGetSettings()
+        if (res?.success && res?.data) {
+          setUpdateSettings(res.data)
+          setUpdatePlatform(res.data.platform)
+        }
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    loadUpdateSettings()
+  }, [loadUpdateSettings])
+
+  const handleManualCheck = async () => {
+    setCheckingUpdate(true)
+    try {
+      if ((window as any).api?.updaterCheckLatest) {
+        const res = await (window as any).api.updaterCheckLatest()
+        if (res?.success && res?.data?.hasUpdate) {
+          showToast('info', `🚀 New Update Available: v${res.data.latestVersion?.version}!`)
+        } else {
+          showToast('success', '✓ You are using the latest version of AntiProfiles.')
+        }
+        await loadUpdateSettings()
+      }
+    } catch (err: any) {
+      showToast('error', `Update check failed: ${err.message}`)
+    } finally {
+      setCheckingUpdate(false)
+    }
+  }
+
+  const handleChannelChange = async (channel: string) => {
+    try {
+      if ((window as any).api?.updaterSaveSettings) {
+        const res = await (window as any).api.updaterSaveSettings({ channel })
+        if (res?.success) {
+          setUpdateSettings((prev: any) => ({ ...prev, channel }))
+          showToast('success', `Update channel set to ${channel.toUpperCase()}`)
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    }
+  }
+
+  const handleAutoDownloadToggle = async (auto_download: boolean) => {
+    try {
+      if ((window as any).api?.updaterSaveSettings) {
+        const res = await (window as any).api.updaterSaveSettings({ auto_download })
+        if (res?.success) {
+          setUpdateSettings((prev: any) => ({ ...prev, auto_download }))
+          showToast('success', `Automatic download ${auto_download ? 'enabled' : 'disabled'}`)
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    }
+  }
 
   useEffect(() => {
     if (isAdmin) {
@@ -1768,6 +1838,81 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
         </div>
       </div>
 
+      {/* ── Enterprise Software Updates & Channel Settings ── */}
+      <div className="section">
+        <h3 className="section-title">Software Updates & Release Channel</h3>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <strong style={{ fontSize: 15, color: '#FFF' }}>AntiProfiles Desktop</strong>
+                <span className="badge" style={{ backgroundColor: '#2DD4BF25', color: '#2DD4BF', border: '1px solid #2DD4BF50' }}>
+                  v{version || '1.0.0'}
+                </span>
+                {updatePlatform && (
+                  <span style={{ fontSize: 11, color: '#94A3B8' }}>• {updatePlatform.label}</span>
+                )}
+              </div>
+              <div className="text-sm text-secondary" style={{ marginTop: 4 }}>
+                Last checked: {updateSettings?.last_checked_at ? updateSettings.last_checked_at.replace('T', ' ') : 'Just now'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => onOpenChangelog && onOpenChangelog()}
+              >
+                📜 Version History
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={checkingUpdate}
+                style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: '#2DD4BF', color: '#0F172A', fontWeight: 700 }}
+                onClick={handleManualCheck}
+              >
+                <span>{checkingUpdate ? '🔄' : '🔍'}</span>
+                <span>{checkingUpdate ? 'Checking...' : 'Check for Updates'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, color: '#94A3B8', marginBottom: 6 }}>Update Release Channel</label>
+              <select
+                className="form-select"
+                value={updateSettings?.channel || 'stable'}
+                onChange={(e) => handleChannelChange(e.target.value)}
+                style={{ width: '100%', fontSize: 13, backgroundColor: 'var(--color-bg-primary)' }}
+              >
+                <option value="stable">Stable (Production - Recommended)</option>
+                <option value="beta">Beta (Preview Features & Fixes)</option>
+                <option value="alpha">Alpha (Experimental Testing)</option>
+                <option value="internal">Internal Development</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 22 }}>
+              <input
+                type="checkbox"
+                id="autoDownloadSetting"
+                checked={Boolean(updateSettings?.auto_download)}
+                onChange={(e) => handleAutoDownloadToggle(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#2DD4BF', cursor: 'pointer' }}
+              />
+              <label htmlFor="autoDownloadSetting" style={{ fontSize: 12, color: '#E2E8F0', cursor: 'pointer' }}>
+                Automatically download updates in the background
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── 6. About AntiProfiles ── */}
       <div className="section">
         <h3 className="section-title">About</h3>
@@ -2093,8 +2238,9 @@ function AppContent() {
   const [showDevicesModal, setShowDevicesModal] = useState(false)
 
   // Real-Time Software Update State
-  const [availableUpdate, setAvailableUpdate] = useState<UpdateInfoPayload | null>(null)
+  const [availableUpdate, setAvailableUpdate] = useState<UpdateAvailablePayload | null>(null)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [showChangelogModal, setShowChangelogModal] = useState(false)
   const [appVersion, setAppVersion] = useState('1.0.0')
 
   // Real-Time Custom Browser Branding State
@@ -2237,12 +2383,13 @@ function AppContent() {
           const res = await (window as any).api.updaterCheckLatest()
           if (res.success && res.data?.hasUpdate && res.data.latestVersion) {
             const latest = res.data.latestVersion
-            const info: UpdateInfoPayload = {
+            const info: UpdateAvailablePayload = {
               version: latest.version,
               releaseTitle: latest.release_title,
               releaseNotes: latest.release_notes,
               publishedAt: latest.published_at,
               forceUpdate: Boolean(res.data.forceUpdate),
+              mandatory: Boolean(res.data.mandatory || res.data.forceUpdate),
               packageInfo: res.data.packageInfo
             }
             setAvailableUpdate(info)
@@ -2683,6 +2830,7 @@ function AppContent() {
                     setAdminInitialTab(tab as any)
                     setAdminView(true)
                   }}
+                  onOpenChangelog={() => setShowChangelogModal(true)}
                 />
               )}
               {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
@@ -2878,18 +3026,27 @@ function AppContent() {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <ConfirmDialog state={confirmState} onCancel={() => setConfirmState((s) => ({ ...s, show: false }))} />
 
-      {/* ── Software Update Modal ── */}
-      <SoftwareUpdateModal
-        isOpen={showUpdateModal}
-        updateInfo={availableUpdate}
+      {/* ── Enterprise Software Update Modal ── */}
+      {availableUpdate && (
+        <UpdateNotificationModal
+          isOpen={showUpdateModal}
+          updateInfo={availableUpdate}
+          currentVersion={appVersion}
+          onClose={() => {
+            if (availableUpdate) {
+              sessionStorage.setItem('dismissed_update_' + availableUpdate.version, 'true')
+            }
+            setShowUpdateModal(false)
+          }}
+          onOpenChangelog={() => setShowChangelogModal(true)}
+        />
+      )}
+
+      {/* ── Version History & Changelog Modal ── */}
+      <VersionHistoryModal
+        isOpen={showChangelogModal}
+        onClose={() => setShowChangelogModal(false)}
         currentVersion={appVersion}
-        onClose={() => setShowUpdateModal(false)}
-        onLater={() => {
-          if (availableUpdate) {
-            sessionStorage.setItem('dismissed_update_' + availableUpdate.version, 'true')
-          }
-          setShowUpdateModal(false)
-        }}
       />
     </div>
   )
