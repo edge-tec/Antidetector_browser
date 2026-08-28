@@ -26,7 +26,7 @@ describe('Real-Time Affiliate Click Tracking & Synchronization Suite', () => {
     })
 
     expect(click.clickId).toBeDefined()
-    expect(click.clickId.startsWith('clk_')).toBe(true)
+    expect(/^(CLK-|clk_)/i.test(click.clickId)).toBe(true)
     expect(click.redirectUrl).toContain(`click_id=${click.clickId}`)
     expect(click.redirectUrl).toContain(`aff_id=${affiliateId}`)
     expect(click.redirectUrl).toContain('sub_id1=google_ad_campaign')

@@ -56,6 +56,20 @@ if ($requestUri === '/oauth/google' || $requestUri === '/oauth-bridge' || $reque
     require_once __DIR__ . '/oauth-bridge.php';
     exit();
 }
+if (preg_match('#^/ref/([^/?]+)(?:/([^/?]+))?#i', $requestUri, $matches)) {
+    $refUser = trim($matches[1]);
+    $offerSlug = !empty($matches[2]) ? trim($matches[2]) : '';
+    
+    $_GET['ref'] = $refUser;
+    $_GET['aff'] = $refUser;
+    if (!empty($offerSlug)) {
+        $_GET['slug'] = $offerSlug;
+        $_GET['offer_id'] = $offerSlug;
+    }
+    
+    require_once __DIR__ . '/offer.php';
+    exit();
+}
 if (preg_match('#^/offer(?:/([^/?]+))?#i', $requestUri, $matches)) {
     if (!empty($matches[1])) {
         $_GET['slug'] = trim($matches[1]);

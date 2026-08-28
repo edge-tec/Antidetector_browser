@@ -82,7 +82,7 @@ describe('Package/Offer-Aware Affiliate Tracking & Click System', () => {
     })
 
     expect(click).toBeDefined()
-    expect(click.click_id).toMatch(/^clk_/)
+    expect(click.click_id).toMatch(/^(CLK-|clk_)/i)
     expect(click.affiliate_id).toBe(testAffId)
     expect(click.offer_id).toBe(testOfferId)
     expect(click.converted).toBe(0)

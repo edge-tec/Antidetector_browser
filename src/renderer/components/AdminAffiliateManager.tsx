@@ -58,6 +58,9 @@ export const AdminAffiliateManager: React.FC = () => {
     title: string
     description: string
     target_url: string
+    landing_page_slug: string
+    banner_url: string
+    currency: string
     package_id: string
     package_name: string
     price: number
@@ -79,11 +82,14 @@ export const AdminAffiliateManager: React.FC = () => {
     title: '',
     description: '',
     target_url: '/offer/starter',
+    landing_page_slug: 'starter',
+    banner_url: '',
+    currency: 'USD',
     package_id: 'plan_starter',
     package_name: 'Starter',
     price: 19,
-    original_price: 19,
-    discount_percent: 0,
+    original_price: 39,
+    discount_percent: 51,
     discount_start_date: '',
     discount_end_date: '',
     cta_text: 'Subscribe Starter',
@@ -135,9 +141,14 @@ export const AdminAffiliateManager: React.FC = () => {
   const [testingPostback, setTestingPostback] = useState(false)
   const [testPostbackResult, setTestPostbackResult] = useState<{ statusCode: number; responseTimeMs: number; error?: string } | null>(null)
 
-  // Reports Modal State
+  // Reports Modal State & Click Filters
   const [showReportModal, setShowReportModal] = useState(false)
   const [clickSearch, setClickSearch] = useState('')
+  const [clickCountryFilter, setClickCountryFilter] = useState('all')
+  const [clickDeviceFilter, setClickDeviceFilter] = useState('all')
+  const [clickBrowserFilter, setClickBrowserFilter] = useState('all')
+  const [clickStatusFilter, setClickStatusFilter] = useState('all')
+  const [clickDateFilter, setClickDateFilter] = useState('all')
   const [convSearch, setConvSearch] = useState('')
 
   const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -242,14 +253,20 @@ export const AdminAffiliateManager: React.FC = () => {
 
   const exportReport = (type: 'clicks' | 'conversions' | 'affiliates' | 'withdrawals' | 'audit' | 'executive') => {
     if (type === 'clicks') {
-      const headers = ['Time', 'Click ID', 'Affiliate ID', 'Offer ID', 'IP Address', 'User Agent', 'SubID1', 'SubID2', 'Converted']
+      const headers = ['Time', 'Click ID', 'Affiliate ID', 'Offer ID', 'Package', 'IP Address', 'Country', 'City', 'Device', 'Browser', 'OS', 'Unique Click', 'SubID1', 'SubID2', 'Converted']
       const rows = [headers, ...(data?.clicks || []).map(c => [
         new Date(c.created_at).toLocaleString(),
         c.click_id,
         c.affiliate_id,
         c.offer_id,
+        c.package_name || c.package_id || 'Professional',
         c.ip_address || '',
-        c.user_agent || '',
+        c.country || 'US',
+        c.city || '',
+        c.device || 'Desktop',
+        c.browser || 'Chrome',
+        c.os || 'Windows',
+        c.unique_click === 0 ? 'NO' : 'YES',
         c.sub_id1 || '',
         c.sub_id2 || '',
         c.converted ? 'YES' : 'NO'
@@ -938,8 +955,9 @@ export const AdminAffiliateManager: React.FC = () => {
             <button
               onClick={() => setOfferModal({
                 open: true, isEdit: false, title: 'AntiProfiles Starter Subscription', description: 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).',
-                target_url: '/offer/starter', package_id: 'plan_starter', package_name: 'Starter',
-                price: 19, original_price: 19, discount_percent: 0, discount_start_date: '', discount_end_date: '',
+                target_url: '/offer/starter', landing_page_slug: 'starter', banner_url: '', currency: 'USD',
+                package_id: 'plan_starter', package_name: 'Starter',
+                price: 19, original_price: 39, discount_percent: 51, discount_start_date: '', discount_end_date: '',
                 cta_text: 'Subscribe Starter', badge_text: 'Starter', trial_enabled: false, billing_interval: 'month',
                 payout_type: 'percentage', commission_rate: 40, fixed_payout_usd: 0, status: 'active'
               })}
@@ -1018,6 +1036,9 @@ export const AdminAffiliateManager: React.FC = () => {
                               open: true, isEdit: true, id: offer.id,
                               title: offer.title, description: offer.description || '',
                               target_url: offer.target_url || `/offer/${offer.landing_page_slug || 'starter'}`,
+                              landing_page_slug: offer.landing_page_slug || 'starter',
+                              banner_url: offer.banner_url || '',
+                              currency: offer.currency || 'USD',
                               package_id: offer.package_id || 'plan_starter',
                               package_name: offer.package_name || 'Starter',
                               price: Number(offer.price || 19),
@@ -1065,106 +1086,269 @@ export const AdminAffiliateManager: React.FC = () => {
         </div>
       )}
 
-      {/* ── TAB 4: CLICKS STREAM ── */}
-      {activeSubTab === 'clicks' && (
-        <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Live Click Stream (Audit & Anti-Fraud)
-                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: '#38BDF820', color: '#38BDF8', fontWeight: 700 }}>
-                  {data?.clicks?.length || 0} Recorded
-                </span>
-              </h3>
-              <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
-                Real-time tracking feed of incoming referral clicks, subIDs, IP addresses, and conversion status.
-              </p>
+      {/* ── TAB 4: CLICKS STREAM & REPORT ── */}
+      {activeSubTab === 'clicks' && (() => {
+        const now = new Date()
+        const todayStr = now.toISOString().split('T')[0]
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000)
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000)
+
+        const allClicks = data?.clicks || []
+        const totalClicks = allClicks.length
+        const uniqueClicks = allClicks.filter(c => c.unique_click !== 0).length
+        const todayClicks = allClicks.filter(c => c.created_at && c.created_at.startsWith(todayStr)).length
+        const convertedClicks = allClicks.filter(c => c.converted).length
+
+        // Multi-field filtered click list
+        const filteredClicks = allClicks.filter(c => {
+          // Search filter
+          if (clickSearch) {
+            const q = clickSearch.toLowerCase()
+            const matchId = (c.click_id || '').toLowerCase().includes(q)
+            const matchAff = (c.affiliate_id || '').toLowerCase().includes(q)
+            const matchIp = (c.ip_address || '').includes(q)
+            const matchOffer = (c.offer_id || '').toLowerCase().includes(q)
+            const matchSub = (c.sub_id1 || '').toLowerCase().includes(q)
+            if (!matchId && !matchAff && !matchIp && !matchOffer && !matchSub) return false
+          }
+
+          // Country filter
+          if (clickCountryFilter !== 'all') {
+            if ((c.country || 'US').toUpperCase() !== clickCountryFilter.toUpperCase()) return false
+          }
+
+          // Device filter
+          if (clickDeviceFilter !== 'all') {
+            if ((c.device || 'Desktop').toLowerCase() !== clickDeviceFilter.toLowerCase()) return false
+          }
+
+          // Browser filter
+          if (clickBrowserFilter !== 'all') {
+            if ((c.browser || 'Chrome').toLowerCase() !== clickBrowserFilter.toLowerCase()) return false
+          }
+
+          // Status filter
+          if (clickStatusFilter === 'converted' && !c.converted) return false
+          if (clickStatusFilter === 'clicks' && c.converted) return false
+          if (clickStatusFilter === 'fraud' && !c.is_fraud) return false
+
+          // Date filter
+          if (clickDateFilter === 'today') {
+            if (!c.created_at || !c.created_at.startsWith(todayStr)) return false
+          } else if (clickDateFilter === '7days') {
+            if (new Date(c.created_at) < sevenDaysAgo) return false
+          } else if (clickDateFilter === '30days') {
+            if (new Date(c.created_at) < thirtyDaysAgo) return false
+          }
+
+          return true
+        })
+
+        // Distinct countries for dropdown
+        const availableCountries = Array.from(new Set(allClicks.map(c => c.country || 'US'))).filter(Boolean)
+
+        return (
+          <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
+            {/* Live KPI Metric Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Total Clicks</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#FFF', marginTop: '4px' }}>{totalClicks.toLocaleString()}</div>
+                <div style={{ fontSize: '11px', color: '#38BDF8', marginTop: '2px' }}>⚡ All tracking channels</div>
+              </div>
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Unique Visitors (24h)</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#2DD4BF', marginTop: '4px' }}>{uniqueClicks.toLocaleString()}</div>
+                <div style={{ fontSize: '11px', color: '#2DD4BF', marginTop: '2px' }}>✓ Distinct fingerprint IPs</div>
+              </div>
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Today's Traffic</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#FACC15', marginTop: '4px' }}>{todayClicks.toLocaleString()}</div>
+                <div style={{ fontSize: '11px', color: '#FACC15', marginTop: '2px' }}>📅 Real-time pulse</div>
+              </div>
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Conversion Rate (CR)</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#4ADE80', marginTop: '4px' }}>
+                  {totalClicks > 0 ? ((convertedClicks / totalClicks) * 100).toFixed(1) : '0.0'}%
+                </div>
+                <div style={{ fontSize: '11px', color: '#4ADE80', marginTop: '2px' }}>🎯 {convertedClicks} Orders Attributed</div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input
-                type="text"
-                value={clickSearch}
-                onChange={e => setClickSearch(e.target.value)}
-                placeholder="🔍 Search click, affiliate or IP..."
-                style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px', width: '200px' }}
-              />
-              <button
-                onClick={handleSimulateTestClick}
-                style={{ padding: '6px 12px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#38BDF8', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                🧪 Simulate Test Click
-              </button>
-              <button
-                onClick={() => exportReport('clicks')}
-                style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', border: '1px solid #334155', color: '#E2E8F0', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                📥 Export CSV
-              </button>
-            </div>
-          </div>
+            {/* Filter & Search Bar */}
+            <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '14px', marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={clickSearch}
+                  onChange={e => setClickSearch(e.target.value)}
+                  placeholder="🔍 Search Click ID, Affiliate, IP..."
+                  style={{ padding: '7px 12px', borderRadius: '6px', backgroundColor: '#131826', border: '1px solid #334155', color: '#FFF', fontSize: '12px', width: '220px' }}
+                />
 
-          {(!data?.clicks || data.clicks.length === 0) ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center', background: '#0B0F19', borderRadius: '8px', border: '1px dashed #334155' }}>
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🖱️</div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>No Clicks Recorded in the Live Stream Yet</div>
-              <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '480px', margin: '0 auto 16px auto' }}>
-                Clicks generated when visitors click any affiliate referral link (e.g. <code>/register?ref=REF_...</code> or tracking URLs) will populate here in real-time.
-              </p>
-              <button
-                onClick={handleSimulateTestClick}
-                style={{ padding: '8px 18px', borderRadius: '8px', background: '#38BDF8', color: '#0F172A', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
-              >
-                🧪 Generate First Live Test Click
-              </button>
+                <select
+                  value={clickDateFilter}
+                  onChange={e => setClickDateFilter(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: '6px', backgroundColor: '#131826', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                >
+                  <option value="all">📅 All Dates</option>
+                  <option value="today">Today</option>
+                  <option value="7days">Last 7 Days</option>
+                  <option value="30days">Last 30 Days</option>
+                </select>
+
+                <select
+                  value={clickCountryFilter}
+                  onChange={e => setClickCountryFilter(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: '6px', backgroundColor: '#131826', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                >
+                  <option value="all">🌍 All Countries</option>
+                  {availableCountries.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={clickDeviceFilter}
+                  onChange={e => setClickDeviceFilter(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: '6px', backgroundColor: '#131826', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                >
+                  <option value="all">📱 All Devices</option>
+                  <option value="desktop">Desktop</option>
+                  <option value="mobile">Mobile</option>
+                  <option value="tablet">Tablet</option>
+                </select>
+
+                <select
+                  value={clickBrowserFilter}
+                  onChange={e => setClickBrowserFilter(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: '6px', backgroundColor: '#131826', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                >
+                  <option value="all">🌐 All Browsers</option>
+                  <option value="chrome">Chrome</option>
+                  <option value="firefox">Firefox</option>
+                  <option value="edge">Edge</option>
+                  <option value="safari">Safari</option>
+                  <option value="opera">Opera</option>
+                </select>
+
+                <select
+                  value={clickStatusFilter}
+                  onChange={e => setClickStatusFilter(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: '6px', backgroundColor: '#131826', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                >
+                  <option value="all">⚡ All Statuses</option>
+                  <option value="converted">Converted Only</option>
+                  <option value="clicks">Clicks Only</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={handleSimulateTestClick}
+                  style={{ padding: '7px 14px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#38BDF8', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  🧪 Test Click
+                </button>
+                <button
+                  onClick={() => exportReport('clicks')}
+                  style={{ padding: '7px 14px', borderRadius: '6px', background: '#2563EB', border: '1px solid #3B82F6', color: '#FFF', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  📥 Export CSV
+                </button>
+              </div>
             </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px' }}>TIME</th>
-                    <th style={{ padding: '10px 12px' }}>CLICK ID</th>
-                    <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
-                    <th style={{ padding: '10px 12px' }}>OFFER ID</th>
-                    <th style={{ padding: '10px 12px' }}>IP ADDRESS</th>
-                    <th style={{ padding: '10px 12px' }}>SUBID1</th>
-                    <th style={{ padding: '10px 12px' }}>CONVERTED</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.clicks
-                    .filter(c => !clickSearch || (
-                      c.click_id.toLowerCase().includes(clickSearch.toLowerCase()) ||
-                      c.affiliate_id.toLowerCase().includes(clickSearch.toLowerCase()) ||
-                      (c.ip_address && c.ip_address.includes(clickSearch)) ||
-                      (c.sub_id1 && c.sub_id1.toLowerCase().includes(clickSearch.toLowerCase()))
-                    ))
-                    .map(c => (
+
+            {filteredClicks.length === 0 ? (
+              <div style={{ padding: '40px 20px', textAlign: 'center', background: '#0B0F19', borderRadius: '8px', border: '1px dashed #334155' }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🖱️</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>No Clicks Found Matching Filters</div>
+                <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '480px', margin: '0 auto 16px auto' }}>
+                  Adjust your search criteria or filter selections to view recorded affiliate clicks.
+                </p>
+                <button
+                  onClick={handleSimulateTestClick}
+                  style={{ padding: '8px 18px', borderRadius: '8px', background: '#38BDF8', color: '#0F172A', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+                >
+                  🧪 Generate Test Click
+                </button>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 12px' }}>TIME</th>
+                      <th style={{ padding: '10px 12px' }}>CLICK ID</th>
+                      <th style={{ padding: '10px 12px' }}>AFFILIATE</th>
+                      <th style={{ padding: '10px 12px' }}>OFFER & PACKAGE</th>
+                      <th style={{ padding: '10px 12px' }}>LOCATION</th>
+                      <th style={{ padding: '10px 12px' }}>DEVICE & OS</th>
+                      <th style={{ padding: '10px 12px' }}>BROWSER</th>
+                      <th style={{ padding: '10px 12px' }}>IP ADDRESS</th>
+                      <th style={{ padding: '10px 12px' }}>TYPE</th>
+                      <th style={{ padding: '10px 12px' }}>STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredClicks.map(c => (
                       <tr key={c.click_id} style={{ borderBottom: '1px solid #1E293B' }}>
-                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(c.created_at).toLocaleTimeString()}</td>
-                        <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{c.click_id}</td>
-                        <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{c.affiliate_id}</td>
-                        <td style={{ padding: '10px 12px' }}>{c.offer_id}</td>
-                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{c.ip_address || '—'}</td>
-                        <td style={{ padding: '10px 12px', color: '#A78BFA' }}>{c.sub_id1 || '—'}</td>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8', whiteSpace: 'nowrap' }}>
+                          {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          <div style={{ fontSize: '10px', color: '#64748B' }}>{new Date(c.created_at).toLocaleDateString()}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace', fontWeight: 600 }}>
+                          {c.click_id}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>
+                          {c.affiliate_id}
+                          {c.sub_id1 && <div style={{ fontSize: '10px', color: '#A78BFA' }}>s1: {c.sub_id1}</div>}
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ fontWeight: 700, color: '#2DD4BF' }}>
+                            {c.package_name || (c.package_id === 'plan_starter' ? 'Starter' : c.package_id === 'plan_business' ? 'Business' : c.package_id === 'plan_enterprise' ? 'Enterprise' : c.package_id === 'plan_free' ? 'Free' : 'Professional')}
+                          </span>
+                          <div style={{ fontSize: '11px', color: '#64748B' }}>{c.offer_id}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#CBD5E1' }}>
+                          {c.country || 'US'} {c.city ? `(${c.city})` : ''}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>
+                          {c.device || 'Desktop'} • {c.os || 'Windows'}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>
+                          {c.browser || 'Chrome'}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8', fontFamily: 'monospace' }}>
+                          {c.ip_address || '127.0.0.1'}
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          {c.unique_click === 0 ? (
+                            <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '10px', color: '#94A3B8', background: '#1E293B' }}>Repeat</span>
+                          ) : (
+                            <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, color: '#2DD4BF', background: 'rgba(45, 212, 191, 0.15)' }}>Unique</span>
+                          )}
+                        </td>
                         <td style={{ padding: '10px 12px' }}>
                           {c.converted ? (
                             <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34,197,94,0.2)', color: '#4ADE80' }}>
                               ✓ CONVERTED
                             </span>
                           ) : (
-                            <span style={{ color: '#64748B' }}>Click</span>
+                            <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', color: '#38BDF8', background: 'rgba(56,189,248,0.1)' }}>
+                              ⚡ Click
+                            </span>
                           )}
                         </td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── TAB 5: CONVERSIONS ── */}
       {activeSubTab === 'conversions' && (
@@ -1662,12 +1846,13 @@ export const AdminAffiliateManager: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '11px', color: '#2DD4BF', marginBottom: '6px', fontWeight: 700 }}>
                   ⚡ LOAD OFFICIAL PACKAGE PRESET
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
                   {[
-                    { id: 'plan_free', name: 'Free', price: 0, orig: 0, cta: 'Start Free', badge: 'FREE', target: '/offer/free', comm: 0, fixed: 0, type: 'percentage' },
-                    { id: 'plan_starter', name: 'Starter', price: 19, orig: 19, cta: 'Subscribe Starter', badge: 'Starter', target: '/offer/starter', comm: 40, fixed: 10, type: 'percentage' },
-                    { id: 'plan_pro', name: 'Professional', price: 49, orig: 49, cta: 'Subscribe Professional', badge: 'MOST POPULAR', target: '/offer/professional', comm: 50, fixed: 0, type: 'percentage' },
-                    { id: 'plan_business', name: 'Business', price: 99, orig: 149, cta: 'Subscribe Business', badge: 'BEST VALUE', target: '/offer/business', comm: 50, fixed: 0, type: 'percentage' }
+                    { id: 'plan_free', name: 'Free', price: 0, orig: 0, cta: 'Start Free', badge: 'FREE', target: '/offer/free', slug: 'free', comm: 0, fixed: 0, type: 'percentage' },
+                    { id: 'plan_starter', name: 'Starter', price: 19, orig: 39, cta: 'Subscribe Starter', badge: 'STARTER', target: '/offer/starter', slug: 'starter', comm: 40, fixed: 10, type: 'percentage' },
+                    { id: 'plan_pro', name: 'Professional', price: 39, orig: 79, cta: 'Subscribe Professional', badge: 'MOST POPULAR', target: '/offer/professional', slug: 'professional', comm: 50, fixed: 0, type: 'percentage' },
+                    { id: 'plan_business', name: 'Business', price: 69, orig: 129, cta: 'Subscribe Business', badge: 'BEST VALUE', target: '/offer/business', slug: 'business', comm: 50, fixed: 0, type: 'percentage' },
+                    { id: 'plan_enterprise', name: 'Enterprise', price: 99, orig: 199, cta: 'Subscribe Enterprise', badge: 'ENTERPRISE', target: '/offer/enterprise', slug: 'enterprise', comm: 50, fixed: 0, type: 'percentage' }
                   ].map(pkg => (
                     <button
                       key={pkg.id}
@@ -1680,6 +1865,7 @@ export const AdminAffiliateManager: React.FC = () => {
                           title: `AntiProfiles ${pkg.name} Subscription`,
                           description: `${pkg.name} plan pricing and conversion terms.`,
                           target_url: pkg.target,
+                          landing_page_slug: pkg.slug,
                           price: pkg.price,
                           original_price: pkg.orig,
                           cta_text: pkg.cta,
@@ -1695,10 +1881,11 @@ export const AdminAffiliateManager: React.FC = () => {
                         background: offerModal.package_id === pkg.id ? '#2563EB' : '#1E293B',
                         color: offerModal.package_id === pkg.id ? '#FFF' : '#CBD5E1',
                         border: '1px solid ' + (offerModal.package_id === pkg.id ? '#3B82F6' : '#334155'),
-                        cursor: 'pointer'
+                        cursor: 'pointer', textAlign: 'center'
                       }}
                     >
-                      {pkg.name} (${pkg.price}/mo)
+                      <div>{pkg.name}</div>
+                      <div style={{ fontSize: '10px', opacity: 0.85 }}>${pkg.price}/mo</div>
                     </button>
                   ))}
                 </div>
@@ -1722,15 +1909,51 @@ export const AdminAffiliateManager: React.FC = () => {
                     value={offerModal.package_id}
                     onChange={e => {
                       const pid = e.target.value
-                      const pName = pid === 'plan_free' ? 'Free' : pid === 'plan_starter' ? 'Starter' : pid === 'plan_business' ? 'Business' : 'Professional'
-                      setOfferModal({ ...offerModal, package_id: pid, package_name: pName })
+                      const pName = pid === 'plan_free' ? 'Free' : pid === 'plan_starter' ? 'Starter' : pid === 'plan_business' ? 'Business' : pid === 'plan_enterprise' ? 'Enterprise' : 'Professional'
+                      const slug = pid === 'plan_free' ? 'free' : pid === 'plan_starter' ? 'starter' : pid === 'plan_business' ? 'business' : pid === 'plan_enterprise' ? 'enterprise' : 'professional'
+                      setOfferModal({ ...offerModal, package_id: pid, package_name: pName, landing_page_slug: slug, target_url: `/offer/${slug}` })
                     }}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                   >
                     <option value="plan_free">Free Plan (3 Profiles, $0/mo)</option>
                     <option value="plan_starter">Starter Plan (25 Profiles, $19/mo)</option>
-                    <option value="plan_pro">Professional Plan (100 Profiles, $49/mo)</option>
-                    <option value="plan_business">Business Plan (500 Profiles, $99/mo)</option>
+                    <option value="plan_pro">Professional Plan (100 Profiles, $39/mo)</option>
+                    <option value="plan_business">Business Plan (500 Profiles, $69/mo)</option>
+                    <option value="plan_enterprise">Enterprise Plan (Unlimited, $99/mo)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Currency & Landing Page Template */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>CURRENCY</label>
+                  <select
+                    value={offerModal.currency || 'USD'}
+                    onChange={e => setOfferModal({ ...offerModal, currency: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  >
+                    <option value="USD">USD ($) - US Dollar</option>
+                    <option value="EUR">EUR (€) - Euro</option>
+                    <option value="GBP">GBP (£) - British Pound</option>
+                    <option value="AUD">AUD (A$) - Australian Dollar</option>
+                    <option value="CAD">CAD (C$) - Canadian Dollar</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>LANDING PAGE TEMPLATE</label>
+                  <select
+                    value={offerModal.landing_page_slug || 'starter'}
+                    onChange={e => setOfferModal({ ...offerModal, landing_page_slug: e.target.value, target_url: `/offer/${e.target.value}` })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  >
+                    <option value="starter">Starter Template (/offer/starter)</option>
+                    <option value="professional">Professional Template (/offer/professional)</option>
+                    <option value="business">Business Template (/offer/business)</option>
+                    <option value="enterprise">Enterprise Template (/offer/enterprise)</option>
+                    <option value="free">Free Trial Template (/offer/free)</option>
+                    <option value="custom">Custom Template</option>
                   </select>
                 </div>
               </div>
@@ -1740,7 +1963,7 @@ export const AdminAffiliateManager: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '4px', fontWeight: 600 }}>
-                      ORIGINAL PRICE ($) <span style={{ color: '#64748B' }}>(Old Price)</span>
+                      ORIGINAL PRICE <span style={{ color: '#64748B' }}>(Old Price)</span>
                     </label>
                     <input
                       type="number"
@@ -1755,7 +1978,7 @@ export const AdminAffiliateManager: React.FC = () => {
 
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', color: '#2DD4BF', marginBottom: '4px', fontWeight: 600 }}>
-                      DISCOUNT PRICE ($) <span style={{ color: '#64748B' }}>(Selling)</span>
+                      NEW DISCOUNT PRICE <span style={{ color: '#64748B' }}>(Selling)</span>
                     </label>
                     <input
                       type="number"
@@ -1770,7 +1993,7 @@ export const AdminAffiliateManager: React.FC = () => {
 
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '4px', fontWeight: 600 }}>
-                      DYNAMIC DISCOUNT %
+                      AUTO DISCOUNT %
                     </label>
                     <div style={{
                       padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155',
@@ -1778,12 +2001,32 @@ export const AdminAffiliateManager: React.FC = () => {
                       color: (offerModal.original_price > offerModal.price && offerModal.original_price > 0) ? '#4ADE80' : '#94A3B8'
                     }}>
                       {(offerModal.original_price > offerModal.price && offerModal.original_price > 0)
-                        ? `Save ${Math.round(((offerModal.original_price - offerModal.price) / offerModal.original_price) * 100)}%`
+                        ? `⚡ Save ${Math.round(((offerModal.original_price - offerModal.price) / offerModal.original_price) * 100)}%`
                         : '0% (Regular Price)'
                       }
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Offer Banner / Image URL */}
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>
+                  OFFER IMAGE / BANNER URL <span style={{ color: '#64748B' }}>(Optional Hero Banner)</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://antiprofiles.com/assets/banner-special.png"
+                  value={offerModal.banner_url || ''}
+                  onChange={e => setOfferModal({ ...offerModal, banner_url: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#38BDF8', fontSize: '12px' }}
+                />
+                {offerModal.banner_url && (
+                  <div style={{ marginTop: '6px', padding: '6px', background: '#0B0F19', borderRadius: '6px', border: '1px solid #1E293B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img src={offerModal.banner_url} alt="Banner Preview" style={{ height: '36px', borderRadius: '4px', objectFit: 'cover' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
+                    <span style={{ fontSize: '11px', color: '#94A3B8' }}>Banner Preview</span>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -1810,11 +2053,11 @@ export const AdminAffiliateManager: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>TARGET / LANDING PAGE SLUG URL</label>
+                <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>CTA BUTTON URL / CHECKOUT TARGET</label>
                 <input
                   type="text"
                   required
-                  placeholder="/offer/starter"
+                  placeholder="/offer/starter or https://checkout.antiprofiles.com"
                   value={offerModal.target_url}
                   onChange={e => setOfferModal({ ...offerModal, target_url: e.target.value })}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#38BDF8', fontSize: '12px', fontFamily: 'monospace' }}

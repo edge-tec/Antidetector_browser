@@ -442,14 +442,26 @@ export class AffiliateService {
     const packageId = offer.package_id || 'plan_pro'
     const packageName = offer.package_name || 'Professional'
     const price = offer.price !== undefined ? offer.price : 49.0
+    const originalPrice = offer.original_price !== undefined ? offer.original_price : price
+    const discountType = offer.discount_type || 'none'
+    const discountValue = offer.discount_value !== undefined ? offer.discount_value : (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0)
+    const discountedPrice = offer.discounted_price !== undefined ? offer.discounted_price : price
+    const trialDays = offer.trial_days !== undefined ? offer.trial_days : 7
+    const trialEnabled = offer.trial_enabled ? 1 : 0
+    const ctaText = offer.cta_text || 'Subscribe'
+    const badgeText = offer.badge_text || null
+    const landingPageSlug = offer.landing_page_slug || (packageId === 'plan_starter' ? 'starter' : packageId === 'plan_business' ? 'business' : packageId === 'plan_free' ? 'free' : 'professional')
+    const bannerUrl = offer.banner_url || null
     const currency = offer.currency || 'USD'
     const status = offer.status || 'active'
 
     db.prepare(`
       INSERT INTO affiliate_offers (
         id, title, description, target_url, signup_url, payout_type, commission_rate, fixed_payout_usd,
-        package_id, package_name, price, currency, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        package_id, package_name, price, original_price, discount_type, discount_value, discounted_price,
+        trial_days, trial_enabled, cta_text, badge_text, landing_page_slug, banner_url, currency, status,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         description = excluded.description,
@@ -461,10 +473,24 @@ export class AffiliateService {
         package_id = excluded.package_id,
         package_name = excluded.package_name,
         price = excluded.price,
+        original_price = excluded.original_price,
+        discount_type = excluded.discount_type,
+        discount_value = excluded.discount_value,
+        discounted_price = excluded.discounted_price,
+        trial_days = excluded.trial_days,
+        trial_enabled = excluded.trial_enabled,
+        cta_text = excluded.cta_text,
+        badge_text = excluded.badge_text,
+        landing_page_slug = excluded.landing_page_slug,
+        banner_url = excluded.banner_url,
         currency = excluded.currency,
         status = excluded.status,
         updated_at = datetime('now')
-    `).run(offerId, title, desc, targetUrl, signupUrl, payoutType, commRate, fixedPayout, packageId, packageName, price, currency, status)
+    `).run(
+      offerId, title, desc, targetUrl, signupUrl, payoutType, commRate, fixedPayout,
+      packageId, packageName, price, originalPrice, discountType, discountValue, discountedPrice,
+      trialDays, trialEnabled, ctaText, badgeText, landingPageSlug, bannerUrl, currency, status
+    )
 
     this.recordAuditLog('offer_saved', adminUserId, offerId, `Saved CPA Offer: ${title} (${payoutType}: ${payoutType === 'percentage' ? commRate + '%' : '$' + fixedPayout})`)
 
@@ -491,6 +517,13 @@ export class AffiliateService {
       payout_type: payoutType === 'percentage' ? 'revshare' : payoutType,
       revshare_percent: payoutType === 'percentage' ? commRate : 0,
       fixed_payout_usd: payoutType === 'fixed' ? fixedPayout : 0,
+      package_id: packageId,
+      package_name: packageName,
+      price,
+      original_price: originalPrice,
+      currency,
+      landing_page_slug: landingPageSlug,
+      banner_url: bannerUrl,
       status
     }).catch(err => {
       logger.warn('affiliate', `[AffiliateService] Central server save offer sync skipped: ${err.message}`)
@@ -588,12 +621,14 @@ export class AffiliateService {
     ipAddress?: string
     userAgent?: string
     referrer?: string
+    country?: string
+    city?: string
     subId1?: string
     subId2?: string
     subId3?: string
     subId4?: string
     subId5?: string
-  }): { clickId: string; redirectUrl: string; offer: AffiliateOffer | null } {
+  }): { clickId: string; redirectUrl: string; offer: AffiliateOffer | null; unique_click?: number } {
     const db = getDatabase()
     const affiliateId = (params.affiliateId || (params as any).affiliate_id || (params as any).ref || '').trim()
     const offerId = (params.offerId || (params as any).offer_id || 'offer_main_saas').trim()
@@ -605,6 +640,30 @@ export class AffiliateService {
     const ipAddress = params.ipAddress || (params as any).ip_address || '127.0.0.1'
     const userAgent = params.userAgent || (params as any).user_agent || ''
     const referrer = params.referrer || ''
+    const country = params.country || (params as any).country || 'US'
+    const city = params.city || (params as any).city || null
+
+    // Parse Device, Browser, OS
+    let device = 'Desktop'
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(userAgent)) {
+      device = 'Tablet'
+    } else if (/(mobile|iphone|ipod|blackberry|opera mini|iemobile|wpdesktop)/i.test(userAgent)) {
+      device = 'Mobile'
+    }
+
+    let browser = 'Chrome'
+    if (/edg/i.test(userAgent)) browser = 'Edge'
+    else if (/firefox|fxios/i.test(userAgent)) browser = 'Firefox'
+    else if (/safari/i.test(userAgent) && !/chrome|crios/i.test(userAgent)) browser = 'Safari'
+    else if (/opr\//i.test(userAgent)) browser = 'Opera'
+    else if (/chrome|crios/i.test(userAgent)) browser = 'Chrome'
+
+    let os = 'Windows'
+    if (/windows nt/i.test(userAgent)) os = 'Windows'
+    else if (/macintosh|mac os x/i.test(userAgent)) os = 'macOS'
+    else if (/iphone|ipad|ipod/i.test(userAgent)) os = 'iOS'
+    else if (/android/i.test(userAgent)) os = 'Android'
+    else if (/linux/i.test(userAgent)) os = 'Linux'
 
     // Validate Affiliate & Offer
     const user = db.prepare('SELECT id, affiliate_status FROM users WHERE affiliate_id = ? OR referral_code = ?').get(affiliateId, affiliateId) as any
@@ -615,9 +674,24 @@ export class AffiliateService {
     const offer = this.getOfferById(offerId) || this.getOffers(true)[0]
     const targetBaseUrl = offer ? offer.target_url : 'https://antiprofiles.com'
 
-    // Generate or use immutable Click ID
+    // Generate or use standardized Click ID (Format: CLK-YYYYMMDD-XXXXXXXX e.g. CLK-20260829-8FK39A2P)
     const rawClickId = params.clickId || (params as any).click_id
-    const clickId = (rawClickId && rawClickId.trim()) ? rawClickId.trim() : `clk_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
+    let clickId = (rawClickId && rawClickId.trim()) ? rawClickId.trim() : ''
+    if (!clickId) {
+      const d = new Date()
+      const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+      const rand = Math.random().toString(36).substring(2, 10).toUpperCase()
+      clickId = `CLK-${ymd}-${rand}`
+    }
+
+    // Unique Click Detection (first click from this IP on this offer in last 24h)
+    let uniqueClick = 1
+    try {
+      const count24h = db.prepare("SELECT COUNT(*) as count FROM affiliate_clicks WHERE ip_address = ? AND offer_id = ? AND datetime(created_at) >= datetime('now', '-24 hours')").get(ipAddress, offerId) as { count: number } | undefined
+      if (count24h && count24h.count > 0) {
+        uniqueClick = 0
+      }
+    } catch {}
 
     // Check if Click ID already recorded
     const existing = db.prepare('SELECT click_id FROM affiliate_clicks WHERE click_id = ?').get(clickId)
@@ -625,9 +699,11 @@ export class AffiliateService {
       db.prepare(`
         INSERT INTO affiliate_clicks (
           click_id, affiliate_id, offer_id, package_id, ip_address, user_agent, referrer, landing_url,
+          device, browser, os, country, city, unique_click,
           sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, converted, created_at
         ) VALUES (
           ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, 0, datetime('now')
         )
       `).run(
@@ -639,6 +715,12 @@ export class AffiliateService {
         userAgent,
         referrer,
         targetBaseUrl,
+        device,
+        browser,
+        os,
+        country,
+        city,
+        uniqueClick,
         subId1,
         subId2,
         subId3,
@@ -661,7 +743,7 @@ export class AffiliateService {
     redirectUrlObj.searchParams.set('offer_id', offerId)
     if (params.subId1) redirectUrlObj.searchParams.set('sub_id1', params.subId1)
 
-    logger.info('affiliate', `[Tracking] 🚀 Recorded click ${clickId} for affiliate ${affiliateId} on offer ${offerId}`)
+    logger.info('affiliate', `[Tracking] 🚀 Recorded click ${clickId} for affiliate ${affiliateId} on offer ${offerId} (Unique: ${uniqueClick ? 'YES' : 'NO'})`)
 
     const clickRecord = {
       clickId,
@@ -675,6 +757,12 @@ export class AffiliateService {
       package_id: offer?.package_id || 'plan_pro',
       package_name: offer?.package_name || 'Professional',
       ip_address: ipAddress,
+      device,
+      browser,
+      os,
+      country,
+      city,
+      unique_click: uniqueClick,
       sub_id1: subId1,
       created_at: new Date().toISOString()
     }

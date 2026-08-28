@@ -791,6 +791,8 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id3` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id4` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id5` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `unique_click` TINYINT(1) NOT NULL DEFAULT 1"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `tracking_link_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `conversion_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `converted_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("CREATE INDEX IF NOT EXISTS `idx_aff_clicks_aff_id` ON `affiliate_clicks` (`affiliate_id`, `created_at`)"); } catch (Throwable $e) {}
@@ -801,6 +803,9 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `affiliate_tracking_links` ADD COLUMN `conversions` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `package_id` VARCHAR(50) NOT NULL DEFAULT 'plan_pro'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `package_name` VARCHAR(100) NOT NULL DEFAULT 'Professional'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `landing_page_slug` VARCHAR(100) NOT NULL DEFAULT 'professional'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `banner_url` VARCHAR(500) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `cta_url` VARCHAR(500) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `price` DECIMAL(10,2) NOT NULL DEFAULT 49.00"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `original_price` DECIMAL(10,2) NOT NULL DEFAULT 49.00"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discount_type` VARCHAR(20) NOT NULL DEFAULT 'none'"); } catch (Throwable $e) {}
@@ -4997,10 +5002,10 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
             }
         }
 
-        // 3. Generate Click ID (Format: CLK_YYYYMMDD_XXXXXXXXXXXX)
+        // 3. Generate Click ID (Format: CLK-YYYYMMDD-XXXXXXXX e.g. CLK-20260829-8FK39A2P)
         $datePrefix = date('Ymd');
-        $randomSuffix = strtoupper(bin2hex(random_bytes(6)));
-        $clickId = !empty($rawClickId) ? $rawClickId : "CLK_{$datePrefix}_{$randomSuffix}";
+        $randomSuffix = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+        $clickId = !empty($rawClickId) ? $rawClickId : "CLK-{$datePrefix}-{$randomSuffix}";
 
         // 4. Resolve Client Metadata & User-Agent Parsing
         $ipAddress = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -5144,8 +5149,8 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
         $fullLandingUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '/');
 
         // Sub IDs, Offer ID & Link ID
-        $rawOfferParam = trim($_GET['offer_id'] ?? $_GET['offer'] ?? 'offer_main_saas');
-        $linkId = trim($_GET['link_id'] ?? '');
+        $rawOfferParam = trim($_GET['offer_id'] ?? $_GET['offer'] ?? $_GET['oid'] ?? 'offer_main_saas');
+        $linkId = trim($_GET['link_id'] ?? $_GET['tracking_link_id'] ?? '');
 
         // Resolve Offer & Package & Landing Page Slug
         $offerId = 'offer_main_saas';
@@ -5179,23 +5184,36 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
             }
         } catch (Throwable $e) {}
 
+        // Check if unique click (first click from this IP on this offer in last 24h)
+        $uniqueClick = 1;
+        try {
+            $unqStmt = $db->prepare("
+                SELECT COUNT(*) FROM affiliate_clicks 
+                WHERE ip_address = ? AND offer_id = ? AND created_at >= (NOW() - INTERVAL 24 HOUR)
+            ");
+            $unqStmt->execute([$ipAddress, $offerId]);
+            if ((int)$unqStmt->fetchColumn() > 0) {
+                $uniqueClick = 0;
+            }
+        } catch (Throwable $e) {}
+
         // 5. Insert Click into affiliate_clicks table
         try {
             $stmtInsert = $db->prepare("
                 INSERT INTO affiliate_clicks (
-                    click_id, affiliate_id, user_id, affiliate_link_id, offer_id, package_id,
+                    click_id, affiliate_id, user_id, affiliate_link_id, tracking_link_id, offer_id, package_id,
                     ip_address, user_agent, referrer, landing_url,
                     sub_id1, sub_id2, sub_id3, sub_id4, sub_id5,
                     device, browser, os, processor, country, city,
                     utm_source, utm_campaign, utm_medium, fingerprint_hash,
-                    is_fraud, fraud_reason, created_at
+                    unique_click, is_fraud, fraud_reason, created_at
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?,
                     ?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?,
-                    ?, ?, CURRENT_TIMESTAMP
+                    ?, ?, ?, CURRENT_TIMESTAMP
                 )
             ");
 
@@ -5203,6 +5221,7 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
                 $clickId,
                 $affId,
                 $userId,
+                $linkId ?: null,
                 $linkId ?: null,
                 $offerId,
                 $packageId,
@@ -5225,6 +5244,7 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
                 $utmCampaign ?: null,
                 $utmMedium ?: null,
                 $fingerprintHash,
+                $uniqueClick,
                 $isFraud,
                 $fraudReason
             ]);
@@ -5232,12 +5252,12 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
             try {
                 $stmtInsertMin = $db->prepare("
                     INSERT INTO affiliate_clicks (
-                        click_id, affiliate_id, user_id, offer_id, ip_address, user_agent, referrer, landing_url, created_at
+                        click_id, affiliate_id, user_id, offer_id, ip_address, user_agent, referrer, landing_url, unique_click, created_at
                     ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
                     )
                 ");
-                $stmtInsertMin->execute([$clickId, $affId, $userId, $offerId, $ipAddress, $userAgent, $referrer, $fullLandingUrl]);
+                $stmtInsertMin->execute([$clickId, $affId, $userId, $offerId, $ipAddress, $userAgent, $referrer, $fullLandingUrl, $uniqueClick]);
             } catch (Throwable $e2) {}
         }
 
@@ -5252,6 +5272,33 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
                 } catch (Throwable $e) {}
             }
         }
+
+        // Real-time broadcast sync event
+        try {
+            $evStmt = $db->prepare("
+                INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                VALUES (?, 'affiliate.click.recorded', ?, ?)
+            ");
+            $evStmt->execute([
+                'evt_' . uniqid(),
+                $userId ?: null,
+                json_encode([
+                    'click_id' => $clickId,
+                    'affiliate_id' => $affId,
+                    'offer_id' => $offerId,
+                    'package_id' => $packageId,
+                    'package_name' => $packageName,
+                    'ip' => $ipAddress,
+                    'country' => $country,
+                    'city' => $city,
+                    'device' => $device,
+                    'browser' => $browser,
+                    'os' => $os,
+                    'unique_click' => $uniqueClick,
+                    'timestamp' => time()
+                ])
+            ]);
+        } catch (Throwable $e) {}
 
         // 6. Set 30-Day Attribution Cookies
         $cookieDuration = time() + (86400 * 30);
@@ -5273,6 +5320,19 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
             'affId' => $affId,
             'referral_code' => $refCode,
             'refCode' => $refCode,
+            'unique_click' => $uniqueClick,
+            'offer_id' => $offerId,
+            'package_id' => $packageId,
+            'package_name' => $packageName,
+            'landing_page_slug' => $landingPageSlug,
+            'price' => $offerPrice,
+            'discounted_price' => $discountedPrice,
+            'ip' => $ipAddress,
+            'device' => $device,
+            'browser' => $browser,
+            'os' => $os,
+            'country' => $country,
+            'is_fraud' => $isFraud,
             'user_id' => $userId,
             'userId' => $userId,
             'offer_id' => $offerId,
