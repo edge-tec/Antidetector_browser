@@ -1981,36 +1981,85 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <h2>Download Our Desktop Application</h2>
             <p>Manage your isolated browser profiles directly from your computer with native Windows, macOS, and Linux performance.</p>
             <div id="landingDetectedSystemPill" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 8px 18px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #10B981; margin-top: 14px; font-weight: 700; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);">
-                ✓ Auto-Detected System: <strong><?= htmlspecialchars($detectedPlatformLabel) ?></strong>
+                ✓ Auto-Detected System: <strong id="landingDetectedSystemPillText"><?= htmlspecialchars($detectedPlatformLabel) ?></strong>
             </div>
         </div>
 
-        <div class="download-cards-grid">
-            <!-- 1. Windows Card -->
-            <div class="platform-download-card <?= ($detectedPlatform === 'windows-x64') ? 'card-recommended' : '' ?>" id="landingCardWin">
+        <!-- Featured Intelligent Recommendation Hero Card -->
+        <div id="featuredRecommendationHero" style="background: linear-gradient(135deg, rgba(21, 28, 38, 0.98), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(45, 212, 191, 0.45); border-radius: 20px; padding: 26px 30px; margin-bottom: 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(45, 212, 191, 0.15); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; position: relative;">
+            <div style="display: flex; gap: 20px; align-items: center; max-width: 600px;">
+                <div id="featuredOsIconBox" style="width: 64px; height: 64px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="34" height="34" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2DD4BF; box-shadow: 0 0 10px #2DD4BF;"></span>
+                        <span style="font-size: 11px; font-weight: 900; letter-spacing: 0.5px; color: #2DD4BF; text-transform: uppercase;">RECOMMENDED FOR YOUR DEVICE</span>
+                    </div>
+                    <h3 id="featuredDeviceTitle" style="font-size: 22px; font-weight: 800; color: #FFF; margin: 0 0 4px 0;">AntiProfiles for Windows (64-Bit x64)</h3>
+                    <p id="featuredDeviceSub" style="font-size: 13.5px; color: var(--text-muted); margin: 0 0 10px 0;">Native installer optimized for Windows 10 & 11 (x64 Architecture) with Hardware Acceleration.</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 10.5px; background: rgba(255,255,255,0.06); color: #E2E8F0; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">⚡ v2.0.0 Stable</span>
+                        <span style="font-size: 10.5px; background: rgba(45,212,191,0.1); color: #2DD4BF; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(45,212,191,0.25);">🛡️ Isolated Fingerprint Sandbox</span>
+                        <span style="font-size: 10.5px; background: rgba(59,130,246,0.1); color: #60A5FA; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(59,130,246,0.25);">🚀 HW Accelerated</span>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 260px;">
+                <a id="featuredDeviceDlBtn" href="/download/windows" download class="btn btn-primary" style="padding: 15px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; box-shadow: 0 6px 20px rgba(45,212,191,0.35); text-decoration: none; border-radius: 12px; width: 100%; justify-content: center;">
+                    ⬇️ Download for Windows .exe
+                </a>
+                <a href="#allPlatformBuildsGrid" style="font-size: 12px; color: var(--text-muted); text-decoration: underline; transition: color 0.2s;" onmouseover="this.style.color='#2DD4BF'" onmouseout="this.style.color='var(--text-muted)'">
+                    Looking for another platform or architecture? Select below ↓
+                </a>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 16px; color: #FFF; font-weight: 700;">All Supported Platform Builds</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Select any card below to switch download</span>
+        </div>
+
+        <div class="download-cards-grid" id="allPlatformBuildsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;">
+            <!-- 1. Windows x64 Card -->
+            <div class="platform-download-card <?= ($detectedPlatform === 'windows-x64') ? 'card-recommended' : '' ?>" id="landingCardWinX64" onclick="selectPlatformManual('windows-x64')" style="cursor: pointer;">
                 <?php if ($detectedPlatform === 'windows-x64'): ?>
-                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);">RECOMMENDED FOR YOUR DEVICE</span>
+                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;">RECOMMENDED FOR YOUR DEVICE</span>
                 <?php endif; ?>
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(0, 120, 212, 0.1); border: 1px solid rgba(0, 120, 212, 0.25);">
-                            <svg width="26" height="26" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/>
-                            </svg>
+                            <svg width="24" height="24" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
                         </div>
-                        <span style="font-size: 10px; background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">WINDOWS</span>
+                        <span style="font-size: 10px; background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">WINDOWS x64</span>
                     </div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Windows Client</h3>
-                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingWinVerText">v<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?> (x64 Architecture)</div>
-                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native installer for Windows 10 & 11 with automatic desktop shortcuts and HW acceleration.</p>
+                    <h4 style="font-size: 17px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Windows Client (x64)</h4>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingWinX64VerText">v2.0.0 (Intel & AMD 64-Bit)</div>
+                    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 18px; line-height: 1.5;">Installer for Windows 10 & 11 on Intel/AMD CPUs with HW acceleration.</p>
                 </div>
-                <a href="<?= htmlspecialchars($activeLandingReleases['windows-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'windows-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'windows-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);' : 'font-size: 13px;' ?>" id="landingBtnWinDl">Download Windows .exe (v<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?>)</a>
+                <a href="/api/releases?download=1&platform=windows-x64" download class="btn <?= ($detectedPlatform === 'windows-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'windows-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'font-size: 12.5px;' ?>" id="landingBtnWinX64Dl">Download Windows x64 .exe</a>
             </div>
 
-            <!-- 2. Apple Silicon Card -->
-            <div class="platform-download-card <?= ($detectedPlatform === 'macos-arm64') ? 'card-recommended' : '' ?>" id="landingCardMacArm">
+            <!-- 2. Windows ARM64 Card -->
+            <div class="platform-download-card" id="landingCardWinArm64" onclick="selectPlatformManual('windows-arm64')" style="cursor: pointer;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(0, 120, 212, 0.1); border: 1px solid rgba(0, 120, 212, 0.25);">
+                            <svg width="24" height="24" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
+                        </div>
+                        <span style="font-size: 10px; background: rgba(14,165,233,0.15); color: #38BDF8; border: 1px solid rgba(14,165,233,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">WINDOWS ARM64</span>
+                    </div>
+                    <h4 style="font-size: 17px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Windows Client (ARM64)</h4>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingWinArm64VerText">v2.0.0 (Snapdragon / Surface)</div>
+                    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 18px; line-height: 1.5;">Native ARM64 build for Snapdragon X Elite, Surface Pro & ARM PCs.</p>
+                </div>
+                <a href="/api/releases?download=1&platform=windows-arm64" download class="btn btn-outline" style="width: 100%; justify-content: center; font-size: 12.5px;" id="landingBtnWinArm64Dl">Download Windows ARM64 .exe</a>
+            </div>
+
+            <!-- 3. macOS Apple Silicon Card -->
+            <div class="platform-download-card <?= ($detectedPlatform === 'macos-arm64') ? 'card-recommended' : '' ?>" id="landingCardMacArm" onclick="selectPlatformManual('macos-arm64')" style="cursor: pointer;">
                 <?php if ($detectedPlatform === 'macos-arm64'): ?>
-                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);">RECOMMENDED FOR YOUR DEVICE</span>
+                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;">RECOMMENDED FOR YOUR DEVICE</span>
                 <?php endif; ?>
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
@@ -2019,19 +2068,19 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/>
                             </svg>
                         </div>
-                        <span style="font-size: 10px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">APPLE SILICON</span>
+                        <span style="font-size: 10px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">APPLE SILICON (M1-M4)</span>
                     </div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Silicon</h3>
-                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingMacArmVerText">v<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?> (M1 / M2 / M3 / M4)</div>
-                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native ARM64 build engineered specifically for Apple Silicon M-series processors.</p>
+                    <h4 style="font-size: 17px; color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Apple Silicon</h4>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingMacArmVerText">v2.0.0 (M1 / M2 / M3 / M4)</div>
+                    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 18px; line-height: 1.5;">Native ARM64 build engineered for Apple M-series chips.</p>
                 </div>
-                <a href="<?= htmlspecialchars($activeLandingReleases['macos-arm64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'macos-arm64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'macos-arm64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);' : 'font-size: 13px;' ?>" id="landingBtnMacArmDl">Download Apple Silicon .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?>)</a>
+                <a href="/api/releases?download=1&platform=macos-arm64" download class="btn <?= ($detectedPlatform === 'macos-arm64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'macos-arm64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'font-size: 12.5px;' ?>" id="landingBtnMacArmDl">Download Apple Silicon .dmg</a>
             </div>
 
-            <!-- 3. macOS Intel Card -->
-            <div class="platform-download-card <?= ($detectedPlatform === 'macos-x64') ? 'card-recommended' : '' ?>" id="landingCardMacIntel">
+            <!-- 4. macOS Intel Card -->
+            <div class="platform-download-card <?= ($detectedPlatform === 'macos-x64') ? 'card-recommended' : '' ?>" id="landingCardMacIntel" onclick="selectPlatformManual('macos-x64')" style="cursor: pointer;">
                 <?php if ($detectedPlatform === 'macos-x64'): ?>
-                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);">RECOMMENDED FOR YOUR DEVICE</span>
+                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;">RECOMMENDED FOR YOUR DEVICE</span>
                 <?php endif; ?>
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
@@ -2042,17 +2091,17 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         </div>
                         <span style="font-size: 10px; background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">MACOS INTEL</span>
                     </div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Intel</h3>
-                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingMacIntelVerText">v<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?> (Intel Processors)</div>
-                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native macOS disk image built for Intel-based Mac computers before late 2020.</p>
+                    <h4 style="font-size: 17px; color: #FFF; margin-bottom: 4px; font-weight: 700;">macOS Intel (x64)</h4>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingMacIntelVerText">v2.0.0 (Intel Processors)</div>
+                    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 18px; line-height: 1.5;">Disk image for Intel-based Mac computers.</p>
                 </div>
-                <a href="<?= htmlspecialchars($activeLandingReleases['macos-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'macos-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'macos-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);' : 'font-size: 13px;' ?>" id="landingBtnMacIntelDl">Download macOS Intel .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?>)</a>
+                <a href="/api/releases?download=1&platform=macos-x64" download class="btn <?= ($detectedPlatform === 'macos-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'macos-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'font-size: 12.5px;' ?>" id="landingBtnMacIntelDl">Download macOS Intel .dmg</a>
             </div>
 
-            <!-- 4. Linux Card -->
-            <div class="platform-download-card <?= ($detectedPlatform === 'linux-x64') ? 'card-recommended' : '' ?>" id="landingCardLinux">
+            <!-- 5. Linux x64 Card -->
+            <div class="platform-download-card <?= ($detectedPlatform === 'linux-x64') ? 'card-recommended' : '' ?>" id="landingCardLinuxX64" onclick="selectPlatformManual('linux-x64')" style="cursor: pointer;">
                 <?php if ($detectedPlatform === 'linux-x64'): ?>
-                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);">RECOMMENDED FOR YOUR DEVICE</span>
+                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;">RECOMMENDED FOR YOUR DEVICE</span>
                 <?php endif; ?>
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
@@ -2061,19 +2110,193 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/>
                             </svg>
                         </div>
-                        <span style="font-size: 10px; background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">LINUX</span>
+                        <span style="font-size: 10px; background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">LINUX x64</span>
                     </div>
-                    <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Linux Client</h3>
-                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingLinuxVerText">v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?> (AppImage & .deb)</div>
-                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Standalone binary package for Ubuntu, Debian, Fedora, Arch & openSUSE.</p>
+                    <h4 style="font-size: 17px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Linux Client (x86_64)</h4>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingLinuxX64VerText">v2.0.0 (Ubuntu / Debian / Fedora)</div>
+                    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 18px; line-height: 1.5;">Universal .AppImage & .deb for 64-Bit Linux distributions.</p>
                 </div>
-                <a href="<?= htmlspecialchars($activeLandingReleases['linux-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'linux-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'linux-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);' : 'border-color: rgba(250,204,21,0.4); font-size: 13px;' ?>" id="landingBtnLinuxDl">Download Linux .AppImage (v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>)</a>
+                <a href="/api/releases?download=1&platform=linux-x64" download class="btn <?= ($detectedPlatform === 'linux-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'linux-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'border-color: rgba(250,204,21,0.4); font-size: 12.5px;' ?>" id="landingBtnLinuxX64Dl">Download Linux x64 .AppImage</a>
+            </div>
+
+            <!-- 6. Linux ARM64 Card -->
+            <div class="platform-download-card" id="landingCardLinuxArm64" onclick="selectPlatformManual('linux-arm64')" style="cursor: pointer;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.25);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;">
+                                <path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/>
+                            </svg>
+                        </div>
+                        <span style="font-size: 10px; background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">LINUX ARM64</span>
+                    </div>
+                    <h4 style="font-size: 17px; color: #FFF; margin-bottom: 4px; font-weight: 700;">Linux Client (ARM64)</h4>
+                    <div style="font-size: 12px; color: #2DD4BF; font-weight: 600; margin-bottom: 8px;" id="landingLinuxArm64VerText">v2.0.0 (aarch64 / Pi 5)</div>
+                    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 18px; line-height: 1.5;">ARM64 / aarch64 binary for Raspberry Pi 5 & ARM Linux.</p>
+                </div>
+                <a href="/api/releases?download=1&platform=linux-arm64" download class="btn btn-outline" style="width: 100%; justify-content: center; border-color: rgba(250,204,21,0.4); font-size: 12.5px;" id="landingBtnLinuxArm64Dl">Download Linux ARM64 .AppImage</a>
             </div>
         </div>
 
         <script>
         (function() {
-            function detectAndApplyOsRecommendation() {
+            var PLATFORM_SPECS = {
+                'windows-x64': {
+                    key: 'windows-x64',
+                    title: 'AntiProfiles for Windows (64-Bit x64)',
+                    sub: 'Native installer optimized for Windows 10 & 11 (x64 Architecture) with Hardware Acceleration.',
+                    btnText: '⬇️ Download for Windows .exe',
+                    pillText: 'Windows 10 / 11 (64-Bit x64)',
+                    url: '/api/releases?download=1&platform=windows-x64',
+                    landingCardId: 'landingCardWinX64',
+                    userCardId: 'cardWinPlatform',
+                    iconSvg: '<svg width="34" height="34" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>'
+                },
+                'windows-arm64': {
+                    key: 'windows-arm64',
+                    title: 'AntiProfiles for Windows 11 (ARM64)',
+                    sub: 'Native ARM64 build engineered for Snapdragon X Elite, Surface Pro & ARM PCs.',
+                    btnText: '⬇️ Download for Windows ARM64 .exe',
+                    pillText: 'Windows 11 (ARM64 Snapdragon / Surface)',
+                    url: '/api/releases?download=1&platform=windows-arm64',
+                    landingCardId: 'landingCardWinArm64',
+                    userCardId: 'cardWinPlatform',
+                    iconSvg: '<svg width="34" height="34" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>'
+                },
+                'macos-arm64': {
+                    key: 'macos-arm64',
+                    title: 'AntiProfiles for macOS Apple Silicon (ARM64)',
+                    sub: 'Native disk image engineered specifically for Apple Silicon M1, M2, M3 & M4 processors.',
+                    btnText: '⬇️ Download Apple Silicon .dmg',
+                    pillText: 'macOS Apple Silicon (M1 / M2 / M3 / M4)',
+                    url: '/api/releases?download=1&platform=macos-arm64',
+                    landingCardId: 'landingCardMacArm',
+                    userCardId: 'cardMacArmPlatform',
+                    iconSvg: '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/></svg>'
+                },
+                'macos-x64': {
+                    key: 'macos-x64',
+                    title: 'AntiProfiles for macOS Intel (x86_64)',
+                    sub: 'Native disk image built for Intel Core i5/i7/i9 and Xeon Mac computers.',
+                    btnText: '⬇️ Download macOS Intel .dmg',
+                    pillText: 'macOS Intel (x86_64)',
+                    url: '/api/releases?download=1&platform=macos-x64',
+                    landingCardId: 'landingCardMacIntel',
+                    userCardId: 'cardMacIntelPlatform',
+                    iconSvg: '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/></svg>'
+                },
+                'linux-x64': {
+                    key: 'linux-x64',
+                    title: 'AntiProfiles for Linux (x86_64)',
+                    sub: 'Universal standalone AppImage & .deb for Ubuntu, Debian, Fedora, Arch & openSUSE.',
+                    btnText: '⬇️ Download Linux x64 .AppImage',
+                    pillText: 'Linux (x86_64 AppImage & .deb)',
+                    url: '/api/releases?download=1&platform=linux-x64',
+                    landingCardId: 'landingCardLinuxX64',
+                    userCardId: 'cardLinuxPlatform',
+                    iconSvg: '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;"><path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/></svg>'
+                },
+                'linux-arm64': {
+                    key: 'linux-arm64',
+                    title: 'AntiProfiles for Linux (ARM64 / aarch64)',
+                    sub: 'Optimized binary for 64-Bit ARM Linux devices, Raspberry Pi 5 & ARM servers.',
+                    btnText: '⬇️ Download Linux ARM64 .AppImage',
+                    pillText: 'Linux (ARM64 / aarch64)',
+                    url: '/api/releases?download=1&platform=linux-arm64',
+                    landingCardId: 'landingCardLinuxArm64',
+                    userCardId: 'cardLinuxPlatform',
+                    iconSvg: '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;"><path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/></svg>'
+                }
+            };
+
+            function applyPlatformRecommendation(platKey) {
+                var spec = PLATFORM_SPECS[platKey] || PLATFORM_SPECS['windows-x64'];
+
+                // 1. Update Featured Hero Recommendation Box
+                var pillText = document.getElementById('landingDetectedSystemPillText');
+                if (pillText) pillText.textContent = spec.pillText;
+
+                var fTitle = document.getElementById('featuredDeviceTitle');
+                if (fTitle) fTitle.textContent = spec.title;
+
+                var fSub = document.getElementById('featuredDeviceSub');
+                if (fSub) fSub.textContent = spec.sub;
+
+                var fBtn = document.getElementById('featuredDeviceDlBtn');
+                if (fBtn) {
+                    fBtn.href = spec.url;
+                    fBtn.textContent = spec.btnText;
+                }
+
+                var fIcon = document.getElementById('featuredOsIconBox');
+                if (fIcon) fIcon.innerHTML = spec.iconSvg;
+
+                // 2. Update Hero Section Top CTA Button
+                var heroBtn = document.getElementById('heroDynamicDownloadBtn');
+                if (heroBtn) {
+                    heroBtn.href = spec.url;
+                    heroBtn.innerHTML = spec.btnText;
+                }
+
+                // 3. Highlight Matching Platform Card in the Grid
+                var allCards = ['landingCardWinX64', 'landingCardWinArm64', 'landingCardMacArm', 'landingCardMacIntel', 'landingCardLinuxX64', 'landingCardLinuxArm64'];
+                allCards.forEach(function(cid) {
+                    var card = document.getElementById(cid);
+                    if (!card) return;
+                    var isMatch = (cid === spec.landingCardId);
+                    card.classList.toggle('card-recommended', isMatch);
+
+                    var badges = card.querySelectorAll('.card-rec-badge');
+                    for (var i = 0; i < badges.length; i++) {
+                        badges[i].remove();
+                    }
+
+                    if (isMatch) {
+                        var badge = document.createElement('span');
+                        badge.className = 'card-rec-badge';
+                        badge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;');
+                        badge.textContent = 'RECOMMENDED FOR YOUR DEVICE';
+                        card.appendChild(badge);
+                    }
+
+                    var btn = card.querySelector('a.btn');
+                    if (btn) {
+                        if (isMatch) {
+                            btn.className = 'btn btn-primary';
+                            btn.setAttribute('style', 'width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);');
+                        } else {
+                            btn.className = 'btn btn-outline';
+                            btn.setAttribute('style', 'width: 100%; justify-content: center; font-size: 12.5px;');
+                        }
+                    }
+                });
+
+                // 4. Update User Portal Cards if modal is open
+                var userCards = ['cardWinPlatform', 'cardMacArmPlatform', 'cardMacIntelPlatform', 'cardLinuxPlatform'];
+                userCards.forEach(function(cid) {
+                    var card = document.getElementById(cid);
+                    if (!card) return;
+                    var isMatch = (cid === spec.userCardId);
+                    card.classList.toggle('card-recommended', isMatch);
+                    var badges = card.querySelectorAll('.card-rec-badge');
+                    for (var b = 0; b < badges.length; b++) {
+                        badges[b].remove();
+                    }
+                    if (isMatch) {
+                        var badge = document.createElement('span');
+                        badge.className = 'card-rec-badge';
+                        badge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;');
+                        badge.textContent = 'RECOMMENDED';
+                        card.appendChild(badge);
+                    }
+                });
+            }
+
+            window.selectPlatformManual = function(platKey) {
+                applyPlatformRecommendation(platKey);
+            };
+
+            function runFullDeviceDetection() {
                 try {
                     var ua = (navigator.userAgent || '').toLowerCase();
                     var plat = (navigator.platform || '').toLowerCase();
@@ -2085,144 +2308,65 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     var isLinux = !isAndroid && (uadPlat.indexOf('linux') !== -1 || ua.indexOf('linux') !== -1 || ua.indexOf('x11') !== -1 || plat.indexOf('linux') !== -1);
                     var isMac = !isAndroid && !isWin && !isLinux && (uadPlat.indexOf('mac') !== -1 || ua.indexOf('macintosh') !== -1 || ua.indexOf('mac os') !== -1 || plat.indexOf('mac') !== -1 || ua.indexOf('darwin') !== -1);
 
-                    var targetKey = 'windows-x64';
-                    var osLabel = 'Windows 10 / 11 (64-Bit)';
-                    var landingCardId = 'landingCardWin';
-                    var userCardId = 'cardWinPlatform';
+                    var isArm = (ua.indexOf('arm64') !== -1 || ua.indexOf('aarch64') !== -1 || ua.indexOf('arm') !== -1);
 
-                    if (isWin) {
-                        targetKey = 'windows-x64';
-                        osLabel = 'Windows 10 / 11 (64-Bit)';
-                        landingCardId = 'landingCardWin';
-                        userCardId = 'cardWinPlatform';
-                    } else if (isLinux) {
-                        targetKey = 'linux-x64';
-                        osLabel = 'Linux (x86_64 AppImage & .deb)';
-                        landingCardId = 'landingCardLinux';
-                        userCardId = 'cardLinuxPlatform';
-                    } else if (isMac) {
-                        var isAppleSilicon = false;
-                        if (ua.indexOf('arm64') !== -1 || ua.indexOf('aarch64') !== -1) {
-                            isAppleSilicon = true;
-                        } else {
-                            try {
-                                var c = document.createElement('canvas');
-                                var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-                                if (gl) {
-                                    var ext = gl.getExtension('WEBGL_debug_renderer_info');
-                                    if (ext) {
-                                        var rend = (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
-                                        if (rend.indexOf('apple m') !== -1 || rend.indexOf('apple silicon') !== -1 || rend.indexOf('apple gpu') !== -1) {
-                                            isAppleSilicon = true;
-                                        }
+                    if (isMac && !isArm) {
+                        try {
+                            var c = document.createElement('canvas');
+                            var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+                            if (gl) {
+                                var ext = gl.getExtension('WEBGL_debug_renderer_info');
+                                if (ext) {
+                                    var rend = (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
+                                    if (rend.indexOf('apple m') !== -1 || rend.indexOf('apple silicon') !== -1 || rend.indexOf('apple gpu') !== -1 || rend.indexOf('apple') !== -1) {
+                                        isArm = true;
                                     }
                                 }
-                            } catch(e) {}
-                        }
-
-                        if (isAppleSilicon) {
-                            targetKey = 'macos-arm64';
-                            osLabel = 'macOS Apple Silicon (M1 / M2 / M3 / M4)';
-                            landingCardId = 'landingCardMacArm';
-                            userCardId = 'cardMacArmPlatform';
-                        } else {
-                            targetKey = 'macos-x64';
-                            osLabel = 'macOS Intel (x86_64)';
-                            landingCardId = 'landingCardMacIntel';
-                            userCardId = 'cardMacIntelPlatform';
-                        }
-                    }
-
-                    // 1. Update Detection Pill
-                    var pill = document.getElementById('landingDetectedSystemPill');
-                    if (pill) {
-                        pill.innerHTML = '✓ Auto-Detected System: <strong>' + osLabel + '</strong>';
-                    }
-
-                    // 2. Update Landing Page Cards
-                    var landingCards = ['landingCardWin', 'landingCardMacArm', 'landingCardMacIntel', 'landingCardLinux'];
-                    landingCards.forEach(function(cid) {
-                        var card = document.getElementById(cid);
-                        if (!card) return;
-                        var isMatch = (cid === landingCardId);
-                        card.classList.toggle('card-recommended', isMatch);
-                        
-                        var badges = card.querySelectorAll('.card-rec-badge');
-                        for (var b = 0; b < badges.length; b++) {
-                            badges[b].remove();
-                        }
-
-                        if (isMatch) {
-                            var newBadge = document.createElement('span');
-                            newBadge.className = 'card-rec-badge';
-                            newBadge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;');
-                            newBadge.textContent = 'RECOMMENDED FOR YOUR DEVICE';
-                            card.appendChild(newBadge);
-                        }
-
-                        var btn = card.querySelector('a.btn');
-                        if (btn) {
-                            if (isMatch) {
-                                btn.className = 'btn btn-primary';
-                                btn.setAttribute('style', 'width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);');
-                            } else {
-                                btn.className = 'btn btn-outline';
-                                btn.setAttribute('style', 'width: 100%; justify-content: center; font-size: 13px;');
                             }
-                        }
-                    });
-
-                    // 3. Update User Portal Cards if present
-                    var userCards = ['cardWinPlatform', 'cardMacArmPlatform', 'cardMacIntelPlatform', 'cardLinuxPlatform'];
-                    userCards.forEach(function(cid) {
-                        var card = document.getElementById(cid);
-                        if (!card) return;
-                        var isMatch = (cid === userCardId);
-                        card.classList.toggle('card-recommended', isMatch);
-                        var badges = card.querySelectorAll('.card-rec-badge');
-                        for (var b = 0; b < badges.length; b++) {
-                            badges[b].remove();
-                        }
-                        if (isMatch) {
-                            var newBadge = document.createElement('span');
-                            newBadge.className = 'card-rec-badge';
-                            newBadge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;');
-                            newBadge.textContent = 'RECOMMENDED';
-                            card.appendChild(newBadge);
-                        }
-                        var btn = card.querySelector('a.btn');
-                        if (btn) {
-                            if (isMatch) {
-                                btn.className = 'btn btn-primary';
-                                btn.setAttribute('style', 'width: 100%; justify-content: center; padding: 10px 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;');
-                            } else {
-                                btn.className = 'btn btn-outline';
-                                btn.setAttribute('style', 'width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; font-size: 13px;');
-                            }
-                        }
-                    });
-
-                    // 4. Update Hero dynamic button
-                    var heroBtn = document.getElementById('heroDynamicDownloadBtn');
-                    if (heroBtn) {
-                        var cardBtn = document.querySelector('#' + landingCardId + ' a.btn');
-                        if (cardBtn && cardBtn.href) {
-                            heroBtn.href = cardBtn.href;
-                            heroBtn.innerHTML = '⬇️ Download for ' + (isWin ? 'Windows' : (isLinux ? 'Linux' : (isAppleSilicon ? 'Apple Silicon' : 'macOS Intel')));
-                        }
+                        } catch(e) {}
                     }
-                } catch(err) {
-                    console.error('[AntiProfiles] Immediate OS detection error:', err);
+
+                    var detectedKey = 'windows-x64';
+                    if (isWin) {
+                        detectedKey = isArm ? 'windows-arm64' : 'windows-x64';
+                    } else if (isMac) {
+                        detectedKey = isArm ? 'macos-arm64' : 'macos-x64';
+                    } else if (isLinux) {
+                        detectedKey = isArm ? 'linux-arm64' : 'linux-x64';
+                    }
+
+                    applyPlatformRecommendation(detectedKey);
+
+                    // Client Hints High Entropy Values Async Refinement (Chromium)
+                    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+                        navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness', 'model', 'platform', 'platformVersion'])
+                        .then(function(hints) {
+                            if (hints) {
+                                var hPlat = (hints.platform || '').toLowerCase();
+                                var hArch = (hints.architecture || '').toLowerCase();
+                                var hintsArm = (hArch === 'arm' || hArch === 'arm64' || hArch === 'aarch64');
+                                if (hPlat.indexOf('win') !== -1) {
+                                    applyPlatformRecommendation(hintsArm ? 'windows-arm64' : 'windows-x64');
+                                } else if (hPlat.indexOf('mac') !== -1) {
+                                    applyPlatformRecommendation(hintsArm ? 'macos-arm64' : 'macos-x64');
+                                } else if (hPlat.indexOf('linux') !== -1) {
+                                    applyPlatformRecommendation(hintsArm ? 'linux-arm64' : 'linux-x64');
+                                }
+                            }
+                        }).catch(function() {});
+                    }
+                } catch(e) {
+                    console.error('[AntiProfiles] Detection error:', e);
                 }
             }
 
-            window.initDownloadOsDetection = detectAndApplyOsRecommendation;
-            detectAndApplyOsRecommendation();
+            window.initDownloadOsDetection = runFullDeviceDetection;
+            runFullDeviceDetection();
 
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', detectAndApplyOsRecommendation);
+                document.addEventListener('DOMContentLoaded', runFullDeviceDetection);
             }
-            window.addEventListener('load', detectAndApplyOsRecommendation);
+            window.addEventListener('load', runFullDeviceDetection);
         })();
         </script>
     </section>
@@ -6703,192 +6847,13 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         }
 
         function initDownloadOsDetection() {
-            const userAgent = (navigator.userAgent || '').toLowerCase();
-            const platform = (navigator.platform || '').toLowerCase();
-            const uad = navigator.userAgentData;
-            const uadPlatform = (uad && uad.platform) ? uad.platform.toLowerCase() : '';
-
-            const releases = window.activeReleasesCache || {};
-            const winVer = (releases['windows-x64'] && releases['windows-x64'].version) ? releases['windows-x64'].version : '<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?>';
-            const macArmVer = (releases['macos-arm64'] && releases['macos-arm64'].version) ? releases['macos-arm64'].version : '<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?>';
-            const macIntelVer = (releases['macos-x64'] && releases['macos-x64'].version) ? releases['macos-x64'].version : '<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?>';
-            const linuxVer = (releases['linux-x64'] && releases['linux-x64'].version) ? releases['linux-x64'].version : '<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>';
-            
-            // Comprehensive Multi-Source Device & OS Detection
-            const isAndroid = userAgent.includes('android') || platform.includes('android');
-            const isWindows = uadPlatform.includes('win') || userAgent.includes('windows') || userAgent.includes('win64') || userAgent.includes('wow64') || userAgent.includes('win32') || platform.includes('win');
-            const isLinux = !isAndroid && (uadPlatform.includes('linux') || userAgent.includes('linux') || userAgent.includes('x11') || platform.includes('linux'));
-            const isMac = !isAndroid && (uadPlatform.includes('mac') || userAgent.includes('macintosh') || userAgent.includes('mac os x') || platform.includes('mac') || userAgent.includes('darwin'));
-
-            let targetKey = 'windows-x64';
-            let osLabel = 'Windows 10 / 11 (64-Bit)';
-            let osName = 'AntiProfiles for Windows (64-Bit)';
-            let osSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture) • v' + winVer;
-            let dlUrl = (releases['windows-x64'] && releases['windows-x64'].download_url) ? releases['windows-x64'].download_url : '/api/releases?download=1&platform=windows-x64';
-            let btnText = '⬇️ Direct Download for Windows .exe (v' + winVer + ')';
-            let landingCardId = 'landingCardWin';
-            let userCardId = 'cardWinPlatform';
-
-            if (isWindows) {
-                targetKey = 'windows-x64';
-                osLabel = 'Windows 10 / 11 (64-Bit)';
-                osName = 'AntiProfiles for Windows (64-Bit)';
-                osSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture) • v' + winVer;
-                dlUrl = (releases['windows-x64'] && releases['windows-x64'].download_url) ? releases['windows-x64'].download_url : '/api/releases?download=1&platform=windows-x64';
-                btnText = '⬇️ Direct Download for Windows .exe (v' + winVer + ')';
-                landingCardId = 'landingCardWin';
-                userCardId = 'cardWinPlatform';
-            } else if (isMac) {
-                let isArm = false;
+            if (typeof window.initDownloadOsDetection === 'function' && window.initDownloadOsDetection !== initDownloadOsDetection) {
                 try {
-                    const canvas = document.createElement('canvas');
-                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    if (gl) {
-                        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                        if (debugInfo) {
-                            const renderer = (gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
-                            if (renderer.includes('apple m') || renderer.includes('apple silicon') || renderer.includes('apple gpu')) {
-                                isArm = true;
-                            }
-                        }
-                    }
+                    window.initDownloadOsDetection();
+                    return;
                 } catch(e) {}
-
-                if (userAgent.includes('arm64') || userAgent.includes('aarch64')) {
-                    isArm = true;
-                }
-
-                if (isArm) {
-                    targetKey = 'macos-arm64';
-                    osLabel = 'macOS Apple Silicon (M1 / M2 / M3 / M4)';
-                    osName = 'AntiProfiles for macOS (Apple Silicon)';
-                    osSub = 'Native ARM64 build for Apple M-series chips (M1 / M2 / M3 / M4) • v' + macArmVer;
-                    dlUrl = (releases['macos-arm64'] && releases['macos-arm64'].download_url) ? releases['macos-arm64'].download_url : '/api/releases?download=1&platform=macos-arm64';
-                    btnText = '⬇️ Direct Download for Apple Silicon .dmg (v' + macArmVer + ')';
-                    landingCardId = 'landingCardMacArm';
-                    userCardId = 'cardMacArmPlatform';
-                } else {
-                    targetKey = 'macos-x64';
-                    osLabel = 'macOS Intel (x86_64 Core i5/i7/i9)';
-                    osName = 'AntiProfiles for macOS (Intel)';
-                    osSub = 'Native disk image installer for Intel Mac processors • v' + macIntelVer;
-                    dlUrl = (releases['macos-x64'] && releases['macos-x64'].download_url) ? releases['macos-x64'].download_url : '/api/releases?download=1&platform=macos-x64';
-                    btnText = '⬇️ Direct Download for macOS Intel .dmg (v' + macIntelVer + ')';
-                    landingCardId = 'landingCardMacIntel';
-                    userCardId = 'cardMacIntelPlatform';
-                }
-            } else if (isLinux) {
-                targetKey = 'linux-x64';
-                osLabel = 'Linux (x86_64 AppImage & .deb)';
-                osName = 'AntiProfiles for Linux';
-                osSub = 'Universal standalone AppImage & .deb for Ubuntu, Debian, Fedora & Arch • v' + linuxVer;
-                dlUrl = (releases['linux-x64'] && releases['linux-x64'].download_url) ? releases['linux-x64'].download_url : '/api/releases?download=1&platform=linux-x64';
-                btnText = '⬇️ Direct Download for Linux .AppImage (v' + linuxVer + ')';
-                landingCardId = 'landingCardLinux';
-                userCardId = 'cardLinuxPlatform';
             }
-
-            // 1. Update Public Landing Page Detection Pill
-            const pill = document.getElementById('landingDetectedSystemPill');
-            if (pill) {
-                pill.innerHTML = '✓ Auto-Detected System: <strong>' + osLabel + '</strong>';
-            }
-
-            // 2. Update Public Landing Page Download Cards & Badges
-            const landingCards = ['landingCardWin', 'landingCardMacArm', 'landingCardMacIntel', 'landingCardLinux'];
-            landingCards.forEach(cid => {
-                const c = document.getElementById(cid);
-                if (!c) return;
-                const isMatch = (cid === landingCardId);
-                c.classList.toggle('card-recommended', isMatch);
-                const badges = c.querySelectorAll('.card-rec-badge');
-                for (let b = 0; b < badges.length; b++) {
-                    badges[b].remove();
-                }
-                
-                if (isMatch) {
-                    const badge = document.createElement('span');
-                    badge.className = 'card-rec-badge';
-                    badge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);');
-                    badge.textContent = 'RECOMMENDED FOR YOUR DEVICE';
-                    c.appendChild(badge);
-                }
-
-                const btn = c.querySelector('a.btn');
-                if (btn) {
-                    if (isMatch) {
-                        btn.className = 'btn btn-primary';
-                        btn.setAttribute('style', 'width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);');
-                    } else {
-                        btn.className = 'btn btn-outline';
-                        btn.setAttribute('style', 'width: 100%; justify-content: center; font-size: 13px;');
-                    }
-                }
-            });
-
-            // 3. Update User Dashboard Hero Banner
-            const heroIcon = document.getElementById('userDetectedOsIcon');
-            const heroTitle = document.getElementById('userDetectedOsTitle');
-            const heroSub = document.getElementById('userDetectedOsSub');
-            const heroBtn = document.getElementById('userDetectedOsBtn');
-
-            if (heroIcon) {
-                if (targetKey.startsWith('win')) {
-                    heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>`;
-                } else if (targetKey.startsWith('mac')) {
-                    heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/></svg>`;
-                } else {
-                    heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;"><path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/></svg>`;
-                }
-            }
-            if (heroTitle) heroTitle.textContent = osName;
-            if (heroSub) heroSub.textContent = osSub;
-            if (heroBtn) {
-                heroBtn.href = dlUrl;
-                heroBtn.textContent = btnText;
-            }
-
-            // 4. Update User Dashboard Cards & Badges
-            const userCards = ['cardWinPlatform', 'cardMacArmPlatform', 'cardMacIntelPlatform', 'cardLinuxPlatform'];
-            userCards.forEach(cid => {
-                const c = document.getElementById(cid);
-                if (!c) return;
-                const isMatch = (cid === userCardId);
-                const badges = c.querySelectorAll('.card-rec-badge');
-                for (let b = 0; b < badges.length; b++) {
-                    badges[b].remove();
-                }
-                if (isMatch) {
-                    const badge = document.createElement('span');
-                    badge.className = 'card-rec-badge';
-                    badge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);');
-                    badge.textContent = 'RECOMMENDED';
-                    c.appendChild(badge);
-                }
-
-                const btn = c.querySelector('a.btn');
-                if (btn) {
-                    if (isMatch) {
-                        btn.className = 'btn btn-primary';
-                        btn.setAttribute('style', 'width: 100%; justify-content: center; padding: 10px 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;');
-                    } else {
-                        btn.className = 'btn btn-outline';
-                        btn.setAttribute('style', 'width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; font-size: 13px;');
-                    }
-                }
-            });
         }
-
-        // Run OS Detection immediately on script execution and DOM load
-        try {
-            initDownloadOsDetection();
-        } catch(e) {}
-        document.addEventListener('DOMContentLoaded', () => {
-            try { initDownloadOsDetection(); } catch(e) {}
-        });
-        window.addEventListener('load', () => {
-            try { initDownloadOsDetection(); } catch(e) {}
-        });
 
         async function loadSmtpConfig() {
             const token = localStorage.getItem('sessionToken');

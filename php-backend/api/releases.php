@@ -43,7 +43,7 @@ function getActiveReleaseForPlatform(PDO $db, string $platformKey): ?array {
 // Fallback config from desktop_app_config
 $config = getDesktopAppConfigMap();
 
-$platforms = ['windows-x64', 'macos-arm64', 'macos-x64', 'linux-x64'];
+$platforms = ['windows-x64', 'windows-arm64', 'macos-arm64', 'macos-x64', 'linux-x64', 'linux-arm64'];
 $manifestPlatforms = [];
 
 foreach ($platforms as $pKey) {
@@ -51,23 +51,29 @@ foreach ($platforms as $pKey) {
 
     $defaultSlugMap = [
         'windows-x64' => '/download/windows',
+        'windows-arm64' => '/download/windows-arm64',
         'macos-arm64' => '/download/macos-arm64',
         'macos-x64' => '/download/macos-intel',
-        'linux-x64' => '/download/linux'
+        'linux-x64' => '/download/linux',
+        'linux-arm64' => '/download/linux-arm64'
     ];
 
     $defaultFilenameMap = [
-        'windows-x64' => 'ProfileVault-Windows-x64.exe',
-        'macos-arm64' => 'ProfileVault-macOS-AppleSilicon-arm64.dmg',
-        'macos-x64' => 'ProfileVault-macOS-Intel-x64.dmg',
-        'linux-x64' => 'ProfileVault-Linux-x86_64.AppImage'
+        'windows-x64' => 'AntiProfiles-Windows-x64.exe',
+        'windows-arm64' => 'AntiProfiles-Windows-arm64.exe',
+        'macos-arm64' => 'AntiProfiles-macOS-AppleSilicon-arm64.dmg',
+        'macos-x64' => 'AntiProfiles-macOS-Intel-x64.dmg',
+        'linux-x64' => 'AntiProfiles-Linux-x86_64.AppImage',
+        'linux-arm64' => 'AntiProfiles-Linux-arm64.AppImage'
     ];
 
     $nameMap = [
-        'windows-x64' => 'Windows Client',
+        'windows-x64' => 'Windows Client (x64)',
+        'windows-arm64' => 'Windows Client (ARM64)',
         'macos-arm64' => 'macOS Apple Silicon',
         'macos-x64' => 'macOS Intel',
-        'linux-x64' => 'Linux Client'
+        'linux-x64' => 'Linux Client (x86_64)',
+        'linux-arm64' => 'Linux Client (ARM64)'
     ];
 
     if ($activeRel) {
@@ -85,13 +91,13 @@ foreach ($platforms as $pKey) {
             'enabled' => true
         ];
     } else {
-        // Fallback to legacy config
-        $legacyVer = $config[$pKey === 'windows-x64' ? 'win_app_version' : ($pKey === 'macos-arm64' ? 'mac_arm_app_version' : ($pKey === 'macos-x64' ? 'mac_intel_app_version' : 'linux_app_version'))] ?? '1.0.0';
+        // Fallback to legacy config or default version
+        $legacyVer = $config[$pKey === 'windows-x64' ? 'win_app_version' : ($pKey === 'windows-arm64' ? 'win_app_version' : ($pKey === 'macos-arm64' ? 'mac_arm_app_version' : ($pKey === 'macos-x64' ? 'mac_intel_app_version' : 'linux_app_version')))] ?? '2.0.0';
         $manifestPlatforms[$pKey] = [
             'id' => 'legacy_' . $pKey,
             'name' => $nameMap[$pKey],
             'version' => $legacyVer,
-            'release_name' => "ProfileVault v{$legacyVer} Release",
+            'release_name' => "AntiProfiles v{$legacyVer} Release",
             'filename' => $defaultFilenameMap[$pKey],
             'file_size' => 159,
             'download_url' => $defaultSlugMap[$pKey],
@@ -103,27 +109,36 @@ foreach ($platforms as $pKey) {
 }
 
 $manifest = [
-    'version' => $manifestPlatforms['windows-x64']['version'] ?? '1.0.0',
+    'version' => $manifestPlatforms['windows-x64']['version'] ?? '2.0.0',
     'min_supported_version' => $config['min_supported_version'] ?? '1.0.0',
     'force_update' => ($config['force_update'] ?? 'false') === 'true',
     'release_notes' => $config['release_notes'] ?? 'Initial stable release with multi-profile isolation, proxy bridge, and team controls.',
     'platforms' => $manifestPlatforms
 ];
 
-// Handle direct download request: /download/windows or /api/releases?download=1&platform=windows-x64
+// Handle direct download request (?download=1&platform=windows-x64)
 if (isset($_GET['download']) && $_GET['download'] == '1') {
     $platformKey = $_GET['platform'] ?? 'windows-x64';
     
-    // Normalize platform aliases
+    // Normalization & Alias Map
     $aliasMap = [
         'windows' => 'windows-x64',
         'win' => 'windows-x64',
+        'win-x64' => 'windows-x64',
+        'windows-arm' => 'windows-arm64',
+        'win-arm' => 'windows-arm64',
+        'win-arm64' => 'windows-arm64',
         'macos-intel' => 'macos-x64',
         'mac-intel' => 'macos-x64',
+        'macos-x86_64' => 'macos-x64',
         'macos-arm64' => 'macos-arm64',
         'apple-silicon' => 'macos-arm64',
         'mac-arm' => 'macos-arm64',
-        'linux' => 'linux-x64'
+        'mac-silicon' => 'macos-arm64',
+        'linux' => 'linux-x64',
+        'linux-x86_64' => 'linux-x64',
+        'linux-arm' => 'linux-arm64',
+        'linux-aarch64' => 'linux-arm64'
     ];
     if (isset($aliasMap[$platformKey])) {
         $platformKey = $aliasMap[$platformKey];
