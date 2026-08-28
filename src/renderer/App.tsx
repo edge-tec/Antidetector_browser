@@ -2561,27 +2561,35 @@ function AppContent() {
     { page: 'support', icon: Icons.chat, label: 'Live Support', section: 'HELP & SUPPORT' },
   ]
 
+  useEffect(() => {
+    if (impersonatedBy) {
+      setAdminView(false)
+      setCurrentPage('profiles')
+    }
+  }, [impersonatedBy])
+
   let renderedSections: string[] = []
 
   return (
-    <div className="app-layout">
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden', backgroundColor: 'var(--color-bg-primary)' }}>
       {impersonatedBy && (
         <div style={{
-          gridColumn: '1 / -1',
+          width: '100%',
           backgroundColor: '#F59E0B',
           color: '#0F0F14',
-          padding: '10px 24px',
+          padding: '8px 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           fontWeight: 700,
           fontSize: '13px',
           zIndex: 999,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '16px' }}>👁️</span>
-            <span>ADMIN IMPERSONATION MODE: Logged in as user <u>{currentUser?.name}</u> ({currentUser?.email})</span>
+            <span>ADMIN IMPERSONATION MODE: Logged in as user <u>{currentUser?.name || currentUser?.email}</u> ({currentUser?.email})</span>
           </div>
           <button
             type="button"
@@ -2604,6 +2612,8 @@ function AppContent() {
           </button>
         </div>
       )}
+
+      <div className="app-layout" style={{ flex: 1, minHeight: 0, width: '100%' }}>
 
       {/* ── Sidebar ── */}
       <aside className="sidebar">
@@ -3050,6 +3060,7 @@ function AppContent() {
         onClose={() => setShowChangelogModal(false)}
         currentVersion={appVersion}
       />
+      </div>
     </div>
   )
 }

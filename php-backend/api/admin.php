@@ -82,6 +82,52 @@ switch ($action) {
         respondJson(['success' => true, 'data' => ['id' => $userId, 'name' => $name, 'email' => $email, 'role' => $role]]);
         break;
 
+    case 'impersonate-user':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $targetUserId = $_GET['id'] ?? $input['userId'] ?? $input['id'] ?? $input['targetUserId'] ?? null;
+
+        if (!$targetUserId) {
+            respondJson(['success' => false, 'error' => 'Target User ID required.'], 400);
+        }
+
+        $targetStmt = $db->prepare("SELECT id, name, email, role, account_status, email_verified, created_at, last_login_at FROM users WHERE id = ?");
+        $targetStmt->execute([$targetUserId]);
+        $target = $targetStmt->fetch();
+
+        if (!$target) {
+            respondJson(['success' => false, 'error' => 'Target user not found.'], 404);
+        }
+
+        if (($target['account_status'] ?? '') === 'suspended') {
+            respondJson(['success' => false, 'error' => 'Cannot log in as a suspended user account.'], 400);
+        }
+
+        // Generate token for target user
+        $targetToken = generateJwtSessionToken($target['id'], $target['email'], $target['role']);
+        logAdminAction($admin['id'], $admin['email'], 'IMPERSONATE_USER', $targetUserId, "Admin impersonated user {$target['email']}");
+
+        respondJson([
+            'success' => true,
+            'token' => $targetToken,
+            'user' => [
+                'id' => $target['id'],
+                'name' => $target['name'],
+                'email' => $target['email'],
+                'role' => $target['role'],
+                'accountStatus' => $target['account_status'],
+                'emailVerified' => (bool)$target['email_verified'],
+                'createdAt' => $target['created_at'],
+                'lastLoginAt' => $target['last_login_at']
+            ],
+            'originalAdminUser' => [
+                'id' => $admin['id'],
+                'name' => $admin['name'] ?? 'Admin',
+                'email' => $admin['email'],
+                'role' => $admin['role']
+            ]
+        ]);
+        break;
+
     case 'update-user-role':
     case 'update-role':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
