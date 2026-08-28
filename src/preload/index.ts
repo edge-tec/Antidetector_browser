@@ -81,6 +81,7 @@ const api = {
   adminGetGlobalTrialConfig: (token: string) => ipcRenderer.invoke('admin:get-global-trial-config', token),
   adminSaveGlobalTrialConfig: (token: string, config: any) => ipcRenderer.invoke('admin:save-global-trial-config', token, config),
   adminRefundPayment: (token: string, input: { paymentId: string; reason?: string }) => ipcRenderer.invoke('admin:refund-payment', token, input),
+  adminRecordManualPayment: (token: string, paymentData: any) => ipcRenderer.invoke('admin:record-manual-payment', token, paymentData),
   getAvailablePaymentGateways: () => ipcRenderer.invoke('payment:get-available-gateways'),
 
   // ── Profiles ──
