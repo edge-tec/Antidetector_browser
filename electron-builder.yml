@@ -43,6 +43,8 @@ mac:
         - x64
 dmg:
   artifactName: 'AntiProfiles-macOS-${arch}.${ext}'
+  format: UDBZ
+  writeUpdateInfo: false
   contents:
     - x: 130
       y: 220
