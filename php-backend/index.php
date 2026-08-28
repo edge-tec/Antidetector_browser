@@ -403,22 +403,83 @@ if (empty($landingFeatures)) {
 
 // Server-Side Device & OS Auto-Detection for Instant Recommendation
 $httpUa = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
-$detectedPlatform = 'windows-x64';
-$detectedPlatformLabel = 'Windows 10 / 11 (64-Bit)';
+$secChUaPlatform = strtolower($_SERVER['HTTP_SEC_CH_UA_PLATFORM'] ?? '');
+$secChUaArch = strtolower($_SERVER['HTTP_SEC_CH_UA_ARCH'] ?? '');
+
 $isAndroid = (strpos($httpUa, 'android') !== false);
-$isWin = (strpos($httpUa, 'windows') !== false || strpos($httpUa, 'win64') !== false || strpos($httpUa, 'wow64') !== false || strpos($httpUa, 'win32') !== false);
-$isMac = !$isAndroid && (strpos($httpUa, 'mac') !== false || strpos($httpUa, 'darwin') !== false || strpos($httpUa, 'macintosh') !== false);
-$isLinux = !$isAndroid && (strpos($httpUa, 'linux') !== false || strpos($httpUa, 'x11') !== false);
+$isWin = !$isAndroid && (strpos($secChUaPlatform, 'win') !== false || strpos($httpUa, 'windows') !== false || strpos($httpUa, 'win64') !== false || strpos($httpUa, 'wow64') !== false || strpos($httpUa, 'win32') !== false);
+$isLinux = !$isAndroid && !$isWin && (strpos($secChUaPlatform, 'linux') !== false || strpos($httpUa, 'linux') !== false || strpos($httpUa, 'x11') !== false);
+$isMac = !$isAndroid && !$isWin && !$isLinux && (strpos($secChUaPlatform, 'mac') !== false || strpos($httpUa, 'mac') !== false || strpos($httpUa, 'darwin') !== false || strpos($httpUa, 'macintosh') !== false);
+
+$isArm = (strpos($secChUaArch, 'arm') !== false || strpos($httpUa, 'arm64') !== false || strpos($httpUa, 'aarch64') !== false);
+$isExplicitIntel = (strpos($secChUaArch, 'x86') !== false || strpos($httpUa, 'intel') !== false || strpos($httpUa, 'x86_64') !== false || strpos($httpUa, 'amd64') !== false || strpos($httpUa, 'wow64') !== false || strpos($httpUa, 'win64') !== false);
+
+$winSvg = '<svg width="34" height="34" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>';
+$macSvg = '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/></svg>';
+$linuxSvg = '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;"><path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/></svg>';
+
+$detectedPlatform = 'windows-x64';
+$detectedPlatformLabel = 'Windows 10 / 11 (64-Bit x64)';
+$detectedTitle = 'AntiProfiles for Windows (64-Bit x64)';
+$detectedSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture) with Hardware Acceleration.';
+$detectedBtnText = '⬇️ Download for Windows .exe';
+$detectedDownloadUrl = '/api/releases?download=1&platform=windows-x64';
+$detectedIconSvg = $winSvg;
 
 if ($isWin) {
-    $detectedPlatform = 'windows-x64';
-    $detectedPlatformLabel = 'Windows 10 / 11 (64-Bit)';
+    if ($isArm && !$isExplicitIntel) {
+        $detectedPlatform = 'windows-arm64';
+        $detectedPlatformLabel = 'Windows 11 (ARM64 Snapdragon / Surface)';
+        $detectedTitle = 'AntiProfiles for Windows 11 (ARM64)';
+        $detectedSub = 'Native ARM64 build engineered for Snapdragon X Elite, Surface Pro & ARM PCs.';
+        $detectedBtnText = '⬇️ Download for Windows ARM64 .exe';
+        $detectedDownloadUrl = '/api/releases?download=1&platform=windows-arm64';
+        $detectedIconSvg = $winSvg;
+    } else {
+        $detectedPlatform = 'windows-x64';
+        $detectedPlatformLabel = 'Windows 10 / 11 (64-Bit x64)';
+        $detectedTitle = 'AntiProfiles for Windows (64-Bit x64)';
+        $detectedSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture) with Hardware Acceleration.';
+        $detectedBtnText = '⬇️ Download for Windows .exe';
+        $detectedDownloadUrl = '/api/releases?download=1&platform=windows-x64';
+        $detectedIconSvg = $winSvg;
+    }
 } elseif ($isMac) {
-    $detectedPlatform = 'macos-arm64';
-    $detectedPlatformLabel = 'macOS Apple Silicon (M1 / M2 / M3 / M4)';
+    if ($isArm && !$isExplicitIntel) {
+        $detectedPlatform = 'macos-arm64';
+        $detectedPlatformLabel = 'macOS Apple Silicon (M1 / M2 / M3 / M4)';
+        $detectedTitle = 'AntiProfiles for macOS Apple Silicon (ARM64)';
+        $detectedSub = 'Native disk image engineered specifically for Apple Silicon M1, M2, M3 & M4 processors.';
+        $detectedBtnText = '⬇️ Download Apple Silicon .dmg';
+        $detectedDownloadUrl = '/api/releases?download=1&platform=macos-arm64';
+        $detectedIconSvg = $macSvg;
+    } else {
+        $detectedPlatform = 'macos-x64';
+        $detectedPlatformLabel = 'macOS Intel (64-Bit Core i5 / i7 / i9 / Xeon)';
+        $detectedTitle = 'AntiProfiles for macOS Intel (x86_64)';
+        $detectedSub = 'Native disk image built for Intel Core i5/i7/i9 and Xeon Mac computers.';
+        $detectedBtnText = '⬇️ Download macOS Intel .dmg';
+        $detectedDownloadUrl = '/api/releases?download=1&platform=macos-x64';
+        $detectedIconSvg = $macSvg;
+    }
 } elseif ($isLinux) {
-    $detectedPlatform = 'linux-x64';
-    $detectedPlatformLabel = 'Linux (x86_64 AppImage & .deb)';
+    if ($isArm) {
+        $detectedPlatform = 'linux-arm64';
+        $detectedPlatformLabel = 'Linux (ARM64 / aarch64)';
+        $detectedTitle = 'AntiProfiles for Linux (ARM64 / aarch64)';
+        $detectedSub = 'Optimized binary for 64-Bit ARM Linux devices, Raspberry Pi 5 & ARM servers.';
+        $detectedBtnText = '⬇️ Download Linux ARM64 .AppImage';
+        $detectedDownloadUrl = '/api/releases?download=1&platform=linux-arm64';
+        $detectedIconSvg = $linuxSvg;
+    } else {
+        $detectedPlatform = 'linux-x64';
+        $detectedPlatformLabel = 'Linux (x86_64 AppImage & .deb)';
+        $detectedTitle = 'AntiProfiles for Linux (x86_64)';
+        $detectedSub = 'Universal standalone AppImage & .deb for Ubuntu, Debian, Fedora, Arch & openSUSE.';
+        $detectedBtnText = '⬇️ Download Linux x64 .AppImage';
+        $detectedDownloadUrl = '/api/releases?download=1&platform=linux-x64';
+        $detectedIconSvg = $linuxSvg;
+    }
 }
 
 $landingLogoUrl = '/brand-logo.png';
@@ -2233,15 +2294,15 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         <div id="featuredRecommendationHero" style="background: linear-gradient(135deg, rgba(21, 28, 38, 0.98), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(45, 212, 191, 0.45); border-radius: 20px; padding: 26px 30px; margin-bottom: 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(45, 212, 191, 0.15); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; position: relative;">
             <div style="display: flex; gap: 20px; align-items: center; max-width: 600px;">
                 <div id="featuredOsIconBox" style="width: 64px; height: 64px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <svg width="34" height="34" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
+                    <?= $detectedIconSvg ?>
                 </div>
                 <div>
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                         <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2DD4BF; box-shadow: 0 0 10px #2DD4BF;"></span>
                         <span style="font-size: 11px; font-weight: 900; letter-spacing: 0.5px; color: #2DD4BF; text-transform: uppercase;">RECOMMENDED FOR YOUR DEVICE</span>
                     </div>
-                    <h3 id="featuredDeviceTitle" style="font-size: 22px; font-weight: 800; color: #FFF; margin: 0 0 4px 0;">AntiProfiles for Windows (64-Bit x64)</h3>
-                    <p id="featuredDeviceSub" style="font-size: 13.5px; color: var(--text-muted); margin: 0 0 10px 0;">Native installer optimized for Windows 10 & 11 (x64 Architecture) with Hardware Acceleration.</p>
+                    <h3 id="featuredDeviceTitle" style="font-size: 22px; font-weight: 800; color: #FFF; margin: 0 0 4px 0;"><?= htmlspecialchars($detectedTitle) ?></h3>
+                    <p id="featuredDeviceSub" style="font-size: 13.5px; color: var(--text-muted); margin: 0 0 10px 0;"><?= htmlspecialchars($detectedSub) ?></p>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <span style="font-size: 10.5px; background: rgba(255,255,255,0.06); color: #E2E8F0; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">⚡ v2.0.0 Stable</span>
                         <span style="font-size: 10.5px; background: rgba(45,212,191,0.1); color: #2DD4BF; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(45,212,191,0.25);">🛡️ Isolated Fingerprint Sandbox</span>
@@ -2250,8 +2311,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 </div>
             </div>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 260px;">
-                <a id="featuredDeviceDlBtn" href="/download/windows" download class="btn btn-primary" style="padding: 15px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; box-shadow: 0 6px 20px rgba(45,212,191,0.35); text-decoration: none; border-radius: 12px; width: 100%; justify-content: center;">
-                    ⬇️ Download for Windows .exe
+                <a id="featuredDeviceDlBtn" href="<?= htmlspecialchars($detectedDownloadUrl) ?>" download class="btn btn-primary" style="padding: 15px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; box-shadow: 0 6px 20px rgba(45,212,191,0.35); text-decoration: none; border-radius: 12px; width: 100%; justify-content: center;">
+                    <?= htmlspecialchars($detectedBtnText) ?>
                 </a>
                 <a href="#allPlatformBuildsGrid" style="font-size: 12px; color: var(--text-muted); text-decoration: underline; transition: color 0.2s;" onmouseover="this.style.color='#2DD4BF'" onmouseout="this.style.color='var(--text-muted)'">
                     Looking for another platform or architecture? Select below ↓
@@ -2548,33 +2609,60 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     var uadPlat = (uad && uad.platform) ? uad.platform.toLowerCase() : '';
 
                     var isAndroid = (ua.indexOf('android') !== -1 || plat.indexOf('android') !== -1);
-                    var isWin = (uadPlat.indexOf('win') !== -1 || ua.indexOf('windows') !== -1 || ua.indexOf('win64') !== -1 || ua.indexOf('wow64') !== -1 || ua.indexOf('win32') !== -1 || plat.indexOf('win') !== -1);
-                    var isLinux = !isAndroid && (uadPlat.indexOf('linux') !== -1 || ua.indexOf('linux') !== -1 || ua.indexOf('x11') !== -1 || plat.indexOf('linux') !== -1);
+                    var isWin = !isAndroid && (uadPlat.indexOf('win') !== -1 || ua.indexOf('windows') !== -1 || ua.indexOf('win64') !== -1 || ua.indexOf('wow64') !== -1 || ua.indexOf('win32') !== -1 || plat.indexOf('win') !== -1);
+                    var isLinux = !isAndroid && !isWin && (uadPlat.indexOf('linux') !== -1 || ua.indexOf('linux') !== -1 || ua.indexOf('x11') !== -1 || plat.indexOf('linux') !== -1);
                     var isMac = !isAndroid && !isWin && !isLinux && (uadPlat.indexOf('mac') !== -1 || ua.indexOf('macintosh') !== -1 || ua.indexOf('mac os') !== -1 || plat.indexOf('mac') !== -1 || ua.indexOf('darwin') !== -1);
 
-                    var isArm = (ua.indexOf('arm64') !== -1 || ua.indexOf('aarch64') !== -1 || ua.indexOf('arm') !== -1);
+                    var isArm = (ua.indexOf('arm64') !== -1 || ua.indexOf('aarch64') !== -1 || ua.indexOf('armv8') !== -1);
+                    var isExplicitIntel = (ua.indexOf('intel') !== -1 || ua.indexOf('x86_64') !== -1 || ua.indexOf('x86') !== -1 || ua.indexOf('amd64') !== -1 || ua.indexOf('win64') !== -1 || ua.indexOf('wow64') !== -1);
 
-                    if (isMac && !isArm) {
-                        try {
-                            var c = document.createElement('canvas');
-                            var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-                            if (gl) {
-                                var ext = gl.getExtension('WEBGL_debug_renderer_info');
-                                if (ext) {
-                                    var rend = (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
-                                    if (rend.indexOf('apple m') !== -1 || rend.indexOf('apple silicon') !== -1 || rend.indexOf('apple gpu') !== -1 || rend.indexOf('apple') !== -1) {
-                                        isArm = true;
-                                    }
-                                }
+                    // WebGL Unmasked GPU Hardware Profiling
+                    var glRend = '';
+                    var glVend = '';
+                    try {
+                        var c = document.createElement('canvas');
+                        var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+                        if (gl) {
+                            var ext = gl.getExtension('WEBGL_debug_renderer_info');
+                            if (ext) {
+                                glRend = (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
+                                glVend = (gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || '').toLowerCase();
                             }
-                        } catch(e) {}
-                    }
+                        }
+                    } catch(e) {}
 
                     var detectedKey = 'windows-x64';
+
                     if (isWin) {
-                        detectedKey = isArm ? 'windows-arm64' : 'windows-x64';
+                        var winArm = isArm && !isExplicitIntel;
+                        detectedKey = winArm ? 'windows-arm64' : 'windows-x64';
                     } else if (isMac) {
-                        detectedKey = isArm ? 'macos-arm64' : 'macos-x64';
+                        // Exact Intel vs Apple Silicon Mac Detection:
+                        // 1. Check for Intel / AMD / Radeon / Nvidia / Iris GPU -> Guaranteed macOS Intel
+                        var isIntelGpu = (
+                            glRend.indexOf('intel') !== -1 || 
+                            glRend.indexOf('iris') !== -1 || 
+                            glRend.indexOf('hd graphics') !== -1 || 
+                            glRend.indexOf('uhd graphics') !== -1 || 
+                            glRend.indexOf('amd') !== -1 || 
+                            glRend.indexOf('radeon') !== -1 || 
+                            glRend.indexOf('nvidia') !== -1 || 
+                            glRend.indexOf('geforce') !== -1
+                        );
+
+                        // 2. Check for explicit Apple M-Series chip (M1, M2, M3, M4, M5, Apple Silicon)
+                        var isAppleSilicon = /(apple\s*m\d|apple\s*silicon|apple\s*m\b)/i.test(glRend);
+
+                        if (isIntelGpu) {
+                            detectedKey = 'macos-x64';
+                        } else if (isAppleSilicon) {
+                            detectedKey = 'macos-arm64';
+                        } else if (isArm && !isExplicitIntel) {
+                            detectedKey = 'macos-arm64';
+                        } else {
+                            // Default for Intel Mac architecture
+                            detectedKey = 'macos-x64';
+                        }
                     } else if (isLinux) {
                         detectedKey = isArm ? 'linux-arm64' : 'linux-x64';
                     }
@@ -2582,18 +2670,24 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     applyPlatformRecommendation(detectedKey);
 
                     // Client Hints High Entropy Values Async Refinement (Chromium)
-                    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+                    if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
                         navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness', 'model', 'platform', 'platformVersion'])
                         .then(function(hints) {
                             if (hints) {
                                 var hPlat = (hints.platform || '').toLowerCase();
                                 var hArch = (hints.architecture || '').toLowerCase();
                                 var hintsArm = (hArch === 'arm' || hArch === 'arm64' || hArch === 'aarch64');
-                                if (hPlat.indexOf('win') !== -1) {
+                                var hintsX86 = (hArch === 'x86' || hArch === 'x86_64' || hArch === 'x64');
+
+                                if (hPlat.indexOf('win') !== -1 || isWin) {
                                     applyPlatformRecommendation(hintsArm ? 'windows-arm64' : 'windows-x64');
-                                } else if (hPlat.indexOf('mac') !== -1) {
-                                    applyPlatformRecommendation(hintsArm ? 'macos-arm64' : 'macos-x64');
-                                } else if (hPlat.indexOf('linux') !== -1) {
+                                } else if (hPlat.indexOf('mac') !== -1 || isMac) {
+                                    if (hintsArm) {
+                                        applyPlatformRecommendation('macos-arm64');
+                                    } else if (hintsX86) {
+                                        applyPlatformRecommendation('macos-x64');
+                                    }
+                                } else if (hPlat.indexOf('linux') !== -1 || isLinux) {
                                     applyPlatformRecommendation(hintsArm ? 'linux-arm64' : 'linux-x64');
                                 }
                             }
