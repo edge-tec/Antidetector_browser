@@ -152,20 +152,17 @@ function setupFirefoxProfilePrefs(
   prefs.push(`user_pref("intl.accept_languages", ${JSON.stringify(langList)});`)
   prefs.push(`user_pref("general.useragent.locale", ${JSON.stringify(resolvedProfile.language || 'en-US')});`)
 
-  // WebRTC
+  // WebRTC Leak Shield
   if (fp?.webrtc?.mode === 'disabled' || profile.webrtcMode === 'disabled' || (profile.webrtcMode as string) === 'off') {
     prefs.push('user_pref("media.peerconnection.enabled", false);')
   } else {
     prefs.push('user_pref("media.peerconnection.enabled", true);')
-    if (proxy && proxy.type !== 'direct') {
-      prefs.push('user_pref("media.peerconnection.ice.proxy_only", true);')
-      prefs.push('user_pref("media.peerconnection.ice.default_address_only", true);')
-      prefs.push('user_pref("media.peerconnection.ice.no_host", true);')
-    } else if (resolvedProfile.webrtcPolicy === 'disable_non_proxied_udp') {
-      prefs.push('user_pref("media.peerconnection.ice.proxy_only", true);')
-      prefs.push('user_pref("media.peerconnection.ice.default_address_only", true);')
-      prefs.push('user_pref("media.peerconnection.ice.no_host", true);')
-    }
+    prefs.push('user_pref("media.peerconnection.ice.proxy_only", true);')
+    prefs.push('user_pref("media.peerconnection.ice.default_address_only", true);')
+    prefs.push('user_pref("media.peerconnection.ice.no_host", true);')
+    prefs.push('user_pref("media.peerconnection.ice.force_interface", "");')
+    prefs.push('user_pref("media.peerconnection.use_document_iceservers", false);')
+    prefs.push('user_pref("media.navigator.enabled", false);')
   }
 
   // CPU Threads (Hardware Concurrency)
@@ -554,17 +551,13 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     args.push(`--user-agent=${fingerprint.navigator.userAgent}`)
   }
 
-  // WebRTC configuration - STRICT PRIVACY FOR PROXIES
+  // WebRTC configuration - STRICT PRIVACY FOR PROXIES & LEAK SHIELD
   if (fingerprint?.webrtc?.mode === 'disabled' || profile.webrtcMode === 'disabled' || (profile.webrtcMode as string) === 'off') {
     args.push('--disable-webrtc')
-  } else if (proxy && proxy.type !== 'direct' && proxy.host) {
-    // When using any proxy, strictly disable non-proxied UDP to eliminate WebRTC IP leaks
+  } else {
+    // When WebRTC is active, strictly enforce disable_non_proxied_udp to guarantee zero host/LAN IP leaks
     args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp')
     args.push('--enforce-webrtc-ip-permission-check')
-  } else if (fingerprint?.webrtc?.ipPolicy) {
-    args.push(`--force-webrtc-ip-handling-policy=${fingerprint.webrtc.ipPolicy}`)
-  } else {
-    args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp')
   }
 
   // Hardware acceleration
