@@ -803,13 +803,46 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discount_value` DECIMAL(10,2) NOT NULL DEFAULT 0.00"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discounted_price` DECIMAL(10,2) NOT NULL DEFAULT 49.00"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `trial_days` INT NOT NULL DEFAULT 7"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `trial_enabled` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `cta_text` VARCHAR(100) DEFAULT 'Subscribe'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `badge_text` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discount_start_date` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discount_end_date` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `billing_interval` VARCHAR(20) NOT NULL DEFAULT 'month'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `signup_url` VARCHAR(255) NOT NULL DEFAULT '/signup'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `total_conversions` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 50.00"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_landing_pages` ADD COLUMN `trial_enabled` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_landing_pages` ADD COLUMN `discount_start_date` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_landing_pages` ADD COLUMN `discount_end_date` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
 
         // Seed default CPA offers with explicit Package, Pricing & Landing Page mappings
         $defaultOffers = [
+            [
+                'id' => 'offer_free',
+                'title' => 'AntiProfiles Free Forever Plan',
+                'description' => 'Entry-level free account with 3 browser profiles, basic proxy support, and standard fingerprint controls.',
+                'target_url' => '/offer/free',
+                'signup_url' => '/offer/free',
+                'landing_page_slug' => 'free',
+                'payout_type' => 'percentage',
+                'commission_rate' => 0.00,
+                'revshare_percent' => 0.00,
+                'fixed_payout_usd' => 0.00,
+                'package_id' => 'plan_free',
+                'package_name' => 'Free',
+                'price' => 0.00,
+                'original_price' => 0.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 0.00,
+                'trial_days' => 0,
+                'trial_enabled' => 0,
+                'cta_text' => 'Start Free',
+                'badge_text' => 'FREE',
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ],
             [
                 'id' => 'offer_starter_license',
                 'title' => 'AntiProfiles Starter License',
@@ -822,13 +855,16 @@ function ensureDatabaseTablesExist() {
                 'revshare_percent' => 0.00,
                 'fixed_payout_usd' => 10.00,
                 'package_id' => 'plan_starter',
-                'package_name' => 'Starter',
+                'package_name' => 'Starter License',
                 'price' => 19.00,
                 'original_price' => 19.00,
                 'discount_type' => 'none',
                 'discount_value' => 0.00,
                 'discounted_price' => 19.00,
                 'trial_days' => 7,
+                'trial_enabled' => 0,
+                'cta_text' => 'Subscribe Starter',
+                'badge_text' => 'Starter',
                 'billing_interval' => 'month',
                 'status' => 'active'
             ],
@@ -851,6 +887,9 @@ function ensureDatabaseTablesExist() {
                 'discount_value' => 0.00,
                 'discounted_price' => 19.00,
                 'trial_days' => 7,
+                'trial_enabled' => 0,
+                'cta_text' => 'Subscribe Starter',
+                'badge_text' => 'Starter',
                 'billing_interval' => 'month',
                 'status' => 'active'
             ],
@@ -873,6 +912,9 @@ function ensureDatabaseTablesExist() {
                 'discount_value' => 0.00,
                 'discounted_price' => 49.00,
                 'trial_days' => 7,
+                'trial_enabled' => 0,
+                'cta_text' => 'Subscribe Professional',
+                'badge_text' => 'MOST POPULAR',
                 'billing_interval' => 'month',
                 'status' => 'active'
             ],
@@ -895,6 +937,9 @@ function ensureDatabaseTablesExist() {
                 'discount_value' => 0.00,
                 'discounted_price' => 49.00,
                 'trial_days' => 7,
+                'trial_enabled' => 0,
+                'cta_text' => 'Subscribe Professional',
+                'badge_text' => 'MOST POPULAR',
                 'billing_interval' => 'month',
                 'status' => 'active'
             ],
@@ -912,33 +957,39 @@ function ensureDatabaseTablesExist() {
                 'package_id' => 'plan_business',
                 'package_name' => 'Enterprise Trial',
                 'price' => 99.00,
-                'original_price' => 99.00,
-                'discount_type' => 'none',
-                'discount_value' => 0.00,
+                'original_price' => 149.00,
+                'discount_type' => 'percentage',
+                'discount_value' => 34.00,
                 'discounted_price' => 99.00,
                 'trial_days' => 7,
+                'trial_enabled' => 1,
+                'cta_text' => 'Start 7-Day Free Trial',
+                'badge_text' => 'BEST VALUE',
                 'billing_interval' => 'month',
                 'status' => 'active'
             ],
             [
                 'id' => 'offer_business',
-                'title' => 'AntiProfiles Enterprise',
-                'description' => 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).',
-                'target_url' => '/offer/enterprise',
-                'signup_url' => '/offer/enterprise',
-                'landing_page_slug' => 'enterprise',
+                'title' => 'AntiProfiles Business',
+                'description' => 'High-ticket 50% recurring onboarding commission on full Business subscriptions ($99/mo).',
+                'target_url' => '/offer/business',
+                'signup_url' => '/offer/business',
+                'landing_page_slug' => 'business',
                 'payout_type' => 'revshare',
                 'commission_rate' => 50.00,
                 'revshare_percent' => 50.00,
                 'fixed_payout_usd' => 0.00,
                 'package_id' => 'plan_business',
-                'package_name' => 'Enterprise',
+                'package_name' => 'Business',
                 'price' => 99.00,
-                'original_price' => 99.00,
-                'discount_type' => 'none',
-                'discount_value' => 0.00,
+                'original_price' => 149.00,
+                'discount_type' => 'percentage',
+                'discount_value' => 34.00,
                 'discounted_price' => 99.00,
                 'trial_days' => 7,
+                'trial_enabled' => 0,
+                'cta_text' => 'Subscribe Business',
+                'badge_text' => 'BEST VALUE',
                 'billing_interval' => 'month',
                 'status' => 'active'
             ],
@@ -954,13 +1005,16 @@ function ensureDatabaseTablesExist() {
                 'revshare_percent' => 50.00,
                 'fixed_payout_usd' => 0.00,
                 'package_id' => 'plan_business',
-                'package_name' => 'Custom Business',
+                'package_name' => 'Business',
                 'price' => 99.00,
-                'original_price' => 99.00,
-                'discount_type' => 'none',
-                'discount_value' => 0.00,
+                'original_price' => 149.00,
+                'discount_type' => 'percentage',
+                'discount_value' => 34.00,
                 'discounted_price' => 99.00,
                 'trial_days' => 7,
+                'trial_enabled' => 0,
+                'cta_text' => 'Subscribe Business',
+                'badge_text' => 'BEST VALUE',
                 'billing_interval' => 'month',
                 'status' => 'active'
             ]
@@ -972,11 +1026,11 @@ function ensureDatabaseTablesExist() {
                     INSERT INTO `affiliate_offers` (
                         `id`, `title`, `description`, `target_url`, `signup_url`, `landing_page_slug`, `payout_type`, `commission_rate`, `revshare_percent`,
                         `fixed_payout_usd`, `package_id`, `package_name`, `price`, `original_price`, `discount_type`,
-                        `discount_value`, `discounted_price`, `trial_days`, `billing_interval`, `status`
+                        `discount_value`, `discounted_price`, `trial_days`, `trial_enabled`, `cta_text`, `badge_text`, `billing_interval`, `status`
                     ) VALUES (
                         :id, :title, :description, :target_url, :signup_url, :landing_page_slug, :payout_type, :commission_rate, :revshare_percent,
                         :fixed_payout_usd, :package_id, :package_name, :price, :original_price, :discount_type,
-                        :discount_value, :discounted_price, :trial_days, :billing_interval, :status
+                        :discount_value, :discounted_price, :trial_days, :trial_enabled, :cta_text, :badge_text, :billing_interval, :status
                     )
                 ");
                 $st->execute($do);
@@ -995,6 +1049,9 @@ function ensureDatabaseTablesExist() {
                             `discount_value` = :discount_value,
                             `discounted_price` = :discounted_price,
                             `trial_days` = :trial_days,
+                            `trial_enabled` = :trial_enabled,
+                            `cta_text` = :cta_text,
+                            `badge_text` = :badge_text,
                             `billing_interval` = :billing_interval
                         WHERE `id` = :id
                     ");
@@ -1011,6 +1068,9 @@ function ensureDatabaseTablesExist() {
                         ':discount_value' => $do['discount_value'],
                         ':discounted_price' => $do['discounted_price'],
                         ':trial_days' => $do['trial_days'],
+                        ':trial_enabled' => $do['trial_enabled'] ?? 0,
+                        ':cta_text' => $do['cta_text'] ?? 'Subscribe',
+                        ':badge_text' => $do['badge_text'] ?? null,
                         ':billing_interval' => $do['billing_interval']
                     ]);
                 } catch (Throwable $e2) {}
@@ -1019,17 +1079,53 @@ function ensureDatabaseTablesExist() {
 
         // Auto-heal any legacy database rows with exact package-to-landing-page mappings
         try {
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter', `price` = 19.00, `target_url` = '/offer/starter', `signup_url` = '/offer/starter', `landing_page_slug` = 'starter' WHERE `id` = 'offer_starter' OR (`title` LIKE '%Starter%' AND `title` NOT LIKE '%License%' AND `title` NOT LIKE '%Bounty%')");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter License', `price` = 19.00, `target_url` = '/offer/starter-license', `signup_url` = '/offer/starter-license', `landing_page_slug` = 'starter-license' WHERE `id` IN ('offer_starter_license', 'offer_starter_bounty') OR `title` LIKE '%Starter License%' OR `title` LIKE '%Starter Account Direct Bounty%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional', `price` = 49.00, `target_url` = '/offer/professional', `signup_url` = '/offer/professional', `landing_page_slug` = 'professional' WHERE `id` IN ('offer_main_saas', 'offer_pro') OR `title` LIKE '%Professional%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional Team', `price` = 49.00, `target_url` = '/offer/pro-team', `signup_url` = '/offer/pro-team', `landing_page_slug` = 'pro-team' WHERE `id` IN ('offer_pro_team') OR `title` LIKE '%Pro & Team%' OR `title` LIKE '%Pro + Team%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Enterprise Trial', `price` = 99.00, `target_url` = '/offer/enterprise-trial', `signup_url` = '/offer/enterprise-trial', `landing_page_slug` = 'enterprise-trial' WHERE `id` IN ('offer_enterprise_trial') OR `title` LIKE '%Enterprise Custom Trial%' OR `title` LIKE '%Enterprise Trial%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Enterprise', `price` = 99.00, `target_url` = '/offer/enterprise', `signup_url` = '/offer/enterprise', `landing_page_slug` = 'enterprise' WHERE `id` IN ('offer_business', 'offer_enterprise') OR `title` LIKE '%Enterprise Suite%' OR (`title` LIKE '%Enterprise%' AND `title` NOT LIKE '%Trial%')");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Custom Business', `price` = 99.00, `target_url` = '/offer/business-custom', `signup_url` = '/offer/business-custom', `landing_page_slug` = 'business-custom' WHERE `id` IN ('offer_business_custom') OR `title` LIKE '%Custom Business%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_free', `package_name` = 'Free', `price` = 0.00, `original_price` = 0.00, `target_url` = '/offer/free', `signup_url` = '/offer/free', `landing_page_slug` = 'free', `cta_text` = 'Start Free', `badge_text` = 'FREE', `trial_enabled` = 0 WHERE `id` = 'offer_free' OR `title` LIKE '%Free%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter', `price` = 19.00, `original_price` = 19.00, `target_url` = '/offer/starter', `signup_url` = '/offer/starter', `landing_page_slug` = 'starter', `cta_text` = 'Subscribe Starter', `badge_text` = 'Starter', `trial_enabled` = 0 WHERE `id` = 'offer_starter' OR (`title` LIKE '%Starter%' AND `title` NOT LIKE '%License%' AND `title` NOT LIKE '%Bounty%')");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter License', `price` = 19.00, `original_price` = 19.00, `target_url` = '/offer/starter-license', `signup_url` = '/offer/starter-license', `landing_page_slug` = 'starter-license', `cta_text` = 'Subscribe Starter', `badge_text` = 'STARTER LICENSE', `trial_enabled` = 0 WHERE `id` IN ('offer_starter_license', 'offer_starter_bounty') OR `title` LIKE '%Starter License%' OR `title` LIKE '%Starter Account Direct Bounty%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional', `price` = 49.00, `original_price` = 49.00, `target_url` = '/offer/professional', `signup_url` = '/offer/professional', `landing_page_slug` = 'professional', `cta_text` = 'Subscribe Professional', `badge_text` = 'MOST POPULAR', `trial_enabled` = 0 WHERE `id` IN ('offer_main_saas', 'offer_pro') OR `title` LIKE '%Professional%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional Team', `price` = 49.00, `original_price` = 49.00, `target_url` = '/offer/pro-team', `signup_url` = '/offer/pro-team', `landing_page_slug` = 'pro-team', `cta_text` = 'Subscribe Professional', `badge_text` = 'MOST POPULAR', `trial_enabled` = 0 WHERE `id` IN ('offer_pro_team') OR `title` LIKE '%Pro & Team%' OR `title` LIKE '%Pro + Team%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Enterprise Trial', `price` = 99.00, `original_price` = 149.00, `target_url` = '/offer/enterprise-trial', `signup_url` = '/offer/enterprise-trial', `landing_page_slug` = 'enterprise-trial', `cta_text` = 'Start 7-Day Free Trial', `badge_text` = 'BEST VALUE', `trial_enabled` = 1 WHERE `id` IN ('offer_enterprise_trial') OR `title` LIKE '%Enterprise Custom Trial%' OR `title` LIKE '%Enterprise Trial%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Business', `price` = 99.00, `original_price` = 149.00, `target_url` = '/offer/business', `signup_url` = '/offer/business', `landing_page_slug` = 'business', `cta_text` = 'Subscribe Business', `badge_text` = 'BEST VALUE', `trial_enabled` = 0 WHERE `id` IN ('offer_business', 'offer_enterprise') OR `title` LIKE '%Business%' OR `title` LIKE '%Enterprise Suite%' OR (`title` LIKE '%Enterprise%' AND `title` NOT LIKE '%Trial%')");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Custom Business', `price` = 99.00, `original_price` = 149.00, `target_url` = '/offer/business-custom', `signup_url` = '/offer/business-custom', `landing_page_slug` = 'business-custom', `cta_text` = 'Subscribe Business', `badge_text` = 'BEST VALUE', `trial_enabled` = 0 WHERE `id` IN ('offer_business_custom') OR `title` LIKE '%Custom Business%'");
         } catch (Throwable $e) {}
 
         // Seed Dynamic Landing Pages
         $defaultLandingPages = [
+            [
+                'id' => 'lp_free',
+                'slug' => 'free',
+                'offer_id' => 'offer_free',
+                'package_id' => 'plan_free',
+                'package_name' => 'Free',
+                'hero_title' => 'AntiProfiles Free — 3 Isolated Profiles with Standard Fingerprints',
+                'hero_subtitle' => 'Get started risk-free with 3 stealth browser profiles, basic proxy integration, and community support.',
+                'price_monthly' => 0.00,
+                'price_yearly' => 0.00,
+                'original_price' => 0.00,
+                'discount_percent' => 0.00,
+                'badge_text' => 'FREE',
+                'trial_enabled' => 0,
+                'features_json' => json_encode([
+                    '3 Active Stealth Profiles',
+                    'Basic Proxy Support (HTTP)',
+                    'Standard Fingerprint Protection',
+                    '1 Team Workspace User',
+                    'API Access Not Included',
+                    'Community Forum Support'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'Is AntiProfiles Free really free forever?', 'a' => 'Yes, our Free plan has no time limit and requires no credit card. You can create up to 3 isolated browser profiles.'],
+                    ['q' => 'Can I upgrade to Starter or Professional later?', 'a' => 'Yes, you can upgrade instantly from your dashboard at any time without losing any profiles or cookies.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Michael B.', 'role' => 'Freelance Marketer', 'comment' => 'The Free tier was perfect for testing isolated sessions. Highly recommended!'],
+                    ['name' => 'Elena R.', 'role' => 'QA Engineer', 'comment' => 'Great entry-level antidetect setup with zero complex configuration required.']
+                ]),
+                'cta_text' => 'Start Free',
+                'theme_color' => '#64748B',
+                'seo_title' => 'AntiProfiles Free Plan | 3 Free Antidetect Browser Profiles',
+                'meta_desc' => 'Download AntiProfiles Free. Run 3 stealth browser profiles with genuine hardware fingerprint masking for free forever.'
+            ],
             [
                 'id' => 'lp_starter_license',
                 'slug' => 'starter-license',
@@ -1042,14 +1138,15 @@ function ensureDatabaseTablesExist() {
                 'price_yearly' => 190.00,
                 'original_price' => 19.00,
                 'discount_percent' => 0.00,
-                'badge_text' => '⚡ Instant $10 CPA Payout • Starter License',
+                'badge_text' => 'Starter',
+                'trial_enabled' => 0,
                 'features_json' => json_encode([
                     '25 Isolated Browser Profiles',
-                    'HTTP/HTTPS/SOCKS5 Proxy Support',
-                    'Advanced Canvas & WebGL Spoofing',
-                    '2 Team Workspace Seats',
-                    'Basic REST & Automation API',
-                    '7-Day Risk-Free Trial'
+                    'HTTP / HTTPS / SOCKS Proxy Support',
+                    'Advanced Fingerprint Controls',
+                    '2 Team Users',
+                    'Basic REST API Access',
+                    'Email Support'
                 ]),
                 'faq_json' => json_encode([
                     ['q' => 'What is included with Starter License?', 'a' => 'You get 25 active browser profiles with independent fingerprint environments and dual-engine Chromium & Firefox support.'],
@@ -1059,7 +1156,7 @@ function ensureDatabaseTablesExist() {
                     ['name' => 'Alexandre R.', 'role' => 'Affiliate Media Buyer', 'comment' => 'AntiProfiles Starter is light, fast, and passes PixelScan & BrowserLeaks 100% every single time.'],
                     ['name' => 'Sarah K.', 'role' => 'E-Commerce Manager', 'comment' => 'Managing multiple seller stores without ban risk has never been easier.']
                 ]),
-                'cta_text' => 'Claim Starter License Now',
+                'cta_text' => 'Subscribe Starter',
                 'theme_color' => '#38BDF8',
                 'seo_title' => 'AntiProfiles Starter License | Best Antidetect Browser for Beginners',
                 'meta_desc' => 'Download AntiProfiles Starter License. Run 25 stealth browser profiles with native fingerprint protection and proxy support.'
@@ -1076,14 +1173,15 @@ function ensureDatabaseTablesExist() {
                 'price_yearly' => 190.00,
                 'original_price' => 19.00,
                 'discount_percent' => 0.00,
-                'badge_text' => '🎁 7-Day Free Trial • 40% Recurring Commission',
+                'badge_text' => 'Starter',
+                'trial_enabled' => 0,
                 'features_json' => json_encode([
-                    '25 High-Performance Browser Profiles',
-                    'Zero WebRTC & AudioContext Leaks',
-                    'Automated Cookie Jar & Session Sync',
-                    '2 Active Team Members',
-                    'Fast Local & Cloud Profile Sync',
-                    '24/7 Community & Ticket Support'
+                    '25 Isolated Browser Profiles',
+                    'HTTP / HTTPS / SOCKS Proxy Support',
+                    'Advanced Fingerprint Controls',
+                    '2 Team Users',
+                    'Basic REST API Access',
+                    'Email Support'
                 ]),
                 'faq_json' => json_encode([
                     ['q' => 'Can I upgrade to Professional anytime?', 'a' => 'Yes, you can scale up seamlessly from your dashboard at any time without losing any profile data or cookies.'],
@@ -1093,7 +1191,7 @@ function ensureDatabaseTablesExist() {
                     ['name' => 'David M.', 'role' => 'Social Media Agency', 'comment' => 'The best price-to-performance ratio in the antidetect industry.'],
                     ['name' => 'Kenji T.', 'role' => 'Crypto Arbitrage Trader', 'comment' => 'Running multiple exchange sessions smoothly with zero cross-contamination.']
                 ]),
-                'cta_text' => 'Start 7-Day Free Starter Trial',
+                'cta_text' => 'Subscribe Starter',
                 'theme_color' => '#2DD4BF',
                 'seo_title' => 'AntiProfiles Starter Plan — $19/mo Stealth Browser',
                 'meta_desc' => 'Sign up for AntiProfiles Starter. 25 browser profiles, HTTP/SOCKS5 proxy integration, and hardware fingerprint spoofing.'
@@ -1110,14 +1208,15 @@ function ensureDatabaseTablesExist() {
                 'price_yearly' => 490.00,
                 'original_price' => 49.00,
                 'discount_percent' => 0.00,
-                'badge_text' => '🔥 MOST POPULAR • 50% Lifetime Recurring Commission',
+                'badge_text' => 'MOST POPULAR',
+                'trial_enabled' => 0,
                 'features_json' => json_encode([
-                    '100 Unlimited Stealth Browser Profiles',
-                    'Full REST & Selenium/Puppeteer/Playwright Driver API',
-                    '10 Multi-User Team Collaboration Seats',
-                    'Advanced WebGL, Audio & Font Spoofing',
-                    'Priority 24/7 Live Agent Support',
-                    'Real-Time Profile Auto-Repair & Backup'
+                    '100 Isolated Browser Profiles',
+                    'HTTP / HTTPS / SOCKS5 Proxy Support',
+                    'Advanced Fingerprint Controls',
+                    '10 Team Users',
+                    'Full REST API + Driver API',
+                    'Priority 24/7 Support'
                 ]),
                 'faq_json' => json_encode([
                     ['q' => 'Why is Professional the most popular plan?', 'a' => 'It gives 100 profiles and 10 team seats with full automated driver API support, perfect for scaling businesses.'],
@@ -1127,7 +1226,7 @@ function ensureDatabaseTablesExist() {
                     ['name' => 'Viktor G.', 'role' => 'Performance Lead', 'comment' => 'We scaled from 10 to 80 daily ad accounts without a single checkpoint or ban. 10/10.'],
                     ['name' => 'Elena B.', 'role' => 'Growth Hacker', 'comment' => 'The browser branding and fingerprint consistency are unmatched.']
                 ]),
-                'cta_text' => 'Start 7-Day Professional Trial',
+                'cta_text' => 'Subscribe Professional',
                 'theme_color' => '#2DD4BF',
                 'seo_title' => 'AntiProfiles Professional Plan — 100 Profiles & Team Workspace',
                 'meta_desc' => 'Get AntiProfiles Professional. 100 antidetect profiles, 10 team users, and automated REST & Driver API access.'
@@ -1144,14 +1243,15 @@ function ensureDatabaseTablesExist() {
                 'price_yearly' => 490.00,
                 'original_price' => 49.00,
                 'discount_percent' => 0.00,
-                'badge_text' => '👥 Team Workspace • 50% Recurring Commission',
+                'badge_text' => 'MOST POPULAR',
+                'trial_enabled' => 0,
                 'features_json' => json_encode([
-                    '100 Team-Shared Browser Profiles',
-                    'Granular Role-Based Permissions (Admin, Operator, Viewer)',
-                    'Encrypted Cloud Cookie Sync',
-                    '10 Dedicated Team User Accounts',
-                    'Live Team Activity Audit Logs',
-                    'Full Automation & REST Driver APIs'
+                    '100 Isolated Browser Profiles',
+                    'HTTP / HTTPS / SOCKS5 Proxy Support',
+                    'Advanced Fingerprint Controls',
+                    '10 Team Users',
+                    'Full REST API + Driver API',
+                    'Priority 24/7 Support'
                 ]),
                 'faq_json' => json_encode([
                     ['q' => 'How does team sharing work?', 'a' => 'You can assign specific profiles or profile groups to different team operators with customized read/write/launch permissions.']
@@ -1159,7 +1259,7 @@ function ensureDatabaseTablesExist() {
                 'reviews_json' => json_encode([
                     ['name' => 'Marcus V.', 'role' => 'Digital Agency Owner', 'comment' => 'Our 8 operators collaborate seamlessly across 3 continents without ever logging each other out.']
                 ]),
-                'cta_text' => 'Launch Pro Team Workspace',
+                'cta_text' => 'Subscribe Professional',
                 'theme_color' => '#818CF8',
                 'seo_title' => 'AntiProfiles Pro + Team Plan | Collaborative Antidetect Browser',
                 'meta_desc' => 'Empower your team with AntiProfiles Pro Team Plan. 100 profiles, 10 team users, and real-time collaboration.'
@@ -1174,80 +1274,116 @@ function ensureDatabaseTablesExist() {
                 'hero_subtitle' => 'Test-drive full hardware spoofing, unlimited automation API calls, and 25 team seats completely risk-free.',
                 'price_monthly' => 99.00,
                 'price_yearly' => 990.00,
-                'original_price' => 99.00,
-                'discount_percent' => 0.00,
-                'badge_text' => '🏢 7-Day Enterprise Pilot • 50% Recurring Commission',
+                'original_price' => 149.00,
+                'discount_percent' => 34.00,
+                'badge_text' => 'BEST VALUE',
+                'trial_enabled' => 1,
                 'features_json' => json_encode([
-                    '500 High-Volume Browser Profiles',
-                    'Full Deep Hardware Spoofing (GPU, CPU Cores, RAM, Audio)',
-                    '25 Multi-Tier Team Member Seats',
-                    'Unlimited High-Concurrency REST & Driver APIs',
-                    'Dedicated Account Manager & Private Slack Channel',
-                    'Custom Browser Branding & Profile Icon Kits'
+                    '500 Isolated Browser Profiles',
+                    'HTTP / HTTPS / SOCKS5 Proxy Support',
+                    'Full Hardware Spoofing',
+                    '25 Team Users',
+                    'Unlimited API Access',
+                    'Dedicated Account Manager'
                 ]),
                 'faq_json' => json_encode([
-                    ['q' => 'What happens after the 7-day trial?', 'a' => 'You can continue seamlessly on the Enterprise subscription or switch to any tier that matches your volume.']
+                    ['q' => 'What happens after the 7-day trial?', 'a' => 'You can continue seamlessly on the Business subscription or switch to any tier that matches your volume.']
                 ]),
                 'reviews_json' => json_encode([
                     ['name' => 'Sven H.', 'role' => 'Enterprise VP of Growth', 'comment' => 'The dedicated manager and unlimited API concurrency transformed our automated web operations.']
                 ]),
-                'cta_text' => 'Start 7-Day Enterprise Pilot',
+                'cta_text' => 'Start 7-Day Free Trial',
                 'theme_color' => '#C084FC',
                 'seo_title' => 'AntiProfiles Enterprise Trial — 500 Profiles & Full Hardware Spoofing',
                 'meta_desc' => 'Start your 7-day trial of AntiProfiles Enterprise. 500 profiles, 25 team members, and dedicated account manager.'
+            ],
+            [
+                'id' => 'lp_business',
+                'slug' => 'business',
+                'offer_id' => 'offer_business',
+                'package_id' => 'plan_business',
+                'package_name' => 'Business',
+                'hero_title' => 'AntiProfiles Business — 500 Profiles & Full Hardware Spoofing',
+                'hero_subtitle' => 'Engineered for high-volume enterprise data operations, global ad management, and automated scraping pipelines.',
+                'price_monthly' => 99.00,
+                'price_yearly' => 990.00,
+                'original_price' => 149.00,
+                'discount_percent' => 34.00,
+                'badge_text' => 'BEST VALUE',
+                'trial_enabled' => 0,
+                'features_json' => json_encode([
+                    '500 Isolated Browser Profiles',
+                    'HTTP / HTTPS / SOCKS5 Proxy Support',
+                    'Full Hardware Spoofing',
+                    '25 Team Users',
+                    'Unlimited API Access',
+                    'Dedicated Account Manager'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'Can we customize browser fingerprint templates?', 'a' => 'Yes, Business customers have access to custom hardware fingerprint rules and private device pools.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Daniel L.', 'role' => 'CTO, DataTech Global', 'comment' => 'AntiProfiles Business is rock solid. Millions of automated browser sessions without a hitch.']
+                ]),
+                'cta_text' => 'Subscribe Business',
+                'theme_color' => '#A855F7',
+                'seo_title' => 'AntiProfiles Business Plan | 500 Profiles & 25 Team Users',
+                'meta_desc' => 'Deploy AntiProfiles Business. 500 browser profiles, dedicated account manager, hardware spoofing, and 25 seats.'
             ],
             [
                 'id' => 'lp_enterprise',
                 'slug' => 'enterprise',
                 'offer_id' => 'offer_business',
                 'package_id' => 'plan_business',
-                'package_name' => 'Enterprise',
-                'hero_title' => 'AntiProfiles Enterprise Suite — Maximum Scale & Dedicated Infrastructure',
+                'package_name' => 'Business',
+                'hero_title' => 'AntiProfiles Business — 500 Profiles & Full Hardware Spoofing',
                 'hero_subtitle' => 'Engineered for high-volume enterprise data operations, global ad management, and automated scraping pipelines.',
                 'price_monthly' => 99.00,
                 'price_yearly' => 990.00,
-                'original_price' => 99.00,
-                'discount_percent' => 0.00,
-                'badge_text' => '⭐ ENTERPRISE SUITE • 50% Recurring Commission',
+                'original_price' => 149.00,
+                'discount_percent' => 34.00,
+                'badge_text' => 'BEST VALUE',
+                'trial_enabled' => 0,
                 'features_json' => json_encode([
-                    '500 Active Stealth Browser Profiles',
-                    'Hardware-Level Machine ID & MAC Address Masking',
-                    '25 Enterprise Team Member Seats',
-                    'Custom Single Sign-On (SSO) & SAML',
-                    'Dedicated High-Availability Sync Nodes',
-                    'Guaranteed 99.99% Uptime SLA & Private Support'
+                    '500 Isolated Browser Profiles',
+                    'HTTP / HTTPS / SOCKS5 Proxy Support',
+                    'Full Hardware Spoofing',
+                    '25 Team Users',
+                    'Unlimited API Access',
+                    'Dedicated Account Manager'
                 ]),
                 'faq_json' => json_encode([
-                    ['q' => 'Can we customize browser fingerprint templates?', 'a' => 'Yes, Enterprise customers have access to custom fingerprint generator rules and private device pools.']
+                    ['q' => 'Can we customize browser fingerprint templates?', 'a' => 'Yes, Business customers have access to custom hardware fingerprint rules and private device pools.']
                 ]),
                 'reviews_json' => json_encode([
-                    ['name' => 'Daniel L.', 'role' => 'CTO, DataTech Global', 'comment' => 'AntiProfiles Enterprise is rock solid. Millions of automated browser sessions without a hitch.']
+                    ['name' => 'Daniel L.', 'role' => 'CTO, DataTech Global', 'comment' => 'AntiProfiles Business is rock solid. Millions of automated browser sessions without a hitch.']
                 ]),
-                'cta_text' => 'Get Enterprise Access',
+                'cta_text' => 'Subscribe Business',
                 'theme_color' => '#A855F7',
-                'seo_title' => 'AntiProfiles Enterprise Plan | 500 Profiles & 25 Team Users',
-                'meta_desc' => 'Deploy AntiProfiles Enterprise. 500 browser profiles, dedicated support, hardware spoofing, and 25 seats.'
+                'seo_title' => 'AntiProfiles Business Plan | 500 Profiles & 25 Team Users',
+                'meta_desc' => 'Deploy AntiProfiles Business. 500 browser profiles, dedicated account manager, hardware spoofing, and 25 seats.'
             ],
             [
                 'id' => 'lp_business_custom',
                 'slug' => 'business-custom',
                 'offer_id' => 'offer_business_custom',
                 'package_id' => 'plan_business',
-                'package_name' => 'Custom Business',
+                'package_name' => 'Business',
                 'hero_title' => 'AntiProfiles Custom Business — Tailored Antidetect Architecture',
                 'hero_subtitle' => 'Custom profile pools, private cloud synchronization relays, and custom branding for large organizations.',
                 'price_monthly' => 99.00,
                 'price_yearly' => 990.00,
-                'original_price' => 99.00,
-                'discount_percent' => 0.00,
-                'badge_text' => '🚀 CUSTOM ARCHITECTURE • 50% Revenue Share',
+                'original_price' => 149.00,
+                'discount_percent' => 34.00,
+                'badge_text' => 'BEST VALUE',
+                'trial_enabled' => 0,
                 'features_json' => json_encode([
-                    'Custom Profile Volumes (500+ to 10,000+)',
-                    'Private On-Premises or Cloud Profile Relays',
-                    'Custom White-Label Application Branding',
-                    'Direct Senior Engineering & Solutions Architect Access',
-                    'Enterprise Custom Billing & Invoicing',
-                    'Custom Automated Driver Bridges'
+                    '500 Isolated Browser Profiles',
+                    'HTTP / HTTPS / SOCKS5 Proxy Support',
+                    'Full Hardware Spoofing',
+                    '25 Team Users',
+                    'Unlimited API Access',
+                    'Dedicated Account Manager'
                 ]),
                 'faq_json' => json_encode([
                     ['q' => 'How do we set up a custom plan?', 'a' => 'Register through this page to activate your initial 500 profile instance and our enterprise solutions architect will contact you immediately.']
@@ -1255,7 +1391,7 @@ function ensureDatabaseTablesExist() {
                 'reviews_json' => json_encode([
                     ['name' => 'Tariq A.', 'role' => 'Director of Automation', 'comment' => 'The custom relay architecture and white-labeling allowed us to deploy internally effortlessly.']
                 ]),
-                'cta_text' => 'Activate Custom Business Suite',
+                'cta_text' => 'Subscribe Business',
                 'theme_color' => '#EC4899',
                 'seo_title' => 'AntiProfiles Custom Business Solutions | Tailored Antidetect Browser',
                 'meta_desc' => 'Explore AntiProfiles Custom Business. Tailored antidetect infrastructure, private profile relays, and dedicated architecture.'
@@ -1268,12 +1404,12 @@ function ensureDatabaseTablesExist() {
                     INSERT INTO `affiliate_landing_pages` (
                         `id`, `slug`, `offer_id`, `package_id`, `package_name`, `hero_title`, `hero_subtitle`,
                         `price_monthly`, `price_yearly`, `original_price`, `discount_percent`, `badge_text`,
-                        `features_json`, `faq_json`, `reviews_json`, `cta_text`, `theme_color`, `is_active`,
+                        `trial_enabled`, `features_json`, `faq_json`, `reviews_json`, `cta_text`, `theme_color`, `is_active`,
                         `seo_title`, `meta_desc`
                     ) VALUES (
                         :id, :slug, :offer_id, :package_id, :package_name, :hero_title, :hero_subtitle,
                         :price_monthly, :price_yearly, :original_price, :discount_percent, :badge_text,
-                        :features_json, :faq_json, :reviews_json, :cta_text, :theme_color, 1,
+                        :trial_enabled, :features_json, :faq_json, :reviews_json, :cta_text, :theme_color, 1,
                         :seo_title, :meta_desc
                     )
                 ");
@@ -1292,6 +1428,7 @@ function ensureDatabaseTablesExist() {
                             `original_price` = :original_price,
                             `discount_percent` = :discount_percent,
                             `badge_text` = :badge_text,
+                            `trial_enabled` = :trial_enabled,
                             `features_json` = :features_json,
                             `faq_json` = :faq_json,
                             `reviews_json` = :reviews_json,
@@ -1313,6 +1450,7 @@ function ensureDatabaseTablesExist() {
                         ':original_price' => $dlp['original_price'],
                         ':discount_percent' => $dlp['discount_percent'],
                         ':badge_text' => $dlp['badge_text'],
+                        ':trial_enabled' => $dlp['trial_enabled'] ?? 0,
                         ':features_json' => $dlp['features_json'],
                         ':faq_json' => $dlp['faq_json'],
                         ':reviews_json' => $dlp['reviews_json'],

@@ -58,6 +58,17 @@ export const AdminAffiliateManager: React.FC = () => {
     title: string
     description: string
     target_url: string
+    package_id: string
+    package_name: string
+    price: number
+    original_price: number
+    discount_percent: number
+    discount_start_date: string
+    discount_end_date: string
+    cta_text: string
+    badge_text: string
+    trial_enabled: boolean
+    billing_interval: string
     payout_type: 'percentage' | 'fixed'
     commission_rate: number
     fixed_payout_usd: number
@@ -67,9 +78,20 @@ export const AdminAffiliateManager: React.FC = () => {
     isEdit: false,
     title: '',
     description: '',
-    target_url: 'https://antiprofiles.com',
+    target_url: '/offer/starter',
+    package_id: 'plan_starter',
+    package_name: 'Starter',
+    price: 19,
+    original_price: 19,
+    discount_percent: 0,
+    discount_start_date: '',
+    discount_end_date: '',
+    cta_text: 'Subscribe Starter',
+    badge_text: 'Starter',
+    trial_enabled: false,
+    billing_interval: 'month',
     payout_type: 'percentage',
-    commission_rate: 15,
+    commission_rate: 40,
     fixed_payout_usd: 10,
     status: 'active'
   })
@@ -425,15 +447,23 @@ export const AdminAffiliateManager: React.FC = () => {
     e.preventDefault()
     setSavingOffer(true)
     try {
+      const orig = Number(offerModal.original_price) || 0
+      const cur = Number(offerModal.price) || 0
+      const computedDiscount = (orig > cur && orig > 0) ? Math.round(((orig - cur) / orig) * 100) : 0
       const payload = {
         ...offerModal,
+        price: cur,
+        original_price: orig,
+        discount_percent: computedDiscount,
+        discounted_price: cur,
+        trial_enabled: offerModal.trial_enabled ? 1 : 0,
         revshare_percent: offerModal.commission_rate,
         fixed_payout_usd: offerModal.fixed_payout_usd
       }
       const res = await callAffiliateApi('admin-save-offer', 'POST', payload)
       if (res?.success) {
         showToast('success', `✅ CPA Offer "${offerModal.title}" saved successfully across Web & Desktop!`)
-        setOfferModal({ ...offerModal, open: false })
+        setOfferModal(prev => ({ ...prev, open: false }))
         loadData()
       } else {
         showToast('error', res?.error || 'Failed to save offer')
@@ -899,16 +929,23 @@ export const AdminAffiliateManager: React.FC = () => {
       {activeSubTab === 'offers' && (
         <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', color: '#FFF' }}>CPA Offers & Payout Campaigns</h3>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#FFF' }}>CPA Offers & Dynamic Package Pricing Plans</h3>
+              <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
+                Configure pricing, discounts, custom badges, dedicated CTAs, and trial toggles for Free, Starter, Professional, and Business packages.
+              </p>
+            </div>
             <button
               onClick={() => setOfferModal({
-                open: true, isEdit: false, title: '', description: '',
-                target_url: 'https://antiprofiles.com/pricing', payout_type: 'percentage',
-                commission_rate: 15, fixed_payout_usd: 0, status: 'active'
+                open: true, isEdit: false, title: 'AntiProfiles Starter Subscription', description: 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).',
+                target_url: '/offer/starter', package_id: 'plan_starter', package_name: 'Starter',
+                price: 19, original_price: 19, discount_percent: 0, discount_start_date: '', discount_end_date: '',
+                cta_text: 'Subscribe Starter', badge_text: 'Starter', trial_enabled: false, billing_interval: 'month',
+                payout_type: 'percentage', commission_rate: 40, fixed_payout_usd: 0, status: 'active'
               })}
               style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFF', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
             >
-              + New CPA Offer
+              + New CPA Offer / Plan
             </button>
           </div>
 
@@ -916,64 +953,110 @@ export const AdminAffiliateManager: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 12px' }}>OFFER ID</th>
-                  <th style={{ padding: '10px 12px' }}>TITLE</th>
-                  <th style={{ padding: '10px 12px' }}>PAYOUT MODEL</th>
-                  <th style={{ padding: '10px 12px' }}>RATE / BOUNTY</th>
+                  <th style={{ padding: '10px 12px' }}>PACKAGE & OFFER</th>
+                  <th style={{ padding: '10px 12px' }}>PRICE / DISCOUNT</th>
+                  <th style={{ padding: '10px 12px' }}>CTA BUTTON</th>
+                  <th style={{ padding: '10px 12px' }}>TRIAL</th>
+                  <th style={{ padding: '10px 12px' }}>COMMISSION MODEL</th>
                   <th style={{ padding: '10px 12px' }}>CLICKS / CONV</th>
                   <th style={{ padding: '10px 12px' }}>STATUS</th>
                   <th style={{ padding: '10px 12px' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {data?.offers?.map(offer => (
-                  <tr key={offer.id} style={{ borderBottom: '1px solid #1E293B' }}>
-                    <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{offer.id}</td>
-                    <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{offer.title}</td>
-                    <td style={{ padding: '10px 12px' }}>{offer.payout_type.toUpperCase()}</td>
-                    <td style={{ padding: '10px 12px', color: '#34D399', fontWeight: 700 }}>
-                      {offer.payout_type === 'percentage' ? `${offer.commission_rate}% RevShare` : `$${offer.fixed_payout_usd} Fixed`}
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {offer.total_clicks || 0} / <strong style={{ color: '#4ADE80' }}>{offer.total_conversions || 0}</strong>
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34, 197, 94, 0.15)', color: '#4ADE80' }}>
-                        {offer.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <button
-                        onClick={() => setOfferModal({
-                          open: true, isEdit: true, id: offer.id,
-                          title: offer.title, description: offer.description || '',
-                          target_url: offer.target_url, payout_type: offer.payout_type,
-                          commission_rate: offer.commission_rate, fixed_payout_usd: offer.fixed_payout_usd,
-                          status: offer.status
-                        })}
-                        style={{ padding: '4px 10px', borderRadius: '4px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', cursor: 'pointer' }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (confirm(`Are you sure you want to archive offer "${offer.title}"?`)) {
-                            const res = await callAffiliateApi('admin-delete-offer', 'POST', { id: offer.id })
-                            if (res?.success) {
-                              showToast('success', `Offer "${offer.title}" archived successfully across Web & Desktop!`)
-                              loadData()
-                            } else {
-                              showToast('error', res?.error || 'Failed to archive offer')
+                {data?.offers?.map(offer => {
+                  const orig = Number(offer.original_price || offer.price || 0)
+                  const cur = Number(offer.price || 0)
+                  const disc = (orig > cur && orig > 0) ? Math.round(((orig - cur) / orig) * 100) : 0
+                  return (
+                    <tr key={offer.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                      <td style={{ padding: '10px 12px' }}>
+                        <div style={{ color: '#FFF', fontWeight: 700 }}>{offer.title}</div>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                          <span style={{ color: '#2DD4BF', fontSize: '11px', fontWeight: 600 }}>{offer.package_name || 'Professional'}</span>
+                          <span style={{ color: '#64748B', fontSize: '10px', fontFamily: 'monospace' }}>• {offer.id}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <div style={{ color: '#FFF', fontWeight: 700, fontSize: '13px' }}>
+                          {disc > 0 && <span style={{ textDecoration: 'line-through', color: '#64748B', fontSize: '11px', marginRight: '4px' }}>${orig.toFixed(2)}</span>}
+                          ${cur.toFixed(2)}<span style={{ fontSize: '10px', color: '#94A3B8' }}>/mo</span>
+                        </div>
+                        {disc > 0 && (
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#4ADE80', background: 'rgba(74, 222, 128, 0.15)', padding: '1px 6px', borderRadius: '4px' }}>
+                            Save {disc}%
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#E2E8F0', fontWeight: 600 }}>
+                        {offer.cta_text || 'Subscribe'}
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700,
+                          background: offer.trial_enabled ? 'rgba(56, 189, 248, 0.15)' : 'rgba(148, 163, 184, 0.1)',
+                          color: offer.trial_enabled ? '#38BDF8' : '#94A3B8'
+                        }}>
+                          {offer.trial_enabled ? '7-DAY TRIAL ON' : 'NO TRIAL (DIRECT)'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#34D399', fontWeight: 700 }}>
+                        {offer.payout_type === 'percentage' ? `${offer.commission_rate}% RevShare` : `$${offer.fixed_payout_usd} Fixed CPA`}
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {offer.total_clicks || 0} / <strong style={{ color: '#4ADE80' }}>{offer.total_conversions || 0}</strong>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34, 197, 94, 0.15)', color: '#4ADE80' }}>
+                          {offer.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <button
+                          onClick={() => setOfferModal({
+                            open: true, isEdit: true, id: offer.id,
+                            title: offer.title, description: offer.description || '',
+                            target_url: offer.target_url || `/offer/${offer.landing_page_slug || 'starter'}`,
+                            package_id: offer.package_id || 'plan_starter',
+                            package_name: offer.package_name || 'Starter',
+                            price: Number(offer.price || 19),
+                            original_price: Number(offer.original_price || offer.price || 19),
+                            discount_percent: disc,
+                            discount_start_date: offer.discount_start_date || '',
+                            discount_end_date: offer.discount_end_date || '',
+                            cta_text: offer.cta_text || 'Subscribe Starter',
+                            badge_text: offer.badge_text || 'Starter',
+                            trial_enabled: Boolean(offer.trial_enabled),
+                            billing_interval: offer.billing_interval || 'month',
+                            payout_type: offer.payout_type,
+                            commission_rate: offer.commission_rate,
+                            fixed_payout_usd: offer.fixed_payout_usd,
+                            status: offer.status
+                          })}
+                          style={{ padding: '4px 10px', borderRadius: '4px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to archive offer "${offer.title}"?`)) {
+                              const res = await callAffiliateApi('admin-delete-offer', 'POST', { id: offer.id })
+                              if (res?.success) {
+                                showToast('success', `Offer "${offer.title}" archived successfully across Web & Desktop!`)
+                                loadData()
+                              } else {
+                                showToast('error', res?.error || 'Failed to archive offer')
+                              }
                             }
-                          }
-                        }}
-                        style={{ marginLeft: '6px', padding: '4px 8px', borderRadius: '4px', background: '#EF444420', color: '#F87171', border: '1px solid #EF444440', fontSize: '11px', cursor: 'pointer' }}
-                      >
-                        Archive
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                          }}
+                          style={{ marginLeft: '6px', padding: '4px 8px', borderRadius: '4px', background: '#EF444420', color: '#F87171', border: '1px solid #EF444440', fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          Archive
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -1143,9 +1226,10 @@ export const AdminAffiliateManager: React.FC = () => {
                     <th style={{ padding: '10px 12px' }}>CONVERSION ID</th>
                     <th style={{ padding: '10px 12px' }}>CLICK ID</th>
                     <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
+                    <th style={{ padding: '10px 12px' }}>PACKAGE</th>
                     <th style={{ padding: '10px 12px' }}>OFFER</th>
                     <th style={{ padding: '10px 12px' }}>ORDER VALUE</th>
-                    <th style={{ padding: '10px 12px' }}>PAYOUT</th>
+                    <th style={{ padding: '10px 12px' }}>COMMISSION PAYOUT</th>
                     <th style={{ padding: '10px 12px' }}>STATUS</th>
                   </tr>
                 </thead>
@@ -1154,7 +1238,8 @@ export const AdminAffiliateManager: React.FC = () => {
                     .filter(conv => !convSearch || (
                       conv.conversion_id.toLowerCase().includes(convSearch.toLowerCase()) ||
                       conv.click_id.toLowerCase().includes(convSearch.toLowerCase()) ||
-                      conv.affiliate_id.toLowerCase().includes(convSearch.toLowerCase())
+                      conv.affiliate_id.toLowerCase().includes(convSearch.toLowerCase()) ||
+                      (conv.package_name && conv.package_name.toLowerCase().includes(convSearch.toLowerCase()))
                     ))
                     .map(conv => (
                       <tr key={conv.conversion_id} style={{ borderBottom: '1px solid #1E293B' }}>
@@ -1162,7 +1247,12 @@ export const AdminAffiliateManager: React.FC = () => {
                         <td style={{ padding: '10px 12px', color: '#FACC15', fontFamily: 'monospace' }}>{conv.conversion_id}</td>
                         <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{conv.click_id}</td>
                         <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{conv.affiliate_id}</td>
-                        <td style={{ padding: '10px 12px' }}>{conv.offer_id}</td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ fontWeight: 700, color: '#2DD4BF', background: 'rgba(45, 212, 191, 0.12)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(45, 212, 191, 0.3)' }}>
+                            {conv.package_name || (conv.package_id === 'plan_starter' ? 'Starter' : conv.package_id === 'plan_business' ? 'Business' : conv.package_id === 'plan_free' ? 'Free' : 'Professional')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#CBD5E1' }}>{conv.offer_id}</td>
                         <td style={{ padding: '10px 12px' }}>${Number(conv.order_amount || 0).toFixed(2)}</td>
                         <td style={{ padding: '10px 12px', color: '#34D399', fontWeight: 700 }}>+${Number(conv.payout_amount || 0).toFixed(2)}</td>
                         <td style={{ padding: '10px 12px' }}>
@@ -1550,66 +1640,202 @@ export const AdminAffiliateManager: React.FC = () => {
       {offerModal.open && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999
+          background: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '16px'
         }}>
           <div style={{
             background: '#131826', border: '1px solid #334155', borderRadius: '16px',
-            padding: '24px', width: '100%', maxWidth: '540px', color: '#FFF'
+            padding: '24px', width: '100%', maxWidth: '640px', color: '#FFF', maxHeight: '90vh', overflowY: 'auto'
           }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>
-              {offerModal.isEdit ? 'Edit CPA Offer' : 'Create New CPA Offer'}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                {offerModal.isEdit ? '✏️ Edit Dynamic Pricing Offer' : '⚡ Create New CPA / Pricing Offer'}
+              </h3>
+              <button onClick={() => setOfferModal(prev => ({ ...prev, open: false }))} style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+            </div>
+
             <form onSubmit={handleSaveOffer} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px' }}>OFFER TITLE</label>
-                <input
-                  required
-                  placeholder="e.g. AntiProfiles Pro Annual Subscription"
-                  value={offerModal.title}
-                  onChange={e => setOfferModal({ ...offerModal, title: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px' }}>DESCRIPTION</label>
-                <textarea
-                  rows={2}
-                  placeholder="Offer details and conversion criteria"
-                  value={offerModal.description}
-                  onChange={e => setOfferModal({ ...offerModal, description: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px' }}>TARGET / LANDING URL</label>
-                <input
-                  type="url"
-                  required
-                  value={offerModal.target_url}
-                  onChange={e => setOfferModal({ ...offerModal, target_url: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                />
+              {/* Package Template Preset Selector */}
+              <div style={{ background: '#0B0F19', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
+                <label style={{ display: 'block', fontSize: '11px', color: '#2DD4BF', marginBottom: '6px', fontWeight: 700 }}>
+                  ⚡ LOAD OFFICIAL PACKAGE PRESET
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                  {[
+                    { id: 'plan_free', name: 'Free', price: 0, orig: 0, cta: 'Start Free', badge: 'FREE', target: '/offer/free', comm: 0, fixed: 0, type: 'percentage' },
+                    { id: 'plan_starter', name: 'Starter', price: 19, orig: 19, cta: 'Subscribe Starter', badge: 'Starter', target: '/offer/starter', comm: 40, fixed: 10, type: 'percentage' },
+                    { id: 'plan_pro', name: 'Professional', price: 49, orig: 49, cta: 'Subscribe Professional', badge: 'MOST POPULAR', target: '/offer/professional', comm: 50, fixed: 0, type: 'percentage' },
+                    { id: 'plan_business', name: 'Business', price: 99, orig: 149, cta: 'Subscribe Business', badge: 'BEST VALUE', target: '/offer/business', comm: 50, fixed: 0, type: 'percentage' }
+                  ].map(pkg => (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      onClick={() => {
+                        setOfferModal(prev => ({
+                          ...prev,
+                          package_id: pkg.id,
+                          package_name: pkg.name,
+                          title: `AntiProfiles ${pkg.name} Subscription`,
+                          description: `${pkg.name} plan pricing and conversion terms.`,
+                          target_url: pkg.target,
+                          price: pkg.price,
+                          original_price: pkg.orig,
+                          cta_text: pkg.cta,
+                          badge_text: pkg.badge,
+                          payout_type: pkg.type as any,
+                          commission_rate: pkg.comm,
+                          fixed_payout_usd: pkg.fixed,
+                          trial_enabled: false
+                        }))
+                      }}
+                      style={{
+                        padding: '6px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700,
+                        background: offerModal.package_id === pkg.id ? '#2563EB' : '#1E293B',
+                        color: offerModal.package_id === pkg.id ? '#FFF' : '#CBD5E1',
+                        border: '1px solid ' + (offerModal.package_id === pkg.id ? '#3B82F6' : '#334155'),
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {pkg.name} (${pkg.price}/mo)
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px' }}>PAYOUT MODEL</label>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>OFFER TITLE</label>
+                  <input
+                    required
+                    placeholder="e.g. AntiProfiles Business Subscription"
+                    value={offerModal.title}
+                    onChange={e => setOfferModal({ ...offerModal, title: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>PACKAGE IDENTIFIER</label>
+                  <select
+                    value={offerModal.package_id}
+                    onChange={e => {
+                      const pid = e.target.value
+                      const pName = pid === 'plan_free' ? 'Free' : pid === 'plan_starter' ? 'Starter' : pid === 'plan_business' ? 'Business' : 'Professional'
+                      setOfferModal({ ...offerModal, package_id: pid, package_name: pName })
+                    }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  >
+                    <option value="plan_free">Free Plan (3 Profiles, $0/mo)</option>
+                    <option value="plan_starter">Starter Plan (25 Profiles, $19/mo)</option>
+                    <option value="plan_pro">Professional Plan (100 Profiles, $49/mo)</option>
+                    <option value="plan_business">Business Plan (500 Profiles, $99/mo)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Dynamic Pricing: Old Price, New Price & Live Auto-Calculated Discount % */}
+              <div style={{ background: '#0F172A', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '4px', fontWeight: 600 }}>
+                      ORIGINAL PRICE ($) <span style={{ color: '#64748B' }}>(Old Price)</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={offerModal.original_price}
+                      onChange={e => setOfferModal({ ...offerModal, original_price: parseFloat(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#2DD4BF', marginBottom: '4px', fontWeight: 600 }}>
+                      DISCOUNT PRICE ($) <span style={{ color: '#64748B' }}>(Selling)</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={offerModal.price}
+                      onChange={e => setOfferModal({ ...offerModal, price: parseFloat(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#2DD4BF', fontWeight: 700, fontSize: '12px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '4px', fontWeight: 600 }}>
+                      DYNAMIC DISCOUNT %
+                    </label>
+                    <div style={{
+                      padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155',
+                      fontSize: '12px', fontWeight: 800,
+                      color: (offerModal.original_price > offerModal.price && offerModal.original_price > 0) ? '#4ADE80' : '#94A3B8'
+                    }}>
+                      {(offerModal.original_price > offerModal.price && offerModal.original_price > 0)
+                        ? `Save ${Math.round(((offerModal.original_price - offerModal.price) / offerModal.original_price) * 100)}%`
+                        : '0% (Regular Price)'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>CTA BUTTON TEXT</label>
+                  <input
+                    required
+                    placeholder="e.g. Subscribe Starter"
+                    value={offerModal.cta_text}
+                    onChange={e => setOfferModal({ ...offerModal, cta_text: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>PACKAGE BADGE</label>
+                  <input
+                    placeholder="e.g. MOST POPULAR / BEST VALUE / FREE"
+                    value={offerModal.badge_text}
+                    onChange={e => setOfferModal({ ...offerModal, badge_text: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>TARGET / LANDING PAGE SLUG URL</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="/offer/starter"
+                  value={offerModal.target_url}
+                  onChange={e => setOfferModal({ ...offerModal, target_url: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#38BDF8', fontSize: '12px', fontFamily: 'monospace' }}
+                />
+              </div>
+
+              {/* Commission Model & Trial Settings */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>COMMISSION MODEL</label>
                   <select
                     value={offerModal.payout_type}
                     onChange={e => setOfferModal({ ...offerModal, payout_type: e.target.value as any })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                   >
-                    <option value="percentage">RevShare (% Commission)</option>
-                    <option value="fixed">Fixed CPA ($ Bounty)</option>
+                    <option value="percentage">RevShare (% Recurring Commission)</option>
+                    <option value="fixed">Fixed CPA ($ Instant Bounty)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px' }}>
-                    {offerModal.payout_type === 'percentage' ? 'COMMISSION %' : 'FIXED USD ($)'}
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>
+                    {offerModal.payout_type === 'percentage' ? 'COMMISSION RATE (%)' : 'FIXED BOUNTY ($)'}
                   </label>
                   <input
                     type="number"
@@ -1630,23 +1856,42 @@ export const AdminAffiliateManager: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '4px' }}>STATUS</label>
-                <select
-                  value={offerModal.status}
-                  onChange={e => setOfferModal({ ...offerModal, status: e.target.value as any })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-                >
-                  <option value="active">Active</option>
-                  <option value="paused">Paused</option>
-                  <option value="archived">Archived</option>
-                </select>
+              {/* Trial Toggle & Status */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'center', background: '#0B0F19', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="checkbox"
+                    id="trial_enabled_chk"
+                    checked={offerModal.trial_enabled}
+                    onChange={e => setOfferModal({ ...offerModal, trial_enabled: e.target.checked })}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="trial_enabled_chk" style={{ fontSize: '12px', color: '#FFF', fontWeight: 600, cursor: 'pointer' }}>
+                    Enable 7-Day Free Trial
+                    <span style={{ display: 'block', fontSize: '10px', color: '#94A3B8' }}>
+                      {offerModal.trial_enabled ? 'Shows "Start 7-Day Free Trial" button' : 'Shows dedicated Subscribe CTA (Default)'}
+                    </span>
+                  </label>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#CBD5E1', marginBottom: '4px', fontWeight: 600 }}>OFFER STATUS</label>
+                  <select
+                    value={offerModal.status}
+                    onChange={e => setOfferModal({ ...offerModal, status: e.target.value as any })}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: '#1E293B', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                  >
+                    <option value="active">Active (Visible in Links & Landing Pages)</option>
+                    <option value="paused">Paused</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button
                   type="button"
-                  onClick={() => setOfferModal({ ...offerModal, open: false })}
+                  onClick={() => setOfferModal(prev => ({ ...prev, open: false }))}
                   style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#1E293B', color: '#CBD5E1', border: '1px solid #334155', cursor: 'pointer' }}
                 >
                   Cancel
@@ -1656,7 +1901,7 @@ export const AdminAffiliateManager: React.FC = () => {
                   disabled={savingOffer}
                   style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#2563EB', color: '#FFF', fontWeight: 700, border: 'none', cursor: 'pointer' }}
                 >
-                  {savingOffer ? 'Saving...' : 'Save Offer'}
+                  {savingOffer ? 'Saving Package Offer...' : 'Save Offer & Pricing'}
                 </button>
               </div>
             </form>

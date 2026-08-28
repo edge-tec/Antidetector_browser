@@ -1231,9 +1231,10 @@ export const ReferralDashboard: React.FC = () => {
                     <th style={{ padding: '10px 12px' }}>DATE</th>
                     <th style={{ padding: '10px 12px' }}>CONVERSION ID</th>
                     <th style={{ padding: '10px 12px' }}>CLICK ID</th>
+                    <th style={{ padding: '10px 12px' }}>PACKAGE</th>
                     <th style={{ padding: '10px 12px' }}>OFFER</th>
                     <th style={{ padding: '10px 12px' }}>ORDER VALUE</th>
-                    <th style={{ padding: '10px 12px' }}>PAYOUT</th>
+                    <th style={{ padding: '10px 12px' }}>COMMISSION PAYOUT</th>
                     <th style={{ padding: '10px 12px' }}>STATUS</th>
                   </tr>
                 </thead>
@@ -1243,7 +1244,12 @@ export const ReferralDashboard: React.FC = () => {
                       <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(conv.created_at).toLocaleString()}</td>
                       <td style={{ padding: '10px 12px', color: '#FACC15', fontFamily: 'monospace' }}>{conv.conversion_id}</td>
                       <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{conv.click_id}</td>
-                      <td style={{ padding: '10px 12px', color: '#FFF' }}>{conv.offer_id}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{ fontWeight: 700, color: '#2DD4BF', background: 'rgba(45, 212, 191, 0.12)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(45, 212, 191, 0.3)' }}>
+                          {conv.package_name || (conv.package_id === 'plan_starter' ? 'Starter' : conv.package_id === 'plan_business' ? 'Business' : conv.package_id === 'plan_free' ? 'Free' : 'Professional')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#CBD5E1' }}>{conv.offer_id}</td>
                       <td style={{ padding: '10px 12px' }}>${Number(conv.order_amount || 0).toFixed(2)}</td>
                       <td style={{ padding: '10px 12px', color: '#34D399', fontWeight: 700 }}>+${Number(conv.payout_amount || 0).toFixed(2)}</td>
                       <td style={{ padding: '10px 12px' }}>
