@@ -10,6 +10,9 @@ header('Content-Type: text/html; charset=utf-8');
 
 $pdo = getDbConnection();
 
+// ── Universal Auto-Capture CPA Affiliate & Referral Click Stream ──
+$affTrackResult = captureAndRecordAffiliateClick($pdo);
+
 // Load dynamic branding
 $landingLogoUrl = '/brand-logo.png';
 $landingFaviconUrl = '/favicon.ico';

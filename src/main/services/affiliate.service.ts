@@ -472,7 +472,16 @@ export class AffiliateService {
     subId5?: string
   }): { clickId: string; redirectUrl: string; offer: AffiliateOffer | null } {
     const db = getDatabase()
-    const { affiliateId, offerId } = params
+    const affiliateId = (params.affiliateId || (params as any).affiliate_id || (params as any).ref || '').trim()
+    const offerId = (params.offerId || (params as any).offer_id || 'offer_main_saas').trim()
+    const subId1 = params.subId1 || (params as any).sub_id1 || null
+    const subId2 = params.subId2 || (params as any).sub_id2 || null
+    const subId3 = params.subId3 || (params as any).sub_id3 || null
+    const subId4 = params.subId4 || (params as any).sub_id4 || null
+    const subId5 = params.subId5 || (params as any).sub_id5 || null
+    const ipAddress = params.ipAddress || (params as any).ip_address || '127.0.0.1'
+    const userAgent = params.userAgent || (params as any).user_agent || ''
+    const referrer = params.referrer || ''
 
     // Validate Affiliate & Offer
     const user = db.prepare('SELECT id, affiliate_status FROM users WHERE affiliate_id = ? OR referral_code = ?').get(affiliateId, affiliateId) as any
@@ -484,7 +493,8 @@ export class AffiliateService {
     const targetBaseUrl = offer ? offer.target_url : 'https://antiprofiles.com'
 
     // Generate or use immutable Click ID
-    const clickId = (params.clickId && params.clickId.trim()) ? params.clickId.trim() : `clk_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
+    const rawClickId = params.clickId || (params as any).click_id
+    const clickId = (rawClickId && rawClickId.trim()) ? rawClickId.trim() : `clk_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
 
     // Check if Click ID already recorded
     const existing = db.prepare('SELECT click_id FROM affiliate_clicks WHERE click_id = ?').get(clickId)
@@ -501,15 +511,15 @@ export class AffiliateService {
         clickId,
         affiliateId,
         offerId,
-        params.ipAddress || '',
-        params.userAgent || '',
-        params.referrer || '',
+        ipAddress,
+        userAgent,
+        referrer,
         targetBaseUrl,
-        params.subId1 || null,
-        params.subId2 || null,
-        params.subId3 || null,
-        params.subId4 || null,
-        params.subId5 || null
+        subId1,
+        subId2,
+        subId3,
+        subId4,
+        subId5
       )
 
       if (offer) {
@@ -527,6 +537,44 @@ export class AffiliateService {
     logger.info('affiliate', `[Tracking] 🚀 Recorded click ${clickId} for affiliate ${affiliateId} on offer ${offerId}`)
 
     return { clickId, redirectUrl: redirectUrlObj.toString(), offer }
+  }
+
+  public simulateTestClick(affiliateId?: string, offerId?: string, subId1: string = 'test_simulator'): { success: boolean; data: any } {
+    const db = getDatabase()
+    const targetAffId = (affiliateId && affiliateId.trim()) ? affiliateId.trim() : 'AFF-28DE2A'
+    const targetOfferId = (offerId && offerId.trim()) ? offerId.trim() : 'offer_main_saas'
+    const testClickId = `clk_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const ip = '127.0.0.1'
+    const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+    const landing = `https://antiprofiles.com/register?ref=${targetAffId}`
+
+    db.prepare(`
+      INSERT INTO affiliate_clicks (
+        click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+        sub_id1, converted, created_at
+      ) VALUES (
+        ?, ?, ?, ?, ?, 'https://antiprofiles.com/dashboard', ?,
+        ?, 0, datetime('now')
+      )
+    `).run(testClickId, targetAffId, targetOfferId, ip, ua, landing, subId1)
+
+    try {
+      db.prepare('UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?').run(targetOfferId)
+    } catch {}
+
+    logger.info('affiliate', `[AffiliateService] 🧪 Created simulated test click ${testClickId} for ${targetAffId}`)
+    return {
+      success: true,
+      data: {
+        click_id: testClickId,
+        affiliate_id: targetAffId,
+        offer_id: targetOfferId,
+        ip_address: ip,
+        landing_url: landing,
+        sub_id1: subId1,
+        created_at: new Date().toISOString()
+      }
+    }
   }
 
   // ──────────────────────────────────────────────
@@ -1091,14 +1139,18 @@ export class AffiliateService {
     const { affiliateId, referralCode, status: affStatus } = this.getOrCreateAffiliateId(userId)
     const settings = this.getSettings()
 
+    const cleanSuffix = referralCode.replace(/^(REF_|AFF-)/i, '')
+    const searchAffIds = Array.from(new Set([affiliateId, referralCode, cleanSuffix, 'REF_' + cleanSuffix, 'AFF-' + cleanSuffix]))
+    const placeholders = searchAffIds.map(() => '?').join(',')
+
     // Clicks stats
-    const totalClicksRow = db.prepare('SELECT COUNT(*) as count FROM affiliate_clicks WHERE affiliate_id = ?').get(affiliateId) as { count: number }
-    const uniqueClicksRow = db.prepare('SELECT COUNT(DISTINCT ip_address) as count FROM affiliate_clicks WHERE affiliate_id = ?').get(affiliateId) as { count: number }
+    const totalClicksRow = db.prepare(`SELECT COUNT(*) as count FROM affiliate_clicks WHERE affiliate_id IN (${placeholders})`).get(...searchAffIds) as { count: number }
+    const uniqueClicksRow = db.prepare(`SELECT COUNT(DISTINCT ip_address) as count FROM affiliate_clicks WHERE affiliate_id IN (${placeholders})`).get(...searchAffIds) as { count: number }
     const totalClicks = totalClicksRow?.count || 0
     const uniqueClicks = uniqueClicksRow?.count || 0
 
     // Conversions stats
-    const convRow = db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(payout_amount), 0) as totalPayout FROM affiliate_conversions WHERE affiliate_id = ?').get(affiliateId) as { count: number; totalPayout: number }
+    const convRow = db.prepare(`SELECT COUNT(*) as count, COALESCE(SUM(payout_amount), 0) as totalPayout FROM affiliate_conversions WHERE affiliate_id IN (${placeholders})`).get(...searchAffIds) as { count: number; totalPayout: number }
     const totalConversions = convRow?.count || 0
     const conversionRate = totalClicks > 0 ? Math.round((totalConversions / totalClicks) * 10000) / 100 : 0
 
@@ -1153,12 +1205,12 @@ export class AffiliateService {
     const trackingLinks = this.getTrackingLinksForUser(userId)
 
     const recentClicks = db.prepare(`
-      SELECT * FROM affiliate_clicks WHERE affiliate_id = ? ORDER BY created_at DESC LIMIT 30
-    `).all(affiliateId) as AffiliateClick[]
+      SELECT * FROM affiliate_clicks WHERE affiliate_id IN (${placeholders}) ORDER BY created_at DESC LIMIT 50
+    `).all(...searchAffIds) as AffiliateClick[]
 
     const recentConversions = db.prepare(`
-      SELECT * FROM affiliate_conversions WHERE affiliate_id = ? ORDER BY created_at DESC LIMIT 30
-    `).all(affiliateId) as AffiliateConversion[]
+      SELECT * FROM affiliate_conversions WHERE affiliate_id IN (${placeholders}) ORDER BY created_at DESC LIMIT 30
+    `).all(...searchAffIds) as AffiliateConversion[]
 
     const recentCommissions = db.prepare(`
       SELECT c.*, u.name as referred_user_name, u.email as referred_user_email

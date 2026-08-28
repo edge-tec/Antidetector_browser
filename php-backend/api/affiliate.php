@@ -67,17 +67,29 @@ switch ($action) {
         }
 
         $affInfo = ensureUserAffiliateId($db, $user);
+        $affInfo = ensureUserAffiliateId($db, $user);
         $affId = $affInfo['affiliate_id'];
         $refCode = $affInfo['referral_code'];
 
+        $cleanSuffix = preg_replace('/^(REF_|AFF-)/i', '', $refCode);
+        $searchAffIds = array_values(array_unique(array_filter([
+            $affId, 
+            $refCode, 
+            $cleanSuffix, 
+            'REF_' . $cleanSuffix, 
+            'AFF-' . $cleanSuffix, 
+            $user['id']
+        ])));
+        $inPlaceholders = implode(',', array_fill(0, count($searchAffIds), '?'));
+
         // Clicks count
-        $stmtClicks = $db->prepare("SELECT COUNT(*) as total, COUNT(DISTINCT ip_address) as unique_ips FROM affiliate_clicks WHERE affiliate_id = ? OR affiliate_id = ?");
-        $stmtClicks->execute([$affId, $refCode]);
+        $stmtClicks = $db->prepare("SELECT COUNT(*) as total, COUNT(DISTINCT ip_address) as unique_ips FROM affiliate_clicks WHERE affiliate_id IN ($inPlaceholders)");
+        $stmtClicks->execute($searchAffIds);
         $clickStats = $stmtClicks->fetch(PDO::FETCH_ASSOC);
 
         // Conversions & Commissions
-        $stmtConv = $db->prepare("SELECT COUNT(*) as total_conversions, COALESCE(SUM(payout_amount), 0) as total_earnings FROM affiliate_conversions WHERE (affiliate_id = ? OR affiliate_id = ? OR user_id = ?) AND status = 'approved'");
-        $stmtConv->execute([$affId, $refCode, $user['id']]);
+        $stmtConv = $db->prepare("SELECT COUNT(*) as total_conversions, COALESCE(SUM(payout_amount), 0) as total_earnings FROM affiliate_conversions WHERE affiliate_id IN ($inPlaceholders) OR user_id = ? AND status = 'approved'");
+        $stmtConv->execute(array_merge($searchAffIds, [$user['id']]));
         $convStats = $stmtConv->fetch(PDO::FETCH_ASSOC);
 
         // Paid Withdrawals
@@ -110,18 +122,25 @@ switch ($action) {
         $conversionRate = $totalClicks > 0 ? round(($totalConversions / $totalClicks) * 100, 2) : 0;
 
         // Postback Configuration
-        $stmtPb = $db->prepare("SELECT postback_url, http_method, is_active FROM affiliate_postback_configs WHERE affiliate_id = ? OR affiliate_id = ? LIMIT 1");
-        $stmtPb->execute([$affId, $refCode]);
+        $stmtPb = $db->prepare("SELECT postback_url, http_method, is_active FROM affiliate_postback_configs WHERE affiliate_id IN ($inPlaceholders) LIMIT 1");
+        $stmtPb->execute($searchAffIds);
         $postbackConfig = $stmtPb->fetch(PDO::FETCH_ASSOC);
 
-        // Recent Clicks (last 15)
-        $stmtRecClicks = $db->prepare("SELECT click_id, offer_id, ip_address, referrer, sub_id1, converted, created_at FROM affiliate_clicks WHERE affiliate_id = ? OR affiliate_id = ? ORDER BY created_at DESC LIMIT 15");
-        $stmtRecClicks->execute([$affId, $refCode]);
+        // Recent Clicks (last 50)
+        $stmtRecClicks = $db->prepare("
+            SELECT c.*, o.title as offer_title 
+            FROM affiliate_clicks c 
+            LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
+            WHERE c.affiliate_id IN ($inPlaceholders) 
+            ORDER BY c.created_at DESC 
+            LIMIT 50
+        ");
+        $stmtRecClicks->execute($searchAffIds);
         $recentClicks = $stmtRecClicks->fetchAll(PDO::FETCH_ASSOC);
 
-        // Recent Conversions (last 15)
-        $stmtRecConv = $db->prepare("SELECT conversion_id, click_id, offer_id, order_amount, payout_amount, status, created_at FROM affiliate_conversions WHERE affiliate_id = ? OR affiliate_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 15");
-        $stmtRecConv->execute([$affId, $refCode, $user['id']]);
+        // Recent Conversions (last 30)
+        $stmtRecConv = $db->prepare("SELECT conversion_id, click_id, offer_id, order_amount, payout_amount, status, created_at FROM affiliate_conversions WHERE affiliate_id IN ($inPlaceholders) OR user_id = ? ORDER BY created_at DESC LIMIT 30");
+        $stmtRecConv->execute(array_merge($searchAffIds, [$user['id']]));
         $recentConversions = $stmtRecConv->fetchAll(PDO::FETCH_ASSOC);
 
         // Withdrawal History
@@ -568,15 +587,115 @@ switch ($action) {
         respondJson(['success' => true, 'message' => 'Offer archived successfully.']);
         break;
 
-    case 'admin-get-clicks':
-        $admin = requireAdmin();
+    case 'get-clicks':
+        $user = getAuthenticatedUser();
+        if (!$user) {
+            respondJson(['success' => false, 'error' => 'Authentication required.'], 401);
+        }
+        $affInfo = ensureUserAffiliateId($db, $user);
+        $affId = $affInfo['affiliate_id'];
+        $refCode = $affInfo['referral_code'];
+        $cleanSuffix = preg_replace('/^(REF_|AFF-)/i', '', $refCode);
+        $searchAffIds = array_values(array_unique(array_filter([
+            $affId, 
+            $refCode, 
+            $cleanSuffix, 
+            'REF_' . $cleanSuffix, 
+            'AFF-' . $cleanSuffix, 
+            $user['id']
+        ])));
+        $inPlaceholders = implode(',', array_fill(0, count($searchAffIds), '?'));
 
         $stmt = $db->prepare("
             SELECT c.*, o.title as offer_title 
             FROM affiliate_clicks c 
             LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
+            WHERE c.affiliate_id IN ($inPlaceholders) 
             ORDER BY c.created_at DESC 
             LIMIT 100
+        ");
+        $stmt->execute($searchAffIds);
+        $clicks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        respondJson(['success' => true, 'data' => $clicks]);
+        break;
+
+    case 'simulate-test-click':
+    case 'admin-record-test-click':
+        $user = getAuthenticatedUser();
+        $targetAffId = trim($input['affiliate_id'] ?? $input['aff_id'] ?? $input['ref'] ?? '');
+        
+        if (empty($targetAffId) && $user) {
+            $affInfo = ensureUserAffiliateId($db, $user);
+            $targetAffId = $affInfo['affiliate_id'];
+        }
+        if (empty($targetAffId)) {
+            $targetAffId = 'AFF-28DE2A';
+        }
+
+        $targetOfferId = trim($input['offer_id'] ?? 'offer_main_saas');
+        $sub1 = trim($input['sub_id1'] ?? 'test_live_stream');
+        
+        $testClickId = 'clk_test_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(3)), 0, 6);
+        $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        if (strpos($ip, ',') !== false) $ip = trim(explode(',', $ip)[0]);
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+
+        try {
+            $stmtClick = $db->prepare("
+                INSERT INTO affiliate_clicks (
+                    click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+                    sub_id1, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, 'https://antiprofiles.com/referral-test', 'https://antiprofiles.com/register?ref=' || ?,
+                    ?, CURRENT_TIMESTAMP
+                )
+            ");
+            $stmtClick->execute([
+                $testClickId, $targetAffId, $targetOfferId, $ip, $ua, $targetAffId, $sub1
+            ]);
+        } catch (Throwable $e) {
+            try {
+                $stmtClick2 = $db->prepare("
+                    INSERT INTO affiliate_clicks (
+                        click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, created_at
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, 'https://antiprofiles.com/referral-test', CURRENT_TIMESTAMP
+                    )
+                ");
+                $stmtClick2->execute([$testClickId, $targetAffId, $targetOfferId, $ip, $ua]);
+            } catch (Throwable $e2) {}
+        }
+
+        // Increment offer count
+        try {
+            $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$targetOfferId]);
+        } catch (Throwable $e) {}
+
+        respondJson([
+            'success' => true,
+            'message' => "Simulated live click generated successfully for {$targetAffId}!",
+            'data' => [
+                'click_id' => $testClickId,
+                'affiliate_id' => $targetAffId,
+                'offer_id' => $targetOfferId,
+                'ip_address' => $ip,
+                'sub_id1' => $sub1,
+                'created_at' => date('Y-m-d H:i:s')
+            ]
+        ]);
+        break;
+
+    case 'admin-get-clicks':
+        $admin = requireAdmin();
+
+        $stmt = $db->prepare("
+            SELECT c.*, o.title as offer_title, u.name as affiliate_name, u.email as affiliate_email 
+            FROM affiliate_clicks c 
+            LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
+            LEFT JOIN users u ON (u.affiliate_id = c.affiliate_id OR u.referral_code = c.affiliate_id OR u.id = c.affiliate_id)
+            ORDER BY c.created_at DESC 
+            LIMIT 150
         ");
         $stmt->execute();
         $clicks = $stmt->fetchAll(PDO::FETCH_ASSOC);

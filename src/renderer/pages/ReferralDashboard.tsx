@@ -950,10 +950,79 @@ export const ReferralDashboard: React.FC = () => {
       {/* ── TAB 4: CLICKS LOG ── */}
       {activeTab === 'clicks' && (
         <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#FFF' }}>Live Click Stream</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', color: '#FFF' }}>Live Click Stream</h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={async () => {
+                  try {
+                    if ((window as any).api?.affiliateSimulateTestClick) {
+                      const res = await (window as any).api.affiliateSimulateTestClick(activeAffiliateId, selectedOfferForLink, 'live_test')
+                      if (res?.success) {
+                        showToast('success', `🧪 Simulated test click recorded for ${activeAffiliateId}`)
+                        loadSummary()
+                      }
+                    }
+                  } catch (e: any) {
+                    showToast('error', e.message)
+                  }
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  color: '#38BDF8',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                🧪 Generate Test Click
+              </button>
+              <button
+                onClick={loadSummary}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: '#1E293B',
+                  border: '1px solid #334155',
+                  color: '#E2E8F0',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                🔄 Refresh Stream
+              </button>
+            </div>
+          </div>
+
           {(!summary?.recentClicks || summary.recentClicks.length === 0) ? (
-            <div style={{ padding: '30px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
-              No click traffic recorded yet.
+            <div style={{ padding: '36px 20px', textAlign: 'center', background: '#0B0F19', borderRadius: '8px', border: '1px dashed #334155' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🖱️</div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>No click traffic recorded yet.</div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '460px', margin: '0 auto 16px auto' }}>
+                Clicks generated when visitors click your referral link (<code>{activeReferralLink}</code>) will populate here in real-time.
+              </p>
+              <button
+                onClick={async () => {
+                  try {
+                    if ((window as any).api?.affiliateSimulateTestClick) {
+                      const res = await (window as any).api.affiliateSimulateTestClick(activeAffiliateId, selectedOfferForLink, 'live_test')
+                      if (res?.success) {
+                        showToast('success', `🧪 Simulated test click recorded for ${activeAffiliateId}`)
+                        loadSummary()
+                      }
+                    }
+                  } catch (e: any) {
+                    showToast('error', e.message)
+                  }
+                }}
+                style={{ padding: '8px 18px', borderRadius: '8px', background: '#38BDF8', color: '#0F172A', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+              >
+                🧪 Generate First Live Test Click
+              </button>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>

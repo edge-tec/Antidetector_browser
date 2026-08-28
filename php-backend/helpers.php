@@ -4141,3 +4141,179 @@ function resetAllSoftwareFeaturesToDefault(PDO $db): bool {
         return false;
     }
 }
+
+// ──────────────────────────────────────────────
+// 15. Universal Affiliate & CPA Click Tracking Engine
+// ──────────────────────────────────────────────
+
+function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
+    try {
+        if (!$db) {
+            $db = getDbConnection();
+        }
+        if (!$db) return null;
+
+        ensureDatabaseTablesExist();
+
+        // 1. Detect if referral / affiliate query parameter or path exists
+        $requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+        $pathRef = '';
+        if (preg_match('#^/(?:r|track)/([^/?]+)#i', $requestUri, $matches)) {
+            $pathRef = trim($matches[1]);
+        }
+
+        $rawRef = $_GET['ref'] ?? $_GET['aff'] ?? $_GET['aff_id'] ?? $_GET['referral'] ?? $_GET['r'] ?? $pathRef ?? '';
+        $rawRef = trim((string)$rawRef);
+
+        if (empty($rawRef)) {
+            return null; // No referral code on this request
+        }
+
+        // 2. Resolve affiliate user from database
+        $cleanRef = preg_replace('/[^a-zA-Z0-9_\-]/', '', $rawRef);
+        $cleanCode = preg_replace('/^(REF_|AFF-)/i', '', $cleanRef);
+        
+        $affId = $cleanRef;
+        $refCode = $cleanRef;
+        $userId = null;
+
+        $uStmt = $db->prepare("
+            SELECT id, affiliate_id, referral_code, name, email 
+            FROM users 
+            WHERE LOWER(referral_code) = LOWER(?) 
+               OR LOWER(affiliate_id) = LOWER(?) 
+               OR LOWER(referral_code) = LOWER(?)
+               OR LOWER(affiliate_id) = LOWER(?)
+               OR LOWER(referral_code) = LOWER(?)
+               OR LOWER(affiliate_id) = LOWER(?)
+               OR id = ?
+            LIMIT 1
+        ");
+        $uStmt->execute([
+            $cleanRef,
+            $cleanRef,
+            'REF_' . $cleanCode,
+            'AFF-' . $cleanCode,
+            $cleanCode,
+            $cleanCode,
+            $cleanRef
+        ]);
+        $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($uRow) {
+            $userId = $uRow['id'];
+            $affId = !empty($uRow['affiliate_id']) ? $uRow['affiliate_id'] : ('AFF-' . strtoupper($cleanCode));
+            $refCode = !empty($uRow['referral_code']) ? $uRow['referral_code'] : ('REF_' . strtoupper($cleanCode));
+        } else {
+            // Normalize default formatting
+            if (stripos($cleanRef, 'AFF-') === 0) {
+                $affId = strtoupper($cleanRef);
+                $refCode = 'REF_' . strtoupper(substr($cleanRef, 4));
+            } elseif (stripos($cleanRef, 'REF_') === 0) {
+                $refCode = strtoupper($cleanRef);
+                $affId = 'AFF-' . strtoupper(substr($cleanRef, 4));
+            } else {
+                $affId = 'AFF-' . strtoupper($cleanRef);
+                $refCode = 'REF_' . strtoupper($cleanRef);
+            }
+        }
+
+        // 3. Generate Click ID
+        $clickId = isset($_GET['click_id']) && !empty(trim($_GET['click_id']))
+            ? trim($_GET['click_id'])
+            : 'clk_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(4)), 0, 8);
+
+        // 4. Resolve Client Metadata
+        $ipAddress = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        if (strpos($ipAddress, ',') !== false) {
+            $ipAddress = trim(explode(',', $ipAddress)[0]);
+        }
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $referrer = $_SERVER['HTTP_REFERER'] ?? '';
+
+        // Scheme and host
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
+        $fullLandingUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '/');
+
+        // Sub IDs & Offer ID
+        $offerId = trim($_GET['offer_id'] ?? 'offer_main_saas');
+        $subId1 = trim($_GET['sub_id1'] ?? $_GET['s1'] ?? '');
+        $subId2 = trim($_GET['sub_id2'] ?? $_GET['s2'] ?? '');
+        $subId3 = trim($_GET['sub_id3'] ?? $_GET['s3'] ?? '');
+        $subId4 = trim($_GET['sub_id4'] ?? '');
+        $subId5 = trim($_GET['sub_id5'] ?? '');
+
+        // 5. Insert Click into affiliate_clicks table
+        try {
+            $stmtInsert = $db->prepare("
+                INSERT INTO affiliate_clicks (
+                    click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+                    sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                )
+                ON DUPLICATE KEY UPDATE 
+                    ip_address = VALUES(ip_address), 
+                    user_agent = VALUES(user_agent),
+                    landing_url = VALUES(landing_url)
+            ");
+
+            $stmtInsert->execute([
+                $clickId,
+                $affId,
+                $offerId,
+                $ipAddress,
+                $userAgent,
+                $referrer,
+                $fullLandingUrl,
+                $subId1 ?: null,
+                $subId2 ?: null,
+                $subId3 ?: null,
+                $subId4 ?: null,
+                $subId5 ?: null
+            ]);
+        } catch (Throwable $e) {
+            // Fallback minimal insert if any newer columns are not yet loaded
+            try {
+                $stmtInsertMin = $db->prepare("
+                    INSERT INTO affiliate_clicks (
+                        click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, created_at
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                    )
+                    ON DUPLICATE KEY UPDATE ip_address = VALUES(ip_address)
+                ");
+                $stmtInsertMin->execute([$clickId, $affId, $offerId, $ipAddress, $userAgent, $referrer]);
+            } catch (Throwable $e2) {}
+        }
+
+        // Increment offer total_clicks
+        try {
+            $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$offerId]);
+        } catch (Throwable $e) {}
+
+        // 6. Set 30-Day Attribution Cookies
+        $cookieDuration = time() + (86400 * 30);
+        @setcookie('aff_id', $affId, $cookieDuration, '/', '', false, false);
+        @setcookie('ref', $refCode, $cookieDuration, '/', '', false, false);
+        @setcookie('click_id', $clickId, $cookieDuration, '/', '', false, false);
+        @setcookie('offer_id', $offerId, $cookieDuration, '/', '', false, false);
+        if (!empty($subId1)) @setcookie('sub_id1', $subId1, $cookieDuration, '/', '', false, false);
+        if (!empty($subId2)) @setcookie('sub_id2', $subId2, $cookieDuration, '/', '', false, false);
+
+        return [
+            'success' => true,
+            'affId' => $affId,
+            'refCode' => $refCode,
+            'clickId' => $clickId,
+            'offerId' => $offerId,
+            'userId' => $userId,
+            'landingUrl' => $fullLandingUrl
+        ];
+    } catch (Throwable $e) {
+        error_log('[Affiliate Click Tracking Error] ' . $e->getMessage());
+        return null;
+    }
+}

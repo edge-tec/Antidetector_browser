@@ -15,6 +15,9 @@ if (empty($requestUri)) $requestUri = '/';
 
 $pdo = getDbConnection();
 
+// ── Universal Auto-Capture CPA Affiliate & Referral Click Stream ──
+$affTrackResult = captureAndRecordAffiliateClick($pdo);
+
 // ── 0. Dynamic SEO Files Routes ──
 if ($requestUri === '/sitemap.xml') {
     require_once __DIR__ . '/sitemap.php';

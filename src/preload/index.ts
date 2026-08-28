@@ -409,6 +409,8 @@ const api = {
     ipcRenderer.invoke('affiliate:generateTrackingLink', userId, offerId, customParams),
   affiliateRecordClick: (params: any) =>
     ipcRenderer.invoke('affiliate:recordClick', params),
+  affiliateSimulateTestClick: (affiliateId?: string, offerId?: string, subId1?: string) =>
+    ipcRenderer.invoke('affiliate:simulateTestClick', affiliateId, offerId, subId1),
   affiliateRecordConversion: (input: any) =>
     ipcRenderer.invoke('affiliate:recordConversion', input),
   affiliateGetPostbackConfig: (userId: string) =>

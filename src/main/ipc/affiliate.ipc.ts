@@ -105,6 +105,16 @@ export function registerAffiliateHandlers(): void {
     }
   })
 
+  // ── 6.1 Simulate / Test Click Generator ──
+  ipcMain.handle('affiliate:simulateTestClick', async (_event, affiliateId?: string, offerId?: string, subId1?: string) => {
+    try {
+      const result = affiliateService.simulateTestClick(affiliateId, offerId, subId1)
+      return result
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
   // ── 7. Record CPA Conversion ──
   ipcMain.handle('affiliate:recordConversion', async (_event, input: any) => {
     try {
