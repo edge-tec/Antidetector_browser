@@ -565,13 +565,16 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         };
         var escapeHtml = window.escapeHtml;
 
-        window.openModal = function(mode) {
+        window.openModal = function(mode, planName) {
             window.closeAdminDashboard();
             const modal = document.getElementById('loginModal');
             if (modal) {
                 modal.classList.add('active');
                 modal.style.display = 'flex';
-                window.switchAuthTab(mode || 'login');
+                if (planName) {
+                    try { localStorage.setItem('selected_plan', planName); } catch(e) {}
+                }
+                window.switchAuthTab(mode || 'login', planName);
             }
         };
 
@@ -613,7 +616,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
         };
 
-        window.switchAuthTab = function(mode) {
+        window.switchAuthTab = function(mode, planName) {
             const loginForm = document.getElementById('loginForm');
             const regForm = document.getElementById('registerForm');
             const forgotForm = document.getElementById('forgotForm');
@@ -621,6 +624,9 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             const btnLogin = document.getElementById('modalBtnLogin');
             const btnReg = document.getElementById('modalBtnRegister');
             const msg = document.getElementById('loginMsg');
+            const planNotice = document.getElementById('registerPlanNotice');
+            const planNoticeText = document.getElementById('registerPlanNoticeText');
+            const regSubmitBtn = document.getElementById('registerSubmitBtn');
             if (msg) msg.style.display = 'none';
 
             if (mode === 'register') {
@@ -635,6 +641,22 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 if (btnLogin) {
                     btnLogin.style.background = 'transparent';
                     btnLogin.style.color = 'var(--text-muted)';
+                }
+                
+                const effectivePlan = planName || localStorage.getItem('selected_plan') || new URLSearchParams(window.location.search).get('plan');
+                if (effectivePlan && effectivePlan !== 'free' && planNotice && planNoticeText) {
+                    let formattedName = effectivePlan.replace(/^plan_/i, '');
+                    formattedName = formattedName.charAt(0).toUpperCase() + formattedName.slice(1);
+                    if (formattedName.toLowerCase() === 'pro') formattedName = 'Professional ($49/mo)';
+                    else if (formattedName.toLowerCase() === 'starter') formattedName = 'Starter ($19/mo)';
+                    else if (formattedName.toLowerCase() === 'business') formattedName = 'Business ($99/mo)';
+                    
+                    planNotice.style.display = 'block';
+                    planNoticeText.textContent = `${formattedName} • 7-Day Free Trial Included`;
+                    if (regSubmitBtn) regSubmitBtn.textContent = `Start Free Trial for ${formattedName.split(' ')[0]}`;
+                } else if (planNotice) {
+                    planNotice.style.display = 'none';
+                    if (regSubmitBtn) regSubmitBtn.textContent = 'Create Account';
                 }
             } else if (mode === 'forgot') {
                 if (loginForm) loginForm.style.display = 'none';
@@ -654,8 +676,6 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     btnReg.style.background = 'transparent';
                     btnReg.style.color = 'var(--text-muted)';
                 }
-            }
-
             if (typeof renderTurnstileWidget === 'function') {
                 if (mode === 'register') renderTurnstileWidget('registerTurnstileContainer');
                 else if (mode === 'forgot') renderTurnstileWidget('forgotPwTurnstileContainer');
@@ -2597,10 +2617,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         </div>
         <div class="pricing-section-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
             <!-- Free Plan -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column;">
+            <div id="plan-card-free" class="plan-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; transition: all 0.3s ease;">
                 <h3 style="font-size: 18px; color: #FFF;">Free</h3>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$0 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register')">Start Free</button>
+                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'free')">Start Free</button>
                 <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
                     <li>✓ Browser Profiles: <strong>3 Profiles</strong></li>
                     <li>✓ Proxy Support: <strong>Basic</strong></li>
@@ -2612,7 +2632,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             </div>
 
             <!-- Starter Plan -->
-            <div style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_starter') ? '#2DD4BF' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
+            <div id="plan-card-starter" class="plan-card" style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_starter') ? '#2DD4BF' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; transition: all 0.3s ease;">
                 <?php if ($isPlanTrial('plan_starter')): ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY FREE TRIAL</span>
                 <?php endif; ?>
@@ -2624,7 +2644,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 </div>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$19 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_starter')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register', 'Starter')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
                 <?php else: ?>
                     <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">⚡ Pay & Upgrade ($19)</button>
                 <?php endif; ?>
@@ -2639,7 +2659,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             </div>
 
             <!-- Professional Plan -->
-            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; box-shadow: 0 8px 30px rgba(45, 212, 191, 0.15);">
+            <div id="plan-card-pro" class="plan-card" style="background: var(--bg-card); border: 2px solid #2DD4BF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; box-shadow: 0 8px 30px rgba(45, 212, 191, 0.15); transition: all 0.3s ease;">
                 <?php if ($isPlanTrial('plan_pro')): ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY FREE TRIAL • MOST POPULAR</span>
                 <?php else: ?>
@@ -2653,7 +2673,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 </div>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$49 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_pro')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register', 'Professional')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
                 <?php else: ?>
                     <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">⚡ Pay & Upgrade ($49)</button>
                 <?php endif; ?>
@@ -2668,7 +2688,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             </div>
 
             <!-- Business Plan -->
-            <div style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_business') ? '#818CF8' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
+            <div id="plan-card-business" class="plan-card" style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_business') ? '#818CF8' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; transition: all 0.3s ease;">
                 <?php if ($isPlanTrial('plan_business')): ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY TRIAL • BEST VALUE</span>
                 <?php else: ?>
@@ -2682,7 +2702,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 </div>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$99 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_business')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);" onclick="openModal('register')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);" onclick="openModal('register', 'Business')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
                 <?php else: ?>
                     <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">⚡ Pay & Upgrade ($99)</button>
                 <?php endif; ?>
@@ -3203,6 +3223,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
             <!-- Register Form (Matches User Screenshot Exactly) -->
             <form id="registerForm" style="display: none;" onsubmit="handleRegister(event); return false;">
+                <div id="registerPlanNotice" style="display: none; background: rgba(45, 212, 191, 0.12); border: 1px solid rgba(45, 212, 191, 0.35); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: #2DD4BF; text-align: center; font-weight: 600;">
+                    <div style="font-size: 14px; margin-bottom: 2px;">🎁 <strong>Special Package Pre-Selected!</strong></div>
+                    <div id="registerPlanNoticeText" style="color: #FFF; font-size: 12.5px;">Professional Plan • 7-Day Free Trial Included</div>
+                </div>
                 <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px; text-align: center;">Register to start managing antidetect browser profiles</p>
                 
                 <div class="form-group" style="margin-bottom: 14px;">
@@ -12405,6 +12429,51 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             initRealtimeWebSync();
             loadUserPortalData();
             fetchReleasesAndUpdateLanding();
+
+            // Check for specific package plan or affiliate offer in URL
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const planParam = urlParams.get('plan') || urlParams.get('package') || localStorage.getItem('selected_plan');
+                const offerParam = urlParams.get('offer_id');
+                const autoOpen = urlParams.get('auto_open') || urlParams.get('open');
+                const hash = window.location.hash;
+
+                let targetPlanKey = planParam || '';
+                if (!targetPlanKey && offerParam) {
+                    if (offerParam.includes('pro') || offerParam.includes('49')) targetPlanKey = 'plan_pro';
+                    else if (offerParam.includes('starter') || offerParam.includes('19')) targetPlanKey = 'plan_starter';
+                    else if (offerParam.includes('business') || offerParam.includes('99')) targetPlanKey = 'plan_business';
+                }
+
+                if (targetPlanKey || hash === '#pricing' || autoOpen === '1') {
+                    let cardId = 'plan-card-pro';
+                    let planTitle = 'Professional';
+                    const lowerKey = (targetPlanKey || '').toLowerCase();
+                    if (lowerKey.includes('starter') || lowerKey.includes('19')) {
+                        cardId = 'plan-card-starter';
+                        planTitle = 'Starter';
+                    } else if (lowerKey.includes('business') || lowerKey.includes('99')) {
+                        cardId = 'plan-card-business';
+                        planTitle = 'Business';
+                    } else if (lowerKey === 'free') {
+                        cardId = 'plan-card-free';
+                        planTitle = 'Free';
+                    }
+
+                    setTimeout(() => {
+                        const targetCard = document.getElementById(cardId);
+                        if (targetCard) {
+                            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            targetCard.style.boxShadow = '0 0 35px rgba(45, 212, 191, 0.65)';
+                            targetCard.style.borderColor = '#2DD4BF';
+                            targetCard.style.transform = 'scale(1.03)';
+                        }
+                        if ((autoOpen === '1' || urlParams.has('offer_id') || urlParams.has('ref') || urlParams.has('aff_id')) && !isAuthenticated) {
+                            openModal('register', planTitle);
+                        }
+                    }, 400);
+                }
+            } catch(e) {}
 
             // Auto trigger Google OAuth if query param is set (e.g. from desktop app or external link)
             try {

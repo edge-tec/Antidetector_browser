@@ -33,8 +33,8 @@ export function registerAffiliateHandlers(): void {
   // ── 1. User: Get Affiliate Summary, CPA Analytics & Balances ──
   ipcMain.handle('affiliate:getUserSummary', async (_event, userId: string) => {
     try {
-      // Sync fresh offers and configs from central server if connected
-      await affiliateService.syncOffersFromCentralServer().catch(() => {})
+      // Sync fresh offers, clicks and configs from central server if connected
+      await affiliateService.syncAffiliateDataFromCentralServer(userId).catch(() => {})
 
       let targetUserId = (userId && typeof userId === 'string') ? userId.trim() : ''
       if (!targetUserId) {

@@ -298,7 +298,57 @@ export class AffiliateService {
     } catch (err: any) {
       logger.warn('affiliate', `[AffiliateService] Remote CPA offers sync skipped/failed: ${err.message}`)
     }
-    return this.getOffers(true)
+    return this.getOffers(false)
+  }
+
+  public async syncAffiliateDataFromCentralServer(_userId?: string): Promise<void> {
+    try {
+      await this.syncOffersFromCentralServer().catch(() => {})
+      
+      const summaryRes = await centralApi.getAffiliateSummary().catch(() => null)
+      if (summaryRes?.success && summaryRes.data) {
+        const db = getDatabase()
+        const data = summaryRes.data
+        
+        // Sync clicks
+        if (Array.isArray(data.recentClicks) && data.recentClicks.length > 0) {
+          const upsertClick = db.prepare(`
+            INSERT INTO affiliate_clicks (
+              click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+              sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, converted, created_at
+            ) VALUES (
+              ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?
+            )
+            ON CONFLICT(click_id) DO UPDATE SET
+              converted = excluded.converted,
+              ip_address = excluded.ip_address
+          `)
+          for (const c of data.recentClicks) {
+            try {
+              upsertClick.run(
+                c.click_id,
+                c.affiliate_id || 'AFF-28DE2A',
+                c.offer_id || 'offer_main_saas',
+                c.ip_address || '',
+                c.user_agent || '',
+                c.referrer || '',
+                c.landing_url || '',
+                c.sub_id1 || null,
+                c.sub_id2 || null,
+                c.sub_id3 || null,
+                c.sub_id4 || null,
+                c.sub_id5 || null,
+                c.converted ? 1 : 0,
+                c.created_at || new Date().toISOString()
+              )
+            } catch {}
+          }
+        }
+      }
+    } catch (err: any) {
+      logger.warn('affiliate', `[Central Sync] Background affiliate data sync error: ${err.message}`)
+    }
   }
 
   public getOffers(onlyActive: boolean = false): AffiliateOffer[] {
