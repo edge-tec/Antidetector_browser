@@ -24,9 +24,20 @@ export function up(db: Database.Database): void {
       port                INTEGER DEFAULT 0,
       username            TEXT DEFAULT '',
       encrypted_password  BLOB,
+      country             TEXT DEFAULT '',
+      region              TEXT DEFAULT '',
+      city                TEXT DEFAULT '',
+      isp                 TEXT DEFAULT '',
+      asn                 TEXT DEFAULT '',
+      timezone            TEXT DEFAULT '',
+      latitude            REAL DEFAULT NULL,
+      longitude           REAL DEFAULT NULL,
+      public_ip           TEXT DEFAULT '',
+      proxy_version       INTEGER DEFAULT 1,
       last_tested         TEXT,
       test_status         TEXT DEFAULT 'untested',
-      created_at          TEXT DEFAULT (datetime('now'))
+      created_at          TEXT DEFAULT (datetime('now')),
+      updated_at          TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS profiles (

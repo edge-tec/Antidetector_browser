@@ -86,7 +86,8 @@ export function initDatabase(): any {
     "ALTER TABLE proxies ADD COLUMN longitude REAL DEFAULT NULL",
     "ALTER TABLE proxies ADD COLUMN public_ip TEXT DEFAULT ''",
     "ALTER TABLE proxies ADD COLUMN proxy_version INTEGER DEFAULT 1",
-    "ALTER TABLE proxies ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))"
+    "ALTER TABLE proxies ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP",
+    "ALTER TABLE proxies ADD COLUMN updated_at TEXT"
   ]
   for (const colSql of proxyColumns) {
     try { db.exec(colSql) } catch {}

@@ -42,28 +42,56 @@ export class ProxyRepository {
       encryptedPwd = encryptPassword(input.password)
     }
 
-    db.prepare(`
-      INSERT INTO proxies (id, name, type, host, port, username, encrypted_password, country, region, city, isp, asn, timezone, latitude, longitude, public_ip, proxy_version, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
-      id,
-      input.name,
-      input.type,
-      input.host ?? '',
-      input.port ?? 0,
-      input.username ?? '',
-      encryptedPwd,
-      input.country ?? '',
-      input.region ?? '',
-      input.city ?? '',
-      input.isp ?? '',
-      input.asn ?? '',
-      input.timezone ?? '',
-      typeof input.latitude === 'number' ? input.latitude : null,
-      typeof input.longitude === 'number' ? input.longitude : null,
-      input.publicIp ?? '',
-      input.proxyVersion ?? 1
-    )
+    const runInsert = () => {
+      db.prepare(`
+        INSERT INTO proxies (id, name, type, host, port, username, encrypted_password, country, region, city, isp, asn, timezone, latitude, longitude, public_ip, proxy_version, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).run(
+        id,
+        input.name,
+        input.type,
+        input.host ?? '',
+        input.port ?? 0,
+        input.username ?? '',
+        encryptedPwd,
+        input.country ?? '',
+        input.region ?? '',
+        input.city ?? '',
+        input.isp ?? '',
+        input.asn ?? '',
+        input.timezone ?? '',
+        typeof input.latitude === 'number' ? input.latitude : null,
+        typeof input.longitude === 'number' ? input.longitude : null,
+        input.publicIp ?? '',
+        input.proxyVersion ?? 1
+      )
+    }
+
+    try {
+      runInsert()
+    } catch (insertErr: any) {
+      if (insertErr?.message?.includes('no column named') || insertErr?.message?.includes('has no column')) {
+        const repairCols = [
+          "ALTER TABLE proxies ADD COLUMN country TEXT DEFAULT ''",
+          "ALTER TABLE proxies ADD COLUMN region TEXT DEFAULT ''",
+          "ALTER TABLE proxies ADD COLUMN city TEXT DEFAULT ''",
+          "ALTER TABLE proxies ADD COLUMN isp TEXT DEFAULT ''",
+          "ALTER TABLE proxies ADD COLUMN asn TEXT DEFAULT ''",
+          "ALTER TABLE proxies ADD COLUMN timezone TEXT DEFAULT ''",
+          "ALTER TABLE proxies ADD COLUMN latitude REAL DEFAULT NULL",
+          "ALTER TABLE proxies ADD COLUMN longitude REAL DEFAULT NULL",
+          "ALTER TABLE proxies ADD COLUMN public_ip TEXT DEFAULT ''",
+          "ALTER TABLE proxies ADD COLUMN proxy_version INTEGER DEFAULT 1",
+          "ALTER TABLE proxies ADD COLUMN updated_at TEXT"
+        ]
+        for (const sql of repairCols) {
+          try { db.exec(sql) } catch {}
+        }
+        runInsert()
+      } else {
+        throw insertErr
+      }
+    }
 
     return this.getDisplayById(id)!
   }
@@ -104,7 +132,17 @@ export class ProxyRepository {
     params.push(now)
 
     params.push(id)
-    db.prepare(`UPDATE proxies SET ${sets.join(', ')} WHERE id = ?`).run(...params)
+    try {
+      db.prepare(`UPDATE proxies SET ${sets.join(', ')} WHERE id = ?`).run(...params)
+    } catch (updateErr: any) {
+      if (updateErr?.message?.includes('no column named') || updateErr?.message?.includes('has no column')) {
+        try { db.exec('ALTER TABLE proxies ADD COLUMN updated_at TEXT') } catch {}
+        try { db.exec('ALTER TABLE proxies ADD COLUMN proxy_version INTEGER DEFAULT 1') } catch {}
+        db.prepare(`UPDATE proxies SET ${sets.join(', ')} WHERE id = ?`).run(...params)
+      } else {
+        throw updateErr
+      }
+    }
     return this.getDisplayById(id)
   }
 
