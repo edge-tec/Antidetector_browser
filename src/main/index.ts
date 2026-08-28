@@ -22,6 +22,7 @@ import { registerUpdaterHandlers } from './ipc/updater'
 import { registerAffiliateHandlers } from './ipc/affiliate.ipc'
 import { registerBrandingHandlers } from './ipc/branding.ipc'
 import { registerLaunchUrlHandlers } from './ipc/launch-url.ipc'
+import { registerPaymentIpcHandlers } from './ipc/payment.ipc'
 import { logger } from './logging/logger'
 
 // ── 1. Global Process Exception & Crash Handlers ──
@@ -151,6 +152,7 @@ app.whenReady().then(async () => {
   try { registerFingerprintIPC() } catch (err: any) { logger.error('system', `Fingerprint IPC failed: ${err.message}`) }
   try { registerBrandingHandlers() } catch (err: any) { logger.error('system', `Branding IPC failed: ${err.message}`) }
   try { registerLaunchUrlHandlers() } catch (err: any) { logger.error('system', `Launch URL IPC failed: ${err.message}`) }
+  try { registerPaymentIpcHandlers() } catch (err: any) { logger.error('system', `Payment IPC failed: ${err.message}`) }
 
   // Create main window immediately
   createWindow()

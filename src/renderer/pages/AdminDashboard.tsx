@@ -11,6 +11,7 @@ import { AdminSoftwareVersionManager } from '../components/AdminSoftwareVersionM
 import { AdminAffiliateManager } from '../components/AdminAffiliateManager'
 import { CustomBrandingManager } from '../components/CustomBrandingManager'
 import { AdminLaunchUrlManager } from '../components/AdminLaunchUrlManager'
+import { AdminPaymentManager } from '../components/AdminPaymentManager'
 
 interface SmtpFormState {
   host: string
@@ -70,7 +71,13 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
       'admin:save-desktop-app-config': 'adminSaveDesktopAppConfig',
       'admin:get-launch-url-config': 'adminGetLaunchUrlConfig',
       'admin:save-launch-url-config': 'adminSaveLaunchUrlConfig',
-      'admin:enroll-all-launch-url': 'adminEnrollAllLaunchUrl'
+      'admin:enroll-all-launch-url': 'adminEnrollAllLaunchUrl',
+      'admin:get-payments-overview': 'adminGetPaymentsOverview',
+      'admin:get-payment-gateways': 'adminGetPaymentGateways',
+      'admin:save-payment-gateway': 'adminSavePaymentGateway',
+      'admin:set-user-trial': 'adminSetUserTrial',
+      'admin:record-manual-payment': 'adminRecordManualPayment',
+      'admin:refund-payment': 'adminRefundPayment'
     }
     const methodName = apiMethodMap[channel]
     if (methodName && typeof (window as any).api[methodName] === 'function') {
@@ -132,12 +139,12 @@ const callAdminIpc = async (channel: string, ...args: any[]) => {
 }
 
 interface AdminDashboardProps {
-  initialTab?: 'users' | 'subscriptions' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'
+  initialTab?: 'users' | 'subscriptions' | 'payments' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab }) => {
   const { sessionToken, currentUser, impersonateUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>(initialTab || 'users')
+  const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'payments' | 'launch_url' | 'releases' | 'cms' | 'smtp' | 'support' | 'seo' | 'affiliates' | 'audit'>(initialTab || 'users')
 
   useEffect(() => {
     if (initialTab) {
@@ -600,6 +607,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab }) =>
 
             <button
               type="button"
+              onClick={() => setActiveTab('payments')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: activeTab === 'payments' ? '#1C1C28' : 'transparent',
+                color: activeTab === 'payments' ? '#2DD4BF' : '#94A3B8',
+                fontWeight: activeTab === 'payments' ? 600 : 400,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              💰 Payments & Billing
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('launch_url')}
               style={{
                 padding: '6px 14px',
@@ -895,6 +919,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab }) =>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                           <button
                             type="button"
+                            onClick={async () => {
+                              const days = prompt(`Enter Free Trial duration in days for ${item.user.name || item.user.email}:`, '7')
+                              if (!days) return
+                              const numDays = parseInt(days, 10)
+                              if (isNaN(numDays) || numDays <= 0) {
+                                alert('Please enter a valid number of days.')
+                                return
+                              }
+                              const token = localStorage.getItem('pv_session_token') || ''
+                              const res = await (window as any).api.adminSetUserTrial(token, {
+                                userId: item.user.id,
+                                trialDays: numDays,
+                                planId: item.subscription?.plan_id || 'plan_starter'
+                              })
+                              if (res?.success) {
+                                showToast(`Granted ${numDays}-day Free Trial for ${item.user.email}`)
+                                fetchSubscriptions()
+                              } else {
+                                alert(res?.error || 'Failed to set trial')
+                              }
+                            }}
+                            style={{ marginRight: '8px', padding: '5px 10px', borderRadius: '4px', border: '1px solid #A855F750', backgroundColor: '#A855F715', color: '#C084FC', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            ⏱️ Set Trial
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => {
                               setSelectedSubItem(item)
                               setSubEditForm({
@@ -916,6 +968,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab }) =>
               </table>
             </div>
           </div>
+        )}
+
+        {/* 2.5 Payments, Purchases & Gateway Configuration Tab */}
+        {activeTab === 'payments' && (
+          <AdminPaymentManager onSubscriptionUpdated={fetchSubscriptions} />
         )}
 
         {/* 3. Global Launch URL & Start Page Management Tab */}
@@ -1462,6 +1519,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab }) =>
               <div>
                 <label style={{ fontSize: '12px', color: '#94A3B8' }}>Expiration Date</label>
                 <input type="date" value={subEditForm.expires_at} onChange={e => setSubEditForm({ ...subEditForm, expires_at: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }} />
+              </div>
+
+              {/* Quick Trial Presets */}
+              <div style={{ padding: '10px 12px', backgroundColor: '#14141F', borderRadius: '8px', border: '1px solid #2C2C3E', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#C084FC', fontWeight: 700 }}>⏱️ QUICK TRIAL PRESETS:</div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[3, 7, 14, 30].map(days => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => {
+                        const now = new Date()
+                        now.setDate(now.getDate() + days)
+                        setSubEditForm({
+                          ...subEditForm,
+                          status: 'trial',
+                          expires_at: now.toISOString().split('T')[0]
+                        })
+                      }}
+                      style={{ flex: 1, padding: '6px 8px', borderRadius: '4px', backgroundColor: '#2C2C3E', border: '1px solid #3B3B54', color: '#C084FC', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      {days}d Trial
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>

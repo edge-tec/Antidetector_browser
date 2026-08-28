@@ -72,6 +72,16 @@ const api = {
     ipcRenderer.invoke('admin:enroll-all-launch-url', token, launchUrl),
   getLaunchUrlConfig: () => ipcRenderer.invoke('launch-url:get-config'),
 
+  // ── Payments, Billing & Gateways ──
+  adminGetPaymentsOverview: (token: string, options?: any) => ipcRenderer.invoke('admin:get-payments-overview', token, options),
+  adminGetPaymentGateways: (token: string) => ipcRenderer.invoke('admin:get-payment-gateways', token),
+  adminSavePaymentGateway: (token: string, gatewayData: any) => ipcRenderer.invoke('admin:save-payment-gateway', token, gatewayData),
+  adminSetUserTrial: (token: string, input: { userId: string; trialDays: number; planId?: string }) =>
+    ipcRenderer.invoke('admin:set-user-trial', token, input),
+  adminRecordManualPayment: (token: string, paymentData: any) => ipcRenderer.invoke('admin:record-manual-payment', token, paymentData),
+  adminRefundPayment: (token: string, input: { paymentId: string; reason?: string }) => ipcRenderer.invoke('admin:refund-payment', token, input),
+  getAvailablePaymentGateways: () => ipcRenderer.invoke('payment:get-available-gateways'),
+
   // ── Profiles ──
   getProfiles: (sessionTokenOrSearch?: string, maybeSearch?: string, groupId?: string, status?: string) => {
     let token = getSavedToken()
