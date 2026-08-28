@@ -1473,6 +1473,168 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab }) =>
         </div>
       )}
 
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div
+          className="window-no-drag"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCreateModal(false)
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '20px',
+            WebkitAppRegion: 'no-drag' as any
+          }}
+        >
+          <div
+            className="window-no-drag"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '520px',
+              backgroundColor: '#181824',
+              border: '1px solid #2C2C3E',
+              borderRadius: '16px',
+              padding: '28px',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+              position: 'relative',
+              WebkitAppRegion: 'no-drag' as any
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2C2C3E', paddingBottom: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>👤</span>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#FFF' }}>Create New User Account</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '8px',
+                  color: '#CBD5E1',
+                  fontSize: '18px',
+                  width: '34px',
+                  height: '34px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#FFF'
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.3)'
+                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#CBD5E1'
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {createError && (
+              <div style={{ backgroundColor: '#EF444420', border: '1px solid #EF444460', color: '#F87171', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
+                ⚠️ {createError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. John Doe"
+                  value={createForm.name}
+                  onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. user@example.com"
+                  value={createForm.email}
+                  onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="At least 6 characters"
+                  value={createForm.password}
+                  onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>Role</label>
+                  <select
+                    value={createForm.role}
+                    onChange={e => setCreateForm({ ...createForm, role: e.target.value as any })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                  >
+                    <option value="user">Regular User</option>
+                    <option value="admin">System Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>Account Status</label>
+                  <select
+                    value={createForm.accountStatus}
+                    onChange={e => setCreateForm({ ...createForm, accountStatus: e.target.value as any })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                  >
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', paddingTop: '16px', borderTop: '1px solid #2C2C3E' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  style={{ padding: '10px 18px', borderRadius: '8px', backgroundColor: '#1E293B', border: '1px solid #334155', color: '#CBD5E1', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingUser}
+                  style={{ padding: '10px 22px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F172A', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(45, 212, 191, 0.4)' }}
+                >
+                  {creatingUser ? 'Creating...' : '➕ Create User'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* User Profiles Drawer Modal */}
       {selectedUser && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
