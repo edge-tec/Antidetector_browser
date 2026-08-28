@@ -214,10 +214,10 @@ export function registerProxyHandlers(): void {
     }
   })
 
-  // Test raw proxy without saving
-  ipcMain.handle('proxies:testRaw', async (_event, input: any) => {
+  // Test custom/raw proxy without saving
+  const handleCustomProxyTest = async (_event: any, input: any) => {
     try {
-      const { type, host, port, username, password, name } = input
+      const { type, host, port, username, password, name } = input || {}
       validateNonEmpty(host, 'Host')
       validatePort(Number(port))
 
@@ -238,7 +238,10 @@ export function registerProxyHandlers(): void {
     } catch (err: any) {
       return { success: false, error: err.message }
     }
-  })
+  }
+
+  ipcMain.handle('proxies:testCustom', handleCustomProxyTest)
+  ipcMain.handle('proxies:testRaw', handleCustomProxyTest)
 
   // Verify proxy before launching a profile — returns external IP for display
   ipcMain.handle('proxies:verifyBeforeLaunch', async (_event, proxyId: string) => {
