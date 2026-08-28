@@ -912,7 +912,17 @@ try {
             }
         }
 
-        /* Responsive Breakpoints & Device Optimizations */
+        /* ═══════════════════════════════════════════════
+           RESPONSIVE DESIGN — ALL DEVICES & BREAKPOINTS
+           ═══════════════════════════════════════════════ */
+
+        /* ── Large Desktop (≤1200px) ── */
+        @media(max-width: 1200px) {
+            .admin-tab-content { max-width: 100%; }
+            .admin-viewport-wrapper { padding: 20px 16px 50px 16px; }
+        }
+
+        /* ── Tablet & Small Laptop (≤900px) ── */
         @media(max-width: 900px) {
             .navbar { padding: 12px 18px; }
             .nav-links { display: none; }
@@ -924,13 +934,14 @@ try {
             .hero h1 { font-size: 32px !important; line-height: 1.25 !important; }
             .status-box { flex-direction: column; gap: 16px; text-align: center; }
             
-            /* Admin Dashboard Layout on Mobile & Tablet */
+            /* Admin Dashboard Layout — Sidebar → Horizontal Scroll Tabs */
             .admin-workspace-layout {
                 flex-direction: column;
             }
             .admin-sidebar {
                 width: 100%;
                 min-width: 100%;
+                max-height: none;
                 border-right: none;
                 border-bottom: 1px solid var(--border);
                 display: flex;
@@ -942,9 +953,14 @@ try {
                 gap: 6px;
                 background: #11131C;
                 -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
             }
             .admin-sidebar::-webkit-scrollbar {
                 height: 4px;
+            }
+            .admin-sidebar::-webkit-scrollbar-thumb {
+                background: rgba(99, 102, 241, 0.4);
+                border-radius: 4px;
             }
             .admin-sidebar-header {
                 display: none !important;
@@ -952,7 +968,7 @@ try {
             .admin-sidebar-btn {
                 width: auto !important;
                 flex-shrink: 0;
-                padding: 7px 12px;
+                padding: 7px 14px;
                 font-size: 12px;
                 border-radius: 18px;
                 background: rgba(255,255,255,0.05);
@@ -969,13 +985,21 @@ try {
                 grid-template-columns: 1fr;
                 gap: 16px;
             }
+
+            /* Tables: Horizontal Scroll Container */
+            .admin-table-container {
+                -webkit-overflow-scrolling: touch;
+                overflow-x: auto;
+            }
             .admin-table-container table, table.admin-table {
-                min-width: 560px;
+                min-width: 600px;
             }
 
             /* Center Footer Brand & Logo on Mobile */
             .footer-grid {
                 text-align: center;
+                grid-template-columns: 1fr !important;
+                gap: 24px;
             }
             .footer-brand {
                 display: flex;
@@ -991,7 +1015,7 @@ try {
                 align-items: center !important;
             }
 
-            /* Floating Live Chat on Mobile */
+            /* Floating Live Chat on Tablet */
             #liveChatWidgetWindow {
                 bottom: 75px !important;
                 right: 12px !important;
@@ -1002,15 +1026,294 @@ try {
                 max-height: 520px !important;
                 border-radius: 16px !important;
             }
+
+            /* Pricing Grid — 2 columns on tablet */
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
+        /* ── Small Tablet / Large Phone (≤768px) ── */
+        @media(max-width: 768px) {
+            /* Admin Top Bar: Stack Logo & Buttons */
+            .admin-viewport-wrapper {
+                padding: 12px 10px 50px 10px;
+            }
+
+            /* All inline flex containers: force wrap on small screens */
+            [style*="display: flex"][style*="gap"] {
+                flex-wrap: wrap !important;
+            }
+
+            /* KPI stats in affiliate portal — stack */
+            .admin-card-box [style*="grid-template-columns"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            /* Modal sizing */
+            .modal-box {
+                padding: 22px 16px;
+                border-radius: 14px;
+                width: 96vw;
+                max-width: 96vw;
+                box-sizing: border-box;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+
+            /* Features grid */
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Pricing grid */
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Download grid */
+            .download-cards-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Admin table font size */
+            .admin-table-container th,
+            table.admin-table th {
+                padding: 10px 12px;
+                font-size: 11px;
+            }
+            .admin-table-container td,
+            table.admin-table td {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            /* Button size adjustments */
+            .btn {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+        }
+
+        /* ── Mobile Phone (≤640px) ── */
         @media(max-width: 640px) {
+            .hero h1 { font-size: 26px !important; }
+            .hero p { font-size: 14px; }
             .hero-actions { flex-direction: column; width: 100%; }
             .hero-actions .btn { width: 100%; justify-content: center; }
-            .modal-box { padding: 22px 14px; border-radius: 14px; width: 94vw; max-width: 94vw; box-sizing: border-box; }
-            .admin-card-box { padding: 16px 12px; border-radius: 12px; }
-            .admin-sidebar-btn { padding: 6px 10px; font-size: 11.5px; }
+
+            /* Admin Dashboard Full-Width Modal */
+            #adminDashboardModal .modal-box {
+                border-radius: 0 !important;
+            }
+
+            /* Admin Card Box */
+            .admin-card-box {
+                padding: 14px 12px;
+                border-radius: 12px;
+                margin-bottom: 14px;
+            }
+            .admin-card-box h3,
+            .admin-card-box h4 {
+                font-size: 15px !important;
+            }
+
+            /* Sidebar tabs: smaller on mobile */
+            .admin-sidebar {
+                padding: 6px 10px;
+                gap: 5px;
+            }
+            .admin-sidebar-btn {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+
+            /* Tables need smaller min-width on mobile */
+            .admin-table-container table, table.admin-table {
+                min-width: 500px;
+                font-size: 12px;
+            }
+
+            /* Modals inside dashboard (edit release, etc.) */
+            .modal-box {
+                padding: 18px 12px;
+                border-radius: 12px;
+                width: 96vw;
+                max-width: 96vw;
+                box-sizing: border-box;
+            }
+
+            /* Input fields inside admin cards */
+            .admin-card-box input,
+            .admin-card-box select,
+            .admin-card-box textarea {
+                font-size: 13px !important;
+            }
+
+            /* Affiliate KPI grid: 2 columns on mobile */
+            .admin-card-box [style*="grid-template-columns: repeat(3"],
+            .admin-card-box [style*="grid-template-columns: repeat(4"],
+            .admin-card-box [style*="grid-template-columns: repeat(6"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
+            }
+
+            /* Live Chat Widget */
             #liveChatWidgetTrigger { bottom: 16px; right: 16px; padding: 10px 16px; font-size: 13px; }
+            #liveChatWidgetWindow {
+                bottom: 70px !important;
+                right: 8px !important;
+                left: 8px !important;
+                width: calc(100vw - 16px) !important;
+                max-width: 100% !important;
+                height: 75vh !important;
+                max-height: 500px !important;
+            }
+
+            /* Security highlights */
+            .security-highlights-grid {
+                grid-template-columns: 1fr !important;
+                padding: 14px !important;
+            }
+        }
+
+        /* ── Smallest Phone (≤480px) ── */
+        @media(max-width: 480px) {
+            .hero { padding-top: 80px !important; }
+            .hero h1 { font-size: 22px !important; }
+            .hero p { font-size: 13px; }
+            .badge { font-size: 11px; padding: 4px 12px; }
+            .section-title h2 { font-size: 22px !important; }
+
+            /* Admin top bar */
+            #adminDashboardModal [style*="padding: 12px 20px"] {
+                padding: 10px 12px !important;
+            }
+            #adminDashboardModal [style*="font-size: 15px"] {
+                font-size: 13px !important;
+            }
+
+            /* Admin sidebar even tighter */
+            .admin-sidebar-btn {
+                padding: 5px 8px;
+                font-size: 10.5px;
+            }
+
+            /* Admin card shrink */
+            .admin-card-box {
+                padding: 12px 10px;
+                border-radius: 10px;
+                margin-bottom: 10px;
+            }
+
+            /* Viewport wrapper */
+            .admin-viewport-wrapper {
+                padding: 10px 8px 40px 8px;
+            }
+
+            /* Tables shrink further */
+            .admin-table-container table, table.admin-table {
+                min-width: 440px;
+                font-size: 11px;
+            }
+            .admin-table-container th,
+            table.admin-table th {
+                padding: 8px 8px;
+                font-size: 10px;
+            }
+            .admin-table-container td,
+            table.admin-table td {
+                padding: 8px 8px;
+                font-size: 11px;
+            }
+
+            /* All buttons smaller */
+            .btn {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+            .btn-primary, .btn-outline {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+
+            /* Modals full-width */
+            .modal-box {
+                padding: 14px 10px;
+                width: 98vw;
+                max-width: 98vw;
+                border-radius: 10px;
+            }
+
+            /* Affiliate stats grid: single column on very small phones */
+            .admin-card-box [style*="grid-template-columns"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Footer */
+            footer {
+                padding: 28px 12px;
+                font-size: 12px;
+            }
+
+            /* Plan card */
+            .plan-card {
+                padding: 22px 16px;
+            }
+            .plan-price {
+                font-size: 30px;
+            }
+
+            /* Status box items */
+            .status-box {
+                padding: 14px 16px !important;
+                border-radius: 12px !important;
+            }
+        }
+
+        /* ── Touch & Scroll Helpers (All Mobile) ── */
+        @media(hover: none) and (pointer: coarse) {
+            .admin-sidebar {
+                scroll-snap-type: x mandatory;
+                scroll-behavior: smooth;
+            }
+            .admin-sidebar-btn {
+                scroll-snap-align: start;
+            }
+            .admin-table-container {
+                -webkit-overflow-scrolling: touch;
+                scroll-behavior: smooth;
+            }
+            /* Bigger tap targets on touch */
+            .admin-sidebar-btn {
+                min-height: 36px;
+            }
+            .btn, .admin-sidebar-btn, button {
+                min-height: 36px;
+            }
+            /* Remove hover effects on touch */
+            .feature-card:hover,
+            .platform-download-card:hover {
+                transform: none;
+            }
+        }
+
+        /* ── Print Styles ── */
+        @media print {
+            .admin-sidebar, .navbar, #liveChatWidgetTrigger, #liveChatWidgetWindow, .mobile-nav-toggle {
+                display: none !important;
+            }
+            .admin-viewport-wrapper {
+                padding: 0 !important;
+            }
+            .modal-overlay {
+                position: static !important;
+                background: transparent !important;
+            }
+            .modal-box {
+                box-shadow: none !important;
+                border: none !important;
+            }
         }
     </style>
 </head>
