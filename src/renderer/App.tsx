@@ -2602,6 +2602,27 @@ function AppContent() {
 
   // Real-Time Software Update Checks & Event Listeners
   useEffect(() => {
+    const isNewerVersion = (remoteVer?: string, localVer?: string): boolean => {
+      if (!remoteVer) return false
+      const cleanA = remoteVer.replace(/^v/i, '').trim()
+      const cleanB = (localVer || '2.0.0').replace(/^v/i, '').trim()
+      const partsA = cleanA.split(/[-+.]/).map(p => isNaN(Number(p)) ? p : Number(p))
+      const partsB = cleanB.split(/[-+.]/).map(p => isNaN(Number(p)) ? p : Number(p))
+      const maxLen = Math.max(partsA.length, partsB.length)
+      for (let i = 0; i < maxLen; i++) {
+        const a = partsA[i] !== undefined ? partsA[i] : 0
+        const b = partsB[i] !== undefined ? partsB[i] : 0
+        if (typeof a === 'number' && typeof b === 'number') {
+          if (a > b) return true
+          if (a < b) return false
+        } else {
+          if (String(a) > String(b)) return true
+          if (String(a) < String(b)) return false
+        }
+      }
+      return false
+    }
+
     if (typeof window !== 'undefined' && (window as any).api?.getAppVersion) {
       (window as any).api.getAppVersion().then((r: any) => {
         if (r?.success && r.data) setAppVersion(r.data)
@@ -2611,24 +2632,22 @@ function AppContent() {
     const checkAppUpdate = async () => {
       try {
         if ((window as any).api?.updaterCheckLatest) {
-          const res = await (window as any).api.updaterCheckLatest()
-          if (res.success && res.data?.hasUpdate && res.data.latestVersion) {
+          const current = appVersion || '2.0.0'
+          const res = await (window as any).api.updaterCheckLatest(current)
+          if (res?.success && res?.data?.hasUpdate && res.data.latestVersion) {
             const latest = res.data.latestVersion
-            if (latest.version && latest.version !== appVersion) {
+            if (isNewerVersion(latest.version, current)) {
               const info: UpdateAvailablePayload = {
                 version: latest.version,
-                releaseTitle: latest.release_title,
-                releaseNotes: latest.release_notes,
+                releaseTitle: latest.release_title || `AntiProfiles v${latest.version}`,
+                releaseNotes: latest.release_notes || 'Performance enhancements, bug fixes, and security patches.',
                 publishedAt: latest.published_at,
                 forceUpdate: Boolean(res.data.forceUpdate),
                 mandatory: Boolean(res.data.mandatory || res.data.forceUpdate),
                 packageInfo: res.data.packageInfo
               }
               setAvailableUpdate(info)
-              const dismissed = sessionStorage.getItem('dismissed_update_' + latest.version)
-              if (!dismissed || res.data.forceUpdate) {
-                setShowUpdateModal(true)
-              }
+              setShowUpdateModal(true)
             }
           }
         }
@@ -2639,10 +2658,10 @@ function AppContent() {
     let unsubUpdate: (() => void) | undefined
     if ((window as any).api?.onSoftwareUpdateAvailable) {
       unsubUpdate = (window as any).api.onSoftwareUpdateAvailable((_e: any, data: any) => {
-        if (data && data.version && data.version !== appVersion) {
+        if (data && data.version && isNewerVersion(data.version, appVersion || '2.0.0')) {
           setAvailableUpdate(data)
           setShowUpdateModal(true)
-          showToast('info', `🚀 Real-Time Update: Software release v${data.version} is now available!`)
+          showToast('info', `🚀 Real-Time Update: AntiProfiles release v${data.version} is now available!`)
         }
       })
     }

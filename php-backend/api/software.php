@@ -250,20 +250,46 @@ if ($action === 'check-update') {
         ]);
     } catch (Throwable $e) {}
 
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $baseUrl = "{$protocol}://{$host}";
+
+    $downloads = [
+        'windows' => (!empty($latest['win_download_url']) && strpos($latest['win_download_url'], 'http') === 0)
+            ? $latest['win_download_url']
+            : "{$baseUrl}/api/software.php?action=download&version={$latest['version']}&platform=windows-x64",
+        'mac_intel' => (!empty($latest['mac_intel_download_url']) && strpos($latest['mac_intel_download_url'], 'http') === 0)
+            ? $latest['mac_intel_download_url']
+            : "{$baseUrl}/api/software.php?action=download&version={$latest['version']}&platform=macos-x64",
+        'mac_arm64' => (!empty($latest['mac_arm_download_url']) && strpos($latest['mac_arm_download_url'], 'http') === 0)
+            ? $latest['mac_arm_download_url']
+            : "{$baseUrl}/api/software.php?action=download&version={$latest['version']}&platform=macos-arm64",
+        'linux' => (!empty($latest['linux_download_url']) && strpos($latest['linux_download_url'], 'http') === 0)
+            ? $latest['linux_download_url']
+            : "{$baseUrl}/api/software.php?action=download&version={$latest['version']}&platform=linux-x64"
+    ];
+
+    $rawNotes = $latest['release_notes'] ?: 'Performance improvements, proxy fixes, fingerprint updates and security patches.';
+    $notesArray = array_values(array_filter(array_map('trim', explode("\n", $rawNotes))));
+
     respondJson([
         'update_available' => true,
         'latest_version' => $latest['version'],
+        'minimum_version' => $minSupported,
+        'min_supported_version' => $minSupported,
         'build' => $latest['build'] ?: '1',
         'channel' => $latest['channel'] ?: 'stable',
+        'force_update' => (bool)$isMandatory,
         'mandatory' => (bool)$isMandatory,
-        'min_supported_version' => $minSupported,
         'title' => $latest['release_title'] ?: "AntiProfiles v{$latest['version']}",
-        'description' => $latest['release_notes'] ?: 'Performance improvements, proxy fixes, fingerprint updates and security patches.',
+        'description' => $rawNotes,
+        'description_list' => !empty($notesArray) ? $notesArray : [$rawNotes],
         'release_date' => $latest['published_at'] ? substr($latest['published_at'], 0, 10) : date('Y-m-d'),
         'file_size' => formatBytes($fileSizeBytes),
         'file_size_bytes' => $fileSizeBytes,
         'filename' => $filename,
         'download_url' => $downloadUrl,
+        'downloads' => $downloads,
         'checksum' => $checksum,
         'signature' => $latest['signature'] ?: '',
         'platform' => $pKey

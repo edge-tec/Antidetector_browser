@@ -492,6 +492,39 @@ export class CentralApiClient {
       body: JSON.stringify({ id })
     })
   }
+
+  // ── Central Software Version & Release Management APIs ──
+  public async getRemoteSoftwareVersions(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    return await this.request('/api/admin.php?action=get-software-versions', { method: 'GET' })
+  }
+
+  public async adminSaveSoftwareVersion(versionData: any): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    return await this.request('/api/admin.php?action=save-software-version', {
+      method: 'POST',
+      body: JSON.stringify(versionData)
+    })
+  }
+
+  public async adminPublishSoftwareVersion(versionId: string): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    return await this.request('/api/admin.php?action=publish-software-version', {
+      method: 'POST',
+      body: JSON.stringify({ id: versionId })
+    })
+  }
+
+  public async adminRollbackSoftwareVersion(versionId: string): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    return await this.request('/api/admin.php?action=rollback-software-version', {
+      method: 'POST',
+      body: JSON.stringify({ id: versionId })
+    })
+  }
+
+  public async adminDeleteSoftwareVersion(versionId: string): Promise<{ success: boolean; error?: string; message?: string }> {
+    return await this.request('/api/admin.php?action=delete-software-version', {
+      method: 'POST',
+      body: JSON.stringify({ id: versionId })
+    })
+  }
 }
 
 export const centralApi = new CentralApiClient()

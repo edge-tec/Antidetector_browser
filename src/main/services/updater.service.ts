@@ -149,27 +149,26 @@ export class UpdaterService {
   }
 
   /**
-   * Initialize and start the background 6-hour update scheduler
+   * Initialize and start the background 30-minute update scheduler
    */
   public initScheduler(): void {
-    // Check shortly after app launch (10 seconds)
+    // Check shortly after app launch (2 seconds)
     setTimeout(() => {
       this.checkForUpdate().catch(err => {
         logger.warn('updater', `Initial update check failed: ${err.message}`)
       })
-    }, 10000)
+    }, 2000)
 
-    // Then schedule recurring check every 6 hours
+    // Recurring update check every 30 minutes
     if (this.autoCheckTimer) {
       clearInterval(this.autoCheckTimer)
     }
 
-    const settings = this.getUpdateSettings()
-    const intervalMs = (settings.check_frequency_hours || 6) * 3600 * 1000
+    const intervalMs = 30 * 60 * 1000 // 30 minutes
 
     this.autoCheckTimer = setInterval(() => {
       this.checkForUpdate().catch(err => {
-        logger.warn('updater', `Scheduled update check error: ${err.message}`)
+        logger.warn('updater', `Scheduled 30-minute update check error: ${err.message}`)
       })
     }, intervalMs)
   }
@@ -264,45 +263,57 @@ export class UpdaterService {
    */
   public getPackageInfoForPlatform(version: SoftwareVersionRecord, platformKey?: PlatformPackageInfo['platformKey']): PlatformPackageInfo {
     const plat = platformKey || this.detectClientPlatform().key
+    const baseUrl = (centralApi.getBaseUrl() || 'https://releases.antiprofiles.com').replace(/\/$/, '')
+
+    let downloadUrl = ''
+    let fileSize = 0
+    let sha256 = ''
+    let filename = ''
+    let platformLabel = ''
 
     switch (plat) {
       case 'windows-x64':
-        return {
-          platformKey: 'windows-x64',
-          platformLabel: 'Windows (64-bit)',
-          downloadUrl: version.win_download_url || '',
-          fileSize: version.win_file_size || 0,
-          sha256: version.win_sha256 || '',
-          filename: `AntiProfiles-Setup-${version.version}.exe`
-        }
+        platformLabel = 'Windows (64-bit)'
+        downloadUrl = version.win_download_url || ''
+        fileSize = version.win_file_size || 0
+        sha256 = version.win_sha256 || ''
+        filename = `AntiProfiles-Setup-${version.version}.exe`
+        break
       case 'macos-arm64':
-        return {
-          platformKey: 'macos-arm64',
-          platformLabel: 'macOS Apple Silicon (arm64)',
-          downloadUrl: version.mac_arm_download_url || '',
-          fileSize: version.mac_arm_file_size || 0,
-          sha256: version.mac_arm_sha256 || '',
-          filename: `AntiProfiles-${version.version}-arm64.dmg`
-        }
+        platformLabel = 'macOS Apple Silicon (arm64)'
+        downloadUrl = version.mac_arm_download_url || ''
+        fileSize = version.mac_arm_file_size || 0
+        sha256 = version.mac_arm_sha256 || ''
+        filename = `AntiProfiles-${version.version}-arm64.dmg`
+        break
       case 'macos-x64':
-        return {
-          platformKey: 'macos-x64',
-          platformLabel: 'macOS Intel (x64)',
-          downloadUrl: version.mac_intel_download_url || '',
-          fileSize: version.mac_intel_file_size || 0,
-          sha256: version.mac_intel_sha256 || '',
-          filename: `AntiProfiles-${version.version}-x64.dmg`
-        }
+        platformLabel = 'macOS Intel (x64)'
+        downloadUrl = version.mac_intel_download_url || ''
+        fileSize = version.mac_intel_file_size || 0
+        sha256 = version.mac_intel_sha256 || ''
+        filename = `AntiProfiles-${version.version}-x64.dmg`
+        break
       case 'linux-x64':
       default:
-        return {
-          platformKey: 'linux-x64',
-          platformLabel: 'Linux (64-bit)',
-          downloadUrl: version.linux_download_url || '',
-          fileSize: version.linux_file_size || 0,
-          sha256: version.linux_sha256 || '',
-          filename: `AntiProfiles-${version.version}.AppImage`
-        }
+        platformLabel = 'Linux (64-bit)'
+        downloadUrl = version.linux_download_url || ''
+        fileSize = version.linux_file_size || 0
+        sha256 = version.linux_sha256 || ''
+        filename = `AntiProfiles-${version.version}.AppImage`
+        break
+    }
+
+    if (!downloadUrl || !downloadUrl.startsWith('http')) {
+      downloadUrl = `${baseUrl}/api/software.php?action=download&version=${encodeURIComponent(version.version)}&platform=${plat}`
+    }
+
+    return {
+      platformKey: plat,
+      platformLabel,
+      downloadUrl,
+      fileSize,
+      sha256,
+      filename
     }
   }
 
@@ -312,6 +323,17 @@ export class UpdaterService {
   public getAllVersions(): SoftwareVersionRecord[] {
     const db = getDatabase()
     try {
+      // Trigger background sync from central server
+      try {
+        centralApi.getRemoteSoftwareVersions().then(res => {
+          if (res?.success && Array.isArray(res.data)) {
+            for (const item of res.data) {
+              try { this.saveVersion(item, 'remote_sync') } catch {}
+            }
+          }
+        }).catch(() => {})
+      } catch {}
+
       const rows = db.prepare('SELECT * FROM software_versions ORDER BY created_at DESC').all() as SoftwareVersionRecord[]
       return rows
     } catch {
@@ -541,6 +563,16 @@ export class UpdaterService {
     const saved = this.getVersionById(id)!
     logger.info('updater', `[UpdaterService] Software version saved: v${saved.version} (Status: ${saved.status})`)
 
+    // Sync to Central Server API (MySQL) in background
+    try {
+      centralApi.adminSaveSoftwareVersion({
+        ...saved,
+        mandatory: saved.mandatory ? 1 : 0
+      }).catch(e => {
+        logger.warn('updater', `Central server save version warning: ${e.message}`)
+      })
+    } catch {}
+
     if (saved.status === 'published') {
       this.broadcastUpdateNotification(saved)
     }
@@ -564,6 +596,13 @@ export class UpdaterService {
     const updated = this.getVersionById(versionId)
     if (!updated) throw new Error('Version not found.')
 
+    // Sync to Central Server API (MySQL)
+    try {
+      centralApi.adminPublishSoftwareVersion(versionId).catch(e => {
+        logger.warn('updater', `Central server publish version warning: ${e.message}`)
+      })
+    } catch {}
+
     logger.info('updater', `[UpdaterService] 🚀 Published software version v${updated.version} — broadcasting real-time notification!`)
     this.broadcastUpdateNotification(updated)
     return updated
@@ -577,6 +616,7 @@ export class UpdaterService {
     try {
       if (currentVersionId) {
         db.prepare("UPDATE software_versions SET status = 'disabled', updated_at = datetime('now') WHERE id = ?").run(currentVersionId)
+        try { centralApi.adminRollbackSoftwareVersion(currentVersionId).catch(() => {}) } catch {}
       }
 
       const prev = db.prepare(`
@@ -589,6 +629,7 @@ export class UpdaterService {
       if (prev) {
         db.prepare("UPDATE software_versions SET status = 'published', published_at = datetime('now'), updated_at = datetime('now') WHERE id = ?").run(prev.id)
         const reloaded = this.getVersionById(prev.id)!
+        try { centralApi.adminPublishSoftwareVersion(prev.id).catch(() => {}) } catch {}
         this.broadcastUpdateNotification(reloaded)
         return { success: true, rolledBackTo: reloaded }
       }
@@ -608,12 +649,14 @@ export class UpdaterService {
 
     const updated = this.getVersionById(versionId)
     if (!updated) throw new Error('Version not found.')
+    try { centralApi.adminRollbackSoftwareVersion(versionId).catch(() => {}) } catch {}
     return updated
   }
 
   public deleteVersion(versionId: string): boolean {
     const db = getDatabase()
     const res = db.prepare('DELETE FROM software_versions WHERE id = ?').run(versionId)
+    try { centralApi.adminDeleteSoftwareVersion(versionId).catch(() => {}) } catch {}
     return res.changes > 0
   }
 
