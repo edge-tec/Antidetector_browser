@@ -10,16 +10,24 @@ sendJsonHeader();
 $db = Database::getConnection();
 
 // 1. Branding
-$brandingStmt = $db->query("SELECT config_key, config_value FROM landing_branding");
-$brandingRows = $brandingStmt->fetchAll();
 $branding = [];
-foreach ($brandingRows as $r) {
-    $branding[$r['config_key']] = $r['config_value'];
+try {
+    $brandingStmt = $db->query("SELECT config_key, config_value FROM landing_branding");
+    $brandingRows = $brandingStmt->fetchAll();
+    foreach ($brandingRows as $r) {
+        $branding[$r['config_key']] = $r['config_value'];
+    }
+} catch (Throwable $e) {
+    $branding = [
+        'brand_name' => 'AntiProfiles',
+        'tagline' => 'Next-Gen Anti-Detect Browser & Multi-Account Privacy Solution',
+        'logo_url' => '/brand-logo.png',
+        'favicon_url' => '/favicon.ico'
+    ];
 }
 
 // 2. Hero
-$heroStmt = $db->query("SELECT * FROM landing_hero WHERE id = 1");
-$hero = $heroStmt->fetch() ?: [
+$hero = [
     'headline' => 'Browse Privately. Manage Profiles. Scale Your Workflow.',
     'subheadline' => 'Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.',
     'cta_primary_text' => 'Start Free',
@@ -28,53 +36,83 @@ $hero = $heroStmt->fetch() ?: [
     'cta_secondary_url' => '#pricing',
     'trust_text' => '⚡ No credit card required • Free trial available • Cancel anytime'
 ];
+try {
+    $heroStmt = $db->query("SELECT * FROM landing_hero WHERE id = 1");
+    $dbHero = $heroStmt->fetch();
+    if ($dbHero) $hero = $dbHero;
+} catch (Throwable $e) {}
 
 // 3. Stats
-$statsStmt = $db->query("SELECT * FROM landing_stats WHERE is_active = 1 ORDER BY sort_order ASC");
-$stats = $statsStmt->fetchAll();
+$stats = [];
+try {
+    $statsStmt = $db->query("SELECT * FROM landing_stats WHERE is_active = 1 ORDER BY sort_order ASC");
+    $stats = $statsStmt->fetchAll();
+} catch (Throwable $e) {}
 
 // 4. Features
-$featStmt = $db->query("SELECT * FROM landing_features WHERE is_active = 1 ORDER BY sort_order ASC");
-$features = $featStmt->fetchAll();
+$features = [];
+try {
+    $featStmt = $db->query("SELECT * FROM landing_features WHERE is_active = 1 ORDER BY sort_order ASC");
+    $features = $featStmt->fetchAll();
+} catch (Throwable $e) {}
 
 // 5. Steps
-$stepsStmt = $db->query("SELECT * FROM landing_steps ORDER BY sort_order ASC");
-$steps = $stepsStmt->fetchAll();
+$steps = [];
+try {
+    $stepsStmt = $db->query("SELECT * FROM landing_steps ORDER BY sort_order ASC");
+    $steps = $stepsStmt->fetchAll();
+} catch (Throwable $e) {}
 
 // 6. Pricing Plans & Features
-$plansStmt = $db->query("SELECT * FROM pricing_plans WHERE is_active = 1 ORDER BY sort_order ASC");
-$plans = $plansStmt->fetchAll();
-
-$planFeatStmt = $db->query("SELECT * FROM pricing_plan_features ORDER BY sort_order ASC");
-$planFeaturesRows = $planFeatStmt->fetchAll();
+$plans = [];
+try {
+    $plansStmt = $db->query("SELECT * FROM pricing_plans WHERE is_active = 1 ORDER BY sort_order ASC");
+    $plans = $plansStmt->fetchAll();
+} catch (Throwable $e) {}
 
 $planFeaturesMap = [];
-foreach ($planFeaturesRows as $pf) {
-    $planFeaturesMap[$pf['plan_id']][] = $pf;
-}
+try {
+    $planFeatStmt = $db->query("SELECT * FROM pricing_plan_features ORDER BY sort_order ASC");
+    $planFeaturesRows = $planFeatStmt->fetchAll();
+    foreach ($planFeaturesRows as $pf) {
+        $planFeaturesMap[$pf['plan_id']][] = $pf;
+    }
+} catch (Throwable $e) {}
 
 foreach ($plans as &$p) {
     $p['features'] = $planFeaturesMap[$p['id']] ?? [];
 }
 
 // 7. FAQs
-$faqStmt = $db->query("SELECT * FROM landing_faqs WHERE is_active = 1 ORDER BY sort_order ASC");
-$faqs = $faqStmt->fetchAll();
+$faqs = [];
+try {
+    $faqStmt = $db->query("SELECT * FROM landing_faqs WHERE is_active = 1 ORDER BY sort_order ASC");
+    $faqs = $faqStmt->fetchAll();
+} catch (Throwable $e) {}
 
 // 8. Testimonials
-$testStmt = $db->query("SELECT * FROM landing_testimonials WHERE is_active = 1 ORDER BY sort_order ASC");
-$testimonials = $testStmt->fetchAll();
+$testimonials = [];
+try {
+    $testStmt = $db->query("SELECT * FROM landing_testimonials WHERE is_active = 1 ORDER BY sort_order ASC");
+    $testimonials = $testStmt->fetchAll();
+} catch (Throwable $e) {}
 
 // 9. SEO Settings
-$seoStmt = $db->query("SELECT config_key, config_value FROM landing_seo");
-$seoRows = $seoStmt->fetchAll();
 $seo = [];
-foreach ($seoRows as $s) {
-    $seo[$s['config_key']] = $s['config_value'];
-}
+try {
+    $seoStmt = $db->query("SELECT config_key, config_value FROM landing_seo");
+    $seoRows = $seoStmt->fetchAll();
+    foreach ($seoRows as $s) {
+        $seo[$s['config_key']] = $s['config_value'];
+    }
+} catch (Throwable $e) {}
 
 // 10. Inject Admin-Configured Desktop Releases & Download URLs
-$config = getDesktopAppConfigMap();
+$config = [];
+try {
+    $config = getDesktopAppConfigMap();
+} catch (Throwable $e) {}
+
 $releases = [
     'windows' => [
         'url' => $config['win_download_url'] ?? 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe',

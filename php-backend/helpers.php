@@ -556,6 +556,7 @@ function ensureDatabaseTablesExist() {
         ");
 
         // 13. Account Notifications Table (Prevents duplicate renewal / expiration reminders)
+        $db->exec("
             CREATE TABLE IF NOT EXISTS `account_notifications` (
               `id` VARCHAR(50) NOT NULL PRIMARY KEY,
               `user_id` VARCHAR(36) NOT NULL,
@@ -736,7 +737,7 @@ function sendJsonHeader() {
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Installation-ID, X-App-Version, X-Platform');
     
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
         http_response_code(204);
         exit();
     }
