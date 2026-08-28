@@ -327,36 +327,46 @@ export const AdminSoftwareVersionManager: React.FC = () => {
               </h3>
               <button
                 type="button"
+                id="btn-close-release-modal"
+                aria-label="Close Release Modal"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   setEditingVersion(null)
                   setIsCreating(false)
                 }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setEditingVersion(null)
+                  setIsCreating(false)
+                }}
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
                   borderRadius: '8px',
-                  color: '#94A3B8',
+                  color: '#CBD5E1',
                   fontSize: '18px',
-                  width: '32px',
-                  height: '32px',
+                  width: '34px',
+                  height: '34px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  zIndex: 20
+                  zIndex: 999999,
+                  position: 'relative',
+                  WebkitAppRegion: 'no-drag' as any
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.color = '#FFF'
-                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.2)'
-                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.3)'
+                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.5)'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#94A3B8'
-                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+                  e.currentTarget.style.color = '#CBD5E1'
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
                 }}
               >
                 ✕
