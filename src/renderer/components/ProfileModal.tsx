@@ -1124,7 +1124,7 @@ export const ProfileModal: React.FC<Props> = ({
   // Proxy state
   const [proxyTab, setProxyTab] = useState<'saved' | 'custom' | 'none'>('none')
   const [selectedProxyId, setSelectedProxyId] = useState('')
-  const [customProxyType, setCustomProxyType] = useState('socks5')
+  const [customProxyType, setCustomProxyType] = useState(isFreePlan ? 'http' : 'socks5')
   const [customProxyHost, setCustomProxyHost] = useState('')
   const [customProxyPort, setCustomProxyPort] = useState('')
   const [customProxyUser, setCustomProxyUser] = useState('')
@@ -2004,7 +2004,7 @@ export const ProfileModal: React.FC<Props> = ({
         finalProxyId = null
       } else if (proxyTab === 'saved' && selectedProxyId) {
         finalProxyId = selectedProxyId
-      } else if (customProxyHost && customProxyHost.trim()) {
+      } else if (proxyTab === 'custom' && customProxyHost && customProxyHost.trim()) {
         const proxyInput: any = {
           name: `Proxy for ${name || 'Profile'}`,
           type: customProxyType || 'http',
@@ -2023,14 +2023,29 @@ export const ProfileModal: React.FC<Props> = ({
         }
 
         if (initialProfile?.proxyId && (window as any).api?.updateProxy) {
-          await (window as any).api.updateProxy(initialProfile.proxyId, proxyInput)
-          finalProxyId = initialProfile.proxyId
+          const updateRes = await (window as any).api.updateProxy(initialProfile.proxyId, proxyInput)
+          if (updateRes?.success) {
+            finalProxyId = initialProfile.proxyId
+          } else {
+            console.error('Failed to update proxy:', updateRes?.error)
+            alert(`Proxy Error: ${updateRes?.error || 'Failed to update proxy. Please try again.'}`)
+            setIsSaving(false)
+            return
+          }
         } else if ((window as any).api?.createProxy) {
           const newProxyRes = await (window as any).api.createProxy(proxyInput)
           if (newProxyRes?.success && newProxyRes?.data?.id) {
             finalProxyId = newProxyRes.data.id
+          } else {
+            console.error('Failed to create proxy:', newProxyRes?.error)
+            alert(`Proxy Error: ${newProxyRes?.error || 'Failed to create proxy. Please try again.'}`)
+            setIsSaving(false)
+            return
           }
         }
+      } else if (proxyTab === 'custom' && (!customProxyHost || !customProxyHost.trim())) {
+        // User is on custom tab but hasn't filled in a host - treat as no proxy
+        finalProxyId = null
       }
 
       finalFp.browser = finalFp.browser || {}
