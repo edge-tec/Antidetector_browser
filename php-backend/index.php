@@ -378,10 +378,18 @@ try {
 $httpUa = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
 $detectedPlatform = 'windows-x64';
 $detectedPlatformLabel = 'Windows 10 / 11 (64-Bit)';
-if (strpos($httpUa, 'mac') !== false || strpos($httpUa, 'darwin') !== false) {
+$isAndroid = (strpos($httpUa, 'android') !== false);
+$isWin = (strpos($httpUa, 'windows') !== false || strpos($httpUa, 'win64') !== false || strpos($httpUa, 'wow64') !== false || strpos($httpUa, 'win32') !== false);
+$isMac = !$isAndroid && (strpos($httpUa, 'mac') !== false || strpos($httpUa, 'darwin') !== false || strpos($httpUa, 'macintosh') !== false);
+$isLinux = !$isAndroid && (strpos($httpUa, 'linux') !== false || strpos($httpUa, 'x11') !== false);
+
+if ($isWin) {
+    $detectedPlatform = 'windows-x64';
+    $detectedPlatformLabel = 'Windows 10 / 11 (64-Bit)';
+} elseif ($isMac) {
     $detectedPlatform = 'macos-arm64';
     $detectedPlatformLabel = 'macOS Apple Silicon (M1 / M2 / M3 / M4)';
-} elseif (strpos($httpUa, 'linux') !== false) {
+} elseif ($isLinux) {
     $detectedPlatform = 'linux-x64';
     $detectedPlatformLabel = 'Linux (x86_64 AppImage & .deb)';
 }
@@ -2006,8 +2014,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);">
-                            <svg width="24" height="24" viewBox="0 0 170 170" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;">
+                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/>
                             </svg>
                         </div>
                         <span style="font-size: 10px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">APPLE SILICON</span>
@@ -2027,8 +2035,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);">
-                            <svg width="24" height="24" viewBox="0 0 170 170" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;">
+                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/>
                             </svg>
                         </div>
                         <span style="font-size: 10px; background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">MACOS INTEL</span>
@@ -2048,8 +2056,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.25);">
-                            <svg width="24" height="24" viewBox="0 0 448 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M220.8 123.3c1 .5 1.8 1.7 3 1.7 1.1 0 2.8-.4 2.9-1.5.2-1.4-1.9-2.3-3.2-2.9-1.3-.7-2.9-1-4.3-.7-1.7.3-3.3 1.3-4.5 2.5-1.2 1.2-2.2 2.7-2.8 4.3-.6 1.6-.6 3.4-.2 5 .4 1.7 1.4 3.1 2.8 4.1 1.4 1 3.2 1.5 5 1.4 1.7-.1 3.4-.8 4.7-1.9 1.3-1.1 2.2-2.6 2.5-4.3.3-1.7-.1-3.4-1-4.9-.9-1.4-2.3-2.5-3.9-3-1.6-.4-3.3-.3-4.8.4zm-20.2 133.7c-5.8 4.2-12.8 6.5-20 6.5s-14.2-2.3-20-6.5c-4.4-3.2-8-7.3-10.7-12-3.4 10.6-4.5 22-3.1 33.1 2.3 18.2 10.3 35.1 23 48 12.8 12.8 29.7 20.8 48 23 11.1 1.4 22.5.3 33.1-3.1-4.7-2.7-8.8-6.3-12-10.7-4.2-5.8-6.5-12.8-6.5-20s2.3-14.2 6.5-20c2.7-3.7 6-6.8 9.8-9.2-8.5-17.7-21.9-32.3-38.4-42.1-3.1 5.3-5.7 11-7.7 17-2.1-6-4.7-11.7-7.7-17-16.5 9.8-29.9 24.4-38.4 42.1 3.8 2.4 7.1 5.5 9.8 9.2zm148.9-80.1C336.7 82.2 284.1 0 224 0S111.3 82.2 98.5 176.9c-27.4 18.7-44.5 49.3-46.5 82.6-.9 14.5 2.1 29 8.6 42 6.5 13 16.3 23.8 28.3 31.2 2.6 47.9 21.6 93.6 54 128.5 32.4 34.9 76.9 55.4 123.6 57.8 23.3 1.2 46.8-2.6 68.7-11.1 21.9-8.5 41.7-21.6 58-38.3 16.3-16.7 28.6-36.8 36.1-59 7.5-22.1 10.3-45.7 8.3-69 12-7.4 21.8-18.2 28.3-31.2 6.5-13 9.5-27.5 8.6-42-2-33.3-19.1-63.9-46.5-82.6z" fill="#FACC15"/>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;">
+                                <path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/>
                             </svg>
                         </div>
                         <span style="font-size: 10px; background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); padding: 2px 8px; border-radius: 8px; font-weight: 800;">LINUX</span>
@@ -3347,7 +3355,9 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);">
-                                            <svg width="24" height="24" viewBox="0 0 170 170" fill="none"><path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/></svg>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;">
+                                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/>
+                                            </svg>
                                         </div>
                                         <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">APPLE SILICON</span>
                                     </div>
@@ -3368,7 +3378,9 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);">
-                                            <svg width="24" height="24" viewBox="0 0 170 170" fill="none"><path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/></svg>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;">
+                                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/>
+                                            </svg>
                                         </div>
                                         <span style="background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">MACOS INTEL</span>
                                     </div>
@@ -3389,7 +3401,9 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.25);">
-                                            <svg width="24" height="24" viewBox="0 0 448 512" fill="none"><path d="M220.8 123.3c1 .5 1.8 1.7 3 1.7 1.1 0 2.8-.4 2.9-1.5.2-1.4-1.9-2.3-3.2-2.9-1.3-.7-2.9-1-4.3-.7-1.7.3-3.3 1.3-4.5 2.5-1.2 1.2-2.2 2.7-2.8 4.3-.6 1.6-.6 3.4-.2 5 .4 1.7 1.4 3.1 2.8 4.1 1.4 1 3.2 1.5 5 1.4 1.7-.1 3.4-.8 4.7-1.9 1.3-1.1 2.2-2.6 2.5-4.3.3-1.7-.1-3.4-1-4.9-.9-1.4-2.3-2.5-3.9-3-1.6-.4-3.3-.3-4.8.4zm-20.2 133.7c-5.8 4.2-12.8 6.5-20 6.5s-14.2-2.3-20-6.5c-4.4-3.2-8-7.3-10.7-12-3.4 10.6-4.5 22-3.1 33.1 2.3 18.2 10.3 35.1 23 48 12.8 12.8 29.7 20.8 48 23 11.1 1.4 22.5.3 33.1-3.1-4.7-2.7-8.8-6.3-12-10.7-4.2-5.8-6.5-12.8-6.5-20s2.3-14.2 6.5-20c2.7-3.7 6-6.8 9.8-9.2-8.5-17.7-21.9-32.3-38.4-42.1-3.1 5.3-5.7 11-7.7 17-2.1-6-4.7-11.7-7.7-17-16.5 9.8-29.9 24.4-38.4 42.1 3.8 2.4 7.1 5.5 9.8 9.2zm148.9-80.1C336.7 82.2 284.1 0 224 0S111.3 82.2 98.5 176.9c-27.4 18.7-44.5 49.3-46.5 82.6-.9 14.5 2.1 29 8.6 42 6.5 13 16.3 23.8 28.3 31.2 2.6 47.9 21.6 93.6 54 128.5 32.4 34.9 76.9 55.4 123.6 57.8 23.3 1.2 46.8-2.6 68.7-11.1 21.9-8.5 41.7-21.6 58-38.3 16.3-16.7 28.6-36.8 36.1-59 7.5-22.1 10.3-45.7 8.3-69 12-7.4 21.8-18.2 28.3-31.2 6.5-13 9.5-27.5 8.6-42-2-33.3-19.1-63.9-46.5-82.6z" fill="#FACC15"/></svg>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;">
+                                                <path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/>
+                                            </svg>
                                         </div>
                                         <span style="background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">LINUX</span>
                                     </div>
@@ -6535,22 +6549,40 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         function initDownloadOsDetection() {
             const userAgent = (navigator.userAgent || '').toLowerCase();
             const platform = (navigator.platform || '').toLowerCase();
+            const uad = navigator.userAgentData;
+            const uadPlatform = (uad && uad.platform) ? uad.platform.toLowerCase() : '';
+
             const releases = window.activeReleasesCache || {};
             const winVer = (releases['windows-x64'] && releases['windows-x64'].version) ? releases['windows-x64'].version : '<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?>';
             const macArmVer = (releases['macos-arm64'] && releases['macos-arm64'].version) ? releases['macos-arm64'].version : '<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?>';
             const macIntelVer = (releases['macos-x64'] && releases['macos-x64'].version) ? releases['macos-x64'].version : '<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?>';
             const linuxVer = (releases['linux-x64'] && releases['linux-x64'].version) ? releases['linux-x64'].version : '<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>';
             
+            // Comprehensive Multi-Source Device & OS Detection
+            const isAndroid = userAgent.includes('android') || platform.includes('android');
+            const isWindows = uadPlatform.includes('win') || userAgent.includes('windows') || userAgent.includes('win64') || userAgent.includes('wow64') || userAgent.includes('win32') || platform.includes('win');
+            const isLinux = !isAndroid && (uadPlatform.includes('linux') || userAgent.includes('linux') || userAgent.includes('x11') || platform.includes('linux'));
+            const isMac = !isAndroid && (uadPlatform.includes('mac') || userAgent.includes('macintosh') || userAgent.includes('mac os x') || platform.includes('mac') || userAgent.includes('darwin'));
+
             let targetKey = 'windows-x64';
             let osLabel = 'Windows 10 / 11 (64-Bit)';
             let osName = 'AntiProfiles for Windows (64-Bit)';
             let osSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture) • v' + winVer;
-            let dlUrl = '/api/releases?download=1&platform=windows-x64';
+            let dlUrl = (releases['windows-x64'] && releases['windows-x64'].download_url) ? releases['windows-x64'].download_url : '/api/releases?download=1&platform=windows-x64';
             let btnText = '⬇️ Direct Download for Windows .exe (v' + winVer + ')';
             let landingCardId = 'landingCardWin';
             let userCardId = 'cardWinPlatform';
 
-            if (userAgent.includes('mac') || platform.includes('mac') || userAgent.includes('darwin')) {
+            if (isWindows) {
+                targetKey = 'windows-x64';
+                osLabel = 'Windows 10 / 11 (64-Bit)';
+                osName = 'AntiProfiles for Windows (64-Bit)';
+                osSub = 'Native installer optimized for Windows 10 & 11 (x64 Architecture) • v' + winVer;
+                dlUrl = (releases['windows-x64'] && releases['windows-x64'].download_url) ? releases['windows-x64'].download_url : '/api/releases?download=1&platform=windows-x64';
+                btnText = '⬇️ Direct Download for Windows .exe (v' + winVer + ')';
+                landingCardId = 'landingCardWin';
+                userCardId = 'cardWinPlatform';
+            } else if (isMac) {
                 let isArm = false;
                 try {
                     const canvas = document.createElement('canvas');
@@ -6566,12 +6598,16 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     }
                 } catch(e) {}
 
-                if (isArm || userAgent.includes('arm64') || userAgent.includes('aarch64')) {
+                if (userAgent.includes('arm64') || userAgent.includes('aarch64')) {
+                    isArm = true;
+                }
+
+                if (isArm) {
                     targetKey = 'macos-arm64';
-                    osLabel = 'macOS Apple Silicon (ARM64 / M1 / M2 / M3 / M4)';
+                    osLabel = 'macOS Apple Silicon (M1 / M2 / M3 / M4)';
                     osName = 'AntiProfiles for macOS (Apple Silicon)';
                     osSub = 'Native ARM64 build for Apple M-series chips (M1 / M2 / M3 / M4) • v' + macArmVer;
-                    dlUrl = '/api/releases?download=1&platform=macos-arm64';
+                    dlUrl = (releases['macos-arm64'] && releases['macos-arm64'].download_url) ? releases['macos-arm64'].download_url : '/api/releases?download=1&platform=macos-arm64';
                     btnText = '⬇️ Direct Download for Apple Silicon .dmg (v' + macArmVer + ')';
                     landingCardId = 'landingCardMacArm';
                     userCardId = 'cardMacArmPlatform';
@@ -6580,17 +6616,17 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     osLabel = 'macOS Intel (x86_64 Core i5/i7/i9)';
                     osName = 'AntiProfiles for macOS (Intel)';
                     osSub = 'Native disk image installer for Intel Mac processors • v' + macIntelVer;
-                    dlUrl = '/api/releases?download=1&platform=macos-x64';
+                    dlUrl = (releases['macos-x64'] && releases['macos-x64'].download_url) ? releases['macos-x64'].download_url : '/api/releases?download=1&platform=macos-x64';
                     btnText = '⬇️ Direct Download for macOS Intel .dmg (v' + macIntelVer + ')';
                     landingCardId = 'landingCardMacIntel';
                     userCardId = 'cardMacIntelPlatform';
                 }
-            } else if (userAgent.includes('linux') || platform.includes('linux')) {
+            } else if (isLinux) {
                 targetKey = 'linux-x64';
                 osLabel = 'Linux (x86_64 AppImage & .deb)';
                 osName = 'AntiProfiles for Linux';
                 osSub = 'Universal standalone AppImage & .deb for Ubuntu, Debian, Fedora & Arch • v' + linuxVer;
-                dlUrl = '/api/releases?download=1&platform=linux-x64';
+                dlUrl = (releases['linux-x64'] && releases['linux-x64'].download_url) ? releases['linux-x64'].download_url : '/api/releases?download=1&platform=linux-x64';
                 btnText = '⬇️ Direct Download for Linux .AppImage (v' + linuxVer + ')';
                 landingCardId = 'landingCardLinux';
                 userCardId = 'cardLinuxPlatform';
@@ -6643,9 +6679,9 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 if (targetKey.startsWith('win')) {
                     heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>`;
                 } else if (targetKey.startsWith('mac')) {
-                    heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 170 170" fill="none"><path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/></svg>`;
+                    heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/></svg>`;
                 } else {
-                    heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 448 512" fill="none"><path d="M220.8 123.3c1 .5 1.8 1.7 3 1.7 1.1 0 2.8-.4 2.9-1.5.2-1.4-1.9-2.3-3.2-2.9-1.3-.7-2.9-1-4.3-.7-1.7.3-3.3 1.3-4.5 2.5-1.2 1.2-2.2 2.7-2.8 4.3-.6 1.6-.6 3.4-.2 5 .4 1.7 1.4 3.1 2.8 4.1 1.4 1 3.2 1.5 5 1.4 1.7-.1 3.4-.8 4.7-1.9 1.3-1.1 2.2-2.6 2.5-4.3.3-1.7-.1-3.4-1-4.9-.9-1.4-2.3-2.5-3.9-3-1.6-.4-3.3-.3-4.8.4zm-20.2 133.7c-5.8 4.2-12.8 6.5-20 6.5s-14.2-2.3-20-6.5c-4.4-3.2-8-7.3-10.7-12-3.4 10.6-4.5 22-3.1 33.1 2.3 18.2 10.3 35.1 23 48 12.8 12.8 29.7 20.8 48 23 11.1 1.4 22.5.3 33.1-3.1-4.7-2.7-8.8-6.3-12-10.7-4.2-5.8-6.5-12.8-6.5-20s2.3-14.2 6.5-20c2.7-3.7 6-6.8 9.8-9.2-8.5-17.7-21.9-32.3-38.4-42.1-3.1 5.3-5.7 11-7.7 17-2.1-6-4.7-11.7-7.7-17-16.5 9.8-29.9 24.4-38.4 42.1 3.8 2.4 7.1 5.5 9.8 9.2zm148.9-80.1C336.7 82.2 284.1 0 224 0S111.3 82.2 98.5 176.9c-27.4 18.7-44.5 49.3-46.5 82.6-.9 14.5 2.1 29 8.6 42 6.5 13 16.3 23.8 28.3 31.2 2.6 47.9 21.6 93.6 54 128.5 32.4 34.9 76.9 55.4 123.6 57.8 23.3 1.2 46.8-2.6 68.7-11.1 21.9-8.5 41.7-21.6 58-38.3 16.3-16.7 28.6-36.8 36.1-59 7.5-22.1 10.3-45.7 8.3-69 12-7.4 21.8-18.2 28.3-31.2 6.5-13 9.5-27.5 8.6-42-2-33.3-19.1-63.9-46.5-82.6z" fill="#FACC15"/></svg>`;
+                    heroIcon.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;"><path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/></svg>`;
                 }
             }
             if (heroTitle) heroTitle.textContent = osName;
@@ -6685,6 +6721,17 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 }
             });
         }
+
+        // Run OS Detection immediately on script execution and DOM load
+        try {
+            initDownloadOsDetection();
+        } catch(e) {}
+        document.addEventListener('DOMContentLoaded', () => {
+            try { initDownloadOsDetection(); } catch(e) {}
+        });
+        window.addEventListener('load', () => {
+            try { initDownloadOsDetection(); } catch(e) {}
+        });
 
         async function loadSmtpConfig() {
             const token = localStorage.getItem('sessionToken');
