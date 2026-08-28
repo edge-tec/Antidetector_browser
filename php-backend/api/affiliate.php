@@ -686,19 +686,41 @@ switch ($action) {
         $admin = requireAdmin();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $offerId = trim($input['id'] ?? $input['offer_id'] ?? '');
-        if (!$offerId) {
-            respondJson(['success' => false, 'error' => 'Offer ID is required.'], 400);
+        $slug = trim($input['slug'] ?? $input['landing_page_slug'] ?? '');
+        if (!$offerId && !$slug) {
+            respondJson(['success' => false, 'error' => 'Offer ID or Slug is required.'], 400);
         }
         
         $permanent = !isset($input['permanent']) || !empty($input['permanent']) || !empty($input['force']) || (isset($input['type']) && $input['type'] === 'delete');
         if ($permanent) {
-            $stmt = $db->prepare("DELETE FROM affiliate_offers WHERE id = ?");
-            $stmt->execute([$offerId]);
-            $msg = "Offer '{$offerId}' permanently deleted successfully.";
+            if ($offerId) {
+                $stmt = $db->prepare("DELETE FROM affiliate_offers WHERE id = ?");
+                $stmt->execute([$offerId]);
+                try {
+                    $db->prepare("DELETE FROM affiliate_landing_pages WHERE offer_id = ?")->execute([$offerId]);
+                } catch (Throwable $e) {}
+            }
+            if ($slug) {
+                try {
+                    $db->prepare("DELETE FROM affiliate_landing_pages WHERE slug = ?")->execute([$slug]);
+                    $db->prepare("DELETE FROM affiliate_offers WHERE landing_page_slug = ?")->execute([$slug]);
+                } catch (Throwable $e) {}
+            }
+            $msg = "Offer and its dynamic landing page permanently deleted successfully.";
         } else {
-            $stmt = $db->prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = NOW() WHERE id = ?");
-            $stmt->execute([$offerId]);
-            $msg = "Offer '{$offerId}' archived successfully.";
+            if ($offerId) {
+                $stmt = $db->prepare("UPDATE affiliate_offers SET status = 'archived', updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$offerId]);
+                try {
+                    $db->prepare("UPDATE affiliate_landing_pages SET is_active = 0 WHERE offer_id = ?")->execute([$offerId]);
+                } catch (Throwable $e) {}
+            }
+            if ($slug) {
+                try {
+                    $db->prepare("UPDATE affiliate_landing_pages SET is_active = 0 WHERE slug = ?")->execute([$slug]);
+                } catch (Throwable $e) {}
+            }
+            $msg = "Offer and its landing page archived successfully.";
         }
 
         // Real-time broadcast to all connected desktop software instances
@@ -709,11 +731,39 @@ switch ($action) {
             ");
             $evStmt->execute([
                 'evt_' . uniqid(),
-                json_encode(['id' => $offerId, 'status' => $permanent ? 'deleted' : 'archived', 'timestamp' => time()])
+                json_encode(['id' => $offerId, 'slug' => $slug, 'status' => $permanent ? 'deleted' : 'archived', 'timestamp' => time()])
             ]);
         } catch (Throwable $e) {}
 
         respondJson(['success' => true, 'message' => $msg]);
+        break;
+
+    case 'admin-delete-landing-page':
+        $admin = requireAdmin();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $slug = trim($input['slug'] ?? $input['id'] ?? '');
+        if (!$slug) {
+            respondJson(['success' => false, 'error' => 'Landing page slug or ID is required.'], 400);
+        }
+        $slugClean = preg_replace('#^/?(offer/)?#', '', $slug);
+
+        try {
+            $db->prepare("DELETE FROM affiliate_landing_pages WHERE slug = ? OR id = ?")->execute([$slugClean, $slug]);
+            $db->prepare("DELETE FROM affiliate_offers WHERE landing_page_slug = ? OR id = ?")->execute([$slugClean, $slug]);
+        } catch (Throwable $e) {}
+
+        try {
+            $evStmt = $db->prepare("
+                INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                VALUES (?, 'affiliate.offer.deleted', NULL, ?)
+            ");
+            $evStmt->execute([
+                'evt_' . uniqid(),
+                json_encode(['slug' => $slugClean, 'status' => 'deleted', 'timestamp' => time()])
+            ]);
+        } catch (Throwable $e) {}
+
+        respondJson(['success' => true, 'message' => "Landing page '/offer/{$slugClean}' deleted successfully."]);
         break;
 
     case 'get-clicks':

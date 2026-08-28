@@ -5743,21 +5743,70 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
     <!-- MODAL: ADMIN CREATE/EDIT CPA OFFER -->
     <div id="modalAdminCpaOffer" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
-        <div class="modal-card" style="max-width: 550px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+        <div class="modal-card" style="max-width: 620px; width: 95%; max-height: 90vh; overflow-y: auto; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="font-size: 18px; color: #FFF;" id="adminOfferModalTitle">Create CPA Campaign Offer</h3>
+                <h3 style="font-size: 18px; color: #FFF; margin: 0;" id="adminOfferModalTitle">Create CPA Offer & Landing Page</h3>
                 <button onclick="closeAdminCpaOfferModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
             </div>
             <form onsubmit="return saveAdminCpaOffer(event)">
                 <input type="hidden" id="adminOfferEditId">
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Offer Title</label>
-                    <input type="text" id="adminOfferTitle" required placeholder="e.g. AntiProfiles Pro Annual Campaign" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Offer Title</label>
+                        <input type="text" id="adminOfferTitle" required placeholder="e.g. AntiProfiles Starter Subscription" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Package Tier</label>
+                        <select id="adminOfferPackageId" onchange="onAdminOfferPackageChange()" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                            <option value="plan_starter">Starter (25 Profiles, $19/mo)</option>
+                            <option value="plan_pro">Professional (100 Profiles, $39/mo)</option>
+                            <option value="plan_business">Business (500 Profiles, $69/mo)</option>
+                            <option value="plan_enterprise">Enterprise (Unlimited, $99/mo)</option>
+                            <option value="plan_free">Free Trial (3 Profiles, $0/mo)</option>
+                        </select>
+                    </div>
                 </div>
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Target Landing URL</label>
-                    <input type="text" id="adminOfferTargetUrl" required placeholder="/#pricing or https://antiprofiles.com/deal" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Landing Page Slug (URL)</label>
+                        <input type="text" id="adminOfferSlug" required placeholder="starter or pro-deal" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #38BDF8; font-family: monospace;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Target Landing URL</label>
+                        <input type="text" id="adminOfferTargetUrl" required placeholder="/offer/starter" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
+                    </div>
                 </div>
+
+                <!-- Dynamic Pricing -->
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center;">
+                        <div>
+                            <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Original Price (Old)</label>
+                            <input type="number" step="0.01" id="adminOfferOrigPrice" placeholder="39.00" oninput="calcAdminOfferDiscount()" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 8px; color: #FFF;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block; margin-bottom: 4px;">Selling Price (New)</label>
+                            <input type="number" step="0.01" id="adminOfferPrice" placeholder="19.00" oninput="calcAdminOfferDiscount()" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 8px; color: #2DD4BF; font-weight: 800;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Discount Badge</label>
+                            <div id="adminOfferDiscountBadge" style="padding: 8px; background: rgba(74, 222, 128, 0.15); color: #4ADE80; border-radius: 8px; font-size: 11px; font-weight: 800; text-align: center;">Save 51%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">CTA Button Text</label>
+                        <input type="text" id="adminOfferCtaText" placeholder="Subscribe Starter" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Package Badge Text</label>
+                        <input type="text" id="adminOfferBadgeText" placeholder="LIMITED DEAL / STARTER" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                    </div>
+                </div>
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                     <div>
                         <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Payout Model</label>
@@ -5771,21 +5820,37 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         <input type="number" step="0.01" id="adminOfferRate" required placeholder="15.00" value="15.00" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
                     </div>
                 </div>
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Status</label>
-                    <select id="adminOfferStatus" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
-                        <option value="active">Active (Visible in Link Generator)</option>
-                        <option value="paused">Paused</option>
-                        <option value="archived">Archived</option>
-                    </select>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border);">
+                        <input type="checkbox" id="adminOfferTrialEnabled" style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="adminOfferTrialEnabled" style="font-size: 12px; color: #FFF; font-weight: 700; cursor: pointer; margin: 0;">
+                            Enable 7-Day Free Trial
+                        </label>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Offer Status</label>
+                        <select id="adminOfferStatus" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;">
+                            <option value="active">Active (Visible & Live)</option>
+                            <option value="paused">Paused</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div style="margin-bottom: 18px;">
                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;">Offer Description (Optional)</label>
-                    <textarea id="adminOfferDesc" rows="2" placeholder="Explain the offer details to affiliates..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;"></textarea>
+                    <textarea id="adminOfferDesc" rows="2" placeholder="Explain the offer details and features..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF;"></textarea>
                 </div>
-                <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                    <button type="button" class="btn btn-outline" onclick="closeAdminCpaOfferModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" style="font-weight: 700;">Save Offer</button>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div id="adminOfferDeleteBtnWrap" style="display: none;">
+                        <button type="button" class="btn btn-outline" style="color: #F87171; border-color: rgba(239,68,68,0.4);" onclick="deleteAdminCpaOfferFromModal()">🗑️ Delete Offer & Page</button>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-left: auto;">
+                        <button type="button" class="btn btn-outline" onclick="closeAdminCpaOfferModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" style="font-weight: 700;">💾 Save Offer & Auto-Generate Page</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -11772,27 +11837,36 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 });
                 const d = await res.json();
                 if (d.success && Array.isArray(d.data)) {
-                    tbody.innerHTML = d.data.map(o => `
+                    tbody.innerHTML = d.data.map(o => {
+                        const rawSlug = (o.landing_page_slug || o.id?.replace(/^offer_/, '') || o.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^\/?(offer\/)?/, '');
+                        const pageUrl = `/offer/${rawSlug}`;
+                        return `
                         <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
                             <td style="padding: 12px 16px;">
                                 <strong style="color:#FFF;">${escapeHtml(o.title)}</strong>
-                                <div style="font-size:11px; color:var(--text-muted); font-family:monospace;">ID: ${escapeHtml(o.id)}</div>
+                                <div style="font-size:11px; color:var(--text-muted); font-family:monospace;">ID: ${escapeHtml(o.id)} • <span style="color:#38BDF8;">${escapeHtml(pageUrl)}</span></div>
                             </td>
-                            <td style="padding: 12px 16px; text-transform:uppercase; font-size:12px;">${escapeHtml(o.payout_type)}</td>
+                            <td style="padding: 12px 16px; text-transform:uppercase; font-size:12px;">${escapeHtml(o.package_name || o.package_id || 'Starter')}</td>
                             <td style="padding: 12px 16px; font-weight:700; color:#2DD4BF;">
-                                ${o.payout_type === 'revshare' ? (o.revshare_percent + '% RevShare') : ('$' + Number(o.fixed_payout_usd).toFixed(2) + ' Fixed')}
+                                $${Number(o.price || 19).toFixed(2)}/mo
+                                <div style="font-size:11px; color:var(--text-muted);">
+                                    ${o.payout_type === 'revshare' ? ((o.revshare_percent || o.commission_rate || 50) + '% RevShare') : ('$' + Number(o.fixed_payout_usd || 10).toFixed(2) + ' CPA')}
+                                </div>
                             </td>
-                            <td style="padding: 12px 16px; font-family:monospace; font-size:12px; color:var(--text-muted);">${escapeHtml(o.target_url)}</td>
+                            <td style="padding: 12px 16px;">
+                                <a href="${pageUrl}" target="_blank" style="color:#38BDF8; font-size:12px; text-decoration:none; font-family:monospace; background:rgba(56,189,248,0.1); padding:3px 8px; border-radius:6px; border:1px solid rgba(56,189,248,0.2);">🔗 Preview Page</a>
+                            </td>
                             <td style="padding: 12px 16px;">
                                 <span style="background:${o.status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${o.status === 'active' ? '#10B981' : '#F87171'}; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">
-                                    ${escapeHtml(o.status.toUpperCase())}
+                                    ${escapeHtml((o.status || 'active').toUpperCase())}
                                 </span>
                             </td>
-                            <td style="padding: 12px 16px; text-align:right;">
-                                <button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick='openAdminCpaOfferModal("${escapeHtml(o.id)}", ${JSON.stringify(o)})'>✏️ Edit</button>
+                            <td style="padding: 12px 16px; text-align:right; white-space:nowrap;">
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:11px; margin-right:4px;" onclick='openAdminCpaOfferModal("${escapeHtml(o.id)}", ${JSON.stringify(o)})'>✏️ Edit</button>
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:11px; color:#F87171; border-color:rgba(239,68,68,0.4);" onclick='deleteAdminCpaOffer("${escapeHtml(o.id)}", "${escapeHtml(o.title)}", "${rawSlug}")'>🗑️ Delete</button>
                             </td>
                         </tr>
-                    `).join('');
+                    `}).join('');
                 }
             } catch(e) {}
         }
@@ -12153,27 +12227,115 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             } catch(e) {}
         }
 
+        function onAdminOfferPackageChange() {
+            const pkg = document.getElementById('adminOfferPackageId').value;
+            let slug = 'starter';
+            let title = 'Starter Subscription';
+            let orig = 39.00;
+            let price = 19.00;
+            let cta = 'Subscribe Starter';
+            let badge = 'STARTER';
+
+            if (pkg === 'plan_pro') {
+                slug = 'professional';
+                title = 'Professional Subscription';
+                orig = 79.00;
+                price = 39.00;
+                cta = 'Subscribe Professional';
+                badge = 'MOST POPULAR';
+            } else if (pkg === 'plan_business') {
+                slug = 'business';
+                title = 'Business Subscription';
+                orig = 129.00;
+                price = 69.00;
+                cta = 'Subscribe Business';
+                badge = 'BEST VALUE';
+            } else if (pkg === 'plan_enterprise') {
+                slug = 'enterprise';
+                title = 'Enterprise Suite';
+                orig = 199.00;
+                price = 99.00;
+                cta = 'Start Enterprise Trial';
+                badge = 'ENTERPRISE';
+            } else if (pkg === 'plan_free') {
+                slug = 'free';
+                title = 'Free Plan';
+                orig = 0.00;
+                price = 0.00;
+                cta = 'Start Free';
+                badge = 'FREE';
+            }
+
+            if (!document.getElementById('adminOfferEditId').value) {
+                document.getElementById('adminOfferTitle').value = 'AntiProfiles ' + title;
+                document.getElementById('adminOfferSlug').value = slug;
+                document.getElementById('adminOfferTargetUrl').value = '/offer/' + slug;
+                document.getElementById('adminOfferOrigPrice').value = orig.toFixed(2);
+                document.getElementById('adminOfferPrice').value = price.toFixed(2);
+                document.getElementById('adminOfferCtaText').value = cta;
+                document.getElementById('adminOfferBadgeText').value = badge;
+            }
+            calcAdminOfferDiscount();
+        }
+
+        function calcAdminOfferDiscount() {
+            const orig = parseFloat(document.getElementById('adminOfferOrigPrice').value) || 0;
+            const cur = parseFloat(document.getElementById('adminOfferPrice').value) || 0;
+            const badgeEl = document.getElementById('adminOfferDiscountBadge');
+            if (!badgeEl) return;
+            if (orig > cur && orig > 0) {
+                const disc = Math.round(((orig - cur) / orig) * 100);
+                badgeEl.innerText = `Save ${disc}%`;
+                badgeEl.style.background = 'rgba(74, 222, 128, 0.15)';
+                badgeEl.style.color = '#4ADE80';
+            } else {
+                badgeEl.innerText = 'Regular Rate';
+                badgeEl.style.background = 'rgba(148, 163, 184, 0.15)';
+                badgeEl.style.color = '#94A3B8';
+            }
+        }
+
         function openAdminCpaOfferModal(offerId, offerData) {
             document.getElementById('modalAdminCpaOffer').style.display = 'flex';
+            const delBtnWrap = document.getElementById('adminOfferDeleteBtnWrap');
             if (offerData) {
-                document.getElementById('adminOfferModalTitle').innerText = 'Edit CPA Campaign Offer';
+                document.getElementById('adminOfferModalTitle').innerText = 'Edit Offer & Landing Page';
                 document.getElementById('adminOfferEditId').value = offerData.id || '';
                 document.getElementById('adminOfferTitle').value = offerData.title || '';
-                document.getElementById('adminOfferTargetUrl').value = offerData.target_url || '';
+                document.getElementById('adminOfferPackageId').value = offerData.package_id || 'plan_starter';
+                
+                const rawSlug = (offerData.landing_page_slug || offerData.id?.replace(/^offer_/, '') || 'starter').replace(/^\/?(offer\/)?/, '');
+                document.getElementById('adminOfferSlug').value = rawSlug;
+                document.getElementById('adminOfferTargetUrl').value = offerData.target_url || `/offer/${rawSlug}`;
+                document.getElementById('adminOfferOrigPrice').value = Number(offerData.original_price || offerData.price || 19).toFixed(2);
+                document.getElementById('adminOfferPrice').value = Number(offerData.price || 19).toFixed(2);
+                document.getElementById('adminOfferCtaText').value = offerData.cta_text || 'Subscribe';
+                document.getElementById('adminOfferBadgeText').value = offerData.badge_text || '';
                 document.getElementById('adminOfferPayoutType').value = offerData.payout_type || 'revshare';
-                document.getElementById('adminOfferRate').value = offerData.payout_type === 'revshare' ? (offerData.revshare_percent || 15) : (offerData.fixed_payout_usd || 0);
+                document.getElementById('adminOfferRate').value = offerData.payout_type === 'revshare' ? (offerData.revshare_percent || offerData.commission_rate || 50) : (offerData.fixed_payout_usd || 10);
+                document.getElementById('adminOfferTrialEnabled').checked = Boolean(offerData.trial_enabled);
                 document.getElementById('adminOfferStatus').value = offerData.status || 'active';
                 document.getElementById('adminOfferDesc').value = offerData.description || '';
+                if (delBtnWrap) delBtnWrap.style.display = 'block';
             } else {
-                document.getElementById('adminOfferModalTitle').innerText = 'Create CPA Campaign Offer';
+                document.getElementById('adminOfferModalTitle').innerText = 'Create CPA Offer & Landing Page';
                 document.getElementById('adminOfferEditId').value = '';
-                document.getElementById('adminOfferTitle').value = '';
-                document.getElementById('adminOfferTargetUrl').value = '/#pricing';
+                document.getElementById('adminOfferPackageId').value = 'plan_starter';
+                document.getElementById('adminOfferTitle').value = 'AntiProfiles Starter Subscription';
+                document.getElementById('adminOfferSlug').value = 'starter';
+                document.getElementById('adminOfferTargetUrl').value = '/offer/starter';
+                document.getElementById('adminOfferOrigPrice').value = '39.00';
+                document.getElementById('adminOfferPrice').value = '19.00';
+                document.getElementById('adminOfferCtaText').value = 'Subscribe Starter';
+                document.getElementById('adminOfferBadgeText').value = 'LIMITED DEAL';
                 document.getElementById('adminOfferPayoutType').value = 'revshare';
-                document.getElementById('adminOfferRate').value = '15.00';
+                document.getElementById('adminOfferRate').value = '50.00';
+                document.getElementById('adminOfferTrialEnabled').checked = false;
                 document.getElementById('adminOfferStatus').value = 'active';
                 document.getElementById('adminOfferDesc').value = '';
+                if (delBtnWrap) delBtnWrap.style.display = 'none';
             }
+            calcAdminOfferDiscount();
         }
 
         function closeAdminCpaOfferModal() {
@@ -12187,18 +12349,35 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
             const id = document.getElementById('adminOfferEditId').value;
             const title = document.getElementById('adminOfferTitle').value.trim();
-            const target_url = document.getElementById('adminOfferTargetUrl').value.trim();
+            const package_id = document.getElementById('adminOfferPackageId').value;
+            const package_name = package_id === 'plan_free' ? 'Free' : package_id === 'plan_starter' ? 'Starter' : package_id === 'plan_business' ? 'Business' : package_id === 'plan_enterprise' ? 'Enterprise' : 'Professional';
+            const rawSlug = document.getElementById('adminOfferSlug').value.trim().replace(/^\/?(offer\/)?/, '');
+            const target_url = document.getElementById('adminOfferTargetUrl').value.trim() || `/offer/${rawSlug}`;
+            const origPrice = parseFloat(document.getElementById('adminOfferOrigPrice').value) || 0;
+            const curPrice = parseFloat(document.getElementById('adminOfferPrice').value) || 0;
+            const cta_text = document.getElementById('adminOfferCtaText').value.trim();
+            const badge_text = document.getElementById('adminOfferBadgeText').value.trim();
             const payout_type = document.getElementById('adminOfferPayoutType').value;
             const rate = parseFloat(document.getElementById('adminOfferRate').value) || 0;
+            const trial_enabled = document.getElementById('adminOfferTrialEnabled').checked ? 1 : 0;
             const status = document.getElementById('adminOfferStatus').value;
             const description = document.getElementById('adminOfferDesc').value.trim();
 
             const payload = {
                 id,
                 title,
+                package_id,
+                package_name,
+                landing_page_slug: rawSlug,
                 target_url,
+                price: curPrice,
+                original_price: origPrice,
+                cta_text,
+                badge_text,
+                trial_enabled,
                 payout_type,
                 revshare_percent: payout_type === 'revshare' ? rate : 0,
+                commission_rate: payout_type === 'revshare' ? rate : 0,
                 fixed_payout_usd: payout_type === 'fixed' ? rate : 0,
                 status,
                 description
@@ -12215,13 +12394,49 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     alert('✓ ' + d.message);
                     closeAdminCpaOfferModal();
                     loadAdminAffOffersTable();
+                    if (typeof loadAdminAffiliateControl === 'function') loadAdminAffiliateControl();
                 } else {
-                    alert('⚠️ ' + (d.error || 'Failed'));
+                    alert('⚠️ ' + (d.error || 'Failed to save offer'));
                 }
             } catch(err) {
                 alert('Network error saving offer.');
             }
             return false;
+        }
+
+        async function deleteAdminCpaOffer(offerId, title, slug) {
+            if (!confirm(`Are you sure you want to permanently delete offer "${title}" (${offerId}) and its dynamic landing page "/offer/${slug}"?\n\nThis will remove the page and prevent further traffic.`)) {
+                return;
+            }
+            const token = getAdminSessionToken();
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/affiliate/admin-delete-offer' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
+                    body: JSON.stringify({ id: offerId, slug, permanent: true })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert('🗑️ ' + d.message);
+                    loadAdminAffOffersTable();
+                    if (typeof loadAdminAffiliateControl === 'function') loadAdminAffiliateControl();
+                } else {
+                    alert('⚠️ ' + (d.error || 'Failed to delete offer'));
+                }
+            } catch(err) {
+                alert('Network error deleting offer.');
+            }
+        }
+
+        async function deleteAdminCpaOfferFromModal() {
+            const id = document.getElementById('adminOfferEditId').value;
+            const title = document.getElementById('adminOfferTitle').value;
+            const slug = document.getElementById('adminOfferSlug').value;
+            if (!id) return;
+            closeAdminCpaOfferModal();
+            await deleteAdminCpaOffer(id, title, slug);
         }
 
         function openAdminWithdrawalModal(withId, currStatus, currRef, currNote) {

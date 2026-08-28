@@ -1861,37 +1861,55 @@ export const AdminAffiliateManager: React.FC = () => {
                           Copy URL
                         </button>
                       </div>
-                      <button
-                        onClick={() => setOfferModal({
-                          open: true,
-                          isEdit: true,
-                          id: offer.id,
-                          title: offer.title,
-                          description: offer.description || '',
-                          target_url: offer.target_url || url,
-                          landing_page_slug: rawSlug,
-                          banner_url: offer.banner_url || '',
-                          currency: offer.currency || 'USD',
-                          package_id: offer.package_id || 'plan_starter',
-                          package_name: offer.package_name || 'Starter',
-                          price: cur,
-                          original_price: orig,
-                          discount_percent: disc,
-                          discount_start_date: offer.discount_start_date || '',
-                          discount_end_date: offer.discount_end_date || '',
-                          cta_text: offer.cta_text || 'Subscribe',
-                          badge_text: offer.badge_text || '',
-                          trial_enabled: Boolean(offer.trial_enabled),
-                          trial_days: offer.trial_days || 7,
-                          payout_type: offer.payout_type || 'percentage',
-                          commission_rate: offer.commission_rate || offer.revshare_percent || 40,
-                          fixed_payout_usd: offer.fixed_payout_usd || 0,
-                          status: offer.status || 'active'
-                        })}
-                        style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', color: '#CBD5E1', fontSize: '11px', fontWeight: 600, border: '1px solid #334155', cursor: 'pointer', textAlign: 'center' }}
-                      >
-                        ✏️ Edit Offer & Page Details
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => setOfferModal({
+                            open: true,
+                            isEdit: true,
+                            id: offer.id,
+                            title: offer.title,
+                            description: offer.description || '',
+                            target_url: offer.target_url || url,
+                            landing_page_slug: rawSlug,
+                            banner_url: offer.banner_url || '',
+                            currency: offer.currency || 'USD',
+                            package_id: offer.package_id || 'plan_starter',
+                            package_name: offer.package_name || 'Starter',
+                            price: cur,
+                            original_price: orig,
+                            discount_percent: disc,
+                            discount_start_date: offer.discount_start_date || '',
+                            discount_end_date: offer.discount_end_date || '',
+                            cta_text: offer.cta_text || 'Subscribe',
+                            badge_text: offer.badge_text || '',
+                            trial_enabled: Boolean(offer.trial_enabled),
+                            trial_days: offer.trial_days || 7,
+                            payout_type: offer.payout_type || 'percentage',
+                            commission_rate: offer.commission_rate || offer.revshare_percent || 40,
+                            fixed_payout_usd: offer.fixed_payout_usd || 0,
+                            status: offer.status || 'active'
+                          })}
+                          style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', fontSize: '11px', fontWeight: 600, border: '1px solid #334155', cursor: 'pointer', textAlign: 'center' }}
+                        >
+                          ✏️ Edit Page
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to permanently delete landing page "/offer/${rawSlug}" and offer "${offer.title}"?\n\nThis will remove the dynamic landing page and stop all traffic.`)) {
+                              const res = await callAffiliateApi('admin-delete-offer', 'POST', { id: offer.id, slug: rawSlug, permanent: true })
+                              if (res?.success) {
+                                showToast('success', `🗑️ Landing page "/offer/${rawSlug}" deleted successfully!`)
+                                loadData()
+                              } else {
+                                showToast('error', res?.error || 'Failed to delete landing page')
+                              }
+                            }
+                          }}
+                          style={{ padding: '7px 12px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#F87171', fontSize: '11px', fontWeight: 600, border: '1px solid rgba(239, 68, 68, 0.35)', cursor: 'pointer', textAlign: 'center' }}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )
