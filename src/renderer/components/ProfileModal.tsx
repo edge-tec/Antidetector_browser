@@ -2000,27 +2000,33 @@ export const ProfileModal: React.FC<Props> = ({
 
       // Handle proxy resolution
       let finalProxyId: string | null = null
-      if (proxyTab === 'saved') {
-        finalProxyId = selectedProxyId || null
-      } else if (proxyTab === 'custom' && customProxyHost) {
+      if (proxyTab === 'none') {
+        finalProxyId = null
+      } else if (proxyTab === 'saved' && selectedProxyId) {
+        finalProxyId = selectedProxyId
+      } else if (customProxyHost && customProxyHost.trim()) {
         const proxyInput: any = {
-          type: customProxyType,
-          host: customProxyHost,
+          name: `Proxy for ${name || 'Profile'}`,
+          type: customProxyType || 'http',
+          host: customProxyHost.trim(),
           port: Number(customProxyPort) || 80,
-          username: customProxyUser
-        }
-        if (customProxyPass) {
-          proxyInput.password = customProxyPass
+          username: customProxyUser?.trim() || undefined,
+          password: customProxyPass || undefined,
+          country: proxyTestState?.country || undefined,
+          region: proxyTestState?.regionName || proxyTestState?.region || undefined,
+          city: proxyTestState?.city || undefined,
+          isp: proxyTestState?.isp || undefined,
+          timezone: proxyTestState?.timezone || undefined,
+          latitude: proxyTestState?.latitude !== undefined ? proxyTestState.latitude : undefined,
+          longitude: proxyTestState?.longitude !== undefined ? proxyTestState.longitude : undefined,
+          publicIp: proxyTestState?.ip || customProxyHost.trim()
         }
 
         if (initialProfile?.proxyId && (window as any).api?.updateProxy) {
           await (window as any).api.updateProxy(initialProfile.proxyId, proxyInput)
           finalProxyId = initialProfile.proxyId
         } else if ((window as any).api?.createProxy) {
-          const newProxyRes = await (window as any).api.createProxy({
-            name: `Proxy for ${name}`,
-            ...proxyInput
-          })
+          const newProxyRes = await (window as any).api.createProxy(proxyInput)
           if (newProxyRes?.success && newProxyRes?.data?.id) {
             finalProxyId = newProxyRes.data.id
           }
@@ -2966,6 +2972,7 @@ export const ProfileModal: React.FC<Props> = ({
                             setProxyPasteInput(val)
                             const parsed = parseProxyString(val)
                             if (parsed) {
+                              setProxyTab('custom')
                               setCustomProxyType(parsed.type)
                               setCustomProxyHost(parsed.host)
                               setCustomProxyPort(parsed.port)
@@ -2993,7 +3000,10 @@ export const ProfileModal: React.FC<Props> = ({
                         <input
                           type="text"
                           value={customProxyHost}
-                          onChange={e => setCustomProxyHost(e.target.value)}
+                          onChange={e => {
+                            setCustomProxyHost(e.target.value)
+                            if (e.target.value.trim()) setProxyTab('custom')
+                          }}
                           placeholder="IP Address (e.g. 31.59.20.176)"
                           style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
                         />
@@ -3086,6 +3096,32 @@ export const ProfileModal: React.FC<Props> = ({
                                 setLatitude(res.data.latitude)
                                 setLongitude(res.data.longitude)
                               }
+                              handleFpChange(prev => {
+                                const next = { ...prev }
+                                if (res.data.timezone && res.data.timezone !== 'N/A') {
+                                  next.timezone = { mode: 'auto', timezone: res.data.timezone }
+                                }
+                                if (res.data.latitude !== undefined && res.data.longitude !== undefined) {
+                                  next.geolocation = {
+                                    mode: 'ip-based',
+                                    latitude: res.data.latitude,
+                                    longitude: res.data.longitude,
+                                    accuracy: 50,
+                                    altitude: null,
+                                    altitudeAccuracy: null,
+                                    heading: null,
+                                    speed: null
+                                  }
+                                }
+                                if (res.data.ip || customProxyHost) {
+                                  next.webrtc = {
+                                    mode: 'fake',
+                                    ipPolicy: 'disable_non_proxied_udp',
+                                    publicIp: res.data.ip || customProxyHost
+                                  }
+                                }
+                                return next
+                              })
                             } else {
                               const errMsg = res?.error || res?.data?.error || 'Proxy connection failed'
                               setProxyTestState({
