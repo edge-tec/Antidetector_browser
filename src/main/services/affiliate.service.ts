@@ -77,6 +77,7 @@ export interface AffiliateUserSummary {
   minWithdrawalUsd: number
   holdingPeriodDays: number
   totalClicks: number
+  todayClicks: number
   uniqueClicks: number
   totalConversions: number
   conversionRate: number
@@ -233,67 +234,80 @@ export class AffiliateService {
     return { referralCode, referralLink: link, affiliateId }
   }
 
-  public updateAffiliateStatus(affiliateId: string, status: AffiliateAccountStatus, adminUserId: string = 'admin-default'): boolean {
+  public updateAffiliateStatus(affiliateId: string, status: AffiliateAccountStatus, adminUserId: string = 'system'): boolean {
     const db = getDatabase()
-    const user = db.prepare('SELECT id, name, email FROM users WHERE affiliate_id = ? OR id = ?').get(affiliateId, affiliateId) as any
-    if (!user) return false
-
-    db.prepare("UPDATE users SET affiliate_status = ?, updated_at = datetime('now') WHERE id = ?").run(status, user.id)
-    this.recordAuditLog(`affiliate_${status}`, adminUserId, user.id, `Affiliate status changed to ${status}`)
-    logger.info('affiliate', `[AffiliateService] Updated affiliate status for user ${user.id} to ${status}`)
-    return true
+    const res = db.prepare('UPDATE users SET affiliate_status = ? WHERE affiliate_id = ?').run(status, affiliateId)
+    if (res.changes > 0) {
+      this.recordAuditLog('affiliate_' + status, adminUserId, affiliateId, `Affiliate status changed to ${status}`)
+      return true
+    }
+    return false
   }
 
   // ──────────────────────────────────────────────
-  // 3. CPA Offers & Campaigns Management
+  // 3. Dynamic CPA Offers Catalog & Sync
   // ──────────────────────────────────────────────
 
   public async syncOffersFromCentralServer(): Promise<AffiliateOffer[]> {
     try {
-      const res = await centralApi.getAffiliateOffers(false)
-      if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+      const res = await centralApi.getAffiliateOffers(true)
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
         const db = getDatabase()
-        const remoteOffers = res.data
-
         const upsert = db.prepare(`
           INSERT INTO affiliate_offers (
-            id, title, description, target_url, payout_type, commission_rate, fixed_payout_usd, currency, status, updated_at
+            id, title, description, target_url, signup_url, payout_type,
+            commission_rate, fixed_payout_usd, package_id, package_name, price,
+            original_price, discount_type, discount_value, discounted_price, trial_days, status, updated_at
           ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, datetime('now')
           )
           ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             description = excluded.description,
             target_url = excluded.target_url,
+            signup_url = excluded.signup_url,
             payout_type = excluded.payout_type,
             commission_rate = excluded.commission_rate,
             fixed_payout_usd = excluded.fixed_payout_usd,
-            currency = excluded.currency,
+            package_id = excluded.package_id,
+            package_name = excluded.package_name,
+            price = excluded.price,
+            original_price = excluded.original_price,
+            discount_type = excluded.discount_type,
+            discount_value = excluded.discount_value,
+            discounted_price = excluded.discounted_price,
+            trial_days = excluded.trial_days,
             status = excluded.status,
             updated_at = datetime('now')
         `)
 
-        const tx = db.transaction((offers: any[]) => {
-          for (const o of offers) {
-            const payoutType = (o.payout_type === 'fixed') ? 'fixed' : 'percentage'
-            const rate = Number(o.commission_rate ?? o.revshare_percent ?? 0)
-            const fixedUsd = Number(o.fixed_payout_usd ?? 0)
-            const status = o.status || 'active'
+        const tx = db.transaction(() => {
+          for (const off of res.data) {
             upsert.run(
-              o.id,
-              o.title || 'Affiliate Offer',
-              o.description || '',
-              o.target_url || 'https://antiprofiles.com/#pricing',
-              payoutType,
-              rate,
-              fixedUsd,
-              o.currency || 'USD',
-              status
+              off.id,
+              off.title,
+              off.description || '',
+              off.target_url || off.targetUrl || '/offer/professional',
+              off.signup_url || off.signupUrl || '/register',
+              off.payout_type || off.payoutType || 'percentage',
+              off.commission_rate ?? off.commissionRate ?? 50.0,
+              off.fixed_payout_usd ?? off.fixedPayoutUsd ?? 0.0,
+              off.package_id || off.packageId || 'plan_pro',
+              off.package_name || off.packageName || 'Professional',
+              off.price ?? 49.0,
+              off.original_price ?? off.originalPrice ?? off.price ?? 49.0,
+              off.discount_type || off.discountType || 'none',
+              off.discount_value ?? off.discountValue ?? 0.0,
+              off.discounted_price ?? off.discountedPrice ?? off.price ?? 49.0,
+              off.trial_days ?? off.trialDays ?? 7,
+              off.status || 'active'
             )
           }
         })
-        tx(remoteOffers)
-        logger.info('affiliate', `[AffiliateService] Successfully synced ${remoteOffers.length} CPA offers from central server.`)
+        tx()
+        logger.info('affiliate', `[AffiliateService] Successfully synced ${res.data.length} CPA offers from central server.`)
       }
     } catch (err: any) {
       logger.warn('affiliate', `[AffiliateService] Remote CPA offers sync skipped/failed: ${err.message}`)
@@ -310,19 +324,29 @@ export class AffiliateService {
         const db = getDatabase()
         const data = summaryRes.data
         
+        if (_userId) {
+          this.serverSummaryCache.set(_userId, {
+            totalClicks: Number(data.totalClicks) || 0,
+            todayClicks: Number(data.todayClicks) || 0,
+            uniqueClicks: Number(data.uniqueClicks) || 0,
+            timestamp: Date.now()
+          })
+        }
+        
         // Sync clicks
         if (Array.isArray(data.recentClicks) && data.recentClicks.length > 0) {
           const upsertClick = db.prepare(`
             INSERT INTO affiliate_clicks (
-              click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+              click_id, affiliate_id, offer_id, package_id, ip_address, user_agent, referrer, landing_url,
               sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, converted, created_at
             ) VALUES (
-              ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?
             )
             ON CONFLICT(click_id) DO UPDATE SET
               converted = excluded.converted,
-              ip_address = excluded.ip_address
+              ip_address = excluded.ip_address,
+              package_id = excluded.package_id
           `)
           for (const c of data.recentClicks) {
             try {
@@ -330,6 +354,7 @@ export class AffiliateService {
                 c.click_id,
                 c.affiliate_id || 'AFF-28DE2A',
                 c.offer_id || 'offer_main_saas',
+                c.package_id || 'plan_pro',
                 c.ip_address || '',
                 c.user_agent || '',
                 c.referrer || '',
@@ -593,16 +618,17 @@ export class AffiliateService {
     if (!existing) {
       db.prepare(`
         INSERT INTO affiliate_clicks (
-          click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+          click_id, affiliate_id, offer_id, package_id, ip_address, user_agent, referrer, landing_url,
           sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, converted, created_at
         ) VALUES (
-          ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, 0, datetime('now')
         )
       `).run(
         clickId,
         affiliateId,
         offerId,
+        offer?.package_id || 'plan_pro',
         ipAddress,
         userAgent,
         referrer,
@@ -631,13 +657,33 @@ export class AffiliateService {
 
     logger.info('affiliate', `[Tracking] 🚀 Recorded click ${clickId} for affiliate ${affiliateId} on offer ${offerId}`)
 
-    return { clickId, click_id: clickId, redirectUrl: redirectUrlObj.toString(), offer, converted: 0, affiliate_id: affiliateId, offer_id: offerId }
+    const clickRecord = {
+      clickId,
+      click_id: clickId,
+      redirectUrl: redirectUrlObj.toString(),
+      offer,
+      converted: 0,
+      affiliate_id: affiliateId,
+      affiliateId,
+      offer_id: offerId,
+      package_id: offer?.package_id || 'plan_pro',
+      package_name: offer?.package_name || 'Professional',
+      ip_address: ipAddress,
+      sub_id1: subId1,
+      created_at: new Date().toISOString()
+    }
+
+    this.broadcastEvent('ui:affiliate-click-recorded', clickRecord)
+    this.broadcastEvent('ui:affiliate-realtime-update', { type: 'click', data: clickRecord })
+
+    return clickRecord
   }
 
   public simulateTestClick(affiliateId?: string, offerId?: string, subId1: string = 'test_simulator'): { success: boolean; data: any } {
     const db = getDatabase()
     const targetAffId = (affiliateId && affiliateId.trim()) ? affiliateId.trim() : 'AFF-28DE2A'
     const targetOfferId = (offerId && offerId.trim()) ? offerId.trim() : 'offer_main_saas'
+    const offer = this.getOfferById(targetOfferId) || this.getOffers(true)[0]
     const testClickId = `clk_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
     const ip = '127.0.0.1'
     const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
@@ -645,30 +691,39 @@ export class AffiliateService {
 
     db.prepare(`
       INSERT INTO affiliate_clicks (
-        click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
+        click_id, affiliate_id, offer_id, package_id, ip_address, user_agent, referrer, landing_url,
         sub_id1, converted, created_at
       ) VALUES (
-        ?, ?, ?, ?, ?, 'https://antiprofiles.com/dashboard', ?,
+        ?, ?, ?, ?, ?, ?, 'https://antiprofiles.com/dashboard', ?,
         ?, 0, datetime('now')
       )
-    `).run(testClickId, targetAffId, targetOfferId, ip, ua, landing, subId1)
+    `).run(testClickId, targetAffId, targetOfferId, offer?.package_id || 'plan_pro', ip, ua, landing, subId1)
 
     try {
       db.prepare('UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?').run(targetOfferId)
     } catch {}
 
     logger.info('affiliate', `[AffiliateService] 🧪 Created simulated test click ${testClickId} for ${targetAffId}`)
+    const clickData = {
+      click_id: testClickId,
+      clickId: testClickId,
+      affiliate_id: targetAffId,
+      affiliateId: targetAffId,
+      offer_id: targetOfferId,
+      package_id: offer?.package_id || 'plan_pro',
+      package_name: offer?.package_name || 'Professional',
+      ip_address: ip,
+      landing_url: landing,
+      sub_id1: subId1,
+      created_at: new Date().toISOString()
+    }
+
+    this.broadcastEvent('ui:affiliate-click-recorded', clickData)
+    this.broadcastEvent('ui:affiliate-realtime-update', { type: 'click', data: clickData })
+
     return {
       success: true,
-      data: {
-        click_id: testClickId,
-        affiliate_id: targetAffId,
-        offer_id: targetOfferId,
-        ip_address: ip,
-        landing_url: landing,
-        sub_id1: subId1,
-        created_at: new Date().toISOString()
-      }
+      data: clickData
     }
   }
 
@@ -1240,9 +1295,13 @@ export class AffiliateService {
 
     // Clicks stats
     const totalClicksRow = db.prepare(`SELECT COUNT(*) as count FROM affiliate_clicks WHERE affiliate_id IN (${placeholders})`).get(...searchAffIds) as { count: number }
+    const todayClicksRow = db.prepare(`SELECT COUNT(*) as count FROM affiliate_clicks WHERE affiliate_id IN (${placeholders}) AND date(created_at) = date('now')`).get(...searchAffIds) as { count: number }
     const uniqueClicksRow = db.prepare(`SELECT COUNT(DISTINCT ip_address) as count FROM affiliate_clicks WHERE affiliate_id IN (${placeholders})`).get(...searchAffIds) as { count: number }
-    const totalClicks = totalClicksRow?.count || 0
-    const uniqueClicks = uniqueClicksRow?.count || 0
+
+    const cachedServer = this.serverSummaryCache ? this.serverSummaryCache.get(userId) : null
+    const totalClicks = Math.max(totalClicksRow?.count || 0, cachedServer?.totalClicks || 0)
+    const todayClicks = Math.max(todayClicksRow?.count || 0, cachedServer?.todayClicks || 0)
+    const uniqueClicks = Math.max(uniqueClicksRow?.count || 0, cachedServer?.uniqueClicks || 0)
 
     // Conversions stats
     const convRow = db.prepare(`SELECT COUNT(*) as count, COALESCE(SUM(payout_amount), 0) as totalPayout FROM affiliate_conversions WHERE affiliate_id IN (${placeholders})`).get(...searchAffIds) as { count: number; totalPayout: number }
@@ -1341,6 +1400,7 @@ export class AffiliateService {
       minWithdrawalUsd: settings.min_withdrawal_usd,
       holdingPeriodDays: settings.holding_period_days,
       totalClicks,
+      todayClicks,
       uniqueClicks,
       totalConversions,
       conversionRate,

@@ -456,6 +456,14 @@ const api = {
   onAffiliateOffersUpdated: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('affiliate:offers-updated', callback)
     return () => ipcRenderer.removeListener('affiliate:offers-updated', callback)
+  },
+  onAffiliateClickRecorded: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('ui:affiliate-click-recorded', callback)
+    return () => ipcRenderer.removeListener('ui:affiliate-click-recorded', callback)
+  },
+  onAffiliateRealtimeUpdate: (callback: (event: any, data: any) => void) => {
+    ipcRenderer.on('ui:affiliate-realtime-update', callback)
+    return () => ipcRenderer.removeListener('ui:affiliate-realtime-update', callback)
   }
 }
 

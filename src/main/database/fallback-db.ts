@@ -496,10 +496,39 @@ export class FallbackDatabase {
     if (inMatch) {
       const col = inMatch[1].toLowerCase().replace(/[`"']/g, '').split('.').pop()!
       const isNot = Boolean(inMatch[2])
-      const items = inMatch[3].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '').toLowerCase())
+      let pIdx = 0
+      const rawTokens = inMatch[3].split(',').map(s => s.trim())
+      const items: string[] = []
+      for (const t of rawTokens) {
+        if (t === '?') {
+          if (pIdx < params.length) {
+            items.push(String(params[pIdx++] ?? '').toLowerCase())
+          }
+        } else {
+          items.push(t.replace(/^['"]|['"]$/g, '').toLowerCase())
+        }
+      }
       const rowVal = String(row[col] ?? '').toLowerCase()
       const inList = items.includes(rowVal)
       return isNot ? !inList : inList
+    }
+
+    // 2.5 DATE(col) = DATE('now') or DATE(col) = DATE(?) or DATE(col) = ?
+    const dateEqMatch = trimmed.match(/^DATE\s*\(\s*([`"'\w.]+)\s*\)\s*=\s*(DATE\s*\(\s*['"]now['"]\s*\)|DATE\s*\(\s*\?\s*\)|\?|['"][^'"]+['"])$/i)
+    if (dateEqMatch) {
+      const col = dateEqMatch[1].toLowerCase().replace(/[`"']/g, '').split('.').pop()!
+      const right = dateEqMatch[2].trim()
+      let targetDateStr = ''
+      if (/DATE\s*\(\s*['"]now['"]\s*\)/i.test(right)) {
+        targetDateStr = new Date().toISOString().slice(0, 10)
+      } else if (right === '?' || /DATE\s*\(\s*\?\s*\)/i.test(right)) {
+        targetDateStr = String(params[0] ?? '').slice(0, 10)
+      } else {
+        targetDateStr = right.replace(/^['"]|['"]$/g, '').slice(0, 10)
+      }
+      const actualVal = String(row[col] ?? '')
+      const actualDateStr = actualVal ? (new Date(actualVal).toISOString().slice(0, 10)) : ''
+      return actualDateStr === targetDateStr
     }
 
     // 3. LOWER(col) = LOWER(?) or LOWER(col) LIKE ?

@@ -82,13 +82,25 @@ switch ($action) {
         ])));
         $inPlaceholders = implode(',', array_fill(0, count($searchAffIds), '?'));
 
-        // Clicks count
-        $stmtClicks = $db->prepare("SELECT COUNT(*) as total, COUNT(DISTINCT ip_address) as unique_ips FROM affiliate_clicks WHERE affiliate_id IN ($inPlaceholders)");
-        $stmtClicks->execute($searchAffIds);
+        // Clicks count (Total, Today, and Unique)
+        $stmtClicks = $db->prepare("
+            SELECT 
+                COUNT(*) as total, 
+                COUNT(DISTINCT ip_address) as unique_ips,
+                SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as today_clicks
+            FROM affiliate_clicks 
+            WHERE (affiliate_id IN ($inPlaceholders) OR user_id = ?)
+              AND (is_fraud = 0 OR is_fraud IS NULL)
+        ");
+        $stmtClicks->execute(array_merge($searchAffIds, [$user['id']]));
         $clickStats = $stmtClicks->fetch(PDO::FETCH_ASSOC);
 
+        $totalClicks = (int)($clickStats['total'] ?? 0);
+        $uniqueClicks = (int)($clickStats['unique_ips'] ?? 0);
+        $todayClicks = (int)($clickStats['today_clicks'] ?? 0);
+
         // Conversions & Commissions
-        $stmtConv = $db->prepare("SELECT COUNT(*) as total_conversions, COALESCE(SUM(payout_amount), 0) as total_earnings FROM affiliate_conversions WHERE affiliate_id IN ($inPlaceholders) OR user_id = ? AND status = 'approved'");
+        $stmtConv = $db->prepare("SELECT COUNT(*) as total_conversions, COALESCE(SUM(payout_amount), 0) as total_earnings FROM affiliate_conversions WHERE (affiliate_id IN ($inPlaceholders) OR user_id = ?) AND status = 'approved'");
         $stmtConv->execute(array_merge($searchAffIds, [$user['id']]));
         $convStats = $stmtConv->fetch(PDO::FETCH_ASSOC);
 
@@ -117,7 +129,6 @@ switch ($action) {
         $availableBalance = max(0, $totalEarnings - $totalPaid - $pendingHold);
 
         // Conversion Rate
-        $totalClicks = (int)($clickStats['total'] ?? 0);
         $totalConversions = (int)($convStats['total_conversions'] ?? 0);
         $conversionRate = $totalClicks > 0 ? round(($totalConversions / $totalClicks) * 100, 2) : 0;
 
@@ -133,15 +144,23 @@ switch ($action) {
                    COALESCE(o.price, 49.00) as package_price
             FROM affiliate_clicks c 
             LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
-            WHERE c.affiliate_id IN ($inPlaceholders) 
+            WHERE (c.affiliate_id IN ($inPlaceholders) OR c.user_id = ?)
             ORDER BY c.created_at DESC 
             LIMIT 50
         ");
-        $stmtRecClicks->execute($searchAffIds);
+        $stmtRecClicks->execute(array_merge($searchAffIds, [$user['id']]));
         $recentClicks = $stmtRecClicks->fetchAll(PDO::FETCH_ASSOC);
 
         // Recent Conversions (last 30)
-        $stmtRecConv = $db->prepare("SELECT conversion_id, click_id, offer_id, order_amount, payout_amount, status, created_at FROM affiliate_conversions WHERE affiliate_id IN ($inPlaceholders) OR user_id = ? ORDER BY created_at DESC LIMIT 30");
+        $stmtRecConv = $db->prepare("
+            SELECT c.conversion_id, c.click_id, c.offer_id, c.order_amount, c.payout_amount, c.status, c.created_at,
+                   COALESCE(o.package_id, 'plan_pro') as package_id,
+                   COALESCE(o.package_name, 'Professional') as package_name
+            FROM affiliate_conversions c
+            LEFT JOIN affiliate_offers o ON o.id = c.offer_id
+            WHERE (c.affiliate_id IN ($inPlaceholders) OR c.user_id = ?)
+            ORDER BY c.created_at DESC LIMIT 30
+        ");
         $stmtRecConv->execute(array_merge($searchAffIds, [$user['id']]));
         $recentConversions = $stmtRecConv->fetchAll(PDO::FETCH_ASSOC);
 
@@ -204,7 +223,8 @@ switch ($action) {
                 'referralCode' => $affInfo['referral_code'],
                 'status' => $affInfo['status'],
                 'totalClicks' => $totalClicks,
-                'uniqueClicks' => (int)($clickStats['unique_ips'] ?? 0),
+                'todayClicks' => $todayClicks,
+                'uniqueClicks' => $uniqueClicks,
                 'totalConversions' => $totalConversions,
                 'conversionRate' => $conversionRate,
                 'lifetimeEarnings' => round($totalEarnings, 2),
@@ -619,14 +639,16 @@ switch ($action) {
         $inPlaceholders = implode(',', array_fill(0, count($searchAffIds), '?'));
 
         $stmt = $db->prepare("
-            SELECT c.*, o.title as offer_title 
+            SELECT c.*, o.title as offer_title,
+                   COALESCE(c.package_id, o.package_id, 'plan_pro') as package_id,
+                   COALESCE(o.package_name, 'Professional') as package_name
             FROM affiliate_clicks c 
             LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
-            WHERE c.affiliate_id IN ($inPlaceholders) 
+            WHERE (c.affiliate_id IN ($inPlaceholders) OR c.user_id = ?) 
             ORDER BY c.created_at DESC 
             LIMIT 100
         ");
-        $stmt->execute($searchAffIds);
+        $stmt->execute(array_merge($searchAffIds, [$user['id']]));
         $clicks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         respondJson(['success' => true, 'data' => $clicks]);
@@ -648,6 +670,19 @@ switch ($action) {
         $targetOfferId = trim($input['offer_id'] ?? 'offer_main_saas');
         $sub1 = trim($input['sub_id1'] ?? 'test_live_stream');
         
+        $packageId = 'plan_pro';
+        $packageName = 'Professional';
+        try {
+            $stO = $db->prepare("SELECT package_id, package_name FROM affiliate_offers WHERE id = ? LIMIT 1");
+            $stO->execute([$targetOfferId]);
+            $oR = $stO->fetch(PDO::FETCH_ASSOC);
+            if ($oR) {
+                $packageId = $oR['package_id'] ?? 'plan_pro';
+                $packageName = $oR['package_name'] ?? 'Professional';
+            }
+        } catch (Throwable $e) {}
+
+        $targetUserId = $user ? $user['id'] : null;
         $testClickId = 'clk_test_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(3)), 0, 6);
         $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         if (strpos($ip, ',') !== false) $ip = trim(explode(',', $ip)[0]);
@@ -656,26 +691,26 @@ switch ($action) {
         try {
             $stmtClick = $db->prepare("
                 INSERT INTO affiliate_clicks (
-                    click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
-                    sub_id1, created_at
+                    click_id, affiliate_id, user_id, offer_id, package_id, ip_address, user_agent, referrer, landing_url,
+                    sub_id1, device, browser, os, processor, country, is_fraud, created_at
                 ) VALUES (
-                    ?, ?, ?, ?, ?, 'https://antiprofiles.com/referral-test', 'https://antiprofiles.com/register?ref=' || ?,
-                    ?, CURRENT_TIMESTAMP
+                    ?, ?, ?, ?, ?, ?, ?, 'https://antiprofiles.com/referral-test', 'https://antiprofiles.com/register?ref=' || ?,
+                    ?, 'Desktop', 'Chrome', 'macOS', 'Apple Silicon', 'US', 0, CURRENT_TIMESTAMP
                 )
             ");
             $stmtClick->execute([
-                $testClickId, $targetAffId, $targetOfferId, $ip, $ua, $targetAffId, $sub1
+                $testClickId, $targetAffId, $targetUserId, $targetOfferId, $packageId, $ip, $ua, $targetAffId, $sub1
             ]);
         } catch (Throwable $e) {
             try {
                 $stmtClick2 = $db->prepare("
                     INSERT INTO affiliate_clicks (
-                        click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, created_at
+                        click_id, affiliate_id, user_id, offer_id, package_id, ip_address, user_agent, referrer, created_at
                     ) VALUES (
-                        ?, ?, ?, ?, ?, 'https://antiprofiles.com/referral-test', CURRENT_TIMESTAMP
+                        ?, ?, ?, ?, ?, ?, ?, 'https://antiprofiles.com/referral-test', CURRENT_TIMESTAMP
                     )
                 ");
-                $stmtClick2->execute([$testClickId, $targetAffId, $targetOfferId, $ip, $ua]);
+                $stmtClick2->execute([$testClickId, $targetAffId, $targetUserId, $targetOfferId, $packageId, $ip, $ua]);
             } catch (Throwable $e2) {}
         }
 
@@ -691,6 +726,8 @@ switch ($action) {
                 'click_id' => $testClickId,
                 'affiliate_id' => $targetAffId,
                 'offer_id' => $targetOfferId,
+                'package_id' => $packageId,
+                'package_name' => $packageName,
                 'ip_address' => $ip,
                 'sub_id1' => $sub1,
                 'created_at' => date('Y-m-d H:i:s')

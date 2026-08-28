@@ -223,6 +223,37 @@ const DEFAULT_FALLBACK_OFFERS: OfferItem[] = [
   }
 ]
 
+interface AffiliateSummary {
+  affiliateId: string
+  affiliateStatus: string
+  referralCode: string
+  referralLink: string
+  commissionRate: number
+  minWithdrawalUsd: number
+  holdingPeriodDays: number
+  totalClicks: number
+  todayClicks?: number
+  uniqueClicks: number
+  totalConversions: number
+  conversionRate: number
+  totalReferredSales: number
+  totalEarned: number
+  pendingCommission: number
+  approvedCommission: number
+  paidCommission: number
+  availableBalance: number
+  withdrawnAmount: number
+  pendingWithdrawalAmount: number
+  enabledPayoutMethods: string[]
+  postbackConfig: any
+  offers: OfferItem[]
+  recentClicks: any[]
+  recentConversions: any[]
+  recentCommissions: CommissionItem[]
+  recentWithdrawals: WithdrawalItem[]
+  recentPostbacks: any[]
+}
+
 const createDefaultSummary = (userId?: string): AffiliateSummary => {
   const clean = (userId || 'PARTNER').replace(/^usr_/i, '').replace(/[^a-zA-Z0-9]/g, '')
   const defaultSuffix = clean.length >= 4 ? clean.slice(0, 6).toUpperCase() : (clean + '8888').slice(0, 6).toUpperCase()
@@ -237,6 +268,7 @@ const createDefaultSummary = (userId?: string): AffiliateSummary => {
     minWithdrawalUsd: 50,
     holdingPeriodDays: 7,
     totalClicks: 0,
+    todayClicks: 0,
     uniqueClicks: 0,
     totalConversions: 0,
     conversionRate: 0,
@@ -275,6 +307,8 @@ export const ReferralDashboard: React.FC = () => {
   const [utmMedium, setUtmMedium] = useState<string>('')
   const [generatedTrackingUrl, setGeneratedTrackingUrl] = useState<string>('')
   const [copiedCustomLink, setCopiedCustomLink] = useState(false)
+  const [clickFilterPackage, setClickFilterPackage] = useState<string>('all')
+  const [clickSearchQuery, setClickSearchQuery] = useState<string>('')
 
   // Postback Config Form
   const [postbackUrl, setPostbackUrl] = useState('')
@@ -301,9 +335,9 @@ export const ReferralDashboard: React.FC = () => {
     setTimeout(() => setToastMsg(null), 4000)
   }
 
-  const loadSummary = async () => {
+  const loadSummary = async (silent: boolean = false) => {
     const uid = currentUser?.id || 'admin-default'
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       if ((window as any).api?.affiliateGetUserSummary) {
         const res = await (window as any).api.affiliateGetUserSummary(uid)
@@ -315,7 +349,7 @@ export const ReferralDashboard: React.FC = () => {
             setPostbackUrl(res.data.postbackConfig.postback_url)
             setPostbackMethod(res.data.postbackConfig.http_method || 'GET')
           }
-          if (offersList.length > 0) {
+          if (offersList.length > 0 && !selectedOfferForLink) {
             const validOfferId = offersList.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : offersList[0].id
             setSelectedOfferForLink(validOfferId)
             handleGenerateLink(validOfferId, updatedSummary)
@@ -333,9 +367,9 @@ export const ReferralDashboard: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.warn('Could not load affiliate summary from IPC:', err)
+      if (!silent) console.warn('Could not load affiliate summary from IPC:', err)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -357,18 +391,44 @@ export const ReferralDashboard: React.FC = () => {
     : `https://antiprofiles.com/register?ref=${activeReferralCode}`
 
   useEffect(() => {
-    loadSummary()
+    loadSummary(false)
 
     let unsubComm: (() => void) | undefined
     let unsubRef: (() => void) | undefined
     let unsubWith: (() => void) | undefined
     let unsubSync: (() => void) | undefined
+    let unsubOffers: (() => void) | undefined
+    let unsubClick: (() => void) | undefined
+    let unsubRealtime: (() => void) | undefined
+
+    if ((window as any).api?.onAffiliateClickRecorded) {
+      unsubClick = (window as any).api.onAffiliateClickRecorded((_e: any, d: any) => {
+        setSummary(prev => {
+          if (!prev) return prev
+          const already = (prev.recentClicks || []).some(c => c.click_id === d.click_id)
+          const newClicks = already ? prev.recentClicks : [d, ...(prev.recentClicks || [])]
+          return {
+            ...prev,
+            totalClicks: already ? prev.totalClicks : (prev.totalClicks || 0) + 1,
+            todayClicks: already ? (prev.todayClicks || 0) : ((prev.todayClicks || 0) + 1),
+            recentClicks: newClicks
+          }
+        })
+        showToast('success', `⚡ Live Click Recorded: ${d.click_id || 'new click'}`)
+      })
+    }
+
+    if ((window as any).api?.onAffiliateRealtimeUpdate) {
+      unsubRealtime = (window as any).api.onAffiliateRealtimeUpdate((_e: any, _d: any) => {
+        loadSummary(true)
+      })
+    }
 
     if ((window as any).api?.onAffiliateCommissionEarned) {
       unsubComm = (window as any).api.onAffiliateCommissionEarned((_e: any, d: any) => {
         if (d?.referrerUserId === currentUser?.id) {
           showToast('success', `🎉 You just earned $${Number(d.commissionAmount || 0).toFixed(2)} in CPA commission!`)
-          loadSummary()
+          loadSummary(true)
         }
       })
     }
@@ -377,7 +437,7 @@ export const ReferralDashboard: React.FC = () => {
       unsubRef = (window as any).api.onAffiliateNewReferral((_e: any, d: any) => {
         if (d?.referrerUserId === currentUser?.id) {
           showToast('success', '👥 A new customer signed up through your CPA link!')
-          loadSummary()
+          loadSummary(true)
         }
       })
     }
@@ -386,33 +446,43 @@ export const ReferralDashboard: React.FC = () => {
       unsubWith = (window as any).api.onAffiliateWithdrawalUpdated((_e: any, d: any) => {
         if (d?.userId === currentUser?.id) {
           showToast('success', `💸 Withdrawal update: Status is now ${String(d.status).toUpperCase()}`)
-          loadSummary()
+          loadSummary(true)
         }
       })
     }
 
-    let unsubOffers: (() => void) | undefined
-
     if ((window as any).api?.onRealtimeSyncEvent) {
       unsubSync = (window as any).api.onRealtimeSyncEvent((_e: any, d: any) => {
         if (d?.eventType?.includes('affiliate') || d?.eventType?.includes('offer')) {
-          loadSummary()
+          loadSummary(true)
         }
       })
     }
 
     if ((window as any).api?.onAffiliateOffersUpdated) {
       unsubOffers = (window as any).api.onAffiliateOffersUpdated(() => {
-        loadSummary()
+        loadSummary(true)
       })
     }
 
+    // Auto sync poller every 5 seconds for real-time background sync
+    const poller = setInterval(() => {
+      loadSummary(true)
+    }, 5000)
+
+    const handleOnline = () => loadSummary(true)
+    window.addEventListener('online', handleOnline)
+
     return () => {
+      clearInterval(poller)
+      window.removeEventListener('online', handleOnline)
       unsubComm?.()
       unsubRef?.()
       unsubWith?.()
       unsubSync?.()
       unsubOffers?.()
+      unsubClick?.()
+      unsubRealtime?.()
     }
   }, [currentUser?.id])
 
@@ -726,11 +796,23 @@ export const ReferralDashboard: React.FC = () => {
       </div>
 
       {/* KPI Stats Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
-        <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '16px' }}>
-          <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, marginBottom: '6px' }}>🖱️ TOTAL CLICKS</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+        <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '16px', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600 }}>🖱️ TOTAL CLICKS</div>
+            <span style={{ fontSize: '10px', color: '#38BDF8', background: 'rgba(56,189,248,0.12)', padding: '2px 6px', borderRadius: '4px' }}>Stream</span>
+          </div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#FFF' }}>{summary ? summary.totalClicks : 0}</div>
           <div style={{ fontSize: '11px', color: '#38BDF8', marginTop: '4px' }}>{summary ? summary.uniqueClicks : 0} Unique Visitors</div>
+        </div>
+
+        <div style={{ background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(37, 99, 235, 0.12))', border: '1px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '16px', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#38BDF8', fontWeight: 700 }}>⚡ TODAY'S CLICKS</div>
+            <span style={{ display: 'inline-flex', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22C55E', boxShadow: '0 0 8px #22C55E' }} />
+          </div>
+          <div style={{ fontSize: '22px', fontWeight: 800, color: '#38BDF8' }}>{summary ? (summary.todayClicks ?? 0) : 0}</div>
+          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>Real-Time Stream</div>
         </div>
 
         <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '16px' }}>
@@ -1094,8 +1176,36 @@ export const ReferralDashboard: React.FC = () => {
       {activeTab === 'clicks' && (
         <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', color: '#FFF' }}>Live Click Stream</h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#FFF' }}>Live Click Stream</h3>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ADE80', fontSize: '11px', fontWeight: 700, border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22C55E', boxShadow: '0 0 6px #22C55E' }} />
+                Real-Time Listening
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Package Filter */}
+              <select
+                value={clickFilterPackage}
+                onChange={e => setClickFilterPackage(e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+              >
+                <option value="all">All Packages</option>
+                <option value="plan_free">Free ($0)</option>
+                <option value="plan_starter">Starter ($19)</option>
+                <option value="plan_pro">Professional ($49)</option>
+                <option value="plan_business">Business ($99)</option>
+              </select>
+
+              {/* Search Bar */}
+              <input
+                type="text"
+                placeholder="Search Click ID, SubID..."
+                value={clickSearchQuery}
+                onChange={e => setClickSearchQuery(e.target.value)}
+                style={{ padding: '6px 10px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px', width: '160px' }}
+              />
+
               <button
                 onClick={async () => {
                   try {
@@ -1103,7 +1213,7 @@ export const ReferralDashboard: React.FC = () => {
                       const res = await (window as any).api.affiliateSimulateTestClick(activeAffiliateId, selectedOfferForLink, 'live_test')
                       if (res?.success) {
                         showToast('success', `🧪 Simulated test click recorded for ${activeAffiliateId}`)
-                        loadSummary()
+                        loadSummary(true)
                       }
                     }
                   } catch (e: any) {
@@ -1121,10 +1231,10 @@ export const ReferralDashboard: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                🧪 Generate Test Click
+                🧪 Test Click
               </button>
               <button
-                onClick={loadSummary}
+                onClick={() => loadSummary(false)}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '6px',
@@ -1136,82 +1246,107 @@ export const ReferralDashboard: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                🔄 Refresh Stream
+                🔄 Refresh
               </button>
             </div>
           </div>
 
-          {(!summary?.recentClicks || summary.recentClicks.length === 0) ? (
-            <div style={{ padding: '36px 20px', textAlign: 'center', background: '#0B0F19', borderRadius: '8px', border: '1px dashed #334155' }}>
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🖱️</div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>No click traffic recorded yet.</div>
-              <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '460px', margin: '0 auto 16px auto' }}>
-                Clicks generated when visitors click your referral link (<code>{activeReferralLink}</code>) will populate here in real-time.
-              </p>
-              <button
-                onClick={async () => {
-                  try {
-                    if ((window as any).api?.affiliateSimulateTestClick) {
-                      const res = await (window as any).api.affiliateSimulateTestClick(activeAffiliateId, selectedOfferForLink, 'live_test')
-                      if (res?.success) {
-                        showToast('success', `🧪 Simulated test click recorded for ${activeAffiliateId}`)
-                        loadSummary()
+          {(() => {
+            const rawClicks = summary?.recentClicks || []
+            const filteredClicks = rawClicks.filter(c => {
+              if (clickFilterPackage !== 'all') {
+                const pkg = (c.package_id || 'plan_pro').toLowerCase()
+                if (pkg !== clickFilterPackage.toLowerCase()) return false
+              }
+              if (clickSearchQuery.trim()) {
+                const q = clickSearchQuery.toLowerCase()
+                const clickId = (c.click_id || '').toLowerCase()
+                const sub1 = (c.sub_id1 || '').toLowerCase()
+                const ip = (c.ip_address || '').toLowerCase()
+                const device = (c.device || '').toLowerCase()
+                if (!clickId.includes(q) && !sub1.includes(q) && !ip.includes(q) && !device.includes(q)) return false
+              }
+              return true
+            })
+
+            if (filteredClicks.length === 0) {
+              return (
+                <div style={{ padding: '36px 20px', textAlign: 'center', background: '#0B0F19', borderRadius: '8px', border: '1px dashed #334155' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>🖱️</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>
+                    {rawClicks.length > 0 ? 'No clicks matching filter criteria.' : 'No click traffic recorded yet.'}
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '460px', margin: '0 auto 16px auto' }}>
+                    Clicks generated when visitors click your referral link (<code>{activeReferralLink}</code>) will populate here in real-time.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        if ((window as any).api?.affiliateSimulateTestClick) {
+                          const res = await (window as any).api.affiliateSimulateTestClick(activeAffiliateId, selectedOfferForLink, 'live_test')
+                          if (res?.success) {
+                            showToast('success', `🧪 Simulated test click recorded for ${activeAffiliateId}`)
+                            loadSummary(true)
+                          }
+                        }
+                      } catch (e: any) {
+                        showToast('error', e.message)
                       }
-                    }
-                  } catch (e: any) {
-                    showToast('error', e.message)
-                  }
-                }}
-                style={{ padding: '8px 18px', borderRadius: '8px', background: '#38BDF8', color: '#0F172A', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
-              >
-                🧪 Generate First Live Test Click
-              </button>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px' }}>TIME</th>
-                    <th style={{ padding: '10px 12px' }}>CLICK ID</th>
-                    <th style={{ padding: '10px 12px' }}>PACKAGE / OFFER</th>
-                    <th style={{ padding: '10px 12px' }}>DEVICE / OS</th>
-                    <th style={{ padding: '10px 12px' }}>SUBID1</th>
-                    <th style={{ padding: '10px 12px' }}>STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.recentClicks.map(clk => (
-                    <tr key={clk.click_id} style={{ borderBottom: '1px solid #1E293B' }}>
-                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(clk.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{clk.click_id}</td>
-                      <td style={{ padding: '10px 12px', color: '#FFF' }}>
-                        <span style={{ fontWeight: 600, color: '#2DD4BF' }}>
-                          {clk.package_name || (clk.package_id === 'plan_starter' ? 'Starter' : clk.package_id === 'plan_business' ? 'Business' : 'Professional')}
-                        </span>
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>{clk.offer_id}</div>
-                      </td>
-                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>
-                        {clk.device || 'Desktop'} • {clk.browser || 'Chrome'}
-                      </td>
-                      <td style={{ padding: '10px 12px', color: '#A78BFA' }}>{clk.sub_id1 || '—'}</td>
-                      <td style={{ padding: '10px 12px' }}>
-                        {clk.converted ? (
-                          <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34, 197, 94, 0.2)', color: '#4ADE80' }}>
-                            CONVERTED
-                          </span>
-                        ) : (
-                          <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', color: '#64748B' }}>
-                            Clicked
-                          </span>
-                        )}
-                      </td>
+                    }}
+                    style={{ padding: '8px 18px', borderRadius: '8px', background: '#38BDF8', color: '#0F172A', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+                  >
+                    🧪 Generate Live Test Click
+                  </button>
+                </div>
+              )
+            }
+
+            return (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 12px' }}>TIME</th>
+                      <th style={{ padding: '10px 12px' }}>CLICK ID</th>
+                      <th style={{ padding: '10px 12px' }}>PACKAGE / OFFER</th>
+                      <th style={{ padding: '10px 12px' }}>DEVICE / OS</th>
+                      <th style={{ padding: '10px 12px' }}>SUBID1</th>
+                      <th style={{ padding: '10px 12px' }}>STATUS</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {filteredClicks.map(clk => (
+                      <tr key={clk.click_id} style={{ borderBottom: '1px solid #1E293B' }}>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(clk.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+                        <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace', fontWeight: 600 }}>{clk.click_id}</td>
+                        <td style={{ padding: '10px 12px', color: '#FFF' }}>
+                          <span style={{ fontWeight: 600, color: '#2DD4BF' }}>
+                            {clk.package_name || (clk.package_id === 'plan_starter' ? 'Starter' : clk.package_id === 'plan_business' ? 'Business' : clk.package_id === 'plan_free' ? 'Free' : 'Professional')}
+                          </span>
+                          <div style={{ fontSize: '11px', color: '#64748B' }}>{clk.offer_id}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>
+                          {clk.device || 'Desktop'} • {clk.browser || 'Chrome'}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#A78BFA' }}>{clk.sub_id1 || '—'}</td>
+                        <td style={{ padding: '10px 12px' }}>
+                          {clk.converted ? (
+                            <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34, 197, 94, 0.2)', color: '#4ADE80' }}>
+                              CONVERTED
+                            </span>
+                          ) : (
+                            <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', color: '#38BDF8', background: 'rgba(56, 189, 248, 0.1)' }}>
+                              ⚡ Clicked
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })()}
         </div>
       )}
 
