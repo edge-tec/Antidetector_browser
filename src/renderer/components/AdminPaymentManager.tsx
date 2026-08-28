@@ -97,21 +97,52 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
     setLoading(true)
     try {
       const token = localStorage.getItem('pv_session_token') || ''
-      const res = await (window as any).api.adminGetPaymentsOverview(token, {
-        search: searchQuery,
-        status: statusFilter,
-        gateway: gatewayFilter
-      })
-      if (res?.success && res.data) {
-        setMetrics(res.data.metrics || {})
-        setPayments(res.data.payments || [])
-        setGateways(res.data.gateways || [])
+      if ((window as any).api?.adminGetPaymentsOverview) {
+        const res = await (window as any).api.adminGetPaymentsOverview(token, {
+          search: searchQuery,
+          status: statusFilter,
+          gateway: gatewayFilter
+        })
+        if (res?.success && res.data) {
+          setMetrics(res.data.metrics || {})
+          setPayments(res.data.payments || [])
+          setGateways(res.data.gateways || [])
+        }
+      } else {
+        const res = await fetch(`/api/admin.php?action=get-payments-overview&search=${encodeURIComponent(searchQuery)}&status=${encodeURIComponent(statusFilter)}&gateway=${encodeURIComponent(gatewayFilter)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json())
+        if (res?.success && res.data) {
+          setMetrics(res.data.metrics || {})
+          setPayments(res.data.payments || [])
+          setGateways(res.data.gateways || [])
+        }
       }
 
       // Fetch users for dropdowns
-      const uRes = await (window as any).api.adminGetUsers(token)
-      if (uRes?.success && uRes.users) {
-        setUsersList(uRes.users.map((u: any) => ({ id: u.id, name: u.name, email: u.email })))
+      let rawUsers: any[] = []
+      try {
+        if ((window as any).api?.adminGetUsers) {
+          const uRes = await (window as any).api.adminGetUsers(token)
+          if (uRes?.success && (uRes.data || uRes.users)) {
+            rawUsers = uRes.data || uRes.users || []
+          }
+        } else {
+          const uRes = await fetch('/api/admin.php?action=get-users', {
+            headers: { Authorization: `Bearer ${token}` }
+          }).then(r => r.json())
+          if (uRes?.success && (uRes.data || uRes.users)) {
+            rawUsers = uRes.data || uRes.users || []
+          }
+        }
+      } catch {}
+
+      if (rawUsers && Array.isArray(rawUsers) && rawUsers.length > 0) {
+        setUsersList(rawUsers.map((u: any) => ({
+          id: u.id,
+          name: u.name || 'User',
+          email: u.email
+        })))
       }
     } catch (err: any) {
       showToast('error', err.message || 'Failed to load payments.')
