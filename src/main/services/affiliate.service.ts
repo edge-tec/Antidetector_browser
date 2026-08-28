@@ -102,13 +102,25 @@ export interface AffiliateUserSummary {
 export class AffiliateService {
   private static instance: AffiliateService
 
-  private constructor() {}
+  private constructor() {
+    this.ensureSchemaExists()
+  }
 
   public static getInstance(): AffiliateService {
     if (!AffiliateService.instance) {
       AffiliateService.instance = new AffiliateService()
     }
     return AffiliateService.instance
+  }
+
+  public ensureSchemaExists(): void {
+    try {
+      const db = getDatabase()
+      try { db.exec("ALTER TABLE users ADD COLUMN affiliate_id TEXT;") } catch {}
+      try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_affiliate_id ON users(affiliate_id);") } catch {}
+      try { db.exec("ALTER TABLE users ADD COLUMN affiliate_status TEXT DEFAULT 'active';") } catch {}
+      try { db.exec("ALTER TABLE users ADD COLUMN referral_code TEXT;") } catch {}
+    } catch {}
   }
 
   // ──────────────────────────────────────────────
@@ -1226,20 +1238,26 @@ export class AffiliateService {
     auditLogs: AffiliateAuditLog[]
   } {
     this.promoteMaturedCommissions()
+    this.ensureSchemaExists()
     const db = getDatabase()
     const settings = this.getSettings()
 
-    const affiliates = db.prepare(`
-      SELECT u.id, u.name, u.email, u.affiliate_id, u.affiliate_status, u.referral_code, u.created_at,
-             COALESCE((SELECT COUNT(*) FROM affiliate_clicks WHERE affiliate_id = u.affiliate_id), 0) as clicks_count,
-             COALESCE((SELECT COUNT(*) FROM affiliate_conversions WHERE affiliate_id = u.affiliate_id), 0) as conversions_count,
-             COALESCE((SELECT SUM(commission_amount) FROM affiliate_commissions WHERE referrer_user_id = u.id AND status IN ('pending','available','withdrawn')), 0) as total_earned,
-             COALESCE((SELECT SUM(amount) FROM affiliate_withdrawals WHERE user_id = u.id AND status = 'paid'), 0) as total_withdrawn
-      FROM users u
-      WHERE u.affiliate_id IS NOT NULL OR u.referral_code IS NOT NULL
-      ORDER BY u.created_at DESC
-      LIMIT 100
-    `).all()
+    let affiliates: any[] = []
+    try {
+      affiliates = db.prepare(`
+        SELECT u.id, u.name, u.email, u.affiliate_id, u.affiliate_status, u.referral_code, u.created_at,
+               COALESCE((SELECT COUNT(*) FROM affiliate_clicks WHERE affiliate_id = u.affiliate_id), 0) as clicks_count,
+               COALESCE((SELECT COUNT(*) FROM affiliate_conversions WHERE affiliate_id = u.affiliate_id), 0) as conversions_count,
+               COALESCE((SELECT SUM(commission_amount) FROM affiliate_commissions WHERE referrer_user_id = u.id AND status IN ('pending','available','withdrawn')), 0) as total_earned,
+               COALESCE((SELECT SUM(amount) FROM affiliate_withdrawals WHERE user_id = u.id AND status = 'paid'), 0) as total_withdrawn
+        FROM users u
+        WHERE u.affiliate_id IS NOT NULL OR u.referral_code IS NOT NULL
+        ORDER BY u.created_at DESC
+        LIMIT 100
+      `).all()
+    } catch {
+      affiliates = []
+    }
 
     const clicksCountRow = db.prepare('SELECT COUNT(*) as count FROM affiliate_clicks').get() as { count: number }
     const convCountRow = db.prepare('SELECT COUNT(*) as count FROM affiliate_conversions').get() as { count: number }

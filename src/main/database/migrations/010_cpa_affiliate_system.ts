@@ -8,9 +8,13 @@ export const id = 10
 export const name = '010_cpa_affiliate_system'
 
 export function up(db: Database.Database): void {
-  // 1. Add affiliate specific columns to users if missing
+  // 1. Add affiliate specific columns to users if missing (SQLite does not support UNIQUE in ALTER TABLE)
   try {
-    db.exec("ALTER TABLE users ADD COLUMN affiliate_id TEXT UNIQUE;")
+    db.exec("ALTER TABLE users ADD COLUMN affiliate_id TEXT;")
+  } catch {}
+
+  try {
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_affiliate_id ON users(affiliate_id);")
   } catch {}
 
   try {
