@@ -113,6 +113,11 @@ export const AdminAffiliateManager: React.FC = () => {
   const [testingPostback, setTestingPostback] = useState(false)
   const [testPostbackResult, setTestPostbackResult] = useState<{ statusCode: number; responseTimeMs: number; error?: string } | null>(null)
 
+  // Reports Modal State
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [clickSearch, setClickSearch] = useState('')
+  const [convSearch, setConvSearch] = useState('')
+
   const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const showToast = (type: 'success' | 'error', text: string) => {
@@ -177,8 +182,8 @@ export const AdminAffiliateManager: React.FC = () => {
     }
   }
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
     try {
       const res = await callAffiliateApi('admin-get-overview', 'GET')
       if (res?.success && res?.data) {
@@ -190,40 +195,211 @@ export const AdminAffiliateManager: React.FC = () => {
           min_withdrawal_usd: res.data.settings?.min_withdrawal_usd || 20,
           system_domain: res.data.settings?.system_domain || 'https://antiprofiles.com'
         })
-      } else if (res?.error) {
+      } else if (res?.error && showSpinner) {
         showToast('error', res.error)
       }
     } catch (err: any) {
-      showToast('error', 'Failed to load affiliate administration: ' + err.message)
+      if (showSpinner) showToast('error', 'Failed to load affiliate administration: ' + err.message)
     } finally {
-      setLoading(false)
+      if (showSpinner) setLoading(false)
+    }
+  }
+
+  // Real-Time CSV Export & Reporting Engine
+  const downloadCsv = (filename: string, rows: (string | number)[][]) => {
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    showToast('success', `📥 Exported ${filename}.csv successfully!`)
+  }
+
+  const exportReport = (type: 'clicks' | 'conversions' | 'affiliates' | 'withdrawals' | 'audit' | 'executive') => {
+    if (type === 'clicks') {
+      const headers = ['Time', 'Click ID', 'Affiliate ID', 'Offer ID', 'IP Address', 'User Agent', 'SubID1', 'SubID2', 'Converted']
+      const rows = [headers, ...(data?.clicks || []).map(c => [
+        new Date(c.created_at).toLocaleString(),
+        c.click_id,
+        c.affiliate_id,
+        c.offer_id,
+        c.ip_address || '',
+        c.user_agent || '',
+        c.sub_id1 || '',
+        c.sub_id2 || '',
+        c.converted ? 'YES' : 'NO'
+      ])]
+      downloadCsv('Live_Click_Stream_Report', rows)
+    } else if (type === 'conversions') {
+      const headers = ['Time', 'Conversion ID', 'Click ID', 'Affiliate ID', 'Offer ID', 'Order Amount ($)', 'Payout Amount ($)', 'Status']
+      const rows = [headers, ...(data?.conversions || []).map(c => [
+        new Date(c.created_at).toLocaleString(),
+        c.conversion_id,
+        c.click_id,
+        c.affiliate_id,
+        c.offer_id,
+        Number(c.order_amount || 0).toFixed(2),
+        Number(c.payout_amount || 0).toFixed(2),
+        c.status.toUpperCase()
+      ])]
+      downloadCsv('CPA_Conversions_Attribution_Report', rows)
+    } else if (type === 'affiliates') {
+      const headers = ['Name', 'Email', 'Affiliate ID', 'Referral Code', 'Total Clicks', 'Total Conversions', 'Total Earned ($)', 'Total Withdrawn ($)', 'Status', 'Registered Date']
+      const rows = [headers, ...(data?.affiliates || []).map(a => [
+        a.name || 'User',
+        a.email,
+        a.affiliate_id,
+        a.referral_code,
+        a.clicks_count || 0,
+        a.conversions_count || 0,
+        Number(a.total_earned || 0).toFixed(2),
+        Number(a.total_withdrawn || 0).toFixed(2),
+        (a.affiliate_status || 'active').toUpperCase(),
+        new Date(a.created_at).toLocaleDateString()
+      ])]
+      downloadCsv('Affiliates_Directory_Performance_Report', rows)
+    } else if (type === 'withdrawals') {
+      const headers = ['Withdrawal ID', 'User Name', 'User Email', 'Amount ($)', 'Method', 'Status', 'Requested At', 'Processed At', 'Transaction Ref', 'Admin Notes']
+      const rows = [headers, ...(data?.withdrawals || []).map(w => [
+        w.id,
+        w.user_name || '',
+        w.user_email || '',
+        Number(w.amount || 0).toFixed(2),
+        w.payout_method.toUpperCase(),
+        w.status.toUpperCase(),
+        new Date(w.requested_at).toLocaleString(),
+        w.processed_at ? new Date(w.processed_at).toLocaleString() : '',
+        w.payout_reference || '',
+        w.admin_notes || ''
+      ])]
+      downloadCsv('Withdrawals_Settlements_Report', rows)
+    } else if (type === 'audit') {
+      const headers = ['Time', 'Action Type', 'Admin User', 'Target ID', 'Details', 'IP Address']
+      const rows = [headers, ...(data?.auditLogs || []).map(l => [
+        new Date(l.created_at).toLocaleString(),
+        l.action_type,
+        l.admin_user_id || 'system',
+        l.target_id || '',
+        l.details || '',
+        l.ip_address || ''
+      ])]
+      downloadCsv('Affiliate_Audit_Trail_Report', rows)
+    } else if (type === 'executive') {
+      const rows = [
+        ['ANTI-PROFILES CPA AFFILIATE NETWORK EXECUTIVE REPORT'],
+        ['Generated At', new Date().toLocaleString()],
+        [''],
+        ['--- KEY PERFORMANCE METRICS ---'],
+        ['Total Registered Affiliates', data?.stats?.totalAffiliates || 0],
+        ['Total Tracked Clicks', data?.stats?.totalClicks || 0],
+        ['Total Conversions', data?.stats?.totalConversions || 0],
+        ['Total Referred Revenue ($)', Number(data?.stats?.totalReferredRevenue || 0).toFixed(2)],
+        ['Total Commissions Paid ($)', Number(data?.stats?.totalCommissionsPaid || 0).toFixed(2)],
+        ['Total Pending Commissions ($)', Number(data?.stats?.totalCommissionsPending || 0).toFixed(2)],
+        ['Pending Withdrawals Count', data?.stats?.totalPendingWithdrawalRequests || 0],
+        ['Pending Withdrawals Sum ($)', Number(data?.stats?.pendingWithdrawalSum || 0).toFixed(2)],
+        ['Active CPA Offers', data?.offers?.length || 0],
+        ['']
+      ]
+      downloadCsv('CPA_Network_Executive_Report', rows)
+    }
+  }
+
+  // Real-Time Simulation for Live Demonstration
+  const handleSimulateTestClick = async () => {
+    const targetAffId = data?.affiliates?.[0]?.affiliate_id || 'AFF-28DE2A'
+    const targetOfferId = data?.offers?.[0]?.id || 'offer_main_saas'
+    try {
+      if ((window as any).api?.affiliateRecordClick) {
+        const res = await (window as any).api.affiliateRecordClick({
+          affiliate_id: targetAffId,
+          offer_id: targetOfferId,
+          sub_id1: 'live_test',
+          ip_address: '127.0.0.1',
+          user_agent: navigator.userAgent
+        })
+        if (res?.success) {
+          showToast('success', `🧪 Simulated live click logged: ${res.data?.click_id}`)
+          loadData(false)
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    }
+  }
+
+  const handleSimulateTestConversion = async () => {
+    const targetAffId = data?.affiliates?.[0]?.affiliate_id || 'AFF-28DE2A'
+    const targetOfferId = data?.offers?.[0]?.id || 'offer_main_saas'
+    const clickId = data?.clicks?.[0]?.click_id || `clk_${Date.now()}`
+    try {
+      if ((window as any).api?.affiliateRecordConversion) {
+        const res = await (window as any).api.affiliateRecordConversion({
+          click_id: clickId,
+          affiliate_id: targetAffId,
+          offer_id: targetOfferId,
+          order_amount: 49.00,
+          customer_user_id: 'usr_test_buyer'
+        })
+        if (res?.success) {
+          showToast('success', `🎉 Simulated live conversion: ${res.conversionId || 'Success'} (+$${res.commissionAmount || 15} credited)`)
+          loadData(false)
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
     }
   }
 
   useEffect(() => {
-    loadData()
+    loadData(true)
+
+    // Real-Time 4-second Polling Loop
+    const pollTimer = setInterval(() => {
+      loadData(false)
+    }, 4000)
 
     // Real-time synchronization across Desktop & Web Admin instances
     let unsubSync: (() => void) | undefined
     let unsubOffers: (() => void) | undefined
+    let unsubComm: (() => void) | undefined
+    let unsubRef: (() => void) | undefined
 
     if ((window as any).api?.onRealtimeSyncEvent) {
       unsubSync = (window as any).api.onRealtimeSyncEvent((_e: any, d: any) => {
         if (d?.eventType?.includes('affiliate') || d?.eventType?.includes('offer')) {
-          loadData()
+          loadData(false)
         }
       })
     }
 
     if ((window as any).api?.onAffiliateOffersUpdated) {
       unsubOffers = (window as any).api.onAffiliateOffersUpdated(() => {
-        loadData()
+        loadData(false)
+      })
+    }
+
+    if ((window as any).api?.onAffiliateCommissionEarned) {
+      unsubComm = (window as any).api.onAffiliateCommissionEarned(() => {
+        loadData(false)
+      })
+    }
+
+    if ((window as any).api?.onAffiliateNewReferral) {
+      unsubRef = (window as any).api.onAffiliateNewReferral(() => {
+        loadData(false)
       })
     }
 
     return () => {
+      clearInterval(pollTimer)
       if (unsubSync) unsubSync()
       if (unsubOffers) unsubOffers()
+      if (unsubComm) unsubComm()
+      if (unsubRef) unsubRef()
     }
   }, [])
 
@@ -448,7 +624,30 @@ export const AdminAffiliateManager: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: '#10B981',
+            background: 'rgba(16, 185, 129, 0.12)',
+            padding: '6px 12px',
+            borderRadius: '20px',
+            border: '1px solid rgba(16, 185, 129, 0.3)'
+          }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
+            LIVE REAL-TIME SYNC
+          </span>
+
+          <button
+            onClick={() => setShowReportModal(true)}
+            style={{ padding: '9px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #4F46E5, #3B82F6)', color: '#FFF', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)' }}
+          >
+            📊 Export Reports
+          </button>
+
           <button
             onClick={() => setOfferModal({
               open: true, isEdit: false, title: '', description: '',
@@ -460,7 +659,7 @@ export const AdminAffiliateManager: React.FC = () => {
             + Create CPA Offer
           </button>
           <button
-            onClick={loadData}
+            onClick={() => loadData(true)}
             style={{ padding: '9px 16px', borderRadius: '8px', background: '#1E293B', color: '#E2E8F0', border: '1px solid #334155', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
           >
             🔄 Refresh
@@ -782,84 +981,199 @@ export const AdminAffiliateManager: React.FC = () => {
       {/* ── TAB 4: CLICKS STREAM ── */}
       {activeSubTab === 'clicks' && (
         <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#FFF' }}>Live Click Stream (Audit & Anti-Fraud)</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 12px' }}>TIME</th>
-                  <th style={{ padding: '10px 12px' }}>CLICK ID</th>
-                  <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
-                  <th style={{ padding: '10px 12px' }}>OFFER ID</th>
-                  <th style={{ padding: '10px 12px' }}>IP ADDRESS</th>
-                  <th style={{ padding: '10px 12px' }}>SUBID1</th>
-                  <th style={{ padding: '10px 12px' }}>CONVERTED</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.clicks?.map(c => (
-                  <tr key={c.click_id} style={{ borderBottom: '1px solid #1E293B' }}>
-                    <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(c.created_at).toLocaleTimeString()}</td>
-                    <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{c.click_id}</td>
-                    <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{c.affiliate_id}</td>
-                    <td style={{ padding: '10px 12px' }}>{c.offer_id}</td>
-                    <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{c.ip_address || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#A78BFA' }}>{c.sub_id1 || '—'}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {c.converted ? (
-                        <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34,197,94,0.2)', color: '#4ADE80' }}>
-                          CONVERTED
-                        </span>
-                      ) : (
-                        <span style={{ color: '#64748B' }}>Click</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Live Click Stream (Audit & Anti-Fraud)
+                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: '#38BDF820', color: '#38BDF8', fontWeight: 700 }}>
+                  {data?.clicks?.length || 0} Recorded
+                </span>
+              </h3>
+              <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
+                Real-time tracking feed of incoming referral clicks, subIDs, IP addresses, and conversion status.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={clickSearch}
+                onChange={e => setClickSearch(e.target.value)}
+                placeholder="🔍 Search click, affiliate or IP..."
+                style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px', width: '200px' }}
+              />
+              <button
+                onClick={handleSimulateTestClick}
+                style={{ padding: '6px 12px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#38BDF8', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                🧪 Simulate Test Click
+              </button>
+              <button
+                onClick={() => exportReport('clicks')}
+                style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', border: '1px solid #334155', color: '#E2E8F0', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                📥 Export CSV
+              </button>
+            </div>
           </div>
+
+          {(!data?.clicks || data.clicks.length === 0) ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', background: '#0B0F19', borderRadius: '8px', border: '1px dashed #334155' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🖱️</div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>No Clicks Recorded in the Live Stream Yet</div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '480px', margin: '0 auto 16px auto' }}>
+                Clicks generated when visitors click any affiliate referral link (e.g. <code>/register?ref=REF_...</code> or tracking URLs) will populate here in real-time.
+              </p>
+              <button
+                onClick={handleSimulateTestClick}
+                style={{ padding: '8px 18px', borderRadius: '8px', background: '#38BDF8', color: '#0F172A', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+              >
+                🧪 Generate First Live Test Click
+              </button>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 12px' }}>TIME</th>
+                    <th style={{ padding: '10px 12px' }}>CLICK ID</th>
+                    <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
+                    <th style={{ padding: '10px 12px' }}>OFFER ID</th>
+                    <th style={{ padding: '10px 12px' }}>IP ADDRESS</th>
+                    <th style={{ padding: '10px 12px' }}>SUBID1</th>
+                    <th style={{ padding: '10px 12px' }}>CONVERTED</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.clicks
+                    .filter(c => !clickSearch || (
+                      c.click_id.toLowerCase().includes(clickSearch.toLowerCase()) ||
+                      c.affiliate_id.toLowerCase().includes(clickSearch.toLowerCase()) ||
+                      (c.ip_address && c.ip_address.includes(clickSearch)) ||
+                      (c.sub_id1 && c.sub_id1.toLowerCase().includes(clickSearch.toLowerCase()))
+                    ))
+                    .map(c => (
+                      <tr key={c.click_id} style={{ borderBottom: '1px solid #1E293B' }}>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(c.created_at).toLocaleTimeString()}</td>
+                        <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{c.click_id}</td>
+                        <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{c.affiliate_id}</td>
+                        <td style={{ padding: '10px 12px' }}>{c.offer_id}</td>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{c.ip_address || '—'}</td>
+                        <td style={{ padding: '10px 12px', color: '#A78BFA' }}>{c.sub_id1 || '—'}</td>
+                        <td style={{ padding: '10px 12px' }}>
+                          {c.converted ? (
+                            <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34,197,94,0.2)', color: '#4ADE80' }}>
+                              ✓ CONVERTED
+                            </span>
+                          ) : (
+                            <span style={{ color: '#64748B' }}>Click</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── TAB 5: CONVERSIONS ── */}
       {activeSubTab === 'conversions' && (
         <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#FFF' }}>CPA Conversions & Attributions</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 12px' }}>TIME</th>
-                  <th style={{ padding: '10px 12px' }}>CONVERSION ID</th>
-                  <th style={{ padding: '10px 12px' }}>CLICK ID</th>
-                  <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
-                  <th style={{ padding: '10px 12px' }}>OFFER</th>
-                  <th style={{ padding: '10px 12px' }}>ORDER VALUE</th>
-                  <th style={{ padding: '10px 12px' }}>PAYOUT</th>
-                  <th style={{ padding: '10px 12px' }}>STATUS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.conversions?.map(conv => (
-                  <tr key={conv.conversion_id} style={{ borderBottom: '1px solid #1E293B' }}>
-                    <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(conv.created_at).toLocaleString()}</td>
-                    <td style={{ padding: '10px 12px', color: '#FACC15', fontFamily: 'monospace' }}>{conv.conversion_id}</td>
-                    <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{conv.click_id}</td>
-                    <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{conv.affiliate_id}</td>
-                    <td style={{ padding: '10px 12px' }}>{conv.offer_id}</td>
-                    <td style={{ padding: '10px 12px' }}>${Number(conv.order_amount || 0).toFixed(2)}</td>
-                    <td style={{ padding: '10px 12px', color: '#34D399', fontWeight: 700 }}>+${Number(conv.payout_amount || 0).toFixed(2)}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34,197,94,0.15)', color: '#4ADE80' }}>
-                        APPROVED
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                CPA Conversions & Attributions
+                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: '#4ADE8020', color: '#4ADE80', fontWeight: 700 }}>
+                  {data?.conversions?.length || 0} Orders
+                </span>
+              </h3>
+              <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
+                Attributed purchases, generated order revenue, affiliate commissions and postback trigger records.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={convSearch}
+                onChange={e => setConvSearch(e.target.value)}
+                placeholder="🔍 Search conversion or affiliate..."
+                style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px', width: '200px' }}
+              />
+              <button
+                onClick={handleSimulateTestConversion}
+                style={{ padding: '6px 12px', borderRadius: '6px', background: 'rgba(74, 222, 128, 0.15)', border: '1px solid rgba(74, 222, 128, 0.4)', color: '#4ADE80', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                🧪 Simulate Test Conversion
+              </button>
+              <button
+                onClick={() => exportReport('conversions')}
+                style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', border: '1px solid #334155', color: '#E2E8F0', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                📥 Export CSV
+              </button>
+            </div>
           </div>
+
+          {(!data?.conversions || data.conversions.length === 0) ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', background: '#0B0F19', borderRadius: '8px', border: '1px dashed #334155' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎯</div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>No Conversions Recorded Yet</div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '480px', margin: '0 auto 16px auto' }}>
+                When referred users purchase a plan or sign up, commissions are attributed and shown here in real-time.
+              </p>
+              <button
+                onClick={handleSimulateTestConversion}
+                style={{ padding: '8px 18px', borderRadius: '8px', background: '#10B981', color: '#FFF', fontWeight: 700, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+              >
+                🧪 Generate First Live Test Conversion
+              </button>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 12px' }}>TIME</th>
+                    <th style={{ padding: '10px 12px' }}>CONVERSION ID</th>
+                    <th style={{ padding: '10px 12px' }}>CLICK ID</th>
+                    <th style={{ padding: '10px 12px' }}>AFFILIATE ID</th>
+                    <th style={{ padding: '10px 12px' }}>OFFER</th>
+                    <th style={{ padding: '10px 12px' }}>ORDER VALUE</th>
+                    <th style={{ padding: '10px 12px' }}>PAYOUT</th>
+                    <th style={{ padding: '10px 12px' }}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.conversions
+                    .filter(conv => !convSearch || (
+                      conv.conversion_id.toLowerCase().includes(convSearch.toLowerCase()) ||
+                      conv.click_id.toLowerCase().includes(convSearch.toLowerCase()) ||
+                      conv.affiliate_id.toLowerCase().includes(convSearch.toLowerCase())
+                    ))
+                    .map(conv => (
+                      <tr key={conv.conversion_id} style={{ borderBottom: '1px solid #1E293B' }}>
+                        <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(conv.created_at).toLocaleString()}</td>
+                        <td style={{ padding: '10px 12px', color: '#FACC15', fontFamily: 'monospace' }}>{conv.conversion_id}</td>
+                        <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{conv.click_id}</td>
+                        <td style={{ padding: '10px 12px', color: '#FFF', fontWeight: 600 }}>{conv.affiliate_id}</td>
+                        <td style={{ padding: '10px 12px' }}>{conv.offer_id}</td>
+                        <td style={{ padding: '10px 12px' }}>${Number(conv.order_amount || 0).toFixed(2)}</td>
+                        <td style={{ padding: '10px 12px', color: '#34D399', fontWeight: 700 }}>+${Number(conv.payout_amount || 0).toFixed(2)}</td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, background: 'rgba(34,197,94,0.15)', color: '#4ADE80' }}>
+                            APPROVED
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -1433,6 +1747,118 @@ export const AdminAffiliateManager: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── REPORTS & CSV EXPORT MODAL ── */}
+      {showReportModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#131826', border: '1px solid #334155', borderRadius: '16px', padding: '28px', maxWidth: '640px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #1E293B', paddingBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '24px' }}>📊</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#FFF' }}>CPA Network Executive Reports & Export</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>Download clean formatted CSV reports of real-time network activity.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowReportModal(false)}
+                style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '20px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>📈 Executive Network Summary</div>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: '0 0 12px 0' }}>All high-level revenue, clicks, conversions, and liability figures.</p>
+                </div>
+                <button
+                  onClick={() => { exportReport('executive'); setShowReportModal(false) }}
+                  style={{ padding: '8px 14px', borderRadius: '6px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#FFF', fontWeight: 600, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+                >
+                  📥 Export Summary CSV
+                </button>
+              </div>
+
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>🖱️ Live Clicks Stream Logs</div>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: '0 0 12px 0' }}>Complete clickstream logs ({data?.clicks?.length || 0} events) with IPs & SubIDs.</p>
+                </div>
+                <button
+                  onClick={() => { exportReport('clicks'); setShowReportModal(false) }}
+                  style={{ padding: '8px 14px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#38BDF8', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+                >
+                  📥 Export Clicks CSV
+                </button>
+              </div>
+
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>🎯 Conversion Attributions</div>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: '0 0 12px 0' }}>Attributed purchase sales ({data?.conversions?.length || 0} orders) & commissions.</p>
+                </div>
+                <button
+                  onClick={() => { exportReport('conversions'); setShowReportModal(false) }}
+                  style={{ padding: '8px 14px', borderRadius: '6px', background: 'rgba(74, 222, 128, 0.15)', border: '1px solid rgba(74, 222, 128, 0.4)', color: '#4ADE80', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+                >
+                  📥 Export Conversions CSV
+                </button>
+              </div>
+
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>👥 Affiliates Directory & Earnings</div>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: '0 0 12px 0' }}>All {data?.affiliates?.length || 0} affiliates with earned & withdrawn balances.</p>
+                </div>
+                <button
+                  onClick={() => { exportReport('affiliates'); setShowReportModal(false) }}
+                  style={{ padding: '8px 14px', borderRadius: '6px', background: '#334155', color: '#FFF', fontWeight: 600, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+                >
+                  📥 Export Affiliates CSV
+                </button>
+              </div>
+
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>💳 Payouts & Settlements</div>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: '0 0 12px 0' }}>Withdrawal requests, payout transactions, crypto hashes & methods.</p>
+                </div>
+                <button
+                  onClick={() => { exportReport('withdrawals'); setShowReportModal(false) }}
+                  style={{ padding: '8px 14px', borderRadius: '6px', background: '#334155', color: '#FFF', fontWeight: 600, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+                >
+                  📥 Export Payouts CSV
+                </button>
+              </div>
+
+              <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '4px' }}>📜 Security & Audit Trail</div>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: '0 0 12px 0' }}>Administrative actions, postbacks and manual adjustments.</p>
+                </div>
+                <button
+                  onClick={() => { exportReport('audit'); setShowReportModal(false) }}
+                  style={{ padding: '8px 14px', borderRadius: '6px', background: '#334155', color: '#FFF', fontWeight: 600, fontSize: '12px', border: 'none', cursor: 'pointer' }}
+                >
+                  📥 Export Audit CSV
+                </button>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <button
+                onClick={() => setShowReportModal(false)}
+                style={{ padding: '10px 20px', borderRadius: '8px', background: '#1E293B', color: '#CBD5E1', border: '1px solid #334155', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}
+              >
+                Close Window
+              </button>
+            </div>
           </div>
         </div>
       )}
