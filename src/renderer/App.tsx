@@ -231,7 +231,7 @@ function DashboardPage({ onNavigate, showToast, brandingConfig }: { onNavigate: 
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
