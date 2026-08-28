@@ -26,8 +26,8 @@ $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($
 $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
 $baseOrigin = defined('APP_URL') && !empty(APP_URL) ? rtrim(APP_URL, '/') : "$scheme://$host";
 
-$targetUrl = "$baseOrigin/#pricing";
-$targetPlan = '';
+$targetPlan = $trackResult['packageId'] ?? '';
+$targetUrl = "$baseOrigin/signup";
 
 // Lookup Offer details to detect specific package plan
 try {
@@ -42,25 +42,22 @@ try {
 
     if ($offer) {
         $resolvedOfferId = $offer['id'];
-        if (!empty($offer['target_url'])) {
+        $targetPlan = !empty($offer['package_id']) ? $offer['package_id'] : $targetPlan;
+        
+        if (!empty($offer['signup_url']) && $offer['signup_url'] !== '/#pricing') {
+            $rawTarget = trim($offer['signup_url']);
+            if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
+                $targetUrl = $rawTarget;
+            } else {
+                $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
+            }
+        } elseif (!empty($offer['target_url']) && $offer['target_url'] !== '/#pricing') {
             $rawTarget = trim($offer['target_url']);
             if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
                 $targetUrl = $rawTarget;
             } else {
                 $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
             }
-        }
-
-        // Detect targeted plan from offer title, description, or URL
-        $searchCorpus = strtolower(($offer['title'] ?? '') . ' ' . ($offer['description'] ?? '') . ' ' . ($offer['target_url'] ?? '') . ' ' . ($offer['id'] ?? ''));
-        if (strpos($searchCorpus, 'pro') !== false || strpos($searchCorpus, '49') !== false) {
-            $targetPlan = 'plan_pro';
-        } elseif (strpos($searchCorpus, 'starter') !== false || strpos($searchCorpus, '19') !== false) {
-            $targetPlan = 'plan_starter';
-        } elseif (strpos($searchCorpus, 'business') !== false || strpos($searchCorpus, '99') !== false) {
-            $targetPlan = 'plan_business';
-        } elseif (strpos($searchCorpus, 'free') !== false) {
-            $targetPlan = 'free';
         }
     }
 } catch (Throwable $e) {
@@ -71,7 +68,7 @@ if (empty($targetPlan)) {
     if (isset($_GET['plan'])) {
         $targetPlan = trim($_GET['plan']);
     } else {
-        $targetPlan = 'plan_pro'; // Default to Most Popular Pro Plan
+        $targetPlan = 'plan_pro';
     }
 }
 
@@ -83,9 +80,8 @@ if (!empty($affId)) {
 }
 @setcookie('click_id', $clickId, $cookieDuration, '/', '', false, false);
 @setcookie('offer_id', $resolvedOfferId, $cookieDuration, '/', '', false, false);
-if (!empty($targetPlan)) {
-    @setcookie('selected_plan', $targetPlan, $cookieDuration, '/', '', false, false);
-}
+@setcookie('package_id', $targetPlan, $cookieDuration, '/', '', false, false);
+@setcookie('selected_plan', $targetPlan, $cookieDuration, '/', '', false, false);
 
 // Preserve all parameters in destination redirect
 $parsed = parse_url($targetUrl);
@@ -93,24 +89,27 @@ $query = [];
 if (!empty($parsed['query'])) {
     parse_str($parsed['query'], $query);
 }
-if (!empty($affId)) $query['aff_id'] = $affId;
-$query['ref'] = $affId;
+if (!empty($affId)) {
+    $query['aff'] = $affId;
+    $query['aff_id'] = $affId;
+    $query['ref'] = $affId;
+}
 $query['click_id'] = $clickId;
+$query['offer'] = $resolvedOfferId;
 $query['offer_id'] = $resolvedOfferId;
-if (!empty($targetPlan)) $query['plan'] = $targetPlan;
-$query['auto_open'] = '1';
+$query['plan'] = $targetPlan;
 if (!empty($subId1)) $query['sub_id1'] = $subId1;
 if (!empty($subId2)) $query['sub_id2'] = $subId2;
 
 $destScheme = isset($parsed['scheme']) ? $parsed['scheme'] . '://' : 'https://';
 $destHost   = isset($parsed['host']) ? $parsed['host'] : $host;
 $destPort   = isset($parsed['port']) ? ':' . $parsed['port'] : '';
-$destPath   = isset($parsed['path']) ? $parsed['path'] : '/';
+$destPath   = isset($parsed['path']) ? $parsed['path'] : '/signup';
 $newQuery   = '?' . http_build_query($query);
-$fragment   = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '#pricing';
+$fragment   = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
 
 $finalDestination = "$destScheme$destHost$destPort$destPath$newQuery$fragment";
 
-// 302 Redirect to destination
+// 302 Redirect to package-specific signup
 header("Location: $finalDestination", true, 302);
 exit();

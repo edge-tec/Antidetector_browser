@@ -835,13 +835,27 @@ export const ReferralDashboard: React.FC = () => {
                       <span style={{ fontSize: '11px', color: '#4ADE80', fontWeight: 600 }}>{offer.status === 'active' ? 'Active' : offer.status}</span>
                     </div>
                     <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#FFF' }}>{offer.title}</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ color: '#2DD4BF', fontWeight: 700 }}>
+                        Package: {offer.package_name || (offer.package_id === 'plan_starter' ? 'Starter' : offer.package_id === 'plan_business' ? 'Business' : 'Professional')}
+                      </span>
+                      <span style={{ color: '#64748B' }}>•</span>
+                      <span style={{ color: '#F1F5F9', fontWeight: 600 }}>
+                        Price: ${offer.price ? offer.price : (offer.package_id === 'plan_starter' ? 19 : offer.package_id === 'plan_business' ? 99 : 49)}/month
+                      </span>
+                      {offer.discount_value && offer.discount_value > 0 ? (
+                        <span style={{ color: '#4ADE80', fontSize: '10px', fontWeight: 700 }}>
+                          ({offer.discount_value}% OFF)
+                        </span>
+                      ) : null}
+                    </div>
                     <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>
                       {offer.description || 'Standard conversion offer for AntiProfiles products and subscriptions.'}
                     </p>
                   </div>
 
                   <div style={{ borderTop: '1px solid #1E293B', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Target: {offer.target_url}</span>
+                    <span style={{ fontSize: '11px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Target: {offer.signup_url || offer.target_url}</span>
                     <button
                       onClick={() => {
                         setSelectedOfferForLink(offer.id)
@@ -863,48 +877,32 @@ export const ReferralDashboard: React.FC = () => {
       {activeTab === 'postback' && (
         <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '24px' }}>
           <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#FFF' }}>🔗 Server-to-Server CPA Postback URL</h3>
-          <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#94A3B8' }}>
-            Whenever a customer referred by your link converts, AntiProfiles will instantly send a server-to-server HTTP request to your tracker or affiliate network.
+          <p style={{ margin: '0 0 20px 0', fontSize: '12px', color: '#94A3B8' }}>
+            Configure an automated S2S Postback HTTP webhook that notifies your external tracker (Voluum, RedTrack, Keitaro, Binom) instantly whenever a referral converts.
           </p>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
-              POSTBACK URL
-            </label>
+            <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>GLOBAL POSTBACK WEBHOOK URL</label>
             <input
-              placeholder="https://tracker.your-domain.com/postback?click_id={CLICK_ID}&payout={PAYOUT}&status={STATUS}"
               value={postbackUrl}
               onChange={e => setPostbackUrl(e.target.value)}
-              style={{ width: '100%', padding: '11px 14px', borderRadius: '8px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '13px', fontFamily: 'monospace' }}
+              placeholder="https://track.yourdomain.com/postback?click_id={click_id}&payout={payout_amount}&sub1={sub_id1}"
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '13px', fontFamily: 'monospace' }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '20px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#94A3B8' }}>HTTP METHOD:</label>
-            <select
-              value={postbackMethod}
-              onChange={e => setPostbackMethod(e.target.value as any)}
-              style={{ padding: '8px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
-            >
-              <option value="GET">GET (Recommended)</option>
-              <option value="POST">POST</option>
-            </select>
-          </div>
-
-          {/* Dynamic Macro Helper Chips */}
-          <div style={{ background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#38BDF8', display: 'block', marginBottom: '8px' }}>
-              SUPPORTED DYNAMIC MACROS (Click to insert):
-            </span>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '8px', fontWeight: 600 }}>AVAILABLE MACROS (CLICK TO INSERT)</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {[
-                { tag: '{CLICK_ID}', desc: 'Unique Click ID' },
-                { tag: '{AFFILIATE_ID}', desc: 'Your Affiliate ID' },
-                { tag: '{OFFER_ID}', desc: 'Offer Campaign ID' },
-                { tag: '{CONVERSION_ID}', desc: 'Conversion Event ID' },
-                { tag: '{STATUS}', desc: 'approved/pending' },
-                { tag: '{PAYOUT}', desc: 'Commission in USD' },
-                { tag: '{AMOUNT}', desc: 'Order transaction amount' }
+                { tag: '{click_id}', desc: 'Unique CPA Click ID' },
+                { tag: '{conversion_id}', desc: 'Conversion Transaction ID' },
+                { tag: '{payout_amount}', desc: 'Commission Earned (USD)' },
+                { tag: '{order_amount}', desc: 'Customer Purchase Total (USD)' },
+                { tag: '{offer_id}', desc: 'CPA Campaign Offer ID' },
+                { tag: '{affiliate_id}', desc: 'Your Partner ID' },
+                { tag: '{sub_id1}', desc: 'Tracking SubID 1' },
+                { tag: '{sub_id2}', desc: 'Tracking SubID 2' }
               ].map(m => (
                 <button
                   key={m.tag}
@@ -1031,19 +1029,26 @@ export const ReferralDashboard: React.FC = () => {
                   <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
                     <th style={{ padding: '10px 12px' }}>TIME</th>
                     <th style={{ padding: '10px 12px' }}>CLICK ID</th>
-                    <th style={{ padding: '10px 12px' }}>OFFER</th>
-                    <th style={{ padding: '10px 12px' }}>IP ADDRESS</th>
+                    <th style={{ padding: '10px 12px' }}>PACKAGE / OFFER</th>
+                    <th style={{ padding: '10px 12px' }}>DEVICE / OS</th>
                     <th style={{ padding: '10px 12px' }}>SUBID1</th>
-                    <th style={{ padding: '10px 12px' }}>CONVERTED</th>
+                    <th style={{ padding: '10px 12px' }}>STATUS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {summary.recentClicks.map(clk => (
                     <tr key={clk.click_id} style={{ borderBottom: '1px solid #1E293B' }}>
-                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(clk.created_at).toLocaleTimeString()}</td>
+                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(clk.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                       <td style={{ padding: '10px 12px', color: '#38BDF8', fontFamily: 'monospace' }}>{clk.click_id}</td>
-                      <td style={{ padding: '10px 12px', color: '#FFF' }}>{clk.offer_id}</td>
-                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{clk.ip_address || '—'}</td>
+                      <td style={{ padding: '10px 12px', color: '#FFF' }}>
+                        <span style={{ fontWeight: 600, color: '#2DD4BF' }}>
+                          {clk.package_name || (clk.package_id === 'plan_starter' ? 'Starter' : clk.package_id === 'plan_business' ? 'Business' : 'Professional')}
+                        </span>
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>{clk.offer_id}</div>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>
+                        {clk.device || 'Desktop'} • {clk.browser || 'Chrome'}
+                      </td>
                       <td style={{ padding: '10px 12px', color: '#A78BFA' }}>{clk.sub_id1 || '—'}</td>
                       <td style={{ padding: '10px 12px' }}>
                         {clk.converted ? (

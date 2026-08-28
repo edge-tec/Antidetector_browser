@@ -42,15 +42,45 @@ export function up(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_aff_offers_status ON affiliate_offers(status);
   `)
 
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN package_id TEXT DEFAULT 'plan_pro';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN package_name TEXT DEFAULT 'Professional';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN price REAL DEFAULT 49.0;") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN original_price REAL DEFAULT 49.0;") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN discount_type TEXT DEFAULT 'none';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN discount_value REAL DEFAULT 0.0;") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN discounted_price REAL DEFAULT 49.0;") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN trial_days INTEGER DEFAULT 7;") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN billing_interval TEXT DEFAULT 'month';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_offers ADD COLUMN signup_url TEXT DEFAULT '/signup';") } catch {}
+
+  try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN package_id TEXT DEFAULT 'plan_pro';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN clicks INTEGER DEFAULT 0;") } catch {}
+  try { db.exec("ALTER TABLE affiliate_tracking_links ADD COLUMN conversions INTEGER DEFAULT 0;") } catch {}
+
+  try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN affiliate_link_id TEXT;") } catch {}
+  try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN package_id TEXT DEFAULT 'plan_pro';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN device TEXT DEFAULT 'Desktop';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN browser TEXT DEFAULT 'Chrome';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN os TEXT DEFAULT 'Windows';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN country TEXT DEFAULT 'US';") } catch {}
+  try { db.exec("ALTER TABLE affiliate_clicks ADD COLUMN converted_at TEXT;") } catch {}
+
+  try { db.exec("ALTER TABLE users ADD COLUMN referred_by_offer_id TEXT;") } catch {}
+  try { db.exec("ALTER TABLE users ADD COLUMN referred_by_package_id TEXT;") } catch {}
+  try { db.exec("ALTER TABLE users ADD COLUMN referred_by_link_id TEXT;") } catch {}
+
   // Seed default CPA offers if empty
   const existingOffers = db.prepare('SELECT COUNT(*) as count FROM affiliate_offers').get() as { count: number }
   if (existingOffers.count === 0) {
     db.prepare(`
-      INSERT INTO affiliate_offers (id, title, description, target_url, payout_type, commission_rate, fixed_payout_usd, status)
-      VALUES
-        ('offer_main_saas', 'AntiProfiles Pro & Team Subscription', 'Lifetime recurring CPA commission on all plan upgrades', 'https://antiprofiles.com/pricing', 'percentage', 15.0, 0.0, 'active'),
-        ('offer_starter_pack', 'AntiProfiles Starter License', 'Fixed $10 payout per first-time starter license purchase', 'https://antiprofiles.com/register', 'fixed', 0.0, 10.0, 'active'),
-        ('offer_enterprise_leads', 'AntiProfiles Enterprise Custom Trial', 'High-ticket enterprise trial onboarding commission', 'https://antiprofiles.com/contact', 'percentage', 20.0, 0.0, 'active')
+      INSERT INTO affiliate_offers (
+        id, title, description, target_url, signup_url, payout_type, commission_rate, fixed_payout_usd,
+        package_id, package_name, price, original_price, discount_type, discount_value, discounted_price, trial_days, status
+      ) VALUES
+        ('offer_starter', 'AntiProfiles Starter', 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).', 'https://antiprofiles.com/signup?plan=starter', '/signup?plan=starter', 'percentage', 40.0, 0.0, 'plan_starter', 'Starter', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'),
+        ('offer_main_saas', 'AntiProfiles Pro & Team Subscription Plan', 'Earn 50% lifetime recurring commissions on Professional subscriptions ($49/mo).', 'https://antiprofiles.com/signup?plan=professional', '/signup?plan=professional', 'percentage', 50.0, 0.0, 'plan_pro', 'Professional', 49.0, 49.0, 'none', 0.0, 49.0, 7, 'active'),
+        ('offer_business', 'AntiProfiles Enterprise Custom Trial', 'High-ticket 50% recurring onboarding commission on Business subscriptions ($99/mo).', 'https://antiprofiles.com/signup?plan=business', '/signup?plan=business', 'percentage', 50.0, 0.0, 'plan_business', 'Business', 99.0, 99.0, 'none', 0.0, 99.0, 7, 'active'),
+        ('offer_starter_license', 'AntiProfiles Starter License', 'Fixed $10 payout per first-time starter license purchase ($19/mo package).', 'https://antiprofiles.com/signup?plan=starter', '/signup?plan=starter', 'fixed', 0.0, 10.0, 'plan_starter', 'Starter', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active')
     `).run()
   }
 

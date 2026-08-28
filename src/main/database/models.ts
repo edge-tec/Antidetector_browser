@@ -505,10 +505,21 @@ export interface AffiliateOffer {
   title: string
   description?: string
   target_url: string
+  signup_url?: string
   payout_type: PayoutType
   commission_rate: number
+  revshare_percent?: number
   fixed_payout_usd: number
   currency: string
+  package_id?: string
+  package_name?: string
+  price?: number
+  original_price?: number
+  discount_type?: string
+  discount_value?: number
+  discounted_price?: number
+  trial_days?: number
+  billing_interval?: string
   status: OfferStatus
   total_clicks?: number
   total_conversions?: number
@@ -521,7 +532,10 @@ export interface AffiliateTrackingLink {
   affiliate_id: string
   user_id: string
   offer_id: string
+  package_id?: string
   tracking_url: string
+  clicks?: number
+  conversions?: number
   custom_params?: string
   created_at?: string
 }
@@ -530,11 +544,18 @@ export interface AffiliateClick {
   click_id: string
   affiliate_id: string
   offer_id: string
+  package_id?: string
+  package_name?: string
   tracking_link_id?: string
+  affiliate_link_id?: string
   ip_address?: string
   user_agent?: string
   referrer?: string
   landing_url: string
+  device?: string
+  browser?: string
+  os?: string
+  country?: string
   sub_id1?: string
   sub_id2?: string
   sub_id3?: string
@@ -543,6 +564,7 @@ export interface AffiliateClick {
   converted: number
   conversion_id?: string
   conversion_at?: string
+  converted_at?: string
   created_at: string
 }
 

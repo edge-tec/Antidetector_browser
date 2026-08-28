@@ -698,23 +698,166 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `affiliate_status` VARCHAR(20) DEFAULT 'active'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `referred_by_affiliate_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `referred_by_click_id` VARCHAR(64) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `referred_by_offer_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `referred_by_package_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `referred_by_link_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `landing_url` TEXT DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `affiliate_link_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `package_id` VARCHAR(50) DEFAULT 'plan_pro'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `device` VARCHAR(50) DEFAULT 'Desktop'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `browser` VARCHAR(50) DEFAULT 'Chrome'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `os` VARCHAR(50) DEFAULT 'Windows'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `country` VARCHAR(50) DEFAULT 'US'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id3` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id4` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id5` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `conversion_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `converted_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_tracking_links` ADD COLUMN `package_id` VARCHAR(50) DEFAULT 'plan_pro'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_tracking_links` ADD COLUMN `clicks` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_tracking_links` ADD COLUMN `conversions` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `package_id` VARCHAR(50) NOT NULL DEFAULT 'plan_pro'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `package_name` VARCHAR(100) NOT NULL DEFAULT 'Professional'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `price` DECIMAL(10,2) NOT NULL DEFAULT 49.00"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `original_price` DECIMAL(10,2) NOT NULL DEFAULT 49.00"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discount_type` VARCHAR(20) NOT NULL DEFAULT 'none'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discount_value` DECIMAL(10,2) NOT NULL DEFAULT 0.00"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `discounted_price` DECIMAL(10,2) NOT NULL DEFAULT 49.00"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `trial_days` INT NOT NULL DEFAULT 7"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `billing_interval` VARCHAR(20) NOT NULL DEFAULT 'month'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `signup_url` VARCHAR(255) NOT NULL DEFAULT '/signup'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `total_clicks` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `total_conversions` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
-        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 15.00"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 50.00"); } catch (Throwable $e) {}
 
-        // Seed default CPA offer if empty
-        try {
-            $db->exec("
-                INSERT INTO `affiliate_offers` (`id`, `title`, `description`, `target_url`, `payout_type`, `revshare_percent`, `fixed_payout_usd`, `status`)
-                VALUES ('offer_main_saas', 'AntiProfiles Pro & Team Subscription Plan', 'Earn 15% lifetime recurring commissions on all AntiProfiles browser subscription renewals.', '/#pricing', 'revshare', 15.00, 0.00, 'active')
-                ON DUPLICATE KEY UPDATE `id`=`id`;
-            ");
-        } catch (Throwable $e) {}
+        // Seed default CPA offers with explicit Package & Pricing mappings
+        $defaultOffers = [
+            [
+                'id' => 'offer_starter',
+                'title' => 'AntiProfiles Starter',
+                'description' => 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).',
+                'target_url' => '/signup?plan=starter',
+                'payout_type' => 'revshare',
+                'commission_rate' => 40.00,
+                'revshare_percent' => 40.00,
+                'fixed_payout_usd' => 0.00,
+                'package_id' => 'plan_starter',
+                'package_name' => 'Starter',
+                'price' => 19.00,
+                'original_price' => 19.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 19.00,
+                'trial_days' => 7,
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ],
+            [
+                'id' => 'offer_main_saas',
+                'title' => 'AntiProfiles Pro & Team Subscription Plan',
+                'description' => 'Earn 50% lifetime recurring commissions on Professional browser subscription renewals ($49/mo).',
+                'target_url' => '/signup?plan=professional',
+                'payout_type' => 'revshare',
+                'commission_rate' => 50.00,
+                'revshare_percent' => 50.00,
+                'fixed_payout_usd' => 0.00,
+                'package_id' => 'plan_pro',
+                'package_name' => 'Professional',
+                'price' => 49.00,
+                'original_price' => 49.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 49.00,
+                'trial_days' => 7,
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ],
+            [
+                'id' => 'offer_business',
+                'title' => 'AntiProfiles Enterprise Custom Trial',
+                'description' => 'High-ticket 50% recurring onboarding commission on Business subscriptions ($99/mo).',
+                'target_url' => '/signup?plan=business',
+                'payout_type' => 'revshare',
+                'commission_rate' => 50.00,
+                'revshare_percent' => 50.00,
+                'fixed_payout_usd' => 0.00,
+                'package_id' => 'plan_business',
+                'package_name' => 'Business',
+                'price' => 99.00,
+                'original_price' => 99.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 99.00,
+                'trial_days' => 7,
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ],
+            [
+                'id' => 'offer_starter_license',
+                'title' => 'AntiProfiles Starter License',
+                'description' => 'Fixed $10.00 payout per first-time starter license purchase ($19/mo package).',
+                'target_url' => '/signup?plan=starter',
+                'payout_type' => 'fixed',
+                'commission_rate' => 0.00,
+                'revshare_percent' => 0.00,
+                'fixed_payout_usd' => 10.00,
+                'package_id' => 'plan_starter',
+                'package_name' => 'Starter',
+                'price' => 19.00,
+                'original_price' => 19.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 19.00,
+                'trial_days' => 7,
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ]
+        ];
+
+        foreach ($defaultOffers as $do) {
+            try {
+                $st = $db->prepare("
+                    INSERT INTO `affiliate_offers` (
+                        `id`, `title`, `description`, `target_url`, `payout_type`, `commission_rate`, `revshare_percent`,
+                        `fixed_payout_usd`, `package_id`, `package_name`, `price`, `original_price`, `discount_type`,
+                        `discount_value`, `discounted_price`, `trial_days`, `billing_interval`, `status`
+                    ) VALUES (
+                        :id, :title, :description, :target_url, :payout_type, :commission_rate, :revshare_percent,
+                        :fixed_payout_usd, :package_id, :package_name, :price, :original_price, :discount_type,
+                        :discount_value, :discounted_price, :trial_days, :billing_interval, :status
+                    )
+                ");
+                $st->execute($do);
+            } catch (Throwable $e) {
+                try {
+                    $up = $db->prepare("
+                        UPDATE `affiliate_offers` SET
+                            `package_id` = :package_id,
+                            `package_name` = :package_name,
+                            `price` = :price,
+                            `original_price` = :original_price,
+                            `discount_type` = :discount_type,
+                            `discount_value` = :discount_value,
+                            `discounted_price` = :discounted_price,
+                            `trial_days` = :trial_days,
+                            `billing_interval` = :billing_interval
+                        WHERE `id` = :id
+                    ");
+                    $up->execute([
+                        ':id' => $do['id'],
+                        ':package_id' => $do['package_id'],
+                        ':package_name' => $do['package_name'],
+                        ':price' => $do['price'],
+                        ':original_price' => $do['original_price'],
+                        ':discount_type' => $do['discount_type'],
+                        ':discount_value' => $do['discount_value'],
+                        ':discounted_price' => $do['discounted_price'],
+                        ':trial_days' => $do['trial_days'],
+                        ':billing_interval' => $do['billing_interval']
+                    ]);
+                } catch (Throwable $e2) {}
+            }
+        }
 
         // Software Features Table
         try {
@@ -4223,7 +4366,7 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
             ? trim($_GET['click_id'])
             : 'clk_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(4)), 0, 8);
 
-        // 4. Resolve Client Metadata
+        // 4. Resolve Client Metadata & User-Agent Parsing
         $ipAddress = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         if (strpos($ipAddress, ',') !== false) {
             $ipAddress = trim(explode(',', $ipAddress)[0]);
@@ -4231,39 +4374,104 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $referrer = $_SERVER['HTTP_REFERER'] ?? '';
 
+        // Device parsing
+        $device = 'Desktop';
+        if (preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i', $userAgent)) {
+            $device = 'Tablet';
+        } elseif (preg_match('/(mobile|iphone|ipod|blackberry|opera mini|iemobile|wpdesktop)/i', $userAgent)) {
+            $device = 'Mobile';
+        }
+
+        // Browser parsing
+        $browser = 'Chrome';
+        if (preg_match('/edg/i', $userAgent)) {
+            $browser = 'Edge';
+        } elseif (preg_match('/firefox|fxios/i', $userAgent)) {
+            $browser = 'Firefox';
+        } elseif (preg_match('/safari/i', $userAgent) && !preg_match('/chrome|crios/i', $userAgent)) {
+            $browser = 'Safari';
+        } elseif (preg_match('/opr\//i', $userAgent)) {
+            $browser = 'Opera';
+        } elseif (preg_match('/chrome|crios/i', $userAgent)) {
+            $browser = 'Chrome';
+        }
+
+        // OS parsing
+        $os = 'Windows';
+        if (preg_match('/windows nt/i', $userAgent)) {
+            $os = 'Windows';
+        } elseif (preg_match('/macintosh|mac os x/i', $userAgent)) {
+            $os = 'macOS';
+        } elseif (preg_match('/iphone|ipad|ipod/i', $userAgent)) {
+            $os = 'iOS';
+        } elseif (preg_match('/android/i', $userAgent)) {
+            $os = 'Android';
+        } elseif (preg_match('/linux/i', $userAgent)) {
+            $os = 'Linux';
+        }
+
+        $country = $_SERVER['HTTP_CF_IPCOUNTRY'] ?? 'US';
+
         // Scheme and host
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
         $fullLandingUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '/');
 
-        // Sub IDs & Offer ID
+        // Sub IDs, Offer ID & Link ID
         $offerId = trim($_GET['offer_id'] ?? 'offer_main_saas');
+        $linkId = trim($_GET['link_id'] ?? '');
         $subId1 = trim($_GET['sub_id1'] ?? $_GET['s1'] ?? '');
         $subId2 = trim($_GET['sub_id2'] ?? $_GET['s2'] ?? '');
         $subId3 = trim($_GET['sub_id3'] ?? $_GET['s3'] ?? '');
         $subId4 = trim($_GET['sub_id4'] ?? '');
         $subId5 = trim($_GET['sub_id5'] ?? '');
 
+        // Resolve Offer & Package
+        $packageId = 'plan_pro';
+        $packageName = 'Professional';
+        $offerPrice = 49.00;
+        $discountedPrice = 49.00;
+        $trialDays = 7;
+        try {
+            $stmtOff = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ? LIMIT 1");
+            $stmtOff->execute([$offerId]);
+            $offRow = $stmtOff->fetch(PDO::FETCH_ASSOC);
+            if (!$offRow) {
+                $stmtOff2 = $db->query("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC LIMIT 1");
+                $offRow = $stmtOff2->fetch(PDO::FETCH_ASSOC);
+            }
+            if ($offRow) {
+                $offerId = $offRow['id'];
+                $packageId = $offRow['package_id'] ?? 'plan_pro';
+                $packageName = $offRow['package_name'] ?? 'Professional';
+                $offerPrice = (float)($offRow['price'] ?? 49.00);
+                $discountedPrice = (float)($offRow['discounted_price'] ?? $offerPrice);
+                $trialDays = (int)($offRow['trial_days'] ?? 7);
+            }
+        } catch (Throwable $e) {}
+
         // 5. Insert Click into affiliate_clicks table
         try {
             $stmtInsert = $db->prepare("
                 INSERT INTO affiliate_clicks (
-                    click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
-                    sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, created_at
+                    click_id, affiliate_id, affiliate_link_id, offer_id, package_id,
+                    ip_address, user_agent, referrer, landing_url,
+                    sub_id1, sub_id2, sub_id3, sub_id4, sub_id5,
+                    device, browser, os, country, created_at
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, CURRENT_TIMESTAMP
                 )
-                ON DUPLICATE KEY UPDATE 
-                    ip_address = VALUES(ip_address), 
-                    user_agent = VALUES(user_agent),
-                    landing_url = VALUES(landing_url)
             ");
 
             $stmtInsert->execute([
                 $clickId,
                 $affId,
+                $linkId ?: null,
                 $offerId,
+                $packageId,
                 $ipAddress,
                 $userAgent,
                 $referrer,
@@ -4272,27 +4480,35 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
                 $subId2 ?: null,
                 $subId3 ?: null,
                 $subId4 ?: null,
-                $subId5 ?: null
+                $subId5 ?: null,
+                $device,
+                $browser,
+                $os,
+                $country
             ]);
         } catch (Throwable $e) {
             // Fallback minimal insert if any newer columns are not yet loaded
             try {
                 $stmtInsertMin = $db->prepare("
                     INSERT INTO affiliate_clicks (
-                        click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, created_at
+                        click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url, created_at
                     ) VALUES (
-                        ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                        ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
                     )
-                    ON DUPLICATE KEY UPDATE ip_address = VALUES(ip_address)
                 ");
-                $stmtInsertMin->execute([$clickId, $affId, $offerId, $ipAddress, $userAgent, $referrer]);
+                $stmtInsertMin->execute([$clickId, $affId, $offerId, $ipAddress, $userAgent, $referrer, $fullLandingUrl]);
             } catch (Throwable $e2) {}
         }
 
-        // Increment offer total_clicks
+        // Increment offer total_clicks and link clicks
         try {
             $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$offerId]);
         } catch (Throwable $e) {}
+        if (!empty($linkId)) {
+            try {
+                $db->prepare("UPDATE affiliate_tracking_links SET clicks = clicks + 1 WHERE id = ?")->execute([$linkId]);
+            } catch (Throwable $e) {}
+        }
 
         // 6. Set 30-Day Attribution Cookies
         $cookieDuration = time() + (86400 * 30);
@@ -4300,6 +4516,9 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
         @setcookie('ref', $refCode, $cookieDuration, '/', '', false, false);
         @setcookie('click_id', $clickId, $cookieDuration, '/', '', false, false);
         @setcookie('offer_id', $offerId, $cookieDuration, '/', '', false, false);
+        @setcookie('package_id', $packageId, $cookieDuration, '/', '', false, false);
+        @setcookie('selected_plan', $packageId, $cookieDuration, '/', '', false, false);
+        if (!empty($linkId)) @setcookie('link_id', $linkId, $cookieDuration, '/', '', false, false);
         if (!empty($subId1)) @setcookie('sub_id1', $subId1, $cookieDuration, '/', '', false, false);
         if (!empty($subId2)) @setcookie('sub_id2', $subId2, $cookieDuration, '/', '', false, false);
 
@@ -4309,8 +4528,17 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
             'refCode' => $refCode,
             'clickId' => $clickId,
             'offerId' => $offerId,
+            'packageId' => $packageId,
+            'packageName' => $packageName,
+            'price' => $offerPrice,
+            'discountedPrice' => $discountedPrice,
+            'trialDays' => $trialDays,
+            'linkId' => $linkId,
             'userId' => $userId,
-            'landingUrl' => $fullLandingUrl
+            'landingUrl' => $fullLandingUrl,
+            'device' => $device,
+            'browser' => $browser,
+            'os' => $os
         ];
     } catch (Throwable $e) {
         error_log('[Affiliate Click Tracking Error] ' . $e->getMessage());

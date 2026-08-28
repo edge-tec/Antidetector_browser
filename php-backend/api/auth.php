@@ -162,6 +162,9 @@ switch ($action) {
         $accountStatus = $isAdmin ? 'active' : 'pending_verification';
         $refAffId = trim($input['aff_id'] ?? $input['ref'] ?? $_COOKIE['aff_id'] ?? $_COOKIE['ref'] ?? '');
         $refClickId = trim($input['click_id'] ?? $_COOKIE['click_id'] ?? '');
+        $refOfferId = trim($input['offer_id'] ?? $input['offer'] ?? $_COOKIE['offer_id'] ?? '');
+        $refPackageId = trim($input['package_id'] ?? $input['plan'] ?? $_COOKIE['package_id'] ?? $_COOKIE['selected_plan'] ?? '');
+        $refLinkId = trim($input['link_id'] ?? $_COOKIE['link_id'] ?? '');
 
         // Generate user's own affiliate ID and referral code
         $cleanId = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $userId), 0, 8));
@@ -169,10 +172,26 @@ switch ($action) {
         $userRefCode = 'REF_' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
 
         $insertStmt = $db->prepare("
-            INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, affiliate_id, referral_code, referred_by_affiliate_id, referred_by_click_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO users (
+                id, name, email, password_hash, role, email_verified, account_status,
+                affiliate_id, referral_code, referred_by_affiliate_id, referred_by_click_id,
+                referred_by_offer_id, referred_by_package_id, referred_by_link_id,
+                created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ");
-        $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $emailVerified, $accountStatus, $userAffId, $userRefCode, $refAffId ?: null, $refClickId ?: null]);
+        $insertStmt->execute([
+            $userId, $name, strtolower($email), $passwordHash, $role, $emailVerified, $accountStatus,
+            $userAffId, $userRefCode, $refAffId ?: null, $refClickId ?: null,
+            $refOfferId ?: null, $refPackageId ?: null, $refLinkId ?: null
+        ]);
+
+        // If affiliate click was present, mark click converted
+        if (!empty($refClickId)) {
+            try {
+                $db->prepare("UPDATE affiliate_clicks SET converted = 1, converted_at = CURRENT_TIMESTAMP WHERE click_id = ?")->execute([$refClickId]);
+            } catch (Throwable $e) {}
+        }
 
         // Automatically provision Free plan subscription for new user
         ensureUserFreeSubscription($db, $userId, $role);

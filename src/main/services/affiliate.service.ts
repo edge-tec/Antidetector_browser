@@ -353,23 +353,28 @@ export class AffiliateService {
 
   public getOffers(onlyActive: boolean = false): AffiliateOffer[] {
     const db = getDatabase()
-    const query = onlyActive
-      ? "SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at DESC"
-      : "SELECT * FROM affiliate_offers ORDER BY created_at DESC"
-    let offers = db.prepare(query).all() as AffiliateOffer[]
+    const defaultOffersToSeed = [
+      ['offer_starter', 'AntiProfiles Starter', 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).', 'https://antiprofiles.com/signup?plan=starter', '/signup?plan=starter', 'percentage', 40.0, 0.0, 'plan_starter', 'Starter', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'],
+      ['offer_main_saas', 'AntiProfiles Pro & Team Subscription Plan', 'Earn 15% recurring lifetime revenue share on every monthly or annual plan purchased.', 'https://antiprofiles.com/signup?plan=professional', '/signup?plan=professional', 'percentage', 15.0, 0.0, 'plan_pro', 'Professional', 49.0, 49.0, 'none', 0.0, 49.0, 7, 'active'],
+      ['offer_business', 'AntiProfiles Enterprise Custom Trial', 'High-ticket 50% recurring onboarding commission on Business subscriptions ($99/mo).', 'https://antiprofiles.com/signup?plan=business', '/signup?plan=business', 'percentage', 50.0, 0.0, 'plan_business', 'Business', 99.0, 99.0, 'none', 0.0, 99.0, 7, 'active'],
+      ['offer_starter_bounty', 'AntiProfiles Starter Account Direct Bounty', 'Earn a $10.00 instant CPA bounty for every newly verified paying user.', 'https://antiprofiles.com/register', '/signup?plan=starter', 'fixed', 0.0, 10.0, 'plan_starter', 'Starter', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active']
+    ]
 
-    if (!offers || offers.length === 0) {
+    for (const dof of defaultOffersToSeed) {
       try {
         db.prepare(`
-          INSERT OR IGNORE INTO affiliate_offers (id, title, description, target_url, payout_type, commission_rate, fixed_payout_usd, status, created_at, updated_at)
-          VALUES 
-            ('offer_main_saas', 'AntiProfiles Pro & Team Subscription Plan', 'Earn 15% recurring lifetime revenue share on every monthly or annual plan purchased.', 'https://antiprofiles.com/#pricing', 'percentage', 15.0, 0.0, 'active', datetime('now'), datetime('now')),
-            ('offer_starter_bounty', 'AntiProfiles Starter Account Direct Bounty', 'Earn a $10.00 instant CPA bounty for every newly verified paying user.', 'https://antiprofiles.com/register', 'fixed', 0.0, 10.0, 'active', datetime('now'), datetime('now'))
-        `).run()
-        offers = db.prepare(query).all() as AffiliateOffer[]
+          INSERT OR IGNORE INTO affiliate_offers (
+            id, title, description, target_url, signup_url, payout_type, commission_rate, fixed_payout_usd,
+            package_id, package_name, price, original_price, discount_type, discount_value, discounted_price, trial_days, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `).run(...dof)
       } catch {}
     }
 
+    const query = onlyActive
+      ? "SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at DESC"
+      : "SELECT * FROM affiliate_offers ORDER BY created_at DESC"
+    const offers = db.prepare(query).all() as AffiliateOffer[]
     return offers
   }
 
@@ -586,7 +591,7 @@ export class AffiliateService {
 
     logger.info('affiliate', `[Tracking] 🚀 Recorded click ${clickId} for affiliate ${affiliateId} on offer ${offerId}`)
 
-    return { clickId, redirectUrl: redirectUrlObj.toString(), offer }
+    return { clickId, click_id: clickId, redirectUrl: redirectUrlObj.toString(), offer, converted: 0, affiliate_id: affiliateId, offer_id: offerId }
   }
 
   public simulateTestClick(affiliateId?: string, offerId?: string, subId1: string = 'test_simulator'): { success: boolean; data: any } {

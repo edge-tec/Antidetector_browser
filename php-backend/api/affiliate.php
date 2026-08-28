@@ -128,7 +128,9 @@ switch ($action) {
 
         // Recent Clicks (last 50)
         $stmtRecClicks = $db->prepare("
-            SELECT c.*, o.title as offer_title 
+            SELECT c.*, o.title as offer_title, COALESCE(c.package_id, o.package_id, 'plan_pro') as package_id,
+                   COALESCE(o.package_name, 'Professional') as package_name,
+                   COALESCE(o.price, 49.00) as package_price
             FROM affiliate_clicks c 
             LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
             WHERE c.affiliate_id IN ($inPlaceholders) 
@@ -174,12 +176,22 @@ switch ($action) {
                     'id' => $o['id'],
                     'title' => $o['title'],
                     'description' => $o['description'] ?? '',
-                    'target_url' => $o['target_url'],
+                    'target_url' => $o['target_url'] ?? '',
+                    'signup_url' => $o['signup_url'] ?? '/signup',
                     'payout_type' => $payoutType,
                     'commission_rate' => $rate,
                     'revshare_percent' => $rate,
                     'fixed_payout_usd' => (float)($o['fixed_payout_usd'] ?? 0),
                     'currency' => $o['currency'] ?? 'USD',
+                    'package_id' => $o['package_id'] ?? 'plan_pro',
+                    'package_name' => $o['package_name'] ?? 'Professional',
+                    'price' => (float)($o['price'] ?? 49.00),
+                    'original_price' => (float)($o['original_price'] ?? 49.00),
+                    'discount_type' => $o['discount_type'] ?? 'none',
+                    'discount_value' => (float)($o['discount_value'] ?? 0),
+                    'discounted_price' => (float)($o['discounted_price'] ?? 49.00),
+                    'trial_days' => (int)($o['trial_days'] ?? 7),
+                    'billing_interval' => $o['billing_interval'] ?? 'month',
                     'status' => $o['status'] ?? 'active'
                 ];
             }, $rawOffers);
