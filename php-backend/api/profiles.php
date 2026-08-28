@@ -46,6 +46,9 @@ if (!$currentUser || $currentUser['account_status'] === 'suspended' || $currentU
 $userRole = strtolower($currentUser['role'] ?? 'user');
 $isAdmin = ($userRole === 'admin' || $userRole === 'super_admin');
 
+// Authoritative Trial / Subscription Expiration Lock Check
+$subLock = checkSubscriptionLocked($db, $userId, $userRole);
+
 switch ($action) {
 
     // ── 1. List Profiles ──
@@ -129,7 +132,18 @@ switch ($action) {
                 ];
             }
 
-            respondJson(['success' => true, 'data' => $profiles, 'count' => count($profiles)]);
+            respondJson([
+                'success' => true, 
+                'data' => $profiles, 
+                'count' => count($profiles),
+                'subscription_status' => $subLock['status'] ?? 'active',
+                'is_locked' => !empty($subLock['locked']),
+                'lock_reason' => $subLock['reason'] ?? null,
+                'lock_message' => $subLock['message'] ?? null,
+                'plan_name' => $subLock['plan_name'] ?? 'Active Plan',
+                'expires_at' => $subLock['expires_at'] ?? null,
+                'days_remaining' => $subLock['days_remaining'] ?? null
+            ]);
         } catch (Throwable $e) {
             respondJson(['success' => false, 'error' => 'Failed to fetch profiles: ' . $e->getMessage()], 500);
         }
@@ -139,6 +153,18 @@ switch ($action) {
     case 'create':
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             respondJson(['success' => false, 'error' => 'POST method required.'], 405);
+        }
+
+        // Strict Trial Expiry Lock Guard
+        if (!empty($subLock['locked'])) {
+            respondJson([
+                'success' => false,
+                'error' => $subLock['message'] ?? 'Your Free Trial has expired. All profile creation and management options are locked. Please subscribe to an active plan to continue.',
+                'locked' => true,
+                'expired' => true,
+                'code' => 'TRIAL_EXPIRED',
+                'renewal_url' => '#pricing'
+            ], 403);
         }
 
         $name = trim($input['name'] ?? '');
@@ -159,7 +185,7 @@ switch ($action) {
                     u.profile_limit as user_limit,
                     p.profile_limit as plan_limit
                 FROM users u
-                LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
+                LEFT JOIN subscriptions s ON u.id = s.user_id AND (s.status = 'active' OR s.status = 'trial')
                 LEFT JOIN pricing_plans p ON s.plan_id = p.id
                 WHERE u.id = ?
                 ORDER BY s.created_at DESC LIMIT 1

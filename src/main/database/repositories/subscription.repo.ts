@@ -385,18 +385,19 @@ export class SubscriptionRepository {
       } else {
         currentSubStatus = 'expired'
         db.prepare("UPDATE subscriptions SET status = 'expired' WHERE id = ?").run(sub.id)
+        try { db.prepare("UPDATE users SET account_status = 'expired' WHERE id = ?").run(userId) } catch {}
         return {
           valid: false,
-          account_status: user.account_status,
+          account_status: 'expired',
           subscription_status: 'expired',
           plan: { id: sub.plan.id, name: sub.plan.name, monthly_price: sub.plan.monthly_price, yearly_price: sub.plan.yearly_price },
           expires_at: sub.expires_at,
           grace_period_active: false,
           features: {},
-          limits: { profiles: sub.plan.profile_limit || 3, team_members: 1, api_access: false },
+          limits: { profiles: 0, team_members: 0, api_access: false },
           device: { installation_id: installationId || '', device_count: activeDevicesCount, max_devices: maxDevicesLimit },
           app_version_status: { force_update: false, min_version: minVersion, current_version: appVersion || '1.0.0', is_supported: true },
-          error: 'Your subscription has expired. Please renew to continue using desktop browser profiles.',
+          error: 'Your Free Trial has expired. All profile creation, launching, and proxy options are locked. Please subscribe to an active plan to continue.',
           renewal_url: '#pricing'
         }
       }

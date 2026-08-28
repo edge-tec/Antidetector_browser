@@ -207,19 +207,22 @@ switch ($action) {
 
             $subStmt = $db->prepare("
                 INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, updated_at)
-                VALUES (?, ?, ?, 'trial', ?, ?, 3, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, 'trial', ?, ?, 0, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE
                     plan_id = VALUES(plan_id),
                     status = 'trial',
                     starts_at = VALUES(starts_at),
                     expires_at = VALUES(expires_at),
-                    grace_period_days = 3,
+                    grace_period_days = 0,
                     updated_at = CURRENT_TIMESTAMP
             ");
 
             foreach ($allUsers as $u) {
                 $subId = 'sub_' . bin2hex(random_bytes(8));
                 $subStmt->execute([$subId, $u['id'], $planId, $now, $expiresAt]);
+                try {
+                    $db->prepare("UPDATE users SET account_status = 'active', auth_version = auth_version + 1 WHERE id = ?")->execute([$u['id']]);
+                } catch (Throwable $e) {}
                 $count++;
             }
 
@@ -237,7 +240,8 @@ switch ($action) {
                     'trial_days' => $trialDays,
                     'starts_at' => $now,
                     'expires_at' => $expiresAt
-                ]
+                ],
+                'message' => "Successfully granted {$trialDays}-day free trial ({$planId}) to all {$count} users!"
             ]);
         } else {
             $uStmt = $db->prepare("SELECT id, email FROM users WHERE id = ?");
@@ -251,16 +255,19 @@ switch ($action) {
             $subId = 'sub_' . bin2hex(random_bytes(8));
             $subStmt = $db->prepare("
                 INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, updated_at)
-                VALUES (?, ?, ?, 'trial', ?, ?, 3, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, 'trial', ?, ?, 0, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE
                     plan_id = VALUES(plan_id),
                     status = 'trial',
                     starts_at = VALUES(starts_at),
                     expires_at = VALUES(expires_at),
-                    grace_period_days = 3,
+                    grace_period_days = 0,
                     updated_at = CURRENT_TIMESTAMP
             ");
             $subStmt->execute([$subId, $targetUserId, $planId, $now, $expiresAt]);
+            try {
+                $db->prepare("UPDATE users SET account_status = 'active', auth_version = auth_version + 1 WHERE id = ?")->execute([$targetUserId]);
+            } catch (Throwable $e) {}
 
             logAdminAction($admin['id'], $admin['email'], 'USER_TRIAL_GRANTED', $targetUserId, "Granted {$trialDays}-day free trial to {$targetUser['email']} (Plan: {$planId})");
 
@@ -275,7 +282,8 @@ switch ($action) {
                     'trial_days' => $trialDays,
                     'starts_at' => $now,
                     'expires_at' => $expiresAt
-                ]
+                ],
+                'message' => "Granted {$trialDays}-day free trial to {$targetUser['email']} successfully!"
             ]);
         }
         break;

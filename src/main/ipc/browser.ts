@@ -10,6 +10,8 @@ import { validateId } from '../security/validators'
 import { logger } from '../logging/logger'
 
 import { authorizeUser, normalizeUserRole } from '../security/session'
+import { subscriptionRepo } from '../database/repositories/subscription.repo'
+import { centralApi } from '../services/api-client.service'
 
 export function registerBrowserHandlers(): void {
   ipcMain.handle('browser:start', async (event, sessionTokenOrId: string, maybeId?: string) => {
@@ -32,6 +34,20 @@ export function registerBrowserHandlers(): void {
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         logger.warn('browser', `[PROFILE_ACCESS_DENIED] User "${auth.user.email}" (${auth.user.id}) denied access to profile "${id}"`)
         return { success: false, error: 'Access denied. You do not own this profile.' }
+      }
+
+      // ── Authoritative Trial / Subscription Expiration Lock Guard ──
+      if (!isAdmin) {
+        const liveLicense = centralApi.getCurrentLicense() || subscriptionRepo.validateLicense(auth.user.id)
+        if (liveLicense && (!liveLicense.valid || liveLicense.subscription_status === 'expired' || auth.user.account_status === 'expired')) {
+          logger.warn('browser', `[BROWSER_LAUNCH_BLOCKED] User "${auth.user.email}" trial/subscription is expired. Launch locked.`)
+          return {
+            success: false,
+            error: 'Your Free Trial has expired. All profile launches and editing options are locked. Please subscribe to an active plan in the Web Control Center to unlock your profiles.',
+            locked: true,
+            expired: true
+          }
+        }
       }
 
       logger.info('browser', `[PROFILE_AUTHORIZED] User "${auth.user.email}" authorized to run profile "${id}"`)

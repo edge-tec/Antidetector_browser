@@ -2273,12 +2273,12 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
             $deviceLimit = 10;
             $insert = $db->prepare("
                 INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
-                VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 3, ?)
+                VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 0, ?)
                 ON DUPLICATE KEY UPDATE status = 'active'
             ");
             $insert->execute([$subId, $userId, $planId, $deviceLimit]);
         } else {
-            // Check Global Registration Free Trial Policy
+            // Check Global Registration Free Trial Policy (7 Days, 14 Days, 30 Days or Custom Duration)
             $trialStmt = $db->query("SELECT * FROM global_trial_settings WHERE id = 'global_trial_config' LIMIT 1");
             $trialConfig = $trialStmt ? $trialStmt->fetch() : null;
 
@@ -2288,8 +2288,8 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
                 $deviceLimit = 2;
                 $insert = $db->prepare("
                     INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
-                    VALUES (?, ?, ?, 'trial', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL {$duration} DAY), 3, ?)
-                    ON DUPLICATE KEY UPDATE status = 'trial'
+                    VALUES (?, ?, ?, 'trial', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL {$duration} DAY), 0, ?)
+                    ON DUPLICATE KEY UPDATE status = 'trial', expires_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL {$duration} DAY)
                 ");
                 $insert->execute([$subId, $userId, $planId, $deviceLimit]);
             } else {
@@ -2297,7 +2297,7 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
                 $deviceLimit = 1;
                 $insert = $db->prepare("
                     INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
-                    VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 3, ?)
+                    VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 0, ?)
                     ON DUPLICATE KEY UPDATE status = 'active'
                 ");
                 $insert->execute([$subId, $userId, $planId, $deviceLimit]);
@@ -2309,6 +2309,92 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
     } catch (Throwable $e) {
         error_log("[AntiProfiles] Error in ensureUserFreeSubscription: " . $e->getMessage());
         return [];
+    }
+}
+
+/**
+ * Authoritative check to determine if a user's free trial or subscription has expired and all options are locked.
+ */
+function checkSubscriptionLocked(PDO $db, string $userId, string $role = 'user'): array {
+    $isAdmin = ($role === 'admin' || $role === 'super_admin');
+    if ($isAdmin) {
+        return ['locked' => false, 'status' => 'active', 'is_admin' => true];
+    }
+
+    try {
+        $stmt = $db->prepare("
+            SELECT s.*, p.name as plan_name, u.account_status 
+            FROM subscriptions s 
+            LEFT JOIN pricing_plans p ON s.plan_id = p.id 
+            JOIN users u ON s.user_id = u.id 
+            WHERE s.user_id = ? 
+            ORDER BY s.created_at DESC LIMIT 1
+        ");
+        $stmt->execute([$userId]);
+        $sub = $stmt->fetch();
+
+        if (!$sub) {
+            $sub = ensureUserFreeSubscription($db, $userId, $role);
+        }
+
+        if (!$sub) {
+            return ['locked' => false, 'status' => 'active'];
+        }
+
+        if (($sub['account_status'] ?? '') === 'suspended') {
+            return [
+                'locked' => true,
+                'status' => 'suspended',
+                'reason' => 'account_suspended',
+                'message' => 'Your account has been suspended by an administrator. Please contact support.',
+                'renewal_url' => '#support'
+            ];
+        }
+
+        $now = time();
+        $expiresAt = !empty($sub['expires_at']) ? strtotime($sub['expires_at']) : 0;
+        $status = strtolower($sub['status'] ?? 'active');
+
+        // If explicitly marked expired or cancelled
+        if ($status === 'expired' || $status === 'cancelled') {
+            return [
+                'locked' => true,
+                'status' => 'expired',
+                'reason' => 'subscription_expired',
+                'plan_name' => $sub['plan_name'] ?? 'Free Trial',
+                'expires_at' => $sub['expires_at'] ?? null,
+                'message' => 'Your Free Trial or Subscription has expired. All profile creation, launching, and editing options are locked. Please subscribe to an active package to unlock your features.',
+                'renewal_url' => '#pricing'
+            ];
+        }
+
+        // If trial or paid subscription has passed expiration timestamp
+        if ($expiresAt > 0 && $now > $expiresAt) {
+            // Immediately mark as expired in DB
+            $db->prepare("UPDATE subscriptions SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")->execute([$userId]);
+            $db->prepare("UPDATE users SET account_status = 'expired', auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$userId]);
+            
+            return [
+                'locked' => true,
+                'status' => 'expired',
+                'reason' => 'trial_expired',
+                'plan_name' => $sub['plan_name'] ?? 'Free Trial',
+                'expires_at' => $sub['expires_at'] ?? null,
+                'message' => 'Your Free Trial has expired. All profile creation, launching, and proxy options are locked. Please subscribe to an active plan to unlock your profiles and features.',
+                'renewal_url' => '#pricing'
+            ];
+        }
+
+        return [
+            'locked' => false,
+            'status' => $status,
+            'plan_name' => $sub['plan_name'] ?? 'Active Plan',
+            'expires_at' => $sub['expires_at'] ?? null,
+            'days_remaining' => $expiresAt > 0 ? max(0, ceil(($expiresAt - $now) / 86400)) : 999
+        ];
+    } catch (Throwable $e) {
+        error_log("[AntiProfiles] Error in checkSubscriptionLocked: " . $e->getMessage());
+        return ['locked' => false, 'status' => 'active'];
     }
 }
 

@@ -12,14 +12,26 @@ import { authorizeUser, normalizeUserRole } from '../security/session'
 import { centralApi } from '../services/api-client.service'
 import { logger } from '../logging/logger'
 
-function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string } {
+function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string; locked?: boolean; expired?: boolean } {
   const normalized = normalizeUserRole(role)
   const isAdmin = (normalized === 'admin' || normalized === 'super_admin')
   if (isAdmin) return { allowed: true, current: 0, max: 1000 }
 
+  // ── Authoritative Trial / Subscription Expiration Lock Guard ──
+  const liveLicense = centralApi.getCurrentLicense() || subscriptionRepo.validateLicense(userId)
+  if (liveLicense && (!liveLicense.valid || liveLicense.subscription_status === 'expired')) {
+    return {
+      allowed: false,
+      current: 0,
+      max: 0,
+      locked: true,
+      expired: true,
+      error: 'Your Free Trial has expired. All profile creation and launching options are locked. Please subscribe to an active package to unlock your profiles.'
+    }
+  }
+
   const currentCount = profileRepo.getAll(userId).length
   let maxAllowed = 3
-  const liveLicense = centralApi.getCurrentLicense()
   if (liveLicense?.limits?.profiles && typeof liveLicense.limits.profiles === 'number' && liveLicense.limits.profiles > 0) {
     maxAllowed = liveLicense.limits.profiles
   } else {

@@ -190,14 +190,16 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
             $currentSubStatus = 'expired';
             $updSub = $db->prepare("UPDATE subscriptions SET status = 'expired' WHERE id = ?");
             $updSub->execute([$sub['id']]);
+            try { $db->prepare("UPDATE users SET account_status = 'expired' WHERE id = ?")->execute([$userId]); } catch (Throwable $e) {}
 
             return [
                 'valid' => false,
-                'account_status' => $user['account_status'],
+                'account_status' => 'expired',
                 'subscription_status' => 'expired',
+                'locked' => true,
                 'plan' => ['id' => $plan['id'], 'name' => $plan['name']],
                 'expires_at' => $sub['expires_at'],
-                'error' => 'Your account has expired. Please contact support or the administrator to renew your access.',
+                'error' => 'Your Free Trial or Subscription has expired. All profile launches, creation, and proxy options are locked. Please subscribe to an active plan to unlock full access.',
                 'renewal_url' => '#pricing'
             ];
         }

@@ -2920,6 +2920,24 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 <!-- Right Content Panel -->
                 <div class="admin-viewport-wrapper">
                     
+                    <!-- Global Trial Expired Warning & Locking Paywall Banner -->
+                    <div id="userTrialExpiredPaywallBanner" style="display: none; background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.08)); border: 1px solid rgba(239, 68, 68, 0.45); border-radius: 14px; padding: 18px 22px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.25);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                                    🔒
+                                </div>
+                                <div>
+                                    <h4 style="color: #F87171; margin: 0; font-weight: 800; font-size: 16px;">Your Free Trial Has Expired (All Options Locked)</h4>
+                                    <p style="color: #CBD5E1; font-size: 12.5px; margin: 3px 0 0 0;">Browser profile launching, new profile creation, proxy setup, and team options are locked. Please subscribe to an active plan to unlock your profiles immediately.</p>
+                                </div>
+                            </div>
+                            <a href="#pricing" onclick="closeAdminDashboard()" class="btn btn-primary" style="background: linear-gradient(135deg, #F87171, #EF4444); color: #FFF; font-weight: 800; padding: 10px 22px; border-radius: 10px; font-size: 13.5px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
+                                💳 Choose Plan & Unlock Now
+                            </a>
+                        </div>
+                    </div>
+
                     <!-- USER TAB 1: MY PROFILE (Editable Profile Info & Password Only) -->
                     <div id="tab-my-profile" class="admin-tab-content">
                         <div style="margin-bottom: 24px;">
@@ -3727,6 +3745,65 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
                     <!-- TAB 2: SUBSCRIPTIONS -->
                     <div id="tab-subscriptions" class="admin-tab-content" style="display: none;">
+                        
+                        <!-- Global Free Trial Policy & Duration Configuration Panel -->
+                        <div style="background: linear-gradient(135deg, rgba(45, 212, 191, 0.08), rgba(99, 102, 241, 0.06)); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 16px; padding: 22px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 20px;">🎁</span>
+                                        <h4 style="color: #FFF; font-size: 16px; font-weight: 800; margin: 0;">Global Free Trial Policy & Auto-Enrollment System</h4>
+                                    </div>
+                                    <p style="color: var(--text-muted); font-size: 12.5px; margin: 4px 0 0 0;">Control trial duration (7, 14, 30 days) and automatic feature locking on expiration.</p>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #FFF; font-size: 13px; font-weight: 700;">
+                                        <input type="checkbox" id="globalTrialEnabled" checked onchange="toggleTrialEnabledLabel(this.checked)" style="width: 18px; height: 18px; accent-color: #2DD4BF;">
+                                        <span id="globalTrialEnabledLabel" style="color: #2DD4BF;">Free Trial Enabled</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <label style="display: block; font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 6px;">Trial Duration (Days)</label>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <input type="number" id="globalTrialDuration" value="7" min="1" max="365" style="width: 75px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; color: #2DD4BF; font-weight: 800; font-size: 14px; text-align: center;">
+                                        <div style="display: flex; gap: 4px;">
+                                            <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700;" onclick="setTrialDurationPill(7)">7 Days</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700;" onclick="setTrialDurationPill(14)">14 Days</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700;" onclick="setTrialDurationPill(30)">30 Days</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style="display: block; font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 6px;">Default Trial Package</label>
+                                    <select id="globalTrialDefaultPlan" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: #FFF; font-size: 13px;">
+                                        <option value="plan_starter">Starter (25 Profiles, 2 Devices)</option>
+                                        <option value="plan_pro">Professional (100 Profiles, 10 Devices)</option>
+                                        <option value="plan_business">Business (500 Profiles, 25 Devices)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display: block; font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 6px;">Landing Page Scope</label>
+                                    <select id="globalTrialAppliesTo" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: #FFF; font-size: 13px;">
+                                        <option value="all">All Packages (Starter, Pro, Business)</option>
+                                        <option value="default_only">Default Package Only</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px;">
+                                <span style="font-size: 12px; color: var(--text-muted);">ℹ️ Upon trial expiration, if user does not update package, all options are locked automatically.</span>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="button" class="btn btn-outline" style="font-size: 12px; font-weight: 700;" onclick="openGrantTrialToAllModal()">🎁 Grant Trial To All Users</button>
+                                    <button type="button" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 12.5px; padding: 8px 18px;" onclick="saveGlobalTrialConfig()">💾 Save Trial Policy</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <h3 style="font-size: 18px; color: #FFF;">User Subscriptions & Account Expiration Manager</h3>
                             <button class="btn btn-outline" onclick="loadSubscriptionsTable()">🔄 Refresh Subscriptions</button>
@@ -5931,11 +6008,44 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
                 if (data.success && data.license) {
                     const lic = data.license;
-                    if (document.getElementById('userSubPlanName')) document.getElementById('userSubPlanName').innerText = (lic.plan ? lic.plan.name : 'Starter Plan');
-                    if (document.getElementById('userSubStatus')) document.getElementById('userSubStatus').innerText = (lic.subscription_status || 'ACTIVE').toUpperCase();
-                    if (document.getElementById('userProfileQuotaDisplay')) document.getElementById('userProfileQuotaDisplay').innerText = '0 / ' + (lic.limits ? lic.limits.profiles : 25) + ' Profiles';
-                    if (document.getElementById('userDeviceQuotaDisplay')) document.getElementById('userDeviceQuotaDisplay').innerText = (lic.device ? lic.device.device_count : 1) + ' / ' + (lic.device ? lic.device.max_devices : 2) + ' Devices';
-                    if (document.getElementById('userSubExpiresAt')) document.getElementById('userSubExpiresAt').innerText = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'September 15, 2027';
+                    const isExpired = (lic.subscription_status === 'expired' || lic.valid === false || lic.locked === true);
+                    const isTrial = (lic.subscription_status === 'trial');
+                    
+                    const paywallBanner = document.getElementById('userTrialExpiredPaywallBanner');
+                    if (paywallBanner) {
+                        paywallBanner.style.display = isExpired ? 'block' : 'none';
+                    }
+
+                    if (document.getElementById('userSubPlanName')) {
+                        document.getElementById('userSubPlanName').innerText = (lic.plan ? lic.plan.name : 'Starter Plan');
+                    }
+                    
+                    const subStatusElem = document.getElementById('userSubStatus');
+                    if (subStatusElem) {
+                        if (isExpired) {
+                            subStatusElem.innerText = 'EXPIRED (LOCKED)';
+                            subStatusElem.style.background = 'rgba(239, 68, 68, 0.2)';
+                            subStatusElem.style.color = '#F87171';
+                        } else if (isTrial) {
+                            subStatusElem.innerText = 'FREE TRIAL';
+                            subStatusElem.style.background = 'rgba(45, 212, 191, 0.2)';
+                            subStatusElem.style.color = '#2DD4BF';
+                        } else {
+                            subStatusElem.innerText = (lic.subscription_status || 'ACTIVE').toUpperCase();
+                            subStatusElem.style.background = 'rgba(16, 185, 129, 0.15)';
+                            subStatusElem.style.color = '#10B981';
+                        }
+                    }
+
+                    if (document.getElementById('userProfileQuotaDisplay')) {
+                        document.getElementById('userProfileQuotaDisplay').innerText = isExpired ? '0 / 0 Profiles (Locked)' : '0 / ' + (lic.limits ? lic.limits.profiles : 25) + ' Profiles';
+                    }
+                    if (document.getElementById('userDeviceQuotaDisplay')) {
+                        document.getElementById('userDeviceQuotaDisplay').innerText = (lic.device ? lic.device.device_count : 1) + ' / ' + (lic.device ? lic.device.max_devices : 2) + ' Devices';
+                    }
+                    if (document.getElementById('userSubExpiresAt')) {
+                        document.getElementById('userSubExpiresAt').innerText = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'September 15, 2027';
+                    }
                 }
 
                 // Fetch and update live releases across landing page download section
@@ -6397,7 +6507,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             if (tabName === 'my-affiliate') loadMyAffiliatePortal();
             if (tabName === 'admin-affiliates') loadAdminAffiliateControl();
             if (tabName === 'users') loadUsersTable();
-            if (tabName === 'subscriptions') loadSubscriptionsTable();
+            if (tabName === 'subscriptions') {
+                loadSubscriptionsTable();
+                loadGlobalTrialConfig();
+            }
             if (tabName === 'gateways') loadPaymentGatewaysTable();
             if (tabName === 'payments') loadPaymentsTable();
             if (tabName === 'support') loadSupportConversations();
@@ -9011,11 +9124,162 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
         }
 
+        function setTrialDurationPill(days) {
+            const input = document.getElementById('globalTrialDuration');
+            if (input) {
+                input.value = days;
+                input.dispatchEvent(new Event('change'));
+            }
+        }
+
+        function toggleTrialEnabledLabel(checked) {
+            const label = document.getElementById('globalTrialEnabledLabel');
+            if (label) {
+                label.innerText = checked ? 'Free Trial Enabled' : 'Free Trial Disabled';
+                label.style.color = checked ? '#2DD4BF' : '#94A3B8';
+            }
+        }
+
+        async function loadGlobalTrialConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/admin?action=get-global-trial-config', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const cfg = data.data;
+                    const chk = document.getElementById('globalTrialEnabled');
+                    const dur = document.getElementById('globalTrialDuration');
+                    const defPlan = document.getElementById('globalTrialDefaultPlan');
+                    const applies = document.getElementById('globalTrialAppliesTo');
+                    if (chk) {
+                        chk.checked = !!cfg.is_enabled;
+                        toggleTrialEnabledLabel(chk.checked);
+                    }
+                    if (dur) dur.value = cfg.trial_duration_days || 7;
+                    if (defPlan) defPlan.value = cfg.default_plan_id || 'plan_starter';
+                    if (applies) applies.value = cfg.applies_to_packages || 'all';
+                }
+            } catch(e) {
+                console.warn('[AntiProfiles] Error loading trial config:', e);
+            }
+        }
+
+        async function saveGlobalTrialConfig() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return;
+            const isEnabled = document.getElementById('globalTrialEnabled') ? document.getElementById('globalTrialEnabled').checked : true;
+            const duration = parseInt(document.getElementById('globalTrialDuration')?.value || '7', 10);
+            const defaultPlan = document.getElementById('globalTrialDefaultPlan')?.value || 'plan_starter';
+            const appliesTo = document.getElementById('globalTrialAppliesTo')?.value || 'all';
+
+            try {
+                const res = await fetch('/api/admin?action=save-global-trial-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        is_enabled: isEnabled ? 1 : 0,
+                        trial_duration_days: duration,
+                        default_plan_id: defaultPlan,
+                        applies_to_packages: appliesTo
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Global Free Trial Policy updated!\nDuration: ${duration} Days\nDefault Plan: ${defaultPlan}\nStatus: ${isEnabled ? 'Active' : 'Disabled'}\nAll new registrations will automatically enroll in this ${duration}-day trial.`);
+                    loadGlobalTrialConfig();
+                } else {
+                    alert('Error saving trial policy: ' + (data.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Network error while saving trial policy: ' + e.message);
+            }
+        }
+
+        async function openGrantTrialToAllModal() {
+            const durationStr = prompt('Enter Trial Duration in Days to grant to ALL users (e.g., 7, 14, 30):', '7');
+            if (!durationStr) return;
+            const days = parseInt(durationStr, 10);
+            if (isNaN(days) || days <= 0) {
+                alert('Please enter a valid positive number of days.');
+                return;
+            }
+
+            if (!confirm(`⚠️ Confirm: Are you sure you want to grant a ${days}-day Free Trial to ALL registered users? This will update their subscription and activate full access for ${days} days.`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('sessionToken');
+            try {
+                const res = await fetch('/api/admin?action=grant-user-trial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        userId: 'all',
+                        trialDays: days,
+                        planId: 'plan_starter'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || `Successfully granted ${days}-day free trial to all users!`);
+                    loadSubscriptionsTable();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to grant global trial.'));
+                }
+            } catch(e) {
+                alert('Network error: ' + e.message);
+            }
+        }
+
+        async function grantSpecificUserTrial(userId, userEmail) {
+            const daysStr = prompt(`Grant Free Trial to ${userEmail}\nChoose duration in days (e.g. 7, 14, 30):`, '7');
+            if (!daysStr) return;
+            const days = parseInt(daysStr, 10);
+            if (isNaN(days) || days <= 0) {
+                alert('Please enter a valid number of days.');
+                return;
+            }
+
+            const token = localStorage.getItem('sessionToken');
+            try {
+                const res = await fetch('/api/admin?action=grant-user-trial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        trialDays: days,
+                        planId: 'plan_starter'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || `Successfully granted ${days}-day free trial to ${userEmail}!`);
+                    loadSubscriptionsTable();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to grant user trial.'));
+                }
+            } catch(e) {
+                alert('Network error: ' + e.message);
+            }
+        }
+
         async function loadSubscriptionsTable() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
             const tbody = document.getElementById('subsTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching user account subscriptions & expiration dates...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">Fetching user account subscriptions & expiration dates...</td></tr>';
 
             try {
                 const res = await fetch('/api/admin/get-subscriptions', {
@@ -9029,9 +9293,16 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         const profileLimit = item.subscription.profile_limit || (planId === 'plan_free' ? 3 : (planId === 'plan_starter' ? 25 : (planId === 'plan_pro' ? 100 : 500)));
                         const deviceLimit = item.subscription.device_limit || item.subscription.plan.team_limit || 2;
                         const activeDevices = item.active_devices_count || 0;
+                        const isTrial = item.subscription.status === 'trial';
+                        const isExpired = item.subscription.status === 'expired';
                         return `
                         <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">${item.user.name} <br><span style="font-size:12px; color:var(--text-muted);">${item.user.email}</span></td>
+                            <td style="padding: 12px 16px; font-weight: 600; color: #FFF;">
+                                ${item.user.name} <br>
+                                <span style="font-size:12px; color:var(--text-muted);">${item.user.email}</span>
+                                ${isTrial ? '<br><span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 800;">🎁 TRIAL ACTIVE</span>' : ''}
+                                ${isExpired ? '<br><span style="background: rgba(239, 68, 68, 0.15); color: #F87171; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 800;">🔒 LOCKED (EXPIRED)</span>' : ''}
+                            </td>
                             <td style="padding: 12px 16px;">
                                 <select id="subPlan_${item.user.id}" onchange="const def = {'plan_free':3,'plan_starter':25,'plan_pro':100,'plan_business':500}[this.value]||3; const inp = document.getElementById('subProfileLimit_${item.user.id}'); if (inp) inp.value = def;" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
                                     <option value="plan_free" ${planId === 'plan_free' ? 'selected' : ''}>Free (3 Profiles)</option>
@@ -9055,6 +9326,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                             <td style="padding: 12px 16px;">
                                 <select id="subStatus_${item.user.id}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
                                     <option value="active" ${item.subscription.status === 'active' ? 'selected' : ''}>Active</option>
+                                    <option value="trial" ${item.subscription.status === 'trial' ? 'selected' : ''}>Trial</option>
                                     <option value="suspended" ${item.subscription.status === 'suspended' ? 'selected' : ''}>Suspended</option>
                                     <option value="expired" ${item.subscription.status === 'expired' ? 'selected' : ''}>Expired</option>
                                 </select>
@@ -9063,7 +9335,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <input type="date" id="subExp_${item.user.id}" value="${expDate}" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px; color: #FFF; font-size: 13px;">
                             </td>
                             <td style="padding: 12px 16px;">
-                                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="updateUserSubscriptionDateAndPlan('${item.user.id}')">💾 Save Subscription</button>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="updateUserSubscriptionDateAndPlan('${item.user.id}')">💾 Save</button>
+                                    <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; color: #2DD4BF; border-color: rgba(45,212,191,0.4);" onclick="grantSpecificUserTrial('${item.user.id}', '${item.user.email}')">🎁 Trial</button>
+                                </div>
                             </td>
                         </tr>
                         `;
