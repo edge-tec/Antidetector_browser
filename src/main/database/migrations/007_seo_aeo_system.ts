@@ -34,7 +34,7 @@ export function up(db: Database.Database): void {
       site_url: 'https://antiprofiles.com',
       default_og_image: 'https://antiprofiles.com/og-cover.png',
       twitter_handle: '@AntiProfilesApp',
-      robots_content: "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://antiprofiles.com/sitemap.xml",
+      robots_content: "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: https://antiprofiles.com/sitemap.xml",
       entity_brand_name: 'AntiProfiles Software Inc.',
       entity_logo: 'https://antiprofiles.com/logo.png',
       entity_email: 'support@antiprofiles.com',
@@ -73,26 +73,30 @@ export function up(db: Database.Database): void {
     )
   `)
 
-  // Seed default homepage SEO entry if empty
+  const allKeywordsString = "antidetect browser, anti detect browser, browser fingerprint, browser fingerprinting, browser profile, profile manager, multi login browser, multi account browser, fingerprint spoofing, user agent spoofing, WebGL fingerprint, Canvas fingerprint, Audio fingerprint, WebRTC protection, DNS leak protection, proxy browser, SOCKS5 proxy, HTTP proxy, residential proxy, mobile proxy, affiliate marketing browser, CPA browser, media buying browser, Facebook browser, TikTok browser, Instagram browser, Google Ads browser, eCommerce browser, Amazon seller browser, dropshipping browser, anonymous browsing, privacy browser, secure browser, virtual browser, isolated browser profiles, browser automation, Chrome fingerprint, Firefox fingerprint, Mac antidetect browser, Windows antidetect browser, Linux antidetect browser, Apple Silicon browser, GoLogin alternative, AdsPower alternative, Multilogin alternative, Dolphin Anty alternative, Kameleo alternative, Incogniton alternative, VMLogin alternative, Hidemyacc alternative, Octo Browser alternative, MoreLogin alternative, browser identity manager, AntiProfiles browser"
+
+  // Seed default homepage SEO entry
   db.prepare(`
-    INSERT OR IGNORE INTO page_seo (
+    INSERT INTO page_seo (
       id, page_path, page_type, title, description, keywords, canonical_url, robots,
       og_title, og_description, og_image, schema_type, primary_keyword, ai_quick_answer
     ) VALUES (
       'page_home', '/', 'homepage',
       'AntiProfiles — Anti-Detect Browser & Multi-Account Management Tool',
       'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, fingerprint spoofing, and residential proxies.',
-      'anti detect browser, multi account browser, browser profile isolation, fingerprint spoofing, proxy manager',
+      ?,
       'https://antiprofiles.com/',
       'index, follow',
       'AntiProfiles — Anti-Detect Browser & Profile Isolation',
       'Professional anti-detect browser for managing isolated web profiles without bans.',
       'https://antiprofiles.com/og-cover.png',
       'SoftwareApplication',
-      'anti detect browser',
-      'AntiProfiles is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium instances with unique canvas, WebGL, WebRTC, and proxy configurations.'
-    )
-  `).run()
+      'antidetect browser',
+      'AntiProfiles is a software platform designed for privacy, browser profile isolation, and multi-account management. It allows users to run separate Chromium and Firefox instances with unique canvas, WebGL, WebRTC, proxy configurations, and competitor alternatives like GoLogin, AdsPower, Multilogin.'
+    ) ON CONFLICT(page_path) DO UPDATE SET
+      keywords = excluded.keywords,
+      ai_quick_answer = excluded.ai_quick_answer
+  `).run(allKeywordsString)
 
   // 3. Keywords Management
   db.exec(`

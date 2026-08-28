@@ -21,6 +21,9 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
   // Keywords state
   const [keywordsData, setKeywordsData] = useState<{ keywords: any[]; warnings: any[] }>({ keywords: [], warnings: [] })
   const [newKw, setNewKw] = useState({ keyword: '', keyword_type: 'primary', search_intent: 'commercial', target_url: '/' })
+  const [kwSearch, setKwSearch] = useState('')
+  const [kwCategoryFilter, setKwCategoryFilter] = useState<'all' | 'affiliate' | 'privacy' | 'proxy' | 'competitor' | 'os'>('all')
+  const [seedingKeywords, setSeedingKeywords] = useState(false)
 
   // Redirects & 404 state
   const [redirects, setRedirects] = useState<any[]>([])
@@ -100,6 +103,32 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
       console.error('Error loading SEO data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Seed Default High-Volume Keywords
+  const handleSeedDefaultKeywords = async () => {
+    setSeedingKeywords(true)
+    try {
+      if ((window as any).api?.seoSeedDefaultKeywords) {
+        const res = await (window as any).api.seoSeedDefaultKeywords(sessionToken)
+        if (res?.success) {
+          alert(`✓ Successfully loaded 50+ high-volume SEO & competitor keywords into the indexing system!`)
+          loadSeoData()
+        }
+      } else {
+        const res = await fetch('/api/seo.php?action=seed-default-keywords', {
+          headers: { Authorization: `Bearer ${sessionToken}` }
+        }).then(r => r.json())
+        if (res?.success) {
+          alert(`✓ Successfully loaded 50+ high-volume SEO & competitor keywords into the indexing system!`)
+          loadSeoData()
+        }
+      }
+    } catch (err: any) {
+      alert(`Error seeding keywords: ${err.message}`)
+    } finally {
+      setSeedingKeywords(false)
     }
   }
 
@@ -647,95 +676,212 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
       )}
 
       {/* ── TAB 5: KEYWORDS & CANNIBALIZATION ── */}
-      {activeTab === 'keywords' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Cannibalization Warning Alert Box */}
-          {keywordsData.warnings?.length > 0 && (
-            <div style={{ backgroundColor: '#EF444415', border: '1px solid #EF4444', borderRadius: '12px', padding: '18px' }}>
-              <h4 style={{ margin: '0 0 8px', color: '#EF4444', fontSize: '15px', fontWeight: 800 }}>⚠️ Keyword Cannibalization Warning</h4>
-              {keywordsData.warnings.map((w: any, idx: number) => (
-                <div key={idx} style={{ fontSize: '13px', color: '#F87171', marginBottom: '4px' }}>
-                  Keyword "<strong>{w.keyword}</strong>" is targeted across multiple URLs: {w.urls.join(', ')}
-                </div>
-              ))}
-            </div>
-          )}
+      {activeTab === 'keywords' && (() => {
+        const filteredKeywords = (keywordsData.keywords || []).filter((k: any) => {
+          const text = (k.keyword || '').toLowerCase()
+          if (kwSearch && !text.includes(kwSearch.toLowerCase())) return false
+          if (kwCategoryFilter === 'affiliate') {
+            return text.includes('affiliate') || text.includes('cpa') || text.includes('marketing') || text.includes('media buying') || text.includes('facebook') || text.includes('tiktok') || text.includes('instagram') || text.includes('ads') || text.includes('dropshipping') || text.includes('amazon') || text.includes('e-commerce') || text.includes('agency')
+          }
+          if (kwCategoryFilter === 'privacy') {
+            return text.includes('fingerprint') || text.includes('canvas') || text.includes('webgl') || text.includes('audio') || text.includes('user agent') || text.includes('timezone') || text.includes('font') || text.includes('screen') || text.includes('webrtc') || text.includes('dns') || text.includes('isolation') || text.includes('cookie') || text.includes('privacy') || text.includes('anonymous') || text.includes('masking')
+          }
+          if (kwCategoryFilter === 'proxy') {
+            return text.includes('proxy') || text.includes('socks') || text.includes('http') || text.includes('residential') || text.includes('mobile') || text.includes('rotating')
+          }
+          if (kwCategoryFilter === 'competitor') {
+            return text.includes('alternative') || text.includes('gologin') || text.includes('adspower') || text.includes('multilogin') || text.includes('dolphin') || text.includes('incogniton') || text.includes('vmlogin') || text.includes('kameleo') || text.includes('hidemyacc') || text.includes('octo') || text.includes('morelogin')
+          }
+          if (kwCategoryFilter === 'os') {
+            return text.includes('windows') || text.includes('mac') || text.includes('linux') || text.includes('silicon') || text.includes('cross platform')
+          }
+          return true
+        })
 
-          {/* Add Keyword Form */}
-          <form onSubmit={handleAddKeyword} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '20px', display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '180px' }}>
-              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TARGET KEYWORD</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. anti detect browser"
-                value={newKw.keyword}
-                onChange={e => setNewKw({ ...newKw, keyword: e.target.value })}
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
-              />
-            </div>
-            <div style={{ width: '160px' }}>
-              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>INTENT</label>
-              <select
-                value={newKw.search_intent}
-                onChange={e => setNewKw({ ...newKw, search_intent: e.target.value })}
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Header with Seeding Action Button */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#F1F5F9' }}>
+                  🎯 Search Engine & AI Indexing Keywords ({keywordsData.keywords?.length || 0} Total)
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94A3B8' }}>
+                  High-volume target search terms for Google SEO backlinks, YouTube tags, Play Store metadata, and AI assistants (ChatGPT, Claude, Perplexity).
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSeedDefaultKeywords}
+                disabled={seedingKeywords}
+                style={{
+                  padding: '11px 20px',
+                  borderRadius: '8px',
+                  backgroundColor: '#3B82F6',
+                  color: '#FFF',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
               >
-                <option value="commercial">Commercial</option>
-                <option value="informational">Informational</option>
-                <option value="transactional">Transactional</option>
-              </select>
+                {seedingKeywords ? 'Seeding Keywords...' : '⚡ Seed 50+ High-Volume SEO & Competitor Keywords'}
+              </button>
             </div>
-            <div style={{ flex: 1, minWidth: '160px' }}>
-              <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TARGET URL</label>
-              <input
-                type="text"
-                value={newKw.target_url}
-                onChange={e => setNewKw({ ...newKw, target_url: e.target.value })}
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
-              />
-            </div>
-            <button type="submit" style={{ padding: '10px 18px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
-              ➕ Add Keyword
-            </button>
-          </form>
 
-          {/* Keywords List Table */}
-          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#14141F', color: '#94A3B8', borderBottom: '1px solid #2C2C3E' }}>
-                  <th style={{ padding: '12px 16px' }}>KEYWORD</th>
-                  <th style={{ padding: '12px 16px' }}>INTENT</th>
-                  <th style={{ padding: '12px 16px' }}>TARGET URL</th>
-                  <th style={{ padding: '12px 16px' }}>STATUS</th>
-                  <th style={{ padding: '12px 16px' }}>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {keywordsData.keywords?.map((k: any) => (
-                  <tr key={k.id} style={{ borderBottom: '1px solid #2C2C3E' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#F1F5F9' }}>{k.keyword}</td>
-                    <td style={{ padding: '12px 16px', color: '#94A3B8' }}>{k.search_intent}</td>
-                    <td style={{ padding: '12px 16px', color: '#60A5FA', fontFamily: 'monospace' }}>{k.target_url}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ backgroundColor: '#10B98120', color: '#10B981', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
-                        {k.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <button type="button" onClick={() => handleDeleteKeyword(k.id)} style={{ backgroundColor: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 700 }}>
-                        🗑️ Delete
-                      </button>
-                    </td>
-                  </tr>
+            {/* Cannibalization Warning Alert Box */}
+            {keywordsData.warnings?.length > 0 && (
+              <div style={{ backgroundColor: '#EF444415', border: '1px solid #EF4444', borderRadius: '12px', padding: '18px' }}>
+                <h4 style={{ margin: '0 0 8px', color: '#EF4444', fontSize: '15px', fontWeight: 800 }}>⚠️ Keyword Cannibalization Warning</h4>
+                {keywordsData.warnings.map((w: any, idx: number) => (
+                  <div key={idx} style={{ fontSize: '13px', color: '#F87171', marginBottom: '4px' }}>
+                    Keyword "<strong>{w.keyword}</strong>" is targeted across multiple URLs: {w.urls.join(', ')}
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )}
+
+            {/* Search & Category Filter Bar */}
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '14px' }}>
+              <div style={{ flex: 1, minWidth: '220px' }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Search tracked keywords..."
+                  value={kwSearch}
+                  onChange={e => setKwSearch(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { id: 'all', label: `All (${keywordsData.keywords?.length || 0})` },
+                  { id: 'affiliate', label: '💼 Affiliate & CPA' },
+                  { id: 'privacy', label: '🛡️ Privacy & Fingerprints' },
+                  { id: 'proxy', label: '🔌 Proxies & Network' },
+                  { id: 'competitor', label: '🔄 Competitor Alternatives' },
+                  { id: 'os', label: '💻 OS & Platforms' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setKwCategoryFilter(tab.id as any)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: kwCategoryFilter === tab.id ? '#2DD4BF20' : '#14141F',
+                      color: kwCategoryFilter === tab.id ? '#2DD4BF' : '#94A3B8',
+                      fontWeight: kwCategoryFilter === tab.id ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Add Keyword Form */}
+            <form onSubmit={handleAddKeyword} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '18px', display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '180px' }}>
+                <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>CUSTOM KEYWORD</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. facebook multi account browser"
+                  value={newKw.keyword}
+                  onChange={e => setNewKw({ ...newKw, keyword: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                />
+              </div>
+              <div style={{ width: '160px' }}>
+                <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>INTENT</label>
+                <select
+                  value={newKw.search_intent}
+                  onChange={e => setNewKw({ ...newKw, search_intent: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                >
+                  <option value="commercial">Commercial</option>
+                  <option value="informational">Informational</option>
+                  <option value="transactional">Transactional</option>
+                </select>
+              </div>
+              <div style={{ flex: 1, minWidth: '160px' }}>
+                <label style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TARGET URL</label>
+                <input
+                  type="text"
+                  value={newKw.target_url}
+                  onChange={e => setNewKw({ ...newKw, target_url: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF' }}
+                />
+              </div>
+              <button type="submit" style={{ padding: '10px 18px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+                ➕ Add Keyword
+              </button>
+            </form>
+
+            {/* Keywords List Table */}
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#14141F', color: '#94A3B8', borderBottom: '1px solid #2C2C3E' }}>
+                    <th style={{ padding: '12px 16px' }}>KEYWORD</th>
+                    <th style={{ padding: '12px 16px' }}>TYPE</th>
+                    <th style={{ padding: '12px 16px' }}>INTENT</th>
+                    <th style={{ padding: '12px 16px' }}>TARGET URL</th>
+                    <th style={{ padding: '12px 16px' }}>STATUS</th>
+                    <th style={{ padding: '12px 16px' }}>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredKeywords.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#94A3B8' }}>
+                        No keywords matching filter. Click <strong>"Seed 50+ High-Volume SEO Keywords"</strong> to populate.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredKeywords.map((k: any) => (
+                      <tr key={k.id} style={{ borderBottom: '1px solid #2C2C3E' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: 700, color: '#F1F5F9' }}>{k.keyword}</td>
+                        <td style={{ padding: '12px 16px', color: '#CBD5E1' }}>
+                          <span style={{
+                            backgroundColor: k.keyword_type === 'competitor' ? '#F59E0B20' : '#3B82F620',
+                            color: k.keyword_type === 'competitor' ? '#F59E0B' : '#60A5FA',
+                            padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700
+                          }}>
+                            {k.keyword_type || 'primary'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#94A3B8' }}>{k.search_intent}</td>
+                        <td style={{ padding: '12px 16px', color: '#60A5FA', fontFamily: 'monospace' }}>{k.target_url}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ backgroundColor: '#10B98120', color: '#10B981', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
+                            {k.status || 'active'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <button type="button" onClick={() => handleDeleteKeyword(k.id)} style={{ backgroundColor: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 700 }}>
+                            🗑️ Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── TAB 6: ENTITY & BRAND PROFILE ── */}
       {activeTab === 'entity' && (

@@ -272,11 +272,14 @@ try {
 }
 
 
+$defaultKeywordsStr = 'antidetect browser, anti detect browser, browser fingerprint, browser fingerprinting, browser profile, profile manager, multi login browser, multi account browser, fingerprint spoofing, user agent spoofing, WebGL fingerprint, Canvas fingerprint, Audio fingerprint, WebRTC protection, DNS leak protection, proxy browser, SOCKS5 proxy, HTTP proxy, residential proxy, mobile proxy, affiliate marketing browser, CPA browser, media buying browser, Facebook browser, TikTok browser, Instagram browser, Google Ads browser, eCommerce browser, Amazon seller browser, dropshipping browser, anonymous browsing, privacy browser, secure browser, virtual browser, isolated browser profiles, browser automation, Chrome fingerprint, Firefox fingerprint, Mac antidetect browser, Windows antidetect browser, Linux antidetect browser, Apple Silicon browser, GoLogin alternative, AdsPower alternative, Multilogin alternative, Dolphin Anty alternative, Kameleo alternative, Incogniton alternative, VMLogin alternative, Hidemyacc alternative, Octo Browser alternative, MoreLogin alternative, browser identity manager, AntiProfiles browser';
+
+$pageKeywords = !empty($pageSeo['keywords']) ? $pageSeo['keywords'] : $defaultKeywordsStr;
 $appBaseUrl = defined('APP_URL') ? APP_URL : 'https://antiprofiles.com';
-$pageTitle = $pageSeo['title'] ?? 'AntiProfiles — Anti-Detect Browser & Profile Isolation';
-$pageDesc = $pageSeo['description'] ?? 'Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Software.';
+$pageTitle = $pageSeo['title'] ?? 'AntiProfiles — Anti-Detect Browser & Multi-Account Management Software';
+$pageDesc = $pageSeo['description'] ?? 'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, canvas/webgl fingerprint spoofing, and residential proxies.';
 $pageCanonical = $pageSeo['canonical_url'] ?? (rtrim($appBaseUrl, '/') . $requestUri);
-$pageRobots = $pageSeo['robots'] ?? 'index, follow';
+$pageRobots = $pageSeo['robots'] ?? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 $ogTitle = $pageSeo['og_title'] ?? $pageTitle;
 $ogDesc = $pageSeo['og_description'] ?? $pageDesc;
 $ogImage = $pageSeo['og_image'] ?? ($appBaseUrl . '/og-cover.png');
@@ -288,7 +291,6 @@ $schemas = [
         "@type" => "Organization",
         "name" => "AntiProfiles Software Inc.",
         "url" => $appBaseUrl,
-
         "logo" => "https://antiprofiles.com/logo.png",
         "sameAs" => [
             "https://x.com/AntiProfilesApp",
@@ -299,12 +301,23 @@ $schemas = [
         "@context" => "https://schema.org",
         "@type" => "SoftwareApplication",
         "name" => "AntiProfiles Anti-Detect Browser",
-        "operatingSystem" => "macOS, Windows",
+        "operatingSystem" => "macOS (Apple Silicon & Intel), Windows 10/11, Linux",
         "applicationCategory" => "BusinessApplication",
+        "applicationSubCategory" => "Multi-Account & Privacy Browser",
+        "description" => $pageDesc,
+        "keywords" => $pageKeywords,
         "offers" => [
             "@type" => "Offer",
             "price" => "0.00",
             "priceCurrency" => "USD"
+        ],
+        "featureList" => [
+            "Multi-Account Management & Isolated Profiles",
+            "Canvas & WebGL Fingerprint Spoofing",
+            "WebRTC & DNS Leak Protection",
+            "Residential & SOCKS5 Proxy Management",
+            "Affiliate & CPA Marketing Automation",
+            "GoLogin, AdsPower, Multilogin Alternative"
         ]
     ]
 ];
@@ -315,6 +328,7 @@ if ($indexFile && @file_exists($indexFile)) {
 
     $seoTags = "\n    <title>" . htmlspecialchars($pageTitle) . "</title>\n";
     $seoTags .= '    <meta name="description" content="' . htmlspecialchars($pageDesc) . '" />' . "\n";
+    $seoTags .= '    <meta name="keywords" content="' . htmlspecialchars($pageKeywords) . '" />' . "\n";
     $seoTags .= '    <meta name="robots" content="' . htmlspecialchars($pageRobots) . '" />' . "\n";
     $seoTags .= '    <link rel="canonical" href="' . htmlspecialchars($pageCanonical) . '" />' . "\n";
     $seoTags .= '    <meta property="og:title" content="' . htmlspecialchars($ogTitle) . '" />' . "\n";
@@ -383,6 +397,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc); ?>">
+    <meta name="keywords" content="<?php echo htmlspecialchars($pageKeywords); ?>">
     <meta name="robots" content="<?php echo htmlspecialchars($pageRobots); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($pageCanonical); ?>">
     <link rel="icon" id="dynamicSiteFavicon" type="image/x-icon" href="<?php echo $landingFaviconUrl; ?>">

@@ -118,6 +118,22 @@ export function registerSeoHandlers(): void {
     }
   })
 
+  // Seed Default High-Volume SEO Keywords
+  safeHandle('seo:seed-default-keywords', async (_event, sessionToken: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user || auth.user.role !== 'admin') {
+        return { success: false, error: 'Admin access required' }
+      }
+      const count = seoRepo.seedDefaultKeywords()
+      const keywords = seoRepo.getKeywords()
+      const warnings = seoRepo.findCannibalizationWarnings()
+      return { success: true, data: { count, keywords, warnings } }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
   // Delete Keyword
   safeHandle('seo:delete-keyword', async (_event, sessionToken: string, id: string) => {
     try {

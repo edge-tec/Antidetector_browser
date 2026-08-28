@@ -159,6 +159,13 @@ try {
             respondJson(['success' => true, 'message' => 'Keyword saved successfully.']);
             break;
 
+        case 'seed-default-keywords':
+            ensureDatabaseTablesExist($db);
+            $stmt = $db->query("SELECT * FROM `seo_keywords` ORDER BY `created_at` DESC");
+            $keywords = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            respondJson(['success' => true, 'data' => ['keywords' => $keywords, 'warnings' => []]]);
+            break;
+
         case 'delete-keyword':
             $id = $_GET['id'] ?? $input['id'] ?? '';
             $stmt = $db->prepare("DELETE FROM `seo_keywords` WHERE `id` = ?");

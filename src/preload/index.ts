@@ -358,6 +358,7 @@ const api = {
   seoDeletePage: (token: string, id: string) => ipcRenderer.invoke('seo:delete-page', token, id),
   seoGetKeywords: (token?: string) => ipcRenderer.invoke('seo:get-keywords', token),
   seoSaveKeyword: (token: string, kw: any) => ipcRenderer.invoke('seo:save-keyword', token, kw),
+  seoSeedDefaultKeywords: (token: string) => ipcRenderer.invoke('seo:seed-default-keywords', token),
   seoDeleteKeyword: (token: string, id: string) => ipcRenderer.invoke('seo:delete-keyword', token, id),
   seoGetRedirects: (token?: string) => ipcRenderer.invoke('seo:get-redirects', token),
   seoSaveRedirect: (token: string, r: any) => ipcRenderer.invoke('seo:save-redirect', token, r),

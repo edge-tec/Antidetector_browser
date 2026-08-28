@@ -34,5 +34,11 @@ if (!empty($content)) {
     echo "Allow: /\n";
     echo "Disallow: /admin/\n";
     echo "Disallow: /api/\n\n";
+    echo "User-agent: GPTBot\nAllow: /\n\n";
+    echo "User-agent: ClaudeBot\nAllow: /\n\n";
+    echo "User-agent: PerplexityBot\nAllow: /\n\n";
+    echo "User-agent: Google-Extended\nAllow: /\n\n";
+    echo "User-agent: Applebot\nAllow: /\n\n";
+    echo "User-agent: Bingbot\nAllow: /\n\n";
     echo "Sitemap: " . rtrim($baseUrl, '/') . "/sitemap.xml\n";
 }
