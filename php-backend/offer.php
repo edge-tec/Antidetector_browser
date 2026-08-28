@@ -15,112 +15,129 @@ ensureDatabaseTablesExist();
 // Capture & record click if not already captured
 $trackData = captureAndRecordAffiliateClick($db);
 
-// Resolve Slug from URL or query
-$slug = trim($_GET['slug'] ?? '');
+// Resolve Slug from URL or query parameters
+$slug = trim($_GET['slug'] ?? $_GET['offer_id'] ?? $_GET['offer'] ?? $_GET['plan'] ?? $_GET['package'] ?? '');
 if (empty($slug)) {
     $requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
     if (preg_match('#^/offer/([^/?]+)#i', $requestUri, $matches)) {
+        $slug = trim($matches[1]);
+    } else if (preg_match('#^/ref/[^/?]+/([^/?]+)#i', $requestUri, $matches)) {
         $slug = trim($matches[1]);
     }
 }
 if (empty($slug)) {
     $slug = 'professional';
 }
+$slugClean = strtolower(preg_replace('/[^a-z0-9_-]/i', '', $slug));
 
-// Fetch Landing Page from Database
-$landingPage = null;
+// 1. Resolve Offer from Database (Multi-field lookup: id, landing_page_slug, slug, target_url, package_id, title)
+$offer = null;
 try {
-    $stmt = $db->prepare("SELECT * FROM affiliate_landing_pages WHERE slug = ? AND is_active = 1 LIMIT 1");
-    $stmt->execute([$slug]);
-    $landingPage = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stOff = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ? OR landing_page_slug = ? LIMIT 1");
+    $stOff->execute([$slug, $slugClean]);
+    $offer = $stOff->fetch(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
 
-if (!$landingPage) {
-    // Fallback search by package name / offer ID
+if (!$offer) {
     try {
-        $stmt = $db->prepare("SELECT * FROM affiliate_landing_pages WHERE slug LIKE ? AND is_active = 1 LIMIT 1");
-        $stmt->execute(['%' . $slug . '%']);
-        $landingPage = $stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {}
-}
-
-if (!$landingPage) {
-    try {
-        $stmt = $db->prepare("SELECT * FROM affiliate_landing_pages WHERE slug = 'professional' LIMIT 1");
-        $stmt->execute();
-        $landingPage = $stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {}
-}
-
-// Resolve associated Offer
-$offer = null;
-if ($landingPage && !empty($landingPage['offer_id'])) {
-    try {
-        $stOff = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ? LIMIT 1");
-        $stOff->execute([$landingPage['offer_id']]);
+        $stOff = $db->prepare("SELECT * FROM affiliate_offers WHERE target_url LIKE ? OR signup_url LIKE ? OR id LIKE ? LIMIT 1");
+        $stOff->execute(['%' . $slugClean . '%', '%' . $slugClean . '%', '%' . $slugClean . '%']);
         $offer = $stOff->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {}
 }
 
-// All Pricing Plans Catalog
-$allPlansCatalog = [
-    'plan_free' => [
-        'id' => 'plan_free',
-        'slug' => 'free',
-        'offer_id' => 'offer_free',
-        'name' => 'Free',
-        'badge' => 'FREE',
-        'price' => 0.00,
-        'original_price' => 0.00,
-        'cta' => 'Start Free',
-        'profiles' => '3 Profiles',
-        'proxy' => 'Basic Proxy Support',
-        'fingerprint' => 'Standard Controls',
-        'users' => '1 User',
-        'api' => 'Not Included',
-        'support' => 'Community Support',
-        'features' => [
-            '3 Stealth Browser Profiles',
-            'Basic Proxy Support (HTTP)',
-            'Standard Fingerprint Controls',
-            '1 Team User Seat',
-            'No API Access',
-            'Community Forum Support'
-        ]
-    ],
-    'plan_starter' => [
-        'id' => 'plan_starter',
-        'slug' => 'starter',
-        'offer_id' => 'offer_starter',
-        'name' => 'Starter',
-        'badge' => 'Starter',
+if (!$offer) {
+    try {
+        $stOff = $db->prepare("SELECT * FROM affiliate_offers WHERE package_id LIKE ? OR LOWER(package_name) LIKE ? OR LOWER(title) LIKE ? LIMIT 1");
+        $stOff->execute(['%' . $slugClean . '%', '%' . $slugClean . '%', '%' . $slugClean . '%']);
+        $offer = $stOff->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {}
+}
+
+// 2. Resolve Landing Page from Database if available
+$landingPage = null;
+try {
+    $stmt = $db->prepare("SELECT * FROM affiliate_landing_pages WHERE slug = ? AND is_active = 1 LIMIT 1");
+    $stmt->execute([$slugClean]);
+    $landingPage = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {}
+
+if (!$landingPage && $offer) {
+    try {
+        $stmt = $db->prepare("SELECT * FROM affiliate_landing_pages WHERE offer_id = ? OR package_id = ? LIMIT 1");
+        $stmt->execute([$offer['id'], $offer['package_id'] ?? '']);
+        $landingPage = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {}
+}
+
+// Built-in Dynamic Offer & Package Catalogs (Comprehensive presets for all offers)
+$offerCatalogPresets = [
+    'starter-license' => [
+        'id' => 'offer_starter_license',
+        'package_id' => 'plan_starter',
+        'package_name' => 'Starter License',
+        'slug' => 'starter-license',
+        'hero_title' => 'AntiProfiles Starter License — Essential Antidetect Power',
+        'hero_subtitle' => 'The ultimate entry-level antidetect setup for media buyers, affiliate marketers, and automation engineers with 25 isolated browser profiles.',
+        'badge' => '$10 CPA FIXED',
         'price' => 19.00,
-        'original_price' => 19.00,
-        'cta' => 'Subscribe Starter',
+        'original_price' => 39.00,
+        'cta' => 'Claim Starter License',
+        'trial_enabled' => 0,
         'profiles' => '25 Profiles',
         'proxy' => 'HTTP / HTTPS / SOCKS',
         'fingerprint' => 'Advanced Fingerprints',
         'users' => '2 Users',
-        'api' => 'Basic API Access',
+        'api' => 'Basic REST API',
         'support' => 'Email Support',
         'features' => [
             '25 Isolated Browser Profiles',
             'HTTP / HTTPS / SOCKS Proxy Support',
-            'Advanced Fingerprint Controls',
-            '2 Team Workspace Users',
+            'Advanced Fingerprint Controls & Spoofing',
+            '2 Team Workspace User Seats',
             'Basic REST API Access',
-            'Standard Email Support'
+            'Standard Priority Email Support'
         ]
     ],
-    'plan_pro' => [
-        'id' => 'plan_pro',
+    'starter' => [
+        'id' => 'offer_starter',
+        'package_id' => 'plan_starter',
+        'package_name' => 'Starter',
+        'slug' => 'starter',
+        'hero_title' => 'AntiProfiles Starter Plan — Scale Multi-Accounting with Zero Detection',
+        'hero_subtitle' => 'Deploy 25 isolated browser profiles with genuine hardware masking, proxy routing, and real-time cookie synchronization.',
+        'badge' => 'STARTER PLAN',
+        'price' => 19.00,
+        'original_price' => 39.00,
+        'cta' => 'Subscribe Starter',
+        'trial_enabled' => 0,
+        'profiles' => '25 Profiles',
+        'proxy' => 'HTTP / HTTPS / SOCKS',
+        'fingerprint' => 'Advanced Fingerprints',
+        'users' => '2 Users',
+        'api' => 'Basic REST API',
+        'support' => 'Email Support',
+        'features' => [
+            '25 Isolated Browser Profiles',
+            'HTTP / HTTPS / SOCKS Proxy Support',
+            'Advanced Fingerprint Controls & Canvas Spoofing',
+            '2 Team Workspace User Seats',
+            'Basic REST API Access',
+            'Standard Priority Email Support'
+        ]
+    ],
+    'professional' => [
+        'id' => 'offer_main_saas',
+        'package_id' => 'plan_pro',
+        'package_name' => 'Professional',
         'slug' => 'professional',
-        'offer_id' => 'offer_main_saas',
-        'name' => 'Professional',
+        'hero_title' => 'AntiProfiles Professional — Scale Multi-Accounting with Zero Detection',
+        'hero_subtitle' => 'Deploy isolated browser profiles with genuine hardware masking and proxy routing.',
         'badge' => 'MOST POPULAR',
-        'price' => 49.00,
-        'original_price' => 49.00,
+        'price' => 39.00,
+        'original_price' => 79.00,
         'cta' => 'Subscribe Professional',
+        'trial_enabled' => 0,
         'profiles' => '100 Profiles',
         'proxy' => 'HTTP / HTTPS / SOCKS5',
         'fingerprint' => 'Advanced Controls & Spoofing',
@@ -130,21 +147,132 @@ $allPlansCatalog = [
         'features' => [
             '100 Isolated Browser Profiles',
             'HTTP / HTTPS / SOCKS5 Proxy Support',
-            'Advanced Fingerprint Controls',
-            '10 Team Workspace Users',
-            'Full REST API + Driver API',
+            'Advanced Fingerprint Controls & Canvas Spoofing',
+            '10 Team Workspace User Seats',
+            'Full REST API + Driver API Concurrency',
             'Priority 24/7 Live Agent Support'
         ]
     ],
-    'plan_business' => [
-        'id' => 'plan_business',
-        'slug' => 'business',
-        'offer_id' => 'offer_business',
-        'name' => 'Business',
-        'badge' => 'BEST VALUE',
+    'pro-team' => [
+        'id' => 'offer_pro_team',
+        'package_id' => 'plan_pro',
+        'package_name' => 'Professional Team',
+        'slug' => 'pro-team',
+        'hero_title' => 'AntiProfiles Pro + Team Plan — Collaborative Multi-Seat Workspace',
+        'hero_subtitle' => 'Scale teamwork with 100 isolated profiles, role permissions, shared proxy pools, and team activity logs.',
+        'badge' => 'TEAM WORKSPACE',
+        'price' => 49.00,
+        'original_price' => 79.00,
+        'cta' => 'Subscribe Pro + Team',
+        'trial_enabled' => 0,
+        'profiles' => '100 Profiles',
+        'proxy' => 'HTTP / HTTPS / SOCKS5',
+        'fingerprint' => 'Full Fingerprint Masking',
+        'users' => '10 Users',
+        'api' => 'Full REST API + Driver API',
+        'support' => 'Priority Team Support',
+        'features' => [
+            '100 Isolated Browser Profiles',
+            '10 Multi-User Team Seats with Role Permissions',
+            'HTTP / HTTPS / SOCKS5 Proxy Management',
+            'Shared Team Profile Groups & Tags',
+            'Full REST & Driver API Concurrency',
+            'Priority 24/7 Team Support'
+        ]
+    ],
+    'enterprise-trial' => [
+        'id' => 'offer_enterprise_trial',
+        'package_id' => 'plan_business',
+        'package_name' => 'Enterprise Trial',
+        'slug' => 'enterprise-trial',
+        'hero_title' => 'AntiProfiles Enterprise Trial — 7-Day Dedicated Infrastructure Pilot',
+        'hero_subtitle' => 'Experience enterprise antidetect automation with 500+ profiles, dedicated proxy subnets, and full hardware spoofing risk-free.',
+        'badge' => '7-DAY ENTERPRISE PILOT',
         'price' => 99.00,
-        'original_price' => 149.00,
+        'original_price' => 199.00,
+        'cta' => 'Start 7-Day Free Trial',
+        'trial_enabled' => 1,
+        'profiles' => '500+ Profiles',
+        'proxy' => 'Dedicated Proxy Subnets',
+        'fingerprint' => 'Kernel & Hardware Spoofing',
+        'users' => '25 Users',
+        'api' => 'Unlimited Concurrency',
+        'support' => 'Dedicated Account Manager',
+        'features' => [
+            '500+ Isolated Browser Profiles',
+            'Dedicated High-Speed Proxy Integration',
+            'Full Hardware Spoofing (Canvas, WebGL, AudioContext)',
+            '25 Team Workspace User Seats',
+            'Unlimited REST & Driver API Concurrency',
+            'Dedicated 24/7 VIP Account Manager & SLA'
+        ]
+    ],
+    'enterprise' => [
+        'id' => 'offer_business',
+        'package_id' => 'plan_business',
+        'package_name' => 'Enterprise',
+        'slug' => 'enterprise',
+        'hero_title' => 'AntiProfiles Enterprise Suite — Maximum Performance & Concurrency',
+        'hero_subtitle' => 'Deploy 500+ isolated browser profiles with full hardware spoofing, unlimited API concurrency, and dedicated infrastructure.',
+        'badge' => 'ENTERPRISE SUITE',
+        'price' => 99.00,
+        'original_price' => 199.00,
+        'cta' => 'Subscribe Enterprise',
+        'trial_enabled' => 0,
+        'profiles' => '500 Profiles',
+        'proxy' => 'HTTP / HTTPS / SOCKS5',
+        'fingerprint' => 'Full Hardware Spoofing',
+        'users' => '25 Users',
+        'api' => 'Unlimited Concurrency',
+        'support' => 'Dedicated Account Manager',
+        'features' => [
+            '500 Isolated Browser Profiles',
+            'HTTP / HTTPS / SOCKS5 Proxy Support',
+            'Full Hardware Spoofing (Canvas, WebGL, Audio)',
+            '25 Team Workspace User Seats',
+            'Unlimited REST & Driver API Concurrency',
+            'Dedicated Account Manager & SLA'
+        ]
+    ],
+    'business-custom' => [
+        'id' => 'offer_business_custom',
+        'package_id' => 'plan_business',
+        'package_name' => 'Custom Business',
+        'slug' => 'business-custom',
+        'hero_title' => 'AntiProfiles Custom Business — Tailored High-Volume Infrastructure',
+        'hero_subtitle' => 'Dedicated proxy subnets, custom fingerprint algorithms, and enterprise SLAs tailored for high-volume operations.',
+        'badge' => 'CUSTOM BUSINESS',
+        'price' => 69.00,
+        'original_price' => 129.00,
+        'cta' => 'Subscribe Custom Business',
+        'trial_enabled' => 0,
+        'profiles' => '500 Profiles',
+        'proxy' => 'Dedicated Proxy Subnets',
+        'fingerprint' => 'Custom Fingerprints',
+        'users' => '25 Users',
+        'api' => 'Custom API Endpoints',
+        'support' => 'Dedicated SLA & Manager',
+        'features' => [
+            '500 Isolated Browser Profiles',
+            'Dedicated IP Subnets & Proxy Pools',
+            'Full Hardware & Kernel-Level Spoofing',
+            '25 Team Workspace User Seats',
+            'Custom API Endpoints & Webhooks',
+            'Dedicated Account Manager & SLA'
+        ]
+    ],
+    'business' => [
+        'id' => 'offer_business',
+        'package_id' => 'plan_business',
+        'package_name' => 'Business',
+        'slug' => 'business',
+        'hero_title' => 'AntiProfiles Business — Enterprise Power for Scaling Agencies',
+        'hero_subtitle' => 'Deploy 500 isolated browser profiles with unlimited concurrency and dedicated infrastructure.',
+        'badge' => 'BEST VALUE',
+        'price' => 69.00,
+        'original_price' => 129.00,
         'cta' => 'Subscribe Business',
+        'trial_enabled' => 0,
         'profiles' => '500 Profiles',
         'proxy' => 'HTTP / HTTPS / SOCKS5',
         'fingerprint' => 'Full Hardware Spoofing',
@@ -159,30 +287,86 @@ $allPlansCatalog = [
             'Unlimited REST & Driver API Concurrency',
             'Dedicated Account Manager'
         ]
+    ],
+    'free' => [
+        'id' => 'offer_free',
+        'package_id' => 'plan_free',
+        'package_name' => 'Free',
+        'slug' => 'free',
+        'hero_title' => 'AntiProfiles Free — Experience Next-Gen Fingerprint Protection',
+        'hero_subtitle' => 'Get started risk-free with 3 stealth browser profiles, basic proxy integration, and community support.',
+        'badge' => 'FREE FOREVER',
+        'price' => 0.00,
+        'original_price' => 0.00,
+        'cta' => 'Start Free',
+        'trial_enabled' => 0,
+        'profiles' => '3 Profiles',
+        'proxy' => 'Basic Proxy Support',
+        'fingerprint' => 'Standard Controls',
+        'users' => '1 User',
+        'api' => 'Not Included',
+        'support' => 'Community Support',
+        'features' => [
+            '3 Stealth Browser Profiles',
+            'Basic Proxy Support (HTTP)',
+            'Standard Fingerprint Controls',
+            '1 Team User Seat',
+            'No API Access',
+            'Community Forum Support'
+        ]
     ]
 ];
 
-// Merge latest dynamic database pricing into catalog
-try {
-    $dbPages = $db->query("SELECT * FROM affiliate_landing_pages WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($dbPages as $dp) {
-        $pid = $dp['package_id'] ?? '';
-        if (isset($allPlansCatalog[$pid])) {
-            $allPlansCatalog[$pid]['price'] = (float)$dp['price_monthly'];
-            $allPlansCatalog[$pid]['original_price'] = (float)($dp['original_price'] ?? $dp['price_monthly']);
-            if (!empty($dp['badge_text'])) $allPlansCatalog[$pid]['badge'] = $dp['badge_text'];
-            if (!empty($dp['cta_text'])) $allPlansCatalog[$pid]['cta'] = $dp['cta_text'];
-        }
+// Determine matched catalog preset based on slug or offer
+$matchedPresetKey = 'professional';
+if (isset($offerCatalogPresets[$slugClean])) {
+    $matchedPresetKey = $slugClean;
+} else if ($offer && !empty($offer['landing_page_slug']) && isset($offerCatalogPresets[$offer['landing_page_slug']])) {
+    $matchedPresetKey = $offer['landing_page_slug'];
+} else if ($offer && !empty($offer['id']) && isset($offerCatalogPresets[$offer['id']])) {
+    $matchedPresetKey = $offer['id'];
+} else {
+    // Partial substring matching
+    if (strpos($slugClean, 'starter-lic') !== false || strpos($slugClean, 'license') !== false) {
+        $matchedPresetKey = 'starter-license';
+    } else if (strpos($slugClean, 'starter') !== false) {
+        $matchedPresetKey = 'starter';
+    } else if (strpos($slugClean, 'pro-team') !== false || strpos($slugClean, 'team') !== false) {
+        $matchedPresetKey = 'pro-team';
+    } else if (strpos($slugClean, 'enterprise-trial') !== false) {
+        $matchedPresetKey = 'enterprise-trial';
+    } else if (strpos($slugClean, 'enterprise') !== false) {
+        $matchedPresetKey = 'enterprise';
+    } else if (strpos($slugClean, 'business-custom') !== false || strpos($slugClean, 'custom') !== false) {
+        $matchedPresetKey = 'business-custom';
+    } else if (strpos($slugClean, 'business') !== false) {
+        $matchedPresetKey = 'business';
+    } else if (strpos($slugClean, 'free') !== false) {
+        $matchedPresetKey = 'free';
     }
-} catch (Throwable $e) {}
+}
+$preset = $offerCatalogPresets[$matchedPresetKey] ?? $offerCatalogPresets['professional'];
 
-// Active Selected Plan Data
-$packageId = $landingPage['package_id'] ?? 'plan_pro';
-$packageName = $landingPage['package_name'] ?? ($allPlansCatalog[$packageId]['name'] ?? 'Professional');
-$heroTitle = $landingPage['hero_title'] ?? ('AntiProfiles ' . $packageName . ' — Scale Multi-Accounting with Zero Detection');
-$heroSubtitle = $landingPage['hero_subtitle'] ?? 'Deploy isolated browser profiles with genuine hardware masking and proxy routing.';
-$priceMonthly = (float)($landingPage['price_monthly'] ?? ($allPlansCatalog[$packageId]['price'] ?? 49.00));
-$originalPrice = (float)($landingPage['original_price'] ?? ($allPlansCatalog[$packageId]['original_price'] ?? $priceMonthly));
+// Resolve Active Plan Data dynamically (Prioritizing DB Offer -> DB Landing Page -> Preset)
+$packageId = $offer['package_id'] ?? ($landingPage['package_id'] ?? $preset['package_id']);
+$packageName = $offer['package_name'] ?? ($landingPage['package_name'] ?? $preset['package_name']);
+$heroTitle = $landingPage['hero_title'] ?? ($offer['title'] ? ($offer['title'] . ' — AntiProfiles Antidetect Browser') : $preset['hero_title']);
+$heroSubtitle = $landingPage['hero_subtitle'] ?? ($offer['description'] ?: $preset['hero_subtitle']);
+
+// Price & Pricing Logic
+$priceMonthly = isset($offer['price']) ? (float)$offer['price'] : (isset($landingPage['price_monthly']) ? (float)$landingPage['price_monthly'] : (float)$preset['price']);
+$originalPrice = isset($offer['original_price']) ? (float)$offer['original_price'] : (isset($landingPage['original_price']) ? (float)$landingPage['original_price'] : (float)$preset['original_price']);
+if ($originalPrice < $priceMonthly) {
+    $originalPrice = $priceMonthly;
+}
+
+// Currency Symbol Resolution
+$currency = $offer['currency'] ?? 'USD';
+$currencySymbol = '$';
+if ($currency === 'EUR') $currencySymbol = '€';
+else if ($currency === 'GBP') $currencySymbol = '£';
+else if ($currency === 'AUD') $currencySymbol = 'A$';
+else if ($currency === 'CAD') $currencySymbol = 'C$';
 
 // Auto-Calculate Discount % Formula: ((Old Price - New Price) / Old Price) * 100
 $discountPercent = 0;
@@ -190,27 +374,93 @@ if ($originalPrice > $priceMonthly && $originalPrice > 0) {
     $discountPercent = (int)round((($originalPrice - $priceMonthly) / $originalPrice) * 100);
 }
 
-// Trial Enabled Logic: Trial is only enabled if Admin explicitly set trial_enabled = 1
-$trialEnabled = (int)($landingPage['trial_enabled'] ?? ($offer['trial_enabled'] ?? 0));
+// Trial Enabled Logic
+$trialEnabled = (int)($offer['trial_enabled'] ?? ($landingPage['trial_enabled'] ?? $preset['trial_enabled']));
 
 // Resolve Dynamic CTA Text
-if ($trialEnabled === 1) {
-    $ctaText = 'Start 7-Day Free Trial';
-} else if ($packageId === 'plan_free' || $priceMonthly == 0) {
-    $ctaText = 'Start Free';
-} else if ($packageId === 'plan_starter') {
-    $ctaText = 'Subscribe Starter';
-} else if ($packageId === 'plan_business') {
-    $ctaText = 'Subscribe Business';
-} else {
-    $ctaText = 'Subscribe Professional';
-}
-if (!empty($landingPage['cta_text']) && strpos($landingPage['cta_text'], 'Trial') === false) {
+if (!empty($offer['cta_text'])) {
+    $ctaText = $offer['cta_text'];
+} else if (!empty($landingPage['cta_text'])) {
     $ctaText = $landingPage['cta_text'];
+} else if ($trialEnabled === 1) {
+    $ctaText = 'Start 7-Day Free Trial';
+} else {
+    $ctaText = $preset['cta'];
 }
 
-$badgeText = $landingPage['badge_text'] ?? ($allPlansCatalog[$packageId]['badge'] ?? 'MOST POPULAR');
-$offerId = $landingPage['offer_id'] ?? ($offer['id'] ?? 'offer_main_saas');
+$badgeText = $offer['badge_text'] ?? ($landingPage['badge_text'] ?? $preset['badge']);
+$offerId = $offer['id'] ?? ($landingPage['offer_id'] ?? $preset['id']);
+
+// Dynamic Features Checklist
+$features = json_decode($landingPage['features_json'] ?? '[]', true) ?: $preset['features'];
+
+// Catalog for the 4 Bottom Comparison Cards (Free, Starter, Professional, Business)
+$allPlansCatalog = [
+    'plan_free' => [
+        'id' => 'plan_free',
+        'slug' => 'free',
+        'offer_id' => 'offer_free',
+        'name' => 'Free',
+        'badge' => 'FREE FOREVER',
+        'price' => 0.00,
+        'original_price' => 0.00,
+        'cta' => 'Start Free',
+        'profiles' => '3 Profiles',
+        'proxy' => 'Basic Proxy Support',
+        'fingerprint' => 'Standard Controls',
+        'users' => '1 User',
+        'api' => 'Not Included',
+        'support' => 'Community Support'
+    ],
+    'plan_starter' => [
+        'id' => 'plan_starter',
+        'slug' => 'starter',
+        'offer_id' => 'offer_starter',
+        'name' => 'Starter',
+        'badge' => 'STARTER',
+        'price' => 19.00,
+        'original_price' => 39.00,
+        'cta' => 'Subscribe Starter',
+        'profiles' => '25 Profiles',
+        'proxy' => 'HTTP / HTTPS / SOCKS',
+        'fingerprint' => 'Advanced Fingerprints',
+        'users' => '2 Users',
+        'api' => 'Basic REST API',
+        'support' => 'Email Support'
+    ],
+    'plan_pro' => [
+        'id' => 'plan_pro',
+        'slug' => 'professional',
+        'offer_id' => 'offer_main_saas',
+        'name' => 'Professional',
+        'badge' => 'MOST POPULAR',
+        'price' => 39.00,
+        'original_price' => 79.00,
+        'cta' => 'Subscribe Professional',
+        'profiles' => '100 Profiles',
+        'proxy' => 'HTTP / HTTPS / SOCKS5',
+        'fingerprint' => 'Advanced Controls & Spoofing',
+        'users' => '10 Users',
+        'api' => 'Full REST API + Driver API',
+        'support' => 'Priority 24/7 Support'
+    ],
+    'plan_business' => [
+        'id' => 'plan_business',
+        'slug' => 'business',
+        'offer_id' => 'offer_business',
+        'name' => 'Business',
+        'badge' => 'BEST VALUE',
+        'price' => 69.00,
+        'original_price' => 129.00,
+        'cta' => 'Subscribe Business',
+        'profiles' => '500 Profiles',
+        'proxy' => 'HTTP / HTTPS / SOCKS5',
+        'fingerprint' => 'Full Hardware Spoofing',
+        'users' => '25 Users',
+        'api' => 'Unlimited Concurrency',
+        'support' => 'Dedicated Account Manager'
+    ]
+];
 
 // Attribution & Tracking Parameters
 $affId = $_GET['aff'] ?? $_GET['aff_id'] ?? $_COOKIE['aff_id'] ?? ($trackData['aff_id'] ?? '');
@@ -232,14 +482,6 @@ $preservedQueryParams = http_build_query(array_filter([
     'utm_medium' => $utmMedium
 ]));
 
-// Decode Features, FAQ & Reviews
-$features = json_decode($landingPage['features_json'] ?? '[]', true) ?: ($allPlansCatalog[$packageId]['features'] ?? [
-    'Isolated Browser Profiles',
-    'Hardware-Level Fingerprint Protection',
-    'HTTP/HTTPS/SOCKS5 Proxy Support',
-    'Multi-User Team Workspace',
-    'Automated REST & Driver API'
-]);
 $faqs = json_decode($landingPage['faq_json'] ?? '[]', true) ?: [
     ['q' => 'How does AntiProfiles isolate browser environments?', 'a' => 'Each profile operates in a separate sandbox with genuine spoofed Canvas, WebGL, AudioContext, hardware concurrency, and client rects.'],
     ['q' => 'Can I switch or upgrade my package later?', 'a' => 'Yes, you can upgrade, downgrade, or switch between plans at any time directly from your dashboard without losing any profiles or cookies.'],
@@ -367,10 +609,10 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Official Package Pricing</span>
                     <div class="flex items-baseline justify-center gap-2">
                         <?php if ($discountPercent > 0 && $originalPrice > $priceMonthly): ?>
-                            <span class="text-2xl text-slate-500 line-through font-semibold">$<?= number_format($originalPrice, 2) ?></span>
+                            <span class="text-2xl text-slate-500 line-through font-semibold"><?= $currencySymbol ?><?= number_format($originalPrice, 2) ?></span>
                         <?php endif; ?>
                         <span class="text-5xl sm:text-6xl font-black text-white font-heading tracking-tight">
-                            $<?= $priceMonthly == 0 ? '0' : number_format($priceMonthly, 2) ?>
+                            <?= $currencySymbol ?><?= $priceMonthly == 0 ? '0' : number_format($priceMonthly, 2) ?>
                         </span>
                         <span class="text-slate-400 font-semibold text-base">/month</span>
                     </div>
