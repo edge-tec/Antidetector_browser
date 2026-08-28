@@ -41,6 +41,10 @@ if ($requestUri === '/terms' || $requestUri === '/terms-and-conditions' || $requ
     require_once __DIR__ . '/terms.php';
     exit();
 }
+if ($requestUri === '/features' || $requestUri === '/features.php') {
+    require_once __DIR__ . '/features.php';
+    exit();
+}
 if (strpos($requestUri, '/reset-password') === 0 || strpos($requestUri, '/forgot-password') === 0) {
     require_once __DIR__ . '/reset-password.php';
     exit();
@@ -1726,7 +1730,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
         </a>
         <ul class="nav-links">
-            <li><a href="#features">Features</a></li>
+            <li><a href="/features">Features (52)</a></li>
             <li><a href="#ecosystem">Ecosystem</a></li>
             <li><a href="#how-it-works">How It Works</a></li>
             <li><a href="#downloads">Downloads</a></li>
@@ -1744,7 +1748,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
     <!-- Mobile Navigation Drawer -->
     <div id="mobileNavDrawer" class="mobile-nav-drawer">
-        <a href="#features" onclick="closeMobileNav()">✨ Features</a>
+        <a href="/features" onclick="closeMobileNav()">✨ All Features (52)</a>
         <a href="#ecosystem" onclick="closeMobileNav()">🌐 Supported Platforms</a>
         <a href="#how-it-works" onclick="closeMobileNav()">⚙️ How It Works</a>
         <a href="#downloads" onclick="closeMobileNav()">💻 Download Apps</a>
@@ -1976,272 +1980,145 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         </div>
     </section>
 
-    <!-- 3. All AntiProfiles Features Showcase Section (Dynamic, Filterable & Searchable) -->
+    <!-- 3. Core Features Showcase Preview Section -->
     <section id="features" class="section container">
         <div class="section-title">
             <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); color: #2DD4BF; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">
-                <span>⚡ 100% Comprehensive Feature Audit</span>
+                <span>✨ Advanced Anti-Detect Platform Architecture</span>
             </div>
-            <h2>All AntiProfiles Desktop Capabilities, Tools & Shields</h2>
-            <p>Explore every advanced privacy layer, hardware spoofing engine, proxy manager, automation driver, and collaboration tool built into the software.</p>
+            <h2>Built for Ultimate Stealth & Multi-Account Scale</h2>
+            <p>AntiProfiles combines kernel-grade hardware spoofing, dual-engine isolation, residential proxy orchestration, and developer automation in a unified interface.</p>
         </div>
 
-        <!-- Interactive Search & Category Filter Toolbar -->
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 24px; margin-bottom: 32px; backdrop-filter: blur(16px); box-shadow: 0 12px 36px rgba(0,0,0,0.25);">
-            <!-- Search Bar -->
-            <div style="position: relative; margin-bottom: 20px;">
-                <input 
-                    type="text" 
-                    id="featureSearchInput" 
-                    placeholder="🔍 Search all features (e.g., WebRTC, Canvas, WebGL, Puppeteer, SOCKS5, Cookie Robot, RBAC, Cloud Sync...)" 
-                    oninput="filterSoftwareFeaturesLive()"
-                    style="width: 100%; padding: 14px 20px 14px 44px; background: rgba(2, 6, 23, 0.8); border: 1px solid rgba(45, 212, 191, 0.25); border-radius: 12px; color: #FFF; font-size: 15px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;"
-                    onfocus="this.style.borderColor='#2DD4BF'; this.style.boxShadow='0 0 0 3px rgba(45, 212, 191, 0.15)';"
-                    onblur="this.style.borderColor='rgba(45, 212, 191, 0.25)'; this.style.boxShadow='none';"
-                />
-                <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 18px; pointer-events: none; opacity: 0.7;">🔎</span>
-                <button 
-                    id="featureSearchClearBtn" 
-                    onclick="clearFeatureSearch()" 
-                    style="display: none; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #94A3B8; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; cursor: pointer; align-items: center; justify-content: center;">✕</button>
-            </div>
-
-            <!-- Category Filter Pills -->
-            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;" id="featureCategoryPillsContainer">
-                <button 
-                    class="feature-cat-pill active" 
-                    onclick="setFeatureCategoryFilter('all', this)"
-                    style="padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid rgba(45, 212, 191, 0.4); background: rgba(45, 212, 191, 0.15); color: #2DD4BF; transition: all 0.2s;">
-                    ✨ All Features (<span id="totalPillCount"><?php echo count($landingFeatures); ?></span>)
-                </button>
-                <?php
-                $catMeta = [
-                    'browser_profiles' => ['icon' => '🌐', 'name' => 'Browser Profiles'],
-                    'fingerprint' => ['icon' => '🛡️', 'name' => 'Fingerprint Protection'],
-                    'proxy_network' => ['icon' => '🔌', 'name' => 'Proxy & Network'],
-                    'automation' => ['icon' => '🤖', 'name' => 'Automation & API'],
-                    'cookies_session' => ['icon' => '🍪', 'name' => 'Cookies & Sessions'],
-                    'team_collab' => ['icon' => '👥', 'name' => 'Team Collaboration'],
-                    'security_privacy' => ['icon' => '🔒', 'name' => 'Security & Privacy'],
-                    'sync_cloud' => ['icon' => '☁️', 'name' => 'Sync & Cloud'],
-                    'ai_tools' => ['icon' => '🧠', 'name' => 'AI & Smart Tools'],
-                    'extensions' => ['icon' => '🧩', 'name' => 'Extensions & Add-ons'],
-                    'system_performance' => ['icon' => '⚡', 'name' => 'Performance & Branding'],
-                    'desktop_client' => ['icon' => '💻', 'name' => 'Desktop Application']
-                ];
-                
-                // Count per category from current feature list
-                $catCounts = [];
-                foreach ($landingFeatures as $f) {
-                    $cKey = $f['category'] ?? 'other';
-                    $catCounts[$cKey] = ($catCounts[$cKey] ?? 0) + 1;
-                }
-
-                foreach ($catMeta as $cKey => $cData) {
-                    $cnt = $catCounts[$cKey] ?? 0;
-                    if ($cnt === 0) continue;
-                    echo '<button class="feature-cat-pill" data-category="' . htmlspecialchars($cKey) . '" onclick="setFeatureCategoryFilter(\'' . htmlspecialchars($cKey) . '\', this)" style="padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.03); color: var(--text-muted); transition: all 0.2s;">' . $cData['icon'] . ' ' . htmlspecialchars($cData['name']) . ' (' . $cnt . ')</button>';
-                }
-                ?>
-            </div>
-
-            <!-- Active Filter Status Indicator -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; color: var(--text-muted);">
+        <!-- 6 Core Architectural Pillar Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 36px;">
+            
+            <!-- Pillar 1: Fingerprint Defense -->
+            <div class="feature-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease;">
                 <div>
-                    Showing <strong id="featuresCountVisible" style="color: #2DD4BF;"><?php echo count($landingFeatures); ?></strong> of <strong id="featuresCountTotal" style="color: #FFF;"><?php echo count($landingFeatures); ?></strong> verified software capabilities
-                </div>
-                <div id="activeFilterBadge" style="display: none;">
-                    <span style="background: rgba(45, 212, 191, 0.1); color: #2DD4BF; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;" id="activeFilterText">All</span>
-                    <button onclick="resetFeatureFilters()" style="background: none; border: none; color: #94A3B8; cursor: pointer; text-decoration: underline; margin-left: 8px; font-size: 12px;">Reset</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 52 Features Showcase Grid -->
-        <div id="allFeaturesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px;">
-            <?php foreach ($landingFeatures as $feat): 
-                $fCat = $feat['category'] ?? 'browser_profiles';
-                $fCatName = $feat['category_name'] ?? 'Feature';
-                $fName = $feat['name'] ?? 'Feature Name';
-                $fDesc = $feat['short_desc'] ?? '';
-                $fIcon = $feat['icon'] ?? '⚡';
-                $fBadge = $feat['badge'] ?? '';
-                $fKeywords = $feat['keywords'] ?? '';
-                $fPlatforms = $feat['platforms'] ?? 'win_x64,win_arm,mac_arm,mac_intel,linux_x64,linux_arm';
-                $fDocUrl = $feat['doc_url'] ?? '#features';
-            ?>
-            <div class="software-feature-card" 
-                 data-id="<?php echo htmlspecialchars($feat['id']); ?>"
-                 data-category="<?php echo htmlspecialchars($fCat); ?>"
-                 data-name="<?php echo htmlspecialchars(strtolower($fName)); ?>"
-                 data-desc="<?php echo htmlspecialchars(strtolower($fDesc)); ?>"
-                 data-keywords="<?php echo htmlspecialchars(strtolower($fKeywords)); ?>"
-                 style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;"
-                 onmouseenter="this.style.transform='translateY(-4px)'; this.style.borderColor='rgba(45, 212, 191, 0.4)'; this.style.boxShadow='0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(45, 212, 191, 0.1)';"
-                 onmouseleave="this.style.transform='translateY(0)'; this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
-                
-                <div>
-                    <!-- Top Header Badges -->
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 8px;">
-                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 9px; border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: #94A3B8; border: 1px solid rgba(255, 255, 255, 0.08);">
-                            <?php echo htmlspecialchars($fCatName); ?>
-                        </span>
-                        <?php if (!empty($fBadge)): ?>
-                        <span style="font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3);">
-                            <?php echo htmlspecialchars($fBadge); ?>
-                        </span>
-                        <?php endif; ?>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.25); display: flex; align-items: center; justify-content: center; font-size: 24px;">🛡️</div>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3);">13 Protection Shields</span>
                     </div>
-
-                    <!-- Icon & Title -->
-                    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
-                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.25); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;">
-                            <?php echo $fIcon; ?>
-                        </div>
-                        <h3 style="font-size: 17px; font-weight: 700; color: #FFF; line-height: 1.35; margin: 0;">
-                            <?php echo htmlspecialchars($fName); ?>
-                        </h3>
-                    </div>
-
-                    <!-- Description -->
-                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 18px;">
-                        <?php echo htmlspecialchars($fDesc); ?>
+                    <h3 style="font-size: 18px; font-weight: 700; color: #FFF; margin-bottom: 8px;">Fingerprint Protection</h3>
+                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 16px;">
+                        Canvas 2D noise injection, WebGL GPU masking, AudioContext waveform protection, ClientRects noise, and zero WebRTC IP leak shields.
                     </p>
                 </div>
-
-                <!-- Footer Platforms & Learn More -->
-                <div style="padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.06); display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
-                    <div style="color: #64748B; display: flex; align-items: center; gap: 6px;" title="Available on Windows (x64/ARM64), macOS (Apple Silicon/Intel), Linux (x64/ARM64)">
-                        <span>💻</span>
-                        <span style="font-weight: 600; color: #94A3B8;">Win • Mac • Linux (64/ARM)</span>
-                    </div>
-                    <a href="<?php echo htmlspecialchars($fDocUrl); ?>" style="color: #2DD4BF; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: gap 0.2s;" onmouseenter="this.style.gap='7px';" onmouseleave="this.style.gap='4px';">
-                        <span>Details</span>
-                        <span>→</span>
-                    </a>
-                </div>
+                <a href="/features?category=fingerprint" style="color: #2DD4BF; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>View 13 Fingerprint Shields</span>
+                    <span>→</span>
+                </a>
             </div>
-            <?php endforeach; ?>
+
+            <!-- Pillar 2: Dual Browser Engines -->
+            <div class="feature-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(129, 140, 248, 0.1); border: 1px solid rgba(129, 140, 248, 0.25); display: flex; align-items: center; justify-content: center; font-size: 24px;">🌐</div>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: rgba(129, 140, 248, 0.15); color: #818CF8; border: 1px solid rgba(129, 140, 248, 0.3);">Chromium + Firefox</span>
+                    </div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: #FFF; margin-bottom: 8px;">Browser Profiles & Dual Engines</h3>
+                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 16px;">
+                        Execute isolated Chromium & Firefox browser profiles simultaneously with bulk generators, color tags, custom start pages, and trash recovery.
+                    </p>
+                </div>
+                <a href="/features?category=browser_profiles" style="color: #818CF8; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>View Profile Features</span>
+                    <span>→</span>
+                </a>
+            </div>
+
+            <!-- Pillar 3: Proxy & Network -->
+            <div class="feature-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.25); display: flex; align-items: center; justify-content: center; font-size: 24px;">🔌</div>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: rgba(250, 204, 21, 0.15); color: #FACC15; border: 1px solid rgba(250, 204, 21, 0.3);">SOCKS5 / HTTP / SSH</span>
+                    </div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: #FFF; margin-bottom: 8px;">Proxy & Geo-IP Engine</h3>
+                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 16px;">
+                        Smart quick-fill proxy parser, real-time ping health checks, automatic timezone & locale alignment, and zero-leak remote DNS fallback.
+                    </p>
+                </div>
+                <a href="/features?category=proxy_network" style="color: #FACC15; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>View Proxy Capabilities</span>
+                    <span>→</span>
+                </a>
+            </div>
+
+            <!-- Pillar 4: Automation & API -->
+            <div class="feature-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; font-size: 24px;">🤖</div>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: rgba(59, 130, 246, 0.15); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.3);">Puppeteer & Playwright</span>
+                    </div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: #FFF; margin-bottom: 8px;">Automation & Developer API</h3>
+                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 16px;">
+                        Control profiles programmatically via dedicated CDP debug ports, Puppeteer, Playwright, Selenium WebDriver, and local REST API.
+                    </p>
+                </div>
+                <a href="/features?category=automation" style="color: #60A5FA; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>View Automation Tools</span>
+                    <span>→</span>
+                </a>
+            </div>
+
+            <!-- Pillar 5: Team Collaboration & RBAC -->
+            <div class="feature-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); display: flex; align-items: center; justify-content: center; font-size: 24px;">👥</div>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: rgba(168, 85, 247, 0.15); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.3);">Granular RBAC</span>
+                    </div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: #FFF; margin-bottom: 8px;">Team Workspaces & Roles</h3>
+                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 16px;">
+                        Share browser profiles with team members without sharing credentials. Real-time concurrency locks prevent profile collision.
+                    </p>
+                </div>
+                <a href="/features?category=team_collab" style="color: #C084FC; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>View Team Capabilities</span>
+                    <span>→</span>
+                </a>
+            </div>
+
+            <!-- Pillar 6: Cloud Sync & Cookies -->
+            <div class="feature-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.25); display: flex; align-items: center; justify-content: center; font-size: 24px;">☁️</div>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: rgba(236, 72, 153, 0.15); color: #F472B6; border: 1px solid rgba(236, 72, 153, 0.3);">E2E Encrypted</span>
+                    </div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: #FFF; margin-bottom: 8px;">Cloud Sync & Cookie Robot</h3>
+                    <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin-bottom: 16px;">
+                        End-to-end encrypted profile synchronization across Windows, macOS, and Linux devices with automatic cookie warming bots.
+                    </p>
+                </div>
+                <a href="/features?category=sync_cloud" style="color: #F472B6; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>View Cloud & Cookie Tools</span>
+                    <span>→</span>
+                </a>
+            </div>
+
         </div>
 
-        <!-- No Features Found Empty State -->
-        <div id="noFeaturesFoundMessage" style="display: none; background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 18px; padding: 48px 24px; text-align: center; margin-top: 20px;">
-            <div style="font-size: 44px; margin-bottom: 14px;">🔍</div>
-            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 8px;">No matching features found</h3>
-            <p style="color: var(--text-muted); font-size: 14px; max-width: 480px; margin: 0 auto 20px;">
-                We couldn't find any software feature matching your search term. Try another keyword or reset the filter.
-            </p>
-            <button onclick="resetFeatureFilters()" class="btn btn-primary" style="padding: 10px 24px; font-size: 14px;">
-                🔄 Reset Search & Show All 52 Features
-            </button>
+        <!-- Prominent Banner linking to Dedicated All Features Page -->
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9)); border: 1px solid rgba(45, 212, 191, 0.35); border-radius: 20px; padding: 28px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; box-shadow: 0 12px 36px rgba(0,0,0,0.35);">
+            <div style="max-width: 620px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <span style="font-size: 16px;">⚡</span>
+                    <strong style="color: #FFF; font-size: 18px;">Looking for the Complete 52-Feature Catalog?</strong>
+                </div>
+                <p style="color: var(--text-muted); font-size: 13.5px; margin: 0;">
+                    Explore all 52 audited tools, shields, WebGL/Canvas spoofers, proxy protocols, automation drivers, and desktop shortcuts on our dedicated features page.
+                </p>
+            </div>
+            <a href="/features" class="btn btn-primary" style="padding: 14px 28px; font-size: 14.5px; font-weight: 800; text-decoration: none;">
+                ✨ Explore All 52 Features & Capabilities →
+            </a>
         </div>
     </section>
-
-    <!-- Interactive Client-Side Features Filter & Search Script -->
-    <script>
-    (function() {
-        let currentCategory = 'all';
-
-        window.setFeatureCategoryFilter = function(category, btnElement) {
-            currentCategory = category;
-            
-            // Update active pill UI
-            document.querySelectorAll('.feature-cat-pill').forEach(btn => {
-                btn.classList.remove('active');
-                btn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-                btn.style.background = 'rgba(255, 255, 255, 0.03)';
-                btn.style.color = 'var(--text-muted)';
-            });
-
-            if (btnElement) {
-                btnElement.classList.add('active');
-                btnElement.style.border = '1px solid rgba(45, 212, 191, 0.4)';
-                btnElement.style.background = 'rgba(45, 212, 191, 0.15)';
-                btnElement.style.color = '#2DD4BF';
-            }
-
-            filterSoftwareFeaturesLive();
-        };
-
-        window.filterSoftwareFeaturesLive = function() {
-            const searchInput = document.getElementById('featureSearchInput');
-            const clearBtn = document.getElementById('featureSearchClearBtn');
-            const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
-            
-            if (clearBtn) {
-                clearBtn.style.display = query.length > 0 ? 'inline-flex' : 'none';
-            }
-
-            const cards = document.querySelectorAll('.software-feature-card');
-            let visibleCount = 0;
-
-            cards.forEach(card => {
-                const cardCat = card.getAttribute('data-category') || '';
-                const cardName = card.getAttribute('data-name') || '';
-                const cardDesc = card.getAttribute('data-desc') || '';
-                const cardKeywords = card.getAttribute('data-keywords') || '';
-
-                const matchesCat = (currentCategory === 'all' || cardCat === currentCategory);
-                const matchesSearch = (!query || cardName.indexOf(query) !== -1 || cardDesc.indexOf(query) !== -1 || cardKeywords.indexOf(query) !== -1 || cardCat.indexOf(query) !== -1);
-
-                if (matchesCat && matchesSearch) {
-                    card.style.display = 'flex';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            // Update counter
-            const countVisibleEl = document.getElementById('featuresCountVisible');
-            if (countVisibleEl) {
-                countVisibleEl.textContent = visibleCount;
-            }
-
-            // Update active filter badge
-            const activeFilterBadge = document.getElementById('activeFilterBadge');
-            const activeFilterText = document.getElementById('activeFilterText');
-            if (activeFilterBadge && activeFilterText) {
-                if (currentCategory !== 'all' || query.length > 0) {
-                    activeFilterBadge.style.display = 'inline-flex';
-                    activeFilterText.textContent = (currentCategory !== 'all' ? currentCategory.replace('_', ' ').toUpperCase() : '') + (query ? ' ("' + query + '")' : '');
-                } else {
-                    activeFilterBadge.style.display = 'none';
-                }
-            }
-
-            // Handle empty state
-            const noFeaturesMsg = document.getElementById('noFeaturesFoundMessage');
-            const featuresGrid = document.getElementById('allFeaturesGrid');
-            if (noFeaturesMsg && featuresGrid) {
-                if (visibleCount === 0) {
-                    noFeaturesMsg.style.display = 'block';
-                    featuresGrid.style.display = 'none';
-                } else {
-                    noFeaturesMsg.style.display = 'none';
-                    featuresGrid.style.display = 'grid';
-                }
-            }
-        };
-
-        window.clearFeatureSearch = function() {
-            const searchInput = document.getElementById('featureSearchInput');
-            if (searchInput) {
-                searchInput.value = '';
-            }
-            filterSoftwareFeaturesLive();
-        };
-
-        window.resetFeatureFilters = function() {
-            const searchInput = document.getElementById('featureSearchInput');
-            if (searchInput) {
-                searchInput.value = '';
-            }
-            const allBtn = document.querySelector('.feature-cat-pill');
-            window.setFeatureCategoryFilter('all', allBtn);
-        };
-    })();
-    </script>
 
     <!-- 4. How It Works Section (4 Steps) -->
     <section id="how-it-works" class="section container">
@@ -3210,7 +3087,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <div>
                 <h4 style="font-size: 14px; color: #FFF; font-weight: 700; margin-bottom: 14px;">Product</h4>
                 <ul style="list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-                    <li><a href="#features" style="color: var(--text-muted); text-decoration: none;">Features</a></li>
+                    <li><a href="/features" style="color: var(--text-muted); text-decoration: none;">All Features (52)</a></li>
                     <li><a href="#pricing" style="color: var(--text-muted); text-decoration: none;">Pricing</a></li>
                     <li><a href="#downloads" style="color: var(--text-muted); text-decoration: none;">Downloads</a></li>
                     <li><a href="#faq" style="color: var(--text-muted); text-decoration: none;">FAQ</a></li>

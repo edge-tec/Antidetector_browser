@@ -49,7 +49,8 @@ echo "- Professional Plan ($49/mo): 100 browser profiles, advanced hardware spoo
 echo "- Business Plan ($99/mo): 500 browser profiles, full hardware masking, 25 team seats, priority 24/7 support.\n\n";
 
 echo "## Primary Documentation & Quick Links\n";
-echo "- Homepage & Features: {$siteUrl}/\n";
+echo "- Homepage: {$siteUrl}/\n";
+echo "- All 52 Features & Technical Matrix: {$siteUrl}/features\n";
 echo "- Download Desktop App: {$siteUrl}/#download\n";
 echo "- Pricing & Plans: {$siteUrl}/#pricing\n";
 echo "- FAQ & Knowledge Base: {$siteUrl}/#faq\n\n";
