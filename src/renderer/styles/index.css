@@ -300,6 +300,11 @@ body {
   -webkit-app-region: no-drag !important;
 }
 
+/* Ensure all interactive controls and dialogs are never blocked by window drag */
+input, textarea, select, button, label, .modal, .modal-backdrop, [role="dialog"] {
+  -webkit-app-region: no-drag !important;
+}
+
 .app-layout {
   display: flex;
   width: 100%;

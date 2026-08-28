@@ -276,6 +276,7 @@ export const AdminSoftwareVersionManager: React.FC = () => {
       {/* Release Editor Modal */}
       {(isCreating || editingVersion) && (
         <div
+          className="window-no-drag"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setEditingVersion(null)
@@ -294,10 +295,13 @@ export const AdminSoftwareVersionManager: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '20px'
+            padding: '20px',
+            WebkitAppRegion: 'no-drag' as any,
+            userSelect: 'text'
           }}
         >
           <div
+            className="window-no-drag"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -312,7 +316,9 @@ export const AdminSoftwareVersionManager: React.FC = () => {
               flexDirection: 'column',
               gap: '20px',
               boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-              position: 'relative'
+              position: 'relative',
+              WebkitAppRegion: 'no-drag' as any,
+              userSelect: 'text'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2C2C3E', paddingBottom: '16px' }}>
