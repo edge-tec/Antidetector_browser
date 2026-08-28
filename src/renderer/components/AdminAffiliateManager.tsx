@@ -38,7 +38,7 @@ interface AdminAffiliateData {
 export const AdminAffiliateManager: React.FC = () => {
   const [data, setData] = useState<AdminAffiliateData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeSubTab, setActiveSubTab] = useState<'withdrawals' | 'affiliates' | 'offers' | 'clicks' | 'conversions' | 'postbacks' | 'settings' | 'audit'>('withdrawals')
+  const [activeSubTab, setActiveSubTab] = useState<'withdrawals' | 'affiliates' | 'offers' | 'landing_pages' | 'clicks' | 'fraud' | 'conversions' | 'postbacks' | 'settings' | 'audit'>('withdrawals')
   
   // Settings Form State
   const [settingsForm, setSettingsForm] = useState<any>({
@@ -708,7 +708,9 @@ export const AdminAffiliateManager: React.FC = () => {
           { id: 'withdrawals', label: `💳 Withdrawals (${data?.withdrawals?.length || 0})` },
           { id: 'affiliates', label: `👥 Affiliates Directory (${data?.affiliates?.length || 0})` },
           { id: 'offers', label: `🎯 CPA Offers (${data?.offers?.length || 0})` },
+          { id: 'landing_pages', label: '🌐 Landing Page Builder' },
           { id: 'clicks', label: `🖱️ Clicks Stream (${data?.clicks?.length || 0})` },
+          { id: 'fraud', label: '🛡️ Anti-Fraud Review' },
           { id: 'conversions', label: `🎉 Conversions (${data?.conversions?.length || 0})` },
           { id: 'postbacks', label: `📡 Postback Logs (${data?.postbacks?.length || 0})` },
           { id: 'settings', label: '⚙️ Global CPA Settings' },
@@ -1422,6 +1424,122 @@ export const AdminAffiliateManager: React.FC = () => {
                     <td style={{ padding: '10px 12px', color: '#CBD5E1' }}>{log.details}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: LANDING PAGE BUILDER ── */}
+      {activeSubTab === 'landing_pages' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#FFF' }}>🌐 Dynamic Package Landing Pages</h3>
+                <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
+                  Every affiliate offer automatically generates a tailored landing page with OS detection and custom pricing.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+              {[
+                { slug: 'starter-license', title: 'Starter License', price: '$19/mo', badge: '$10 CPA Fixed', theme: '#38BDF8', url: '/offer/starter-license' },
+                { slug: 'starter', title: 'Starter Subscription', price: '$19/mo', badge: '40% Recurring', theme: '#2DD4BF', url: '/offer/starter' },
+                { slug: 'professional', title: 'Professional', price: '$49/mo', badge: '50% Recurring • Most Popular', theme: '#2DD4BF', url: '/offer/professional' },
+                { slug: 'pro-team', title: 'Pro + Team Plan', price: '$49/mo', badge: '50% Recurring • Team', theme: '#818CF8', url: '/offer/pro-team' },
+                { slug: 'enterprise-trial', title: 'Enterprise Trial', price: '$99/mo', badge: '7-Day Enterprise Pilot', theme: '#C084FC', url: '/offer/enterprise-trial' },
+                { slug: 'enterprise', title: 'Enterprise Suite', price: '$99/mo', badge: '50% Recurring', theme: '#A855F7', url: '/offer/enterprise' },
+                { slug: 'business-custom', title: 'Custom Business', price: '$99/mo', badge: '50% RevShare', theme: '#EC4899', url: '/offer/business-custom' }
+              ].map(lp => (
+                <div key={lp.slug} style={{ background: '#0B0F19', border: `1px solid ${lp.theme}40`, borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFF' }}>{lp.title}</span>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: lp.theme, background: `${lp.theme}15`, padding: '3px 8px', borderRadius: '12px', border: `1px solid ${lp.theme}30` }}>
+                        {lp.badge}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '8px' }}>
+                      Path: <code style={{ color: '#38BDF8', fontFamily: 'monospace' }}>{lp.url}</code>
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#FFF', marginBottom: '12px' }}>
+                      {lp.price}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <a
+                      href={`https://antiprofiles.com${lp.url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ flex: 1, padding: '7px 12px', textAlign: 'center', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', fontSize: '11px', fontWeight: 600, textDecoration: 'none', border: '1px solid #334155' }}
+                    >
+                      🔗 Preview Page
+                    </a>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://antiprofiles.com${lp.url}`)
+                        showToast('success', `Copied URL: https://antiprofiles.com${lp.url}`)
+                      }}
+                      style={{ padding: '7px 12px', borderRadius: '6px', background: '#2563EB', color: '#FFF', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                    >
+                      Copy URL
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: ANTI-FRAUD REVIEW ── */}
+      {activeSubTab === 'fraud' && (
+        <div style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#FFF' }}>🛡️ Anti-Fraud Tracking & Traffic Security Logs</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                Monitors suspicious click spikes, bot user-agents, rapid repeat clicks, and self-referrals.
+              </p>
+            </div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1E293B', color: '#94A3B8', textAlign: 'left' }}>
+                  <th style={{ padding: '10px 12px' }}>TIMESTAMP</th>
+                  <th style={{ padding: '10px 12px' }}>CLICK ID</th>
+                  <th style={{ padding: '10px 12px' }}>AFFILIATE</th>
+                  <th style={{ padding: '10px 12px' }}>IP ADDRESS</th>
+                  <th style={{ padding: '10px 12px' }}>REASON</th>
+                  <th style={{ padding: '10px 12px' }}>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.clicks || []).filter((c: any) => c.is_fraud || c.fraud_reason).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                      ✓ Clean traffic health: 0 fraudulent click alerts detected in current monitoring window.
+                    </td>
+                  </tr>
+                ) : (
+                  (data?.clicks || []).filter((c: any) => c.is_fraud || c.fraud_reason).map((f: any) => (
+                    <tr key={f.click_id} style={{ borderBottom: '1px solid #1E293B' }}>
+                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{new Date(f.created_at).toLocaleString()}</td>
+                      <td style={{ padding: '10px 12px', color: '#F87171', fontFamily: 'monospace' }}>{f.click_id}</td>
+                      <td style={{ padding: '10px 12px', color: '#FFF' }}>{f.affiliate_id}</td>
+                      <td style={{ padding: '10px 12px', color: '#94A3B8' }}>{f.ip_address}</td>
+                      <td style={{ padding: '10px 12px', color: '#F87171', fontWeight: 600 }}>{f.fraud_reason || 'duplicate_rapid_click'}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{ padding: '3px 8px', borderRadius: '4px', background: '#EF444420', color: '#F87171', fontSize: '11px', fontWeight: 600 }}>
+                          BLOCKED / FLAGGED
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

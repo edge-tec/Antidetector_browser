@@ -688,6 +688,77 @@ function ensureDatabaseTablesExist() {
               `target_type` VARCHAR(50) NOT NULL,
               `target_id` VARCHAR(100) NOT NULL,
               `actor_id` VARCHAR(36) NOT NULL,
+            CREATE TABLE IF NOT EXISTS `affiliate_landing_pages` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `slug` VARCHAR(100) NOT NULL UNIQUE,
+              `offer_id` VARCHAR(50) NOT NULL,
+              `package_id` VARCHAR(50) NOT NULL DEFAULT 'plan_starter',
+              `package_name` VARCHAR(100) NOT NULL DEFAULT 'Starter',
+              `hero_title` VARCHAR(255) NOT NULL,
+              `hero_subtitle` TEXT DEFAULT NULL,
+              `price_monthly` DECIMAL(10,2) NOT NULL DEFAULT 19.00,
+              `price_yearly` DECIMAL(10,2) NOT NULL DEFAULT 190.00,
+              `original_price` DECIMAL(10,2) DEFAULT NULL,
+              `discount_percent` DECIMAL(5,2) DEFAULT 0.00,
+              `badge_text` VARCHAR(100) DEFAULT NULL,
+              `features_json` TEXT DEFAULT NULL,
+              `faq_json` TEXT DEFAULT NULL,
+              `reviews_json` TEXT DEFAULT NULL,
+              `cta_text` VARCHAR(100) DEFAULT 'Start 7-Day Free Trial',
+              `theme_color` VARCHAR(20) DEFAULT '#2DD4BF',
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `seo_title` VARCHAR(255) DEFAULT NULL,
+              `meta_desc` TEXT DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_registrations` (
+              `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              `reg_id` VARCHAR(64) NOT NULL UNIQUE,
+              `affiliate_id` VARCHAR(50) NOT NULL,
+              `click_id` VARCHAR(64) NOT NULL,
+              `offer_id` VARCHAR(50) NOT NULL,
+              `user_id` VARCHAR(36) NOT NULL,
+              `email` VARCHAR(255) NOT NULL,
+              `landing_page_slug` VARCHAR(100) DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_wallets` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `affiliate_id` VARCHAR(50) NOT NULL UNIQUE,
+              `user_id` VARCHAR(36) NOT NULL UNIQUE,
+              `available_balance` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `pending_balance` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `approved_balance` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `paid_balance` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `lifetime_earnings` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `monthly_earnings` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `recurring_earnings` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `cpa_earnings` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_notifications` (
+              `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              `user_id` VARCHAR(36) NOT NULL,
+              `affiliate_id` VARCHAR(50) NOT NULL,
+              `type` VARCHAR(50) NOT NULL,
+              `title` VARCHAR(255) NOT NULL,
+              `message` TEXT NOT NULL,
+              `is_read` TINYINT(1) NOT NULL DEFAULT 0,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_fraud_logs` (
+              `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              `click_id` VARCHAR(64) DEFAULT NULL,
+              `affiliate_id` VARCHAR(50) DEFAULT NULL,
+              `ip_address` VARCHAR(45) DEFAULT NULL,
+              `reason` VARCHAR(255) NOT NULL,
               `details_json` TEXT DEFAULT NULL,
               `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -707,7 +778,15 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `device` VARCHAR(50) DEFAULT 'Desktop'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `browser` VARCHAR(50) DEFAULT 'Chrome'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `os` VARCHAR(50) DEFAULT 'Windows'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `processor` VARCHAR(50) DEFAULT 'x86_64'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `country` VARCHAR(50) DEFAULT 'US'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `city` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `utm_source` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `utm_campaign` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `utm_medium` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `fingerprint_hash` VARCHAR(64) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `is_fraud` TINYINT(1) DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `fraud_reason` VARCHAR(255) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id3` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id4` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id5` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
@@ -726,17 +805,40 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `trial_days` INT NOT NULL DEFAULT 7"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `billing_interval` VARCHAR(20) NOT NULL DEFAULT 'month'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `signup_url` VARCHAR(255) NOT NULL DEFAULT '/signup'"); } catch (Throwable $e) {}
-        try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `total_clicks` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `total_conversions` INT NOT NULL DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 50.00"); } catch (Throwable $e) {}
 
-        // Seed default CPA offers with explicit Package & Pricing mappings
+        // Seed default CPA offers with explicit Package, Pricing & Landing Page mappings
         $defaultOffers = [
             [
+                'id' => 'offer_starter_license',
+                'title' => 'AntiProfiles Starter License',
+                'description' => 'Fixed $10.00 instant CPA payout per verified first-time starter license purchase ($19/mo package).',
+                'target_url' => '/offer/starter-license',
+                'signup_url' => '/offer/starter-license',
+                'landing_page_slug' => 'starter-license',
+                'payout_type' => 'fixed',
+                'commission_rate' => 0.00,
+                'revshare_percent' => 0.00,
+                'fixed_payout_usd' => 10.00,
+                'package_id' => 'plan_starter',
+                'package_name' => 'Starter',
+                'price' => 19.00,
+                'original_price' => 19.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 19.00,
+                'trial_days' => 7,
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ],
+            [
                 'id' => 'offer_starter',
-                'title' => 'AntiProfiles Starter',
+                'title' => 'AntiProfiles Starter Subscription',
                 'description' => 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).',
-                'target_url' => '/signup?plan=starter',
+                'target_url' => '/offer/starter',
+                'signup_url' => '/offer/starter',
+                'landing_page_slug' => 'starter',
                 'payout_type' => 'revshare',
                 'commission_rate' => 40.00,
                 'revshare_percent' => 40.00,
@@ -754,9 +856,11 @@ function ensureDatabaseTablesExist() {
             ],
             [
                 'id' => 'offer_main_saas',
-                'title' => 'AntiProfiles Pro & Team Subscription Plan',
+                'title' => 'AntiProfiles Professional',
                 'description' => 'Earn 50% lifetime recurring commissions on Professional browser subscription renewals ($49/mo).',
-                'target_url' => '/signup?plan=professional',
+                'target_url' => '/offer/professional',
+                'signup_url' => '/offer/professional',
+                'landing_page_slug' => 'professional',
                 'payout_type' => 'revshare',
                 'commission_rate' => 50.00,
                 'revshare_percent' => 50.00,
@@ -773,16 +877,40 @@ function ensureDatabaseTablesExist() {
                 'status' => 'active'
             ],
             [
-                'id' => 'offer_business',
-                'title' => 'AntiProfiles Enterprise Custom Trial',
-                'description' => 'High-ticket 50% recurring onboarding commission on Business subscriptions ($99/mo).',
-                'target_url' => '/signup?plan=business',
+                'id' => 'offer_pro_team',
+                'title' => 'AntiProfiles Pro + Team Plan',
+                'description' => 'Multi-seat team workspace with 50% lifetime recurring commissions ($49/mo).',
+                'target_url' => '/offer/pro-team',
+                'signup_url' => '/offer/pro-team',
+                'landing_page_slug' => 'pro-team',
+                'payout_type' => 'revshare',
+                'commission_rate' => 50.00,
+                'revshare_percent' => 50.00,
+                'fixed_payout_usd' => 0.00,
+                'package_id' => 'plan_pro',
+                'package_name' => 'Professional Team',
+                'price' => 49.00,
+                'original_price' => 49.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 49.00,
+                'trial_days' => 7,
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ],
+            [
+                'id' => 'offer_enterprise_trial',
+                'title' => 'AntiProfiles Enterprise Trial',
+                'description' => 'Enterprise 7-day risk-free pilot with 50% recurring onboard commissions ($99/mo).',
+                'target_url' => '/offer/enterprise-trial',
+                'signup_url' => '/offer/enterprise-trial',
+                'landing_page_slug' => 'enterprise-trial',
                 'payout_type' => 'revshare',
                 'commission_rate' => 50.00,
                 'revshare_percent' => 50.00,
                 'fixed_payout_usd' => 0.00,
                 'package_id' => 'plan_business',
-                'package_name' => 'Business',
+                'package_name' => 'Enterprise Trial',
                 'price' => 99.00,
                 'original_price' => 99.00,
                 'discount_type' => 'none',
@@ -793,21 +921,45 @@ function ensureDatabaseTablesExist() {
                 'status' => 'active'
             ],
             [
-                'id' => 'offer_starter_license',
-                'title' => 'AntiProfiles Starter License',
-                'description' => 'Fixed $10.00 payout per first-time starter license purchase ($19/mo package).',
-                'target_url' => '/signup?plan=starter',
-                'payout_type' => 'fixed',
-                'commission_rate' => 0.00,
-                'revshare_percent' => 0.00,
-                'fixed_payout_usd' => 10.00,
-                'package_id' => 'plan_starter',
-                'package_name' => 'Starter',
-                'price' => 19.00,
-                'original_price' => 19.00,
+                'id' => 'offer_business',
+                'title' => 'AntiProfiles Enterprise',
+                'description' => 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).',
+                'target_url' => '/offer/enterprise',
+                'signup_url' => '/offer/enterprise',
+                'landing_page_slug' => 'enterprise',
+                'payout_type' => 'revshare',
+                'commission_rate' => 50.00,
+                'revshare_percent' => 50.00,
+                'fixed_payout_usd' => 0.00,
+                'package_id' => 'plan_business',
+                'package_name' => 'Enterprise',
+                'price' => 99.00,
+                'original_price' => 99.00,
                 'discount_type' => 'none',
                 'discount_value' => 0.00,
-                'discounted_price' => 19.00,
+                'discounted_price' => 99.00,
+                'trial_days' => 7,
+                'billing_interval' => 'month',
+                'status' => 'active'
+            ],
+            [
+                'id' => 'offer_business_custom',
+                'title' => 'AntiProfiles Custom Business',
+                'description' => 'Custom high-volume business licensing with dedicated infrastructure and 50% revenue share.',
+                'target_url' => '/offer/business-custom',
+                'signup_url' => '/offer/business-custom',
+                'landing_page_slug' => 'business-custom',
+                'payout_type' => 'revshare',
+                'commission_rate' => 50.00,
+                'revshare_percent' => 50.00,
+                'fixed_payout_usd' => 0.00,
+                'package_id' => 'plan_business',
+                'package_name' => 'Custom Business',
+                'price' => 99.00,
+                'original_price' => 99.00,
+                'discount_type' => 'none',
+                'discount_value' => 0.00,
+                'discounted_price' => 99.00,
                 'trial_days' => 7,
                 'billing_interval' => 'month',
                 'status' => 'active'
@@ -818,11 +970,11 @@ function ensureDatabaseTablesExist() {
             try {
                 $st = $db->prepare("
                     INSERT INTO `affiliate_offers` (
-                        `id`, `title`, `description`, `target_url`, `payout_type`, `commission_rate`, `revshare_percent`,
+                        `id`, `title`, `description`, `target_url`, `signup_url`, `landing_page_slug`, `payout_type`, `commission_rate`, `revshare_percent`,
                         `fixed_payout_usd`, `package_id`, `package_name`, `price`, `original_price`, `discount_type`,
                         `discount_value`, `discounted_price`, `trial_days`, `billing_interval`, `status`
                     ) VALUES (
-                        :id, :title, :description, :target_url, :payout_type, :commission_rate, :revshare_percent,
+                        :id, :title, :description, :target_url, :signup_url, :landing_page_slug, :payout_type, :commission_rate, :revshare_percent,
                         :fixed_payout_usd, :package_id, :package_name, :price, :original_price, :discount_type,
                         :discount_value, :discounted_price, :trial_days, :billing_interval, :status
                     )
@@ -832,6 +984,9 @@ function ensureDatabaseTablesExist() {
                 try {
                     $up = $db->prepare("
                         UPDATE `affiliate_offers` SET
+                            `target_url` = :target_url,
+                            `signup_url` = :signup_url,
+                            `landing_page_slug` = :landing_page_slug,
                             `package_id` = :package_id,
                             `package_name` = :package_name,
                             `price` = :price,
@@ -845,6 +1000,9 @@ function ensureDatabaseTablesExist() {
                     ");
                     $up->execute([
                         ':id' => $do['id'],
+                        ':target_url' => $do['target_url'],
+                        ':signup_url' => $do['signup_url'],
+                        ':landing_page_slug' => $do['landing_page_slug'],
                         ':package_id' => $do['package_id'],
                         ':package_name' => $do['package_name'],
                         ':price' => $do['price'],
@@ -854,6 +1012,303 @@ function ensureDatabaseTablesExist() {
                         ':discounted_price' => $do['discounted_price'],
                         ':trial_days' => $do['trial_days'],
                         ':billing_interval' => $do['billing_interval']
+                    ]);
+                } catch (Throwable $e2) {}
+            }
+        }
+
+        // Seed Dynamic Landing Pages
+        $defaultLandingPages = [
+            [
+                'id' => 'lp_starter_license',
+                'slug' => 'starter-license',
+                'offer_id' => 'offer_starter_license',
+                'package_id' => 'plan_starter',
+                'package_name' => 'Starter License',
+                'hero_title' => 'AntiProfiles Starter License — Instant $10 CPA Bounty & 25 Browser Profiles',
+                'hero_subtitle' => 'The ultimate entry-level antidetect setup for media buyers, affiliate marketers, and automation engineers.',
+                'price_monthly' => 19.00,
+                'price_yearly' => 190.00,
+                'original_price' => 19.00,
+                'discount_percent' => 0.00,
+                'badge_text' => '⚡ Instant $10 CPA Payout • Starter License',
+                'features_json' => json_encode([
+                    '25 Isolated Browser Profiles',
+                    'HTTP/HTTPS/SOCKS5 Proxy Support',
+                    'Advanced Canvas & WebGL Spoofing',
+                    '2 Team Workspace Seats',
+                    'Basic REST & Automation API',
+                    '7-Day Risk-Free Trial'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'What is included with Starter License?', 'a' => 'You get 25 active browser profiles with independent fingerprint environments and dual-engine Chromium & Firefox support.'],
+                    ['q' => 'How does the $10 CPA bounty work?', 'a' => 'Affiliates receive an instant $10 USD cash payout on every new verified customer who activates a Starter license.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Alexandre R.', 'role' => 'Affiliate Media Buyer', 'comment' => 'AntiProfiles Starter is light, fast, and passes PixelScan & BrowserLeaks 100% every single time.'],
+                    ['name' => 'Sarah K.', 'role' => 'E-Commerce Manager', 'comment' => 'Managing multiple seller stores without ban risk has never been easier.']
+                ]),
+                'cta_text' => 'Claim Starter License Now',
+                'theme_color' => '#38BDF8',
+                'seo_title' => 'AntiProfiles Starter License | Best Antidetect Browser for Beginners',
+                'meta_desc' => 'Download AntiProfiles Starter License. Run 25 stealth browser profiles with native fingerprint protection and proxy support.'
+            ],
+            [
+                'id' => 'lp_starter',
+                'slug' => 'starter',
+                'offer_id' => 'offer_starter',
+                'package_id' => 'plan_starter',
+                'package_name' => 'Starter',
+                'hero_title' => 'AntiProfiles Starter — 25 Isolated Stealth Profiles for Solo Professionals',
+                'hero_subtitle' => 'Scale your advertising campaigns and multi-accounting safely with 100% genuine hardware fingerprints.',
+                'price_monthly' => 19.00,
+                'price_yearly' => 190.00,
+                'original_price' => 19.00,
+                'discount_percent' => 0.00,
+                'badge_text' => '🎁 7-Day Free Trial • 40% Recurring Commission',
+                'features_json' => json_encode([
+                    '25 High-Performance Browser Profiles',
+                    'Zero WebRTC & AudioContext Leaks',
+                    'Automated Cookie Jar & Session Sync',
+                    '2 Active Team Members',
+                    'Fast Local & Cloud Profile Sync',
+                    '24/7 Community & Ticket Support'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'Can I upgrade to Professional anytime?', 'a' => 'Yes, you can scale up seamlessly from your dashboard at any time without losing any profile data or cookies.'],
+                    ['q' => 'Does it support proxy rotation?', 'a' => 'Yes, you can bind individual residential, mobile, or datacenter proxies with auto-reconnect.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'David M.', 'role' => 'Social Media Agency', 'comment' => 'The best price-to-performance ratio in the antidetect industry.'],
+                    ['name' => 'Kenji T.', 'role' => 'Crypto Arbitrage Trader', 'comment' => 'Running multiple exchange sessions smoothly with zero cross-contamination.']
+                ]),
+                'cta_text' => 'Start 7-Day Free Starter Trial',
+                'theme_color' => '#2DD4BF',
+                'seo_title' => 'AntiProfiles Starter Plan — $19/mo Stealth Browser',
+                'meta_desc' => 'Sign up for AntiProfiles Starter. 25 browser profiles, HTTP/SOCKS5 proxy integration, and hardware fingerprint spoofing.'
+            ],
+            [
+                'id' => 'lp_professional',
+                'slug' => 'professional',
+                'offer_id' => 'offer_main_saas',
+                'package_id' => 'plan_pro',
+                'package_name' => 'Professional',
+                'hero_title' => 'AntiProfiles Professional — 100 Browser Profiles & Team Collaboration',
+                'hero_subtitle' => 'The industry-standard choice for agencies, media buyers, and power automation teams.',
+                'price_monthly' => 49.00,
+                'price_yearly' => 490.00,
+                'original_price' => 49.00,
+                'discount_percent' => 0.00,
+                'badge_text' => '🔥 MOST POPULAR • 50% Lifetime Recurring Commission',
+                'features_json' => json_encode([
+                    '100 Unlimited Stealth Browser Profiles',
+                    'Full REST & Selenium/Puppeteer/Playwright Driver API',
+                    '10 Multi-User Team Collaboration Seats',
+                    'Advanced WebGL, Audio & Font Spoofing',
+                    'Priority 24/7 Live Agent Support',
+                    'Real-Time Profile Auto-Repair & Backup'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'Why is Professional the most popular plan?', 'a' => 'It gives 100 profiles and 10 team seats with full automated driver API support, perfect for scaling businesses.'],
+                    ['q' => 'What browsers are supported?', 'a' => 'Both Chromium (Chrome 128+) and Firefox (Gecko) engines are bundled with standalone multi-profile architecture.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Viktor G.', 'role' => 'Performance Lead', 'comment' => 'We scaled from 10 to 80 daily ad accounts without a single checkpoint or ban. 10/10.'],
+                    ['name' => 'Elena B.', 'role' => 'Growth Hacker', 'comment' => 'The browser branding and fingerprint consistency are unmatched.']
+                ]),
+                'cta_text' => 'Start 7-Day Professional Trial',
+                'theme_color' => '#2DD4BF',
+                'seo_title' => 'AntiProfiles Professional Plan — 100 Profiles & Team Workspace',
+                'meta_desc' => 'Get AntiProfiles Professional. 100 antidetect profiles, 10 team users, and automated REST & Driver API access.'
+            ],
+            [
+                'id' => 'lp_pro_team',
+                'slug' => 'pro-team',
+                'offer_id' => 'offer_pro_team',
+                'package_id' => 'plan_pro',
+                'package_name' => 'Professional Team',
+                'hero_title' => 'AntiProfiles Pro + Team Workspace — Scale Your Agency Together',
+                'hero_subtitle' => 'Share browser profiles, cookies, and proxies securely across 10 team members with role-based access control.',
+                'price_monthly' => 49.00,
+                'price_yearly' => 490.00,
+                'original_price' => 49.00,
+                'discount_percent' => 0.00,
+                'badge_text' => '👥 Team Workspace • 50% Recurring Commission',
+                'features_json' => json_encode([
+                    '100 Team-Shared Browser Profiles',
+                    'Granular Role-Based Permissions (Admin, Operator, Viewer)',
+                    'Encrypted Cloud Cookie Sync',
+                    '10 Dedicated Team User Accounts',
+                    'Live Team Activity Audit Logs',
+                    'Full Automation & REST Driver APIs'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'How does team sharing work?', 'a' => 'You can assign specific profiles or profile groups to different team operators with customized read/write/launch permissions.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Marcus V.', 'role' => 'Digital Agency Owner', 'comment' => 'Our 8 operators collaborate seamlessly across 3 continents without ever logging each other out.']
+                ]),
+                'cta_text' => 'Launch Pro Team Workspace',
+                'theme_color' => '#818CF8',
+                'seo_title' => 'AntiProfiles Pro + Team Plan | Collaborative Antidetect Browser',
+                'meta_desc' => 'Empower your team with AntiProfiles Pro Team Plan. 100 profiles, 10 team users, and real-time collaboration.'
+            ],
+            [
+                'id' => 'lp_enterprise_trial',
+                'slug' => 'enterprise-trial',
+                'offer_id' => 'offer_enterprise_trial',
+                'package_id' => 'plan_business',
+                'package_name' => 'Enterprise Trial',
+                'hero_title' => 'AntiProfiles Enterprise Trial — 500 Profiles & High-Volume Automation',
+                'hero_subtitle' => 'Test-drive full hardware spoofing, unlimited automation API calls, and 25 team seats completely risk-free.',
+                'price_monthly' => 99.00,
+                'price_yearly' => 990.00,
+                'original_price' => 99.00,
+                'discount_percent' => 0.00,
+                'badge_text' => '🏢 7-Day Enterprise Pilot • 50% Recurring Commission',
+                'features_json' => json_encode([
+                    '500 High-Volume Browser Profiles',
+                    'Full Deep Hardware Spoofing (GPU, CPU Cores, RAM, Audio)',
+                    '25 Multi-Tier Team Member Seats',
+                    'Unlimited High-Concurrency REST & Driver APIs',
+                    'Dedicated Account Manager & Private Slack Channel',
+                    'Custom Browser Branding & Profile Icon Kits'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'What happens after the 7-day trial?', 'a' => 'You can continue seamlessly on the Enterprise subscription or switch to any tier that matches your volume.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Sven H.', 'role' => 'Enterprise VP of Growth', 'comment' => 'The dedicated manager and unlimited API concurrency transformed our automated web operations.']
+                ]),
+                'cta_text' => 'Start 7-Day Enterprise Pilot',
+                'theme_color' => '#C084FC',
+                'seo_title' => 'AntiProfiles Enterprise Trial — 500 Profiles & Full Hardware Spoofing',
+                'meta_desc' => 'Start your 7-day trial of AntiProfiles Enterprise. 500 profiles, 25 team members, and dedicated account manager.'
+            ],
+            [
+                'id' => 'lp_enterprise',
+                'slug' => 'enterprise',
+                'offer_id' => 'offer_business',
+                'package_id' => 'plan_business',
+                'package_name' => 'Enterprise',
+                'hero_title' => 'AntiProfiles Enterprise Suite — Maximum Scale & Dedicated Infrastructure',
+                'hero_subtitle' => 'Engineered for high-volume enterprise data operations, global ad management, and automated scraping pipelines.',
+                'price_monthly' => 99.00,
+                'price_yearly' => 990.00,
+                'original_price' => 99.00,
+                'discount_percent' => 0.00,
+                'badge_text' => '⭐ ENTERPRISE SUITE • 50% Recurring Commission',
+                'features_json' => json_encode([
+                    '500 Active Stealth Browser Profiles',
+                    'Hardware-Level Machine ID & MAC Address Masking',
+                    '25 Enterprise Team Member Seats',
+                    'Custom Single Sign-On (SSO) & SAML',
+                    'Dedicated High-Availability Sync Nodes',
+                    'Guaranteed 99.99% Uptime SLA & Private Support'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'Can we customize browser fingerprint templates?', 'a' => 'Yes, Enterprise customers have access to custom fingerprint generator rules and private device pools.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Daniel L.', 'role' => 'CTO, DataTech Global', 'comment' => 'AntiProfiles Enterprise is rock solid. Millions of automated browser sessions without a hitch.']
+                ]),
+                'cta_text' => 'Get Enterprise Access',
+                'theme_color' => '#A855F7',
+                'seo_title' => 'AntiProfiles Enterprise Plan | 500 Profiles & 25 Team Users',
+                'meta_desc' => 'Deploy AntiProfiles Enterprise. 500 browser profiles, dedicated support, hardware spoofing, and 25 seats.'
+            ],
+            [
+                'id' => 'lp_business_custom',
+                'slug' => 'business-custom',
+                'offer_id' => 'offer_business_custom',
+                'package_id' => 'plan_business',
+                'package_name' => 'Custom Business',
+                'hero_title' => 'AntiProfiles Custom Business — Tailored Antidetect Architecture',
+                'hero_subtitle' => 'Custom profile pools, private cloud synchronization relays, and custom branding for large organizations.',
+                'price_monthly' => 99.00,
+                'price_yearly' => 990.00,
+                'original_price' => 99.00,
+                'discount_percent' => 0.00,
+                'badge_text' => '🚀 CUSTOM ARCHITECTURE • 50% Revenue Share',
+                'features_json' => json_encode([
+                    'Custom Profile Volumes (500+ to 10,000+)',
+                    'Private On-Premises or Cloud Profile Relays',
+                    'Custom White-Label Application Branding',
+                    'Direct Senior Engineering & Solutions Architect Access',
+                    'Enterprise Custom Billing & Invoicing',
+                    'Custom Automated Driver Bridges'
+                ]),
+                'faq_json' => json_encode([
+                    ['q' => 'How do we set up a custom plan?', 'a' => 'Register through this page to activate your initial 500 profile instance and our enterprise solutions architect will contact you immediately.']
+                ]),
+                'reviews_json' => json_encode([
+                    ['name' => 'Tariq A.', 'role' => 'Director of Automation', 'comment' => 'The custom relay architecture and white-labeling allowed us to deploy internally effortlessly.']
+                ]),
+                'cta_text' => 'Activate Custom Business Suite',
+                'theme_color' => '#EC4899',
+                'seo_title' => 'AntiProfiles Custom Business Solutions | Tailored Antidetect Browser',
+                'meta_desc' => 'Explore AntiProfiles Custom Business. Tailored antidetect infrastructure, private profile relays, and dedicated architecture.'
+            ]
+        ];
+
+        foreach ($defaultLandingPages as $dlp) {
+            try {
+                $st = $db->prepare("
+                    INSERT INTO `affiliate_landing_pages` (
+                        `id`, `slug`, `offer_id`, `package_id`, `package_name`, `hero_title`, `hero_subtitle`,
+                        `price_monthly`, `price_yearly`, `original_price`, `discount_percent`, `badge_text`,
+                        `features_json`, `faq_json`, `reviews_json`, `cta_text`, `theme_color`, `is_active`,
+                        `seo_title`, `meta_desc`
+                    ) VALUES (
+                        :id, :slug, :offer_id, :package_id, :package_name, :hero_title, :hero_subtitle,
+                        :price_monthly, :price_yearly, :original_price, :discount_percent, :badge_text,
+                        :features_json, :faq_json, :reviews_json, :cta_text, :theme_color, 1,
+                        :seo_title, :meta_desc
+                    )
+                ");
+                $st->execute($dlp);
+            } catch (Throwable $e) {
+                try {
+                    $up = $db->prepare("
+                        UPDATE `affiliate_landing_pages` SET
+                            `offer_id` = :offer_id,
+                            `package_id` = :package_id,
+                            `package_name` = :package_name,
+                            `hero_title` = :hero_title,
+                            `hero_subtitle` = :hero_subtitle,
+                            `price_monthly` = :price_monthly,
+                            `price_yearly` = :price_yearly,
+                            `original_price` = :original_price,
+                            `discount_percent` = :discount_percent,
+                            `badge_text` = :badge_text,
+                            `features_json` = :features_json,
+                            `faq_json` = :faq_json,
+                            `reviews_json` = :reviews_json,
+                            `cta_text` = :cta_text,
+                            `theme_color` = :theme_color,
+                            `seo_title` = :seo_title,
+                            `meta_desc` = :meta_desc
+                        WHERE `slug` = :slug
+                    ");
+                    $up->execute([
+                        ':slug' => $dlp['slug'],
+                        ':offer_id' => $dlp['offer_id'],
+                        ':package_id' => $dlp['package_id'],
+                        ':package_name' => $dlp['package_name'],
+                        ':hero_title' => $dlp['hero_title'],
+                        ':hero_subtitle' => $dlp['hero_subtitle'],
+                        ':price_monthly' => $dlp['price_monthly'],
+                        ':price_yearly' => $dlp['price_yearly'],
+                        ':original_price' => $dlp['original_price'],
+                        ':discount_percent' => $dlp['discount_percent'],
+                        ':badge_text' => $dlp['badge_text'],
+                        ':features_json' => $dlp['features_json'],
+                        ':faq_json' => $dlp['faq_json'],
+                        ':reviews_json' => $dlp['reviews_json'],
+                        ':cta_text' => $dlp['cta_text'],
+                        ':theme_color' => $dlp['theme_color'],
+                        ':seo_title' => $dlp['seo_title'],
+                        ':meta_desc' => $dlp['meta_desc']
                     ]);
                 } catch (Throwable $e2) {}
             }
@@ -4361,10 +4816,12 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
             }
         }
 
-        // 3. Generate Click ID
+        // 3. Generate Click ID (Format: CLK_YYYYMMDD_XXXXXXXXXXXX)
+        $datePrefix = date('Ymd');
+        $randomSuffix = strtoupper(bin2hex(random_bytes(6)));
         $clickId = isset($_GET['click_id']) && !empty(trim($_GET['click_id']))
             ? trim($_GET['click_id'])
-            : 'clk_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(4)), 0, 8);
+            : "CLK_{$datePrefix}_{$randomSuffix}";
 
         // 4. Resolve Client Metadata & User-Agent Parsing
         $ipAddress = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -4373,6 +4830,7 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
         }
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $referrer = $_SERVER['HTTP_REFERER'] ?? '';
+        $acceptLang = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
 
         // Device parsing
         $device = 'Desktop';
@@ -4410,7 +4868,87 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
             $os = 'Linux';
         }
 
+        // Processor Architecture Detection
+        $processor = 'x86_64';
+        if ($os === 'macOS') {
+            if (preg_match('/(arm64|aarch64|apple silicon)/i', $userAgent) || (isset($_SERVER['HTTP_SEC_CH_UA_ARCH']) && stripos($_SERVER['HTTP_SEC_CH_UA_ARCH'], 'arm') !== false)) {
+                $processor = 'Apple Silicon (M1/M2/M3/M4)';
+            } else {
+                $processor = 'Intel x86_64';
+            }
+        } elseif ($os === 'Windows') {
+            if (preg_match('/(arm64|arm)/i', $userAgent)) {
+                $processor = 'Windows ARM64';
+            } elseif (preg_match('/(win64|x64|wow64)/i', $userAgent)) {
+                $processor = 'Windows x64';
+            } else {
+                $processor = 'Windows x86';
+            }
+        } elseif ($os === 'Linux') {
+            if (preg_match('/(aarch64|arm64)/i', $userAgent)) {
+                $processor = 'Linux ARM64';
+            } else {
+                $processor = 'Linux x86_64';
+            }
+        } elseif ($os === 'iOS') {
+            $processor = 'Apple Bionic / Silicon';
+        } elseif ($os === 'Android') {
+            $processor = 'ARM64';
+        }
+
         $country = $_SERVER['HTTP_CF_IPCOUNTRY'] ?? 'US';
+        $city = $_SERVER['HTTP_CF_IPCITY'] ?? null;
+
+        // UTM & Campaign parameters
+        $utmSource = trim($_GET['utm_source'] ?? $_GET['source'] ?? '');
+        $utmCampaign = trim($_GET['utm_campaign'] ?? $_GET['campaign'] ?? '');
+        $utmMedium = trim($_GET['utm_medium'] ?? $_GET['medium'] ?? '');
+
+        // Fingerprint Hash
+        $fingerprintHash = hash('sha256', $ipAddress . '|' . $userAgent . '|' . $acceptLang);
+
+        // Anti-Fraud Evaluation
+        $isFraud = 0;
+        $fraudReason = null;
+
+        // 1. Bot / Crawler check
+        if (preg_match('/(bot|crawler|spider|wget|curl|headless|phantomjs|python-requests)/i', $userAgent)) {
+            $isFraud = 1;
+            $fraudReason = 'bot_crawler_signature';
+        }
+
+        // 2. Rapid Duplicate Click check (within 10 seconds from same IP and Affiliate)
+        try {
+            $dupStmt = $db->prepare("
+                SELECT click_id, created_at 
+                FROM affiliate_clicks 
+                WHERE ip_address = ? AND affiliate_id = ? AND created_at >= (NOW() - INTERVAL 10 SECOND)
+                LIMIT 1
+            ");
+            $dupStmt->execute([$ipAddress, $affId]);
+            $recentDup = $dupStmt->fetch(PDO::FETCH_ASSOC);
+            if ($recentDup) {
+                $isFraud = 1;
+                $fraudReason = 'rapid_duplicate_click';
+            }
+        } catch (Throwable $e) {}
+
+        // Log to fraud logs if detected
+        if ($isFraud) {
+            try {
+                $fLog = $db->prepare("
+                    INSERT INTO affiliate_fraud_logs (click_id, affiliate_id, ip_address, reason, details_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ");
+                $fLog->execute([
+                    $clickId,
+                    $affId,
+                    $ipAddress,
+                    $fraudReason,
+                    json_encode(['userAgent' => $userAgent, 'ip' => $ipAddress, 'utmSource' => $utmSource])
+                ]);
+            } catch (Throwable $e) {}
+        }
 
         // Scheme and host
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
@@ -4418,23 +4956,30 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
         $fullLandingUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '/');
 
         // Sub IDs, Offer ID & Link ID
-        $offerId = trim($_GET['offer_id'] ?? 'offer_main_saas');
+        $rawOfferParam = trim($_GET['offer_id'] ?? $_GET['offer'] ?? 'offer_main_saas');
         $linkId = trim($_GET['link_id'] ?? '');
-        $subId1 = trim($_GET['sub_id1'] ?? $_GET['s1'] ?? '');
-        $subId2 = trim($_GET['sub_id2'] ?? $_GET['s2'] ?? '');
-        $subId3 = trim($_GET['sub_id3'] ?? $_GET['s3'] ?? '');
-        $subId4 = trim($_GET['sub_id4'] ?? '');
-        $subId5 = trim($_GET['sub_id5'] ?? '');
+        $subId1 = trim($_GET['sub_id1'] ?? $_GET['subid1'] ?? $_GET['s1'] ?? '');
+        $subId2 = trim($_GET['sub_id2'] ?? $_GET['subid2'] ?? $_GET['s2'] ?? '');
+        $subId3 = trim($_GET['sub_id3'] ?? $_GET['subid3'] ?? $_GET['s3'] ?? '');
+        $subId4 = trim($_GET['sub_id4'] ?? $_GET['subid4'] ?? '');
+        $subId5 = trim($_GET['sub_id5'] ?? $_GET['subid5'] ?? '');
 
-        // Resolve Offer & Package
+        // Resolve Offer & Package & Landing Page Slug
+        $offerId = 'offer_main_saas';
         $packageId = 'plan_pro';
         $packageName = 'Professional';
+        $landingPageSlug = 'professional';
         $offerPrice = 49.00;
         $discountedPrice = 49.00;
         $trialDays = 7;
+
         try {
-            $stmtOff = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ? LIMIT 1");
-            $stmtOff->execute([$offerId]);
+            $stmtOff = $db->prepare("
+                SELECT * FROM affiliate_offers 
+                WHERE id = ? OR landing_page_slug = ? OR package_id = ? OR LOWER(title) LIKE LOWER(?)
+                LIMIT 1
+            ");
+            $stmtOff->execute([$rawOfferParam, $rawOfferParam, $rawOfferParam, '%' . $rawOfferParam . '%']);
             $offRow = $stmtOff->fetch(PDO::FETCH_ASSOC);
             if (!$offRow) {
                 $stmtOff2 = $db->query("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC LIMIT 1");
@@ -4444,6 +4989,7 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
                 $offerId = $offRow['id'];
                 $packageId = $offRow['package_id'] ?? 'plan_pro';
                 $packageName = $offRow['package_name'] ?? 'Professional';
+                $landingPageSlug = !empty($offRow['landing_page_slug']) ? $offRow['landing_page_slug'] : 'professional';
                 $offerPrice = (float)($offRow['price'] ?? 49.00);
                 $discountedPrice = (float)($offRow['discounted_price'] ?? $offerPrice);
                 $trialDays = (int)($offRow['trial_days'] ?? 7);
@@ -4457,12 +5003,16 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
                     click_id, affiliate_id, affiliate_link_id, offer_id, package_id,
                     ip_address, user_agent, referrer, landing_url,
                     sub_id1, sub_id2, sub_id3, sub_id4, sub_id5,
-                    device, browser, os, country, created_at
+                    device, browser, os, processor, country, city,
+                    utm_source, utm_campaign, utm_medium, fingerprint_hash,
+                    is_fraud, fraud_reason, created_at
                 ) VALUES (
                     ?, ?, ?, ?, ?,
                     ?, ?, ?, ?,
                     ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, CURRENT_TIMESTAMP
+                    ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, CURRENT_TIMESTAMP
                 )
             ");
 
@@ -4484,10 +5034,17 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
                 $device,
                 $browser,
                 $os,
-                $country
+                $processor,
+                $country,
+                $city,
+                $utmSource ?: null,
+                $utmCampaign ?: null,
+                $utmMedium ?: null,
+                $fingerprintHash,
+                $isFraud,
+                $fraudReason
             ]);
         } catch (Throwable $e) {
-            // Fallback minimal insert if any newer columns are not yet loaded
             try {
                 $stmtInsertMin = $db->prepare("
                     INSERT INTO affiliate_clicks (
@@ -4500,14 +5057,16 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
             } catch (Throwable $e2) {}
         }
 
-        // Increment offer total_clicks and link clicks
-        try {
-            $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$offerId]);
-        } catch (Throwable $e) {}
-        if (!empty($linkId)) {
+        // Increment offer total_clicks and link clicks (only if not fraud)
+        if (!$isFraud) {
             try {
-                $db->prepare("UPDATE affiliate_tracking_links SET clicks = clicks + 1 WHERE id = ?")->execute([$linkId]);
+                $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$offerId]);
             } catch (Throwable $e) {}
+            if (!empty($linkId)) {
+                try {
+                    $db->prepare("UPDATE affiliate_tracking_links SET clicks = clicks + 1 WHERE id = ?")->execute([$linkId]);
+                } catch (Throwable $e) {}
+            }
         }
 
         // 6. Set 30-Day Attribution Cookies
@@ -4516,7 +5075,7 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
         @setcookie('ref', $refCode, $cookieDuration, '/', '', false, false);
         @setcookie('click_id', $clickId, $cookieDuration, '/', '', false, false);
         @setcookie('offer_id', $offerId, $cookieDuration, '/', '', false, false);
-        @setcookie('package_id', $packageId, $cookieDuration, '/', '', false, false);
+        @setcookie('landing_page_slug', $landingPageSlug, $cookieDuration, '/', '', false, false);
         @setcookie('selected_plan', $packageId, $cookieDuration, '/', '', false, false);
         if (!empty($linkId)) @setcookie('link_id', $linkId, $cookieDuration, '/', '', false, false);
         if (!empty($subId1)) @setcookie('sub_id1', $subId1, $cookieDuration, '/', '', false, false);
@@ -4524,21 +5083,40 @@ function captureAndRecordAffiliateClick(?PDO $db = null): ?array {
 
         return [
             'success' => true,
-            'affId' => $affId,
-            'refCode' => $refCode,
+            'click_id' => $clickId,
             'clickId' => $clickId,
-            'offerId' => $offerId,
-            'packageId' => $packageId,
-            'packageName' => $packageName,
-            'price' => $offerPrice,
-            'discountedPrice' => $discountedPrice,
-            'trialDays' => $trialDays,
-            'linkId' => $linkId,
+            'affiliate_id' => $affId,
+            'affId' => $affId,
+            'referral_code' => $refCode,
+            'refCode' => $refCode,
+            'user_id' => $userId,
             'userId' => $userId,
-            'landingUrl' => $fullLandingUrl,
+            'offer_id' => $offerId,
+            'offerId' => $offerId,
+            'package_id' => $packageId,
+            'packageId' => $packageId,
+            'package_name' => $packageName,
+            'packageName' => $packageName,
+            'landing_page_slug' => $landingPageSlug,
+            'landingPageSlug' => $landingPageSlug,
+            'price' => $offerPrice,
+            'discounted_price' => $discountedPrice,
+            'discountedPrice' => $discountedPrice,
+            'trial_days' => $trialDays,
+            'trialDays' => $trialDays,
+            'ip' => $ipAddress,
             'device' => $device,
             'browser' => $browser,
-            'os' => $os
+            'os' => $os,
+            'processor' => $processor,
+            'country' => $country,
+            'utm_source' => $utmSource,
+            'utm_campaign' => $utmCampaign,
+            'utm_medium' => $utmMedium,
+            'sub_id1' => $subId1,
+            'sub_id2' => $subId2,
+            'is_fraud' => $isFraud,
+            'fraud_reason' => $fraudReason
         ];
     } catch (Throwable $e) {
         error_log('[Affiliate Click Tracking Error] ' . $e->getMessage());

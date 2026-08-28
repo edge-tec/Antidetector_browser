@@ -56,6 +56,17 @@ if ($requestUri === '/oauth/google' || $requestUri === '/oauth-bridge' || $reque
     require_once __DIR__ . '/oauth-bridge.php';
     exit();
 }
+if (preg_match('#^/offer(?:/([^/?]+))?#i', $requestUri, $matches)) {
+    if (!empty($matches[1])) {
+        $_GET['slug'] = trim($matches[1]);
+    }
+    require_once __DIR__ . '/offer.php';
+    exit();
+}
+if ($requestUri === '/track' || strpos($requestUri, '/track/') === 0 || strpos($requestUri, '/r/') === 0) {
+    require_once __DIR__ . '/api/track.php';
+    exit();
+}
 
 // ── 0.1 Direct Application Download Endpoints ──
 if (strpos($requestUri, '/download/') === 0 || $requestUri === '/download') {

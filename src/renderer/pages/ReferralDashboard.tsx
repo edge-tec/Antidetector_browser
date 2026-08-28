@@ -187,6 +187,11 @@ export const ReferralDashboard: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false)
   const [selectedOfferForLink, setSelectedOfferForLink] = useState<string>('offer_main_saas')
   const [customSubId, setCustomSubId] = useState<string>('')
+  const [customSubId2, setCustomSubId2] = useState<string>('')
+  const [customBilling, setCustomBilling] = useState<'month' | 'year'>('month')
+  const [utmSource, setUtmSource] = useState<string>('')
+  const [utmCampaign, setUtmCampaign] = useState<string>('')
+  const [utmMedium, setUtmMedium] = useState<string>('')
   const [generatedTrackingUrl, setGeneratedTrackingUrl] = useState<string>('')
   const [copiedCustomLink, setCopiedCustomLink] = useState(false)
 
@@ -350,6 +355,11 @@ export const ReferralDashboard: React.FC = () => {
     try {
       const customParams: Record<string, string> = {}
       if (customSubId.trim()) customParams.sub_id1 = customSubId.trim()
+      if (customSubId2.trim()) customParams.sub_id2 = customSubId2.trim()
+      if (customBilling) customParams.billing = customBilling
+      if (utmSource.trim()) customParams.utm_source = utmSource.trim()
+      if (utmCampaign.trim()) customParams.utm_campaign = utmCampaign.trim()
+      if (utmMedium.trim()) customParams.utm_medium = utmMedium.trim()
 
       if ((window as any).api?.affiliateGenerateTrackingLink) {
         const res = await (window as any).api.affiliateGenerateTrackingLink(uid, targetOfferId, customParams)
@@ -363,8 +373,18 @@ export const ReferralDashboard: React.FC = () => {
       // Standalone / fallback local link generation
       const affId = activeSummary?.affiliateId || (currentUser?.id ? `AFF-${currentUser.id.slice(0, 6).toUpperCase()}` : 'AFF-1001')
       const domain = 'https://antiprofiles.com'
-      let fallbackUrl = `${domain}/track?aff_id=${encodeURIComponent(affId)}&offer_id=${encodeURIComponent(targetOfferId)}`
-      if (customSubId.trim()) fallbackUrl += `&sub_id1=${encodeURIComponent(customSubId.trim())}`
+      const params = new URLSearchParams({
+        aff_id: affId,
+        offer_id: targetOfferId
+      })
+      if (customBilling && customBilling !== 'month') params.set('billing', customBilling)
+      if (customSubId.trim()) params.set('sub_id1', customSubId.trim())
+      if (customSubId2.trim()) params.set('sub_id2', customSubId2.trim())
+      if (utmSource.trim()) params.set('utm_source', utmSource.trim())
+      if (utmCampaign.trim()) params.set('utm_campaign', utmCampaign.trim())
+      if (utmMedium.trim()) params.set('utm_medium', utmMedium.trim())
+
+      const fallbackUrl = `${domain}/track?${params.toString()}`
       setGeneratedTrackingUrl(fallbackUrl)
       showToast('success', 'CPA Tracking Link generated successfully!')
     } catch (err: any) {
@@ -750,9 +770,9 @@ export const ReferralDashboard: React.FC = () => {
             <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#94A3B8' }}>
               Select a CPA offer to generate your unique tracking URL with custom SubID tracking tags.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SELECT CPA CAMPAIGN</label>
+                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SELECT CPA CAMPAIGN / OFFER</label>
                 <select
                   value={selectedOfferForLink}
                   onChange={e => {
@@ -776,14 +796,56 @@ export const ReferralDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>CUSTOM SUBID1 (OPTIONAL)</label>
-                <input
-                  placeholder="e.g. facebook_ads, telegram_group"
-                  value={customSubId}
+                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>BILLING CYCLE</label>
+                <select
+                  value={customBilling}
                   onChange={e => {
-                    setCustomSubId(e.target.value)
+                    const b = e.target.value as 'month' | 'year'
+                    setCustomBilling(b)
                   }}
-                  onBlur={() => handleGenerateLink(selectedOfferForLink)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                >
+                  <option value="month">Monthly Subscription</option>
+                  <option value="year">Annual Subscription (Save 20%)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SUBID1 (CAMPAIGN / TAG)</label>
+                <input
+                  placeholder="e.g. facebook_ads, telegram"
+                  value={customSubId}
+                  onChange={e => setCustomSubId(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>SUBID2 (CREATIVE / ADSET)</label>
+                <input
+                  placeholder="e.g. video_ad_v2, banner_1"
+                  value={customSubId2}
+                  onChange={e => setCustomSubId2(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>UTM SOURCE</label>
+                <input
+                  placeholder="e.g. google, youtube"
+                  value={utmSource}
+                  onChange={e => setUtmSource(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>UTM CAMPAIGN</label>
+                <input
+                  placeholder="e.g. summer_scale, q3_promo"
+                  value={utmCampaign}
+                  onChange={e => setUtmCampaign(e.target.value)}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                 />
               </div>

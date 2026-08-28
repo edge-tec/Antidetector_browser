@@ -72,6 +72,9 @@ if (empty($targetPlan)) {
     }
 }
 
+$landingPageSlug = $trackResult['landing_page_slug'] ?? ($offer['landing_page_slug'] ?? 'professional');
+$targetUrl = "$baseOrigin/offer/{$landingPageSlug}";
+
 // 30-Day Cookies for Client Attribution
 $cookieDuration = time() + (86400 * 30);
 if (!empty($affId)) {
@@ -81,6 +84,7 @@ if (!empty($affId)) {
 @setcookie('click_id', $clickId, $cookieDuration, '/', '', false, false);
 @setcookie('offer_id', $resolvedOfferId, $cookieDuration, '/', '', false, false);
 @setcookie('package_id', $targetPlan, $cookieDuration, '/', '', false, false);
+@setcookie('landing_page_slug', $landingPageSlug, $cookieDuration, '/', '', false, false);
 @setcookie('selected_plan', $targetPlan, $cookieDuration, '/', '', false, false);
 
 // Preserve all parameters in destination redirect
@@ -98,18 +102,41 @@ $query['click_id'] = $clickId;
 $query['offer'] = $resolvedOfferId;
 $query['offer_id'] = $resolvedOfferId;
 $query['plan'] = $targetPlan;
-if (!empty($subId1)) $query['sub_id1'] = $subId1;
-if (!empty($subId2)) $query['sub_id2'] = $subId2;
+$query['package'] = $targetPlan;
+
+if (!empty($_GET['billing'])) $query['billing'] = trim($_GET['billing']);
+if (!empty($_GET['sub_id1']) || !empty($_GET['subid1'])) $query['subid1'] = trim($_GET['sub_id1'] ?? $_GET['subid1']);
+if (!empty($_GET['sub_id2']) || !empty($_GET['subid2'])) $query['subid2'] = trim($_GET['sub_id2'] ?? $_GET['subid2']);
+if (!empty($_GET['sub_id3']) || !empty($_GET['subid3'])) $query['subid3'] = trim($_GET['sub_id3'] ?? $_GET['subid3']);
+if (!empty($_GET['utm_source'])) $query['utm_source'] = trim($_GET['utm_source']);
+if (!empty($_GET['utm_campaign'])) $query['utm_campaign'] = trim($_GET['utm_campaign']);
+if (!empty($_GET['utm_medium'])) $query['utm_medium'] = trim($_GET['utm_medium']);
 
 $destScheme = isset($parsed['scheme']) ? $parsed['scheme'] . '://' : 'https://';
 $destHost   = isset($parsed['host']) ? $parsed['host'] : $host;
 $destPort   = isset($parsed['port']) ? ':' . $parsed['port'] : '';
-$destPath   = isset($parsed['path']) ? $parsed['path'] : '/signup';
+$destPath   = isset($parsed['path']) ? $parsed['path'] : "/offer/{$landingPageSlug}";
 $newQuery   = '?' . http_build_query($query);
 $fragment   = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
 
 $finalDestination = "$destScheme$destHost$destPort$destPath$newQuery$fragment";
 
-// 302 Redirect to package-specific signup
+// Handle JSON request
+if (isset($_GET['format']) && $_GET['format'] === 'json') {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'click_id' => $clickId,
+        'aff_id' => $affId,
+        'offer_id' => $resolvedOfferId,
+        'package_id' => $targetPlan,
+        'landing_page_slug' => $landingPageSlug,
+        'redirect_url' => $finalDestination,
+        'tracking_data' => $trackResult
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+// 302 Redirect to package-specific dynamic landing page
 header("Location: $finalDestination", true, 302);
 exit();

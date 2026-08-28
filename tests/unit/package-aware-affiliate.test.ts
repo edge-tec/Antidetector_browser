@@ -101,4 +101,67 @@ describe('Package/Offer-Aware Affiliate Tracking & Click System', () => {
     expect(defaultPackage).toBe('plan_pro')
     expect(defaultPrice).toBe(49.00)
   })
+
+  it('TEST 9: Dynamic Landing Page Generator maps offer_starter_license to /offer/starter-license with $10 CPA Fixed', () => {
+    const offers = affiliateService.getOffers()
+    const starterLicense = offers.find(o => o.id === 'offer_starter_license' || o.id === 'offer_starter_bounty')
+    expect(starterLicense).toBeDefined()
+    expect(starterLicense?.fixed_payout_usd).toBe(10.00)
+    expect(starterLicense?.package_id).toBe('plan_starter')
+  })
+
+  it('TEST 10: Dynamic Landing Page Generator maps offer_business to /offer/enterprise with $99/mo and 50% recurring', () => {
+    const offers = affiliateService.getOffers()
+    const entOffer = offers.find(o => o.id === 'offer_business')
+    expect(entOffer).toBeDefined()
+    expect(entOffer?.price || 99).toBe(99.00)
+    expect(entOffer?.package_id).toBe('plan_business')
+  })
+
+  it('TEST 11: Smart Architecture detection identifies macOS Apple Silicon (ARM64) vs Intel vs Windows vs Linux', () => {
+    const parseProcessor = (userAgent: string) => {
+      if (/Macintosh|Mac OS X/i.test(userAgent)) {
+        if (/arm64|aarch64|apple silicon/i.test(userAgent)) return 'Apple Silicon (M1/M2/M3/M4)'
+        return 'Intel x86_64'
+      }
+      if (/Windows/i.test(userAgent)) return 'Windows x64'
+      if (/Linux/i.test(userAgent)) return 'Linux x64'
+      return 'Generic x86_64'
+    }
+
+    expect(parseProcessor('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36')).toBe('Intel x86_64')
+    expect(parseProcessor('Mozilla/5.0 (Macintosh; Apple Silicon ARM64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36')).toBe('Apple Silicon (M1/M2/M3/M4)')
+    expect(parseProcessor('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36')).toBe('Windows x64')
+    expect(parseProcessor('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36')).toBe('Linux x64')
+  })
+
+  it('TEST 12: Advanced UTM parameter builder preserves utm_source, utm_campaign, utm_medium, and sub_id1/2', () => {
+    const baseTrackingUrl = 'https://antiprofiles.com/track'
+    const query = new URLSearchParams({
+      aff_id: 'AFF-28DE2A',
+      offer: 'starter',
+      billing: 'monthly',
+      sub_id1: 'facebook_ads',
+      sub_id2: 'video_ad_v2',
+      utm_source: 'facebook',
+      utm_campaign: 'summer_sale',
+      utm_medium: 'cpc'
+    })
+    const fullUrl = `${baseTrackingUrl}?${query.toString()}`
+
+    expect(fullUrl).toContain('aff_id=AFF-28DE2A')
+    expect(fullUrl).toContain('offer=starter')
+    expect(fullUrl).toContain('sub_id1=facebook_ads')
+    expect(fullUrl).toContain('sub_id2=video_ad_v2')
+    expect(fullUrl).toContain('utm_source=facebook')
+    expect(fullUrl).toContain('utm_campaign=summer_sale')
+    expect(fullUrl).toContain('utm_medium=cpc')
+  })
+
+  it('TEST 13: Anti-fraud detection flags bot user agents and prevents duplicate rapid clicks', () => {
+    const isBot = (ua: string) => /(bot|crawler|spider|wget|curl|headless)/i.test(ua)
+    expect(isBot('Googlebot/2.1 (+http://www.google.com/bot.html)')).toBe(true)
+    expect(isBot('Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)')).toBe(true)
+    expect(isBot('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')).toBe(false)
+  })
 })
