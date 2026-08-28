@@ -56,11 +56,14 @@ dmg:
 # ── Windows Packaging ──
 win:
   icon: resources/icon.ico
+  publisherName: "AntiProfiles Inc."
+  legalTrademarks: "AntiProfiles™"
   target:
     - target: nsis
       arch:
         - x64
   artifactName: 'AntiProfiles-Windows-x64.${ext}'
+  requestedExecutionLevel: asInvoker
 
 nsis:
   oneClick: false
@@ -70,6 +73,8 @@ nsis:
   shortcutName: AntiProfiles
   uninstallDisplayName: AntiProfiles Anti-Detect Browser
   runAfterFinish: true
+  warningsAsErrors: false
+  perMachine: false
 
 npmRebuild: true
 
