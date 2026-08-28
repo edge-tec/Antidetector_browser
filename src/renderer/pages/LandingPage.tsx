@@ -663,8 +663,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           </span>
         </div>
 
-        {/* 3 Production Target Download Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+        {/* 4 Production Target Download Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px', marginBottom: '32px' }}>
           {/* Target 1: Windows x64 */}
           <div style={{
             backgroundColor: '#161622',
@@ -675,27 +675,31 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
             textAlign: 'left',
             display: 'flex',
             flexDirection: 'column',
-            justify: 'space-between'
+            justifyContent: 'space-between',
+            boxShadow: detectedTarget === 'windows-x64' ? `0 8px 30px ${accentColor}25` : undefined
           }}>
             {detectedTarget === 'windows-x64' && (
-              <div style={{ position: 'absolute', top: '-12px', right: '16px', backgroundColor: accentColor, color: '#0F0F17', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px' }}>
+              <div style={{ position: 'absolute', top: '-12px', right: '16px', background: 'linear-gradient(135deg, #2DD4BF, #06B6D4)', color: '#0F0F17', fontSize: '10px', fontWeight: 900, padding: '3px 10px', borderRadius: '12px', letterSpacing: '0.5px', boxShadow: '0 4px 12px rgba(45,212,191,0.4)' }}>
                 RECOMMENDED FOR YOUR PC
               </div>
             )}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '28px' }}>🪟</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9', fontWeight: 700 }}>Download for Windows</h3>
-                  <span style={{ fontSize: '12px', color: '#60A5FA', fontWeight: 600 }}>64-bit Architecture (x64)</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '12px', backgroundColor: 'rgba(0, 120, 212, 0.12)', border: '1px solid rgba(0, 120, 212, 0.25)' }}>
+                  <svg width="24" height="24" viewBox="0 0 88 88" fill="none">
+                    <path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/>
+                  </svg>
                 </div>
+                <span style={{ fontSize: '10px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.3)', padding: '2px 8px', borderRadius: '8px', fontWeight: 800 }}>WINDOWS</span>
               </div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '17px', color: '#F1F5F9', fontWeight: 700 }}>Windows Client</h3>
+              <div style={{ fontSize: '12px', color: '#2DD4BF', fontWeight: 600, marginBottom: '8px' }}>v{appReleases?.win_app_version || '2.0.0'} (64-bit Architecture)</div>
               <p style={{ fontSize: '12px', color: '#94A3B8', margin: '0 0 16px', lineHeight: 1.5 }}>
-                NSIS Setup Installer for Windows 10 and 11. Includes automatic shortcuts and silent installer options.
+                Native installer for Windows 10 & 11 with automatic desktop shortcuts and HW acceleration.
               </p>
             </div>
             <a
-              href={appReleases?.win_download_url || 'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe'}
+              href={appReleases?.win_download_url || '/api/releases?download=1&platform=windows-x64'}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -703,67 +707,19 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                 borderRadius: '10px',
                 backgroundColor: detectedTarget === 'windows-x64' ? accentColor : '#1C1C28',
                 color: detectedTarget === 'windows-x64' ? '#0F0F17' : '#F1F5F9',
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: '13px',
                 textAlign: 'center',
                 textDecoration: 'none',
-                border: '1px solid #2C2C3E'
+                border: detectedTarget === 'windows-x64' ? 'none' : '1px solid #2C2C3E',
+                boxShadow: detectedTarget === 'windows-x64' ? `0 4px 14px ${accentColor}40` : undefined
               }}
             >
               Download Windows .exe (v{appReleases?.win_app_version || '2.0.0'})
             </a>
           </div>
 
-          {/* Target 2: macOS Intel x64 */}
-          <div style={{
-            backgroundColor: '#161622',
-            border: detectedTarget === 'macos-x64' ? `2px solid ${accentColor}` : '1px solid #2C2C3E',
-            borderRadius: '16px',
-            padding: '24px',
-            position: 'relative',
-            textAlign: 'left',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between'
-          }}>
-            {detectedTarget === 'macos-x64' && (
-              <div style={{ position: 'absolute', top: '-12px', right: '16px', backgroundColor: accentColor, color: '#0F0F17', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px' }}>
-                RECOMMENDED FOR YOUR MAC
-              </div>
-            )}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '28px' }}>🍏</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9', fontWeight: 700 }}>Download for Mac — Intel</h3>
-                  <span style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Intel Processor (x86_64)</span>
-                </div>
-              </div>
-              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '0 0 16px', lineHeight: 1.5 }}>
-                Native macOS DMG package built for Intel Core i5/i7/i9 Mac computers manufactured before late 2020.
-              </p>
-            </div>
-            <a
-              href={appReleases?.mac_intel_download_url || appReleases?.mac_download_url || 'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg'}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                padding: '12px 20px',
-                borderRadius: '10px',
-                backgroundColor: detectedTarget === 'macos-x64' ? accentColor : '#1C1C28',
-                color: detectedTarget === 'macos-x64' ? '#0F0F17' : '#F1F5F9',
-                fontWeight: 700,
-                fontSize: '13px',
-                textAlign: 'center',
-                textDecoration: 'none',
-                border: '1px solid #2C2C3E'
-              }}
-            >
-              Download macOS Intel .dmg (v{appReleases?.mac_intel_app_version || appReleases?.mac_app_version || '2.0.0'})
-            </a>
-          </div>
-
-          {/* Target 3: macOS Apple Silicon arm64 */}
+          {/* Target 2: macOS Apple Silicon arm64 */}
           <div style={{
             backgroundColor: '#161622',
             border: detectedTarget === 'macos-arm64' ? `2px solid ${accentColor}` : '1px solid #2C2C3E',
@@ -773,27 +729,31 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
             textAlign: 'left',
             display: 'flex',
             flexDirection: 'column',
-            justify: 'space-between'
+            justifyContent: 'space-between',
+            boxShadow: detectedTarget === 'macos-arm64' ? `0 8px 30px ${accentColor}25` : undefined
           }}>
             {detectedTarget === 'macos-arm64' && (
-              <div style={{ position: 'absolute', top: '-12px', right: '16px', backgroundColor: accentColor, color: '#0F0F17', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px' }}>
+              <div style={{ position: 'absolute', top: '-12px', right: '16px', background: 'linear-gradient(135deg, #2DD4BF, #06B6D4)', color: '#0F0F17', fontSize: '10px', fontWeight: 900, padding: '3px 10px', borderRadius: '12px', letterSpacing: '0.5px', boxShadow: '0 4px 12px rgba(45,212,191,0.4)' }}>
                 RECOMMENDED FOR YOUR MAC
               </div>
             )}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '28px' }}>⚡</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: '#F1F5F9', fontWeight: 700 }}>Download for Mac — Apple Silicon</h3>
-                  <span style={{ fontSize: '12px', color: '#F59E0B', fontWeight: 600 }}>M1 / M2 / M3 / M4 (arm64)</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                  <svg width="22" height="22" viewBox="0 0 170 170" fill="none">
+                    <path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/>
+                  </svg>
                 </div>
+                <span style={{ fontSize: '10px', backgroundColor: 'rgba(45,212,191,0.15)', color: '#2DD4BF', border: '1px solid rgba(45,212,191,0.3)', padding: '2px 8px', borderRadius: '8px', fontWeight: 800 }}>APPLE SILICON</span>
               </div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '17px', color: '#F1F5F9', fontWeight: 700 }}>macOS Silicon</h3>
+              <div style={{ fontSize: '12px', color: '#2DD4BF', fontWeight: 600, marginBottom: '8px' }}>v{appReleases?.mac_arm_app_version || '2.0.0'} (M1 / M2 / M3 / M4)</div>
               <p style={{ fontSize: '12px', color: '#94A3B8', margin: '0 0 16px', lineHeight: 1.5 }}>
                 Native ARM64 build engineered specifically for Apple Silicon M-series processors for maximum speed.
               </p>
             </div>
             <a
-              href={appReleases?.mac_arm_download_url || appReleases?.mac_download_url || 'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg'}
+              href={appReleases?.mac_arm_download_url || '/api/releases?download=1&platform=macos-arm64'}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -801,14 +761,123 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                 borderRadius: '10px',
                 backgroundColor: detectedTarget === 'macos-arm64' ? accentColor : '#1C1C28',
                 color: detectedTarget === 'macos-arm64' ? '#0F0F17' : '#F1F5F9',
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: '13px',
                 textAlign: 'center',
                 textDecoration: 'none',
-                border: '1px solid #2C2C3E'
+                border: detectedTarget === 'macos-arm64' ? 'none' : '1px solid #2C2C3E',
+                boxShadow: detectedTarget === 'macos-arm64' ? `0 4px 14px ${accentColor}40` : undefined
               }}
             >
-              Download Apple Silicon .dmg (v{appReleases?.mac_arm_app_version || appReleases?.mac_app_version || '2.0.0'})
+              Download Apple Silicon .dmg (v{appReleases?.mac_arm_app_version || '2.0.0'})
+            </a>
+          </div>
+
+          {/* Target 3: macOS Intel x64 */}
+          <div style={{
+            backgroundColor: '#161622',
+            border: detectedTarget === 'macos-x64' ? `2px solid ${accentColor}` : '1px solid #2C2C3E',
+            borderRadius: '16px',
+            padding: '24px',
+            position: 'relative',
+            textAlign: 'left',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: detectedTarget === 'macos-x64' ? `0 8px 30px ${accentColor}25` : undefined
+          }}>
+            {detectedTarget === 'macos-x64' && (
+              <div style={{ position: 'absolute', top: '-12px', right: '16px', background: 'linear-gradient(135deg, #2DD4BF, #06B6D4)', color: '#0F0F17', fontSize: '10px', fontWeight: 900, padding: '3px 10px', borderRadius: '12px', letterSpacing: '0.5px', boxShadow: '0 4px 12px rgba(45,212,191,0.4)' }}>
+                RECOMMENDED FOR YOUR MAC
+              </div>
+            )}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                  <svg width="22" height="22" viewBox="0 0 170 170" fill="none">
+                    <path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/>
+                  </svg>
+                </div>
+                <span style={{ fontSize: '10px', backgroundColor: 'rgba(148,163,184,0.15)', color: '#94A3B8', border: '1px solid rgba(148,163,184,0.3)', padding: '2px 8px', borderRadius: '8px', fontWeight: 800 }}>MACOS INTEL</span>
+              </div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '17px', color: '#F1F5F9', fontWeight: 700 }}>macOS Intel</h3>
+              <div style={{ fontSize: '12px', color: '#2DD4BF', fontWeight: 600, marginBottom: '8px' }}>v{appReleases?.mac_intel_app_version || '2.0.0'} (Intel Processors)</div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '0 0 16px', lineHeight: 1.5 }}>
+                Native macOS DMG package built for Intel Core i5/i7/i9 Mac computers manufactured before late 2020.
+              </p>
+            </div>
+            <a
+              href={appReleases?.mac_intel_download_url || '/api/releases?download=1&platform=macos-x64'}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                padding: '12px 20px',
+                borderRadius: '10px',
+                backgroundColor: detectedTarget === 'macos-x64' ? accentColor : '#1C1C28',
+                color: detectedTarget === 'macos-x64' ? '#0F0F17' : '#F1F5F9',
+                fontWeight: 800,
+                fontSize: '13px',
+                textAlign: 'center',
+                textDecoration: 'none',
+                border: detectedTarget === 'macos-x64' ? 'none' : '1px solid #2C2C3E',
+                boxShadow: detectedTarget === 'macos-x64' ? `0 4px 14px ${accentColor}40` : undefined
+              }}
+            >
+              Download macOS Intel .dmg (v{appReleases?.mac_intel_app_version || '2.0.0'})
+            </a>
+          </div>
+
+          {/* Target 4: Linux x64 */}
+          <div style={{
+            backgroundColor: '#161622',
+            border: detectedTarget === 'linux-x64' ? `2px solid ${accentColor}` : '1px solid #2C2C3E',
+            borderRadius: '16px',
+            padding: '24px',
+            position: 'relative',
+            textAlign: 'left',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: detectedTarget === 'linux-x64' ? `0 8px 30px ${accentColor}25` : undefined
+          }}>
+            {detectedTarget === 'linux-x64' && (
+              <div style={{ position: 'absolute', top: '-12px', right: '16px', background: 'linear-gradient(135deg, #2DD4BF, #06B6D4)', color: '#0F0F17', fontSize: '10px', fontWeight: 900, padding: '3px 10px', borderRadius: '12px', letterSpacing: '0.5px', boxShadow: '0 4px 12px rgba(45,212,191,0.4)' }}>
+                RECOMMENDED FOR YOUR LINUX
+              </div>
+            )}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '12px', backgroundColor: 'rgba(250, 204, 21, 0.12)', border: '1px solid rgba(250, 204, 21, 0.25)' }}>
+                  <svg width="22" height="22" viewBox="0 0 448 512" fill="none">
+                    <path d="M220.8 123.3c1 .5 1.8 1.7 3 1.7 1.1 0 2.8-.4 2.9-1.5.2-1.4-1.9-2.3-3.2-2.9-1.3-.7-2.9-1-4.3-.7-1.7.3-3.3 1.3-4.5 2.5-1.2 1.2-2.2 2.7-2.8 4.3-.6 1.6-.6 3.4-.2 5 .4 1.7 1.4 3.1 2.8 4.1 1.4 1 3.2 1.5 5 1.4 1.7-.1 3.4-.8 4.7-1.9 1.3-1.1 2.2-2.6 2.5-4.3.3-1.7-.1-3.4-1-4.9-.9-1.4-2.3-2.5-3.9-3-1.6-.4-3.3-.3-4.8.4zm-20.2 133.7c-5.8 4.2-12.8 6.5-20 6.5s-14.2-2.3-20-6.5c-4.4-3.2-8-7.3-10.7-12-3.4 10.6-4.5 22-3.1 33.1 2.3 18.2 10.3 35.1 23 48 12.8 12.8 29.7 20.8 48 23 11.1 1.4 22.5.3 33.1-3.1-4.7-2.7-8.8-6.3-12-10.7-4.2-5.8-6.5-12.8-6.5-20s2.3-14.2 6.5-20c2.7-3.7 6-6.8 9.8-9.2-8.5-17.7-21.9-32.3-38.4-42.1-3.1 5.3-5.7 11-7.7 17-2.1-6-4.7-11.7-7.7-17-16.5 9.8-29.9 24.4-38.4 42.1 3.8 2.4 7.1 5.5 9.8 9.2zm148.9-80.1C336.7 82.2 284.1 0 224 0S111.3 82.2 98.5 176.9c-27.4 18.7-44.5 49.3-46.5 82.6-.9 14.5 2.1 29 8.6 42 6.5 13 16.3 23.8 28.3 31.2 2.6 47.9 21.6 93.6 54 128.5 32.4 34.9 76.9 55.4 123.6 57.8 23.3 1.2 46.8-2.6 68.7-11.1 21.9-8.5 41.7-21.6 58-38.3 16.3-16.7 28.6-36.8 36.1-59 7.5-22.1 10.3-45.7 8.3-69 12-7.4 21.8-18.2 28.3-31.2 6.5-13 9.5-27.5 8.6-42-2-33.3-19.1-63.9-46.5-82.6z" fill="#FACC15"/>
+                  </svg>
+                </div>
+                <span style={{ fontSize: '10px', backgroundColor: 'rgba(234,179,8,0.15)', color: '#FACC15', border: '1px solid rgba(234,179,8,0.3)', padding: '2px 8px', borderRadius: '8px', fontWeight: 800 }}>LINUX</span>
+              </div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '17px', color: '#F1F5F9', fontWeight: 700 }}>Linux Client</h3>
+              <div style={{ fontSize: '12px', color: '#2DD4BF', fontWeight: 600, marginBottom: '8px' }}>v{appReleases?.linux_app_version || '2.0.0'} (AppImage & .deb)</div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '0 0 16px', lineHeight: 1.5 }}>
+                Standalone binary package for Ubuntu, Debian, Fedora, Arch & openSUSE distributions.
+              </p>
+            </div>
+            <a
+              href={appReleases?.linux_download_url || '/api/releases?download=1&platform=linux-x64'}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                padding: '12px 20px',
+                borderRadius: '10px',
+                backgroundColor: detectedTarget === 'linux-x64' ? accentColor : '#1C1C28',
+                color: detectedTarget === 'linux-x64' ? '#0F0F17' : '#F1F5F9',
+                fontWeight: 800,
+                fontSize: '13px',
+                textAlign: 'center',
+                textDecoration: 'none',
+                border: detectedTarget === 'linux-x64' ? 'none' : '1px solid #2C2C3E',
+                boxShadow: detectedTarget === 'linux-x64' ? `0 4px 14px ${accentColor}40` : undefined
+              }}
+            >
+              Download Linux .AppImage (v{appReleases?.linux_app_version || '2.0.0'})
             </a>
           </div>
         </div>
