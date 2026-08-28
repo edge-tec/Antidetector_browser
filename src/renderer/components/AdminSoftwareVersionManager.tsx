@@ -73,6 +73,17 @@ export const AdminSoftwareVersionManager: React.FC = () => {
     loadVersions()
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (isCreating || editingVersion)) {
+        setEditingVersion(null)
+        setIsCreating(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isCreating, editingVersion])
+
   const handleSave = async (publishImmediately = false) => {
     if (!editingVersion?.version?.trim()) {
       showToast('error', 'Please specify a version number (e.g. 2.5.0)')
@@ -265,6 +276,12 @@ export const AdminSoftwareVersionManager: React.FC = () => {
       {/* Release Editor Modal */}
       {(isCreating || editingVersion) && (
         <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setEditingVersion(null)
+              setIsCreating(false)
+            }
+          }}
           style={{
             position: 'fixed',
             top: 0,
@@ -273,7 +290,7 @@ export const AdminSoftwareVersionManager: React.FC = () => {
             bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.75)',
             backdropFilter: 'blur(6px)',
-            zIndex: 9999,
+            zIndex: 99999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -281,6 +298,7 @@ export const AdminSoftwareVersionManager: React.FC = () => {
           }}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
               maxWidth: '850px',
@@ -293,7 +311,8 @@ export const AdminSoftwareVersionManager: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               gap: '20px',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.6)'
+              boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+              position: 'relative'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2C2C3E', paddingBottom: '16px' }}>
@@ -302,8 +321,37 @@ export const AdminSoftwareVersionManager: React.FC = () => {
               </h3>
               <button
                 type="button"
-                onClick={() => { setEditingVersion(null); setIsCreating(false) }}
-                style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '20px', cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setEditingVersion(null)
+                  setIsCreating(false)
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px',
+                  color: '#94A3B8',
+                  fontSize: '18px',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  zIndex: 20
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#FFF'
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#94A3B8'
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+                }}
               >
                 ✕
               </button>
