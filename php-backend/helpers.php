@@ -489,7 +489,6 @@ function ensureDatabaseTablesExist() {
         ");
 
         // 13. Account Notifications Table (Prevents duplicate renewal / expiration reminders)
-        $db->exec("
             CREATE TABLE IF NOT EXISTS `account_notifications` (
               `id` VARCHAR(50) NOT NULL PRIMARY KEY,
               `user_id` VARCHAR(36) NOT NULL,
@@ -498,6 +497,19 @@ function ensureDatabaseTablesExist() {
               `sent_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE KEY `idx_user_notif_date` (`user_id`, `notification_type`, `reference_date`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `global_trial_settings` (
+              `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+              `is_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+              `trial_duration_days` INT NOT NULL DEFAULT 7,
+              `default_plan_id` VARCHAR(64) NOT NULL DEFAULT 'plan_starter',
+              `applies_to_packages` VARCHAR(64) NOT NULL DEFAULT 'all',
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            INSERT IGNORE INTO `global_trial_settings` (`id`, `is_enabled`, `trial_duration_days`, `default_plan_id`, `applies_to_packages`)
+            VALUES ('global_trial_config', 1, 7, 'plan_starter', 'all');
         ");
 
         // 14. CPA Affiliate System Tables
@@ -2185,26 +2197,44 @@ function ensureUserFreeSubscription(PDO $db, string $userId, string $role = 'use
             return $sub;
         }
 
-        // Determine plan: Admin gets Pro, regular user gets Free
         $isAdmin = ($role === 'admin' || $role === 'super_admin');
-        $planId = $isAdmin ? 'plan_pro' : 'plan_free';
-
-        // Check if plan_free exists in pricing_plans
-        $planCheck = $db->prepare("SELECT id FROM pricing_plans WHERE id = ? LIMIT 1");
-        $planCheck->execute([$planId]);
-        if (!$planCheck->fetch()) {
-            $planId = 'plan_free';
-        }
-
         $subId = 'sub_' . bin2hex(random_bytes(8));
-        $deviceLimit = $isAdmin ? 10 : 1;
 
-        $insert = $db->prepare("
-            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
-            VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 3, ?)
-            ON DUPLICATE KEY UPDATE status = 'active'
-        ");
-        $insert->execute([$subId, $userId, $planId, $deviceLimit]);
+        if ($isAdmin) {
+            $planId = 'plan_business';
+            $deviceLimit = 10;
+            $insert = $db->prepare("
+                INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
+                VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 3, ?)
+                ON DUPLICATE KEY UPDATE status = 'active'
+            ");
+            $insert->execute([$subId, $userId, $planId, $deviceLimit]);
+        } else {
+            // Check Global Registration Free Trial Policy
+            $trialStmt = $db->query("SELECT * FROM global_trial_settings WHERE id = 'global_trial_config' LIMIT 1");
+            $trialConfig = $trialStmt ? $trialStmt->fetch() : null;
+
+            if ($trialConfig && !empty($trialConfig['is_enabled'])) {
+                $planId = $trialConfig['default_plan_id'] ?? 'plan_starter';
+                $duration = max(1, (int)($trialConfig['trial_duration_days'] ?? 7));
+                $deviceLimit = 2;
+                $insert = $db->prepare("
+                    INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
+                    VALUES (?, ?, ?, 'trial', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL {$duration} DAY), 3, ?)
+                    ON DUPLICATE KEY UPDATE status = 'trial'
+                ");
+                $insert->execute([$subId, $userId, $planId, $deviceLimit]);
+            } else {
+                $planId = 'plan_free';
+                $deviceLimit = 1;
+                $insert = $db->prepare("
+                    INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, device_limit)
+                    VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 YEAR), 3, ?)
+                    ON DUPLICATE KEY UPDATE status = 'active'
+                ");
+                $insert->execute([$subId, $userId, $planId, $deviceLimit]);
+            }
+        }
 
         $stmt->execute([$userId]);
         return $stmt->fetch() ?: [];

@@ -180,13 +180,45 @@ export class SubscriptionRepository {
     if (!sub) {
       // Check user role
       const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId) as any
-      const defaultPlanId = user?.role === 'admin' ? 'plan_pro' : 'plan_free'
+      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
       const subId = `sub_${userId}`
 
-      db.prepare(`
-        INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
-        VALUES (?, ?, ?, 'active', datetime('now'), datetime('now', '+1 year'), 3)
-      `).run(subId, userId, defaultPlanId)
+      if (isAdmin) {
+        db.prepare(`
+          INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
+          VALUES (?, ?, 'plan_business', 'active', datetime('now'), datetime('now', '+5 years'), 3)
+        `).run(subId, userId)
+      } else {
+        // Query Global Trial Policy
+        let isTrialActive = true
+        let trialDays = 7
+        let trialPlanId = 'plan_starter'
+
+        try {
+          const trialRow = db.prepare("SELECT * FROM global_trial_settings WHERE id = 'global_trial_config'").get() as any
+          if (trialRow) {
+            isTrialActive = Boolean(trialRow.is_enabled)
+            trialDays = Math.max(1, Number(trialRow.trial_duration_days) || 7)
+            trialPlanId = trialRow.default_plan_id || 'plan_starter'
+          }
+        } catch {}
+
+        if (isTrialActive) {
+          const startsAt = new Date().toISOString()
+          const expiresAt = new Date(Date.now() + trialDays * 86400000).toISOString()
+          db.prepare(`
+            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
+            VALUES (?, ?, ?, 'trial', ?, ?, 3)
+          `).run(subId, userId, trialPlanId, startsAt, expiresAt)
+        } else {
+          const startsAt = new Date().toISOString()
+          const expiresAt = new Date(Date.now() + 365 * 86400000).toISOString()
+          db.prepare(`
+            INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days)
+            VALUES (?, ?, 'plan_free', 'active', ?, ?, 3)
+          `).run(subId, userId, startsAt, expiresAt)
+        }
+      }
 
       sub = db.prepare('SELECT * FROM subscriptions WHERE user_id = ?').get(userId) as any
     }

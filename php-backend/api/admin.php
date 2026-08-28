@@ -128,6 +128,63 @@ switch ($action) {
         ]);
         break;
 
+    case 'get-global-trial-config':
+        $trialStmt = $db->query("SELECT * FROM global_trial_settings WHERE id = 'global_trial_config' LIMIT 1");
+        $trialConfig = $trialStmt ? $trialStmt->fetch() : null;
+
+        if (!$trialConfig) {
+            $trialConfig = [
+                'id' => 'global_trial_config',
+                'is_enabled' => 1,
+                'trial_duration_days' => 7,
+                'default_plan_id' => 'plan_starter',
+                'applies_to_packages' => 'all'
+            ];
+        }
+
+        respondJson([
+            'success' => true,
+            'data' => [
+                'is_enabled' => (bool)$trialConfig['is_enabled'],
+                'trial_duration_days' => (int)$trialConfig['trial_duration_days'],
+                'default_plan_id' => $trialConfig['default_plan_id'] ?? 'plan_starter',
+                'applies_to_packages' => $trialConfig['applies_to_packages'] ?? 'all'
+            ]
+        ]);
+        break;
+
+    case 'save-global-trial-config':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $isEnabled = !empty($input['is_enabled']) ? 1 : 0;
+        $duration = max(1, (int)($input['trial_duration_days'] ?? 7));
+        $planId = $input['default_plan_id'] ?? 'plan_starter';
+        $appliesTo = $input['applies_to_packages'] ?? 'all';
+
+        $stmt = $db->prepare("
+            INSERT INTO global_trial_settings (id, is_enabled, trial_duration_days, default_plan_id, applies_to_packages, updated_at)
+            VALUES ('global_trial_config', ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON DUPLICATE KEY UPDATE
+                is_enabled = VALUES(is_enabled),
+                trial_duration_days = VALUES(trial_duration_days),
+                default_plan_id = VALUES(default_plan_id),
+                applies_to_packages = VALUES(applies_to_packages),
+                updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([$isEnabled, $duration, $planId, $appliesTo]);
+
+        logAdminAction($admin['id'], $admin['email'], 'SAVE_GLOBAL_TRIAL', 'global_trial_config', "Updated global registration trial policy: is_enabled={$isEnabled}, duration={$duration}d, plan={$planId}");
+
+        respondJson([
+            'success' => true,
+            'data' => [
+                'is_enabled' => (bool)$isEnabled,
+                'trial_duration_days' => $duration,
+                'default_plan_id' => $planId,
+                'applies_to_packages' => $appliesTo
+            ]
+        ]);
+        break;
+
     case 'update-user-role':
     case 'update-role':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;

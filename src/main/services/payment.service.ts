@@ -126,6 +126,19 @@ export class PaymentService {
           created_at      TEXT DEFAULT (datetime('now')),
           updated_at      TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS global_trial_settings (
+          id                  TEXT PRIMARY KEY,
+          is_enabled          INTEGER NOT NULL DEFAULT 1,
+          trial_duration_days INTEGER NOT NULL DEFAULT 7,
+          default_plan_id     TEXT NOT NULL DEFAULT 'plan_starter',
+          applies_to_packages TEXT NOT NULL DEFAULT 'all',
+          created_at          TEXT DEFAULT (datetime('now')),
+          updated_at          TEXT DEFAULT (datetime('now'))
+        );
+
+        INSERT OR IGNORE INTO global_trial_settings (id, is_enabled, trial_duration_days, default_plan_id, applies_to_packages)
+        VALUES ('global_trial_config', 1, 7, 'plan_starter', 'all');
       `)
     } catch {}
   }
@@ -337,6 +350,62 @@ export class PaymentService {
       starts_at: startsAt,
       expires_at: expiresAt
     }
+  }
+
+  // ── Global Automatic Free Trial Policy for All New Users ──
+  public getGlobalTrialConfig(): {
+    is_enabled: boolean
+    trial_duration_days: number
+    default_plan_id: string
+    applies_to_packages: string
+  } {
+    this.ensureTablesExist()
+    const db = getDatabase()
+    try {
+      const row = db.prepare('SELECT * FROM global_trial_settings WHERE id = ?').get('global_trial_config') as any
+      if (row) {
+        return {
+          is_enabled: Boolean(row.is_enabled),
+          trial_duration_days: Number(row.trial_duration_days || 7),
+          default_plan_id: row.default_plan_id || 'plan_starter',
+          applies_to_packages: row.applies_to_packages || 'all'
+        }
+      }
+    } catch {}
+    return {
+      is_enabled: true,
+      trial_duration_days: 7,
+      default_plan_id: 'plan_starter',
+      applies_to_packages: 'all'
+    }
+  }
+
+  public saveGlobalTrialConfig(config: {
+    is_enabled: boolean
+    trial_duration_days: number
+    default_plan_id: string
+    applies_to_packages?: string
+  }): any {
+    this.ensureTablesExist()
+    const db = getDatabase()
+    const isEnabled = config.is_enabled ? 1 : 0
+    const duration = Math.max(1, Number(config.trial_duration_days) || 7)
+    const planId = config.default_plan_id || 'plan_starter'
+    const appliesTo = config.applies_to_packages || 'all'
+
+    db.prepare(`
+      INSERT INTO global_trial_settings (id, is_enabled, trial_duration_days, default_plan_id, applies_to_packages, updated_at)
+      VALUES ('global_trial_config', ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        is_enabled = excluded.is_enabled,
+        trial_duration_days = excluded.trial_duration_days,
+        default_plan_id = excluded.default_plan_id,
+        applies_to_packages = excluded.applies_to_packages,
+        updated_at = datetime('now')
+    `).run(isEnabled, duration, planId, appliesTo)
+
+    logger.info('payment', `[PaymentService] Admin updated Global Registration Trial Policy: is_enabled=${isEnabled}, duration=${duration}d, plan=${planId}, scope=${appliesTo}`)
+    return this.getGlobalTrialConfig()
   }
 
   // ──────────────────────────────────────────────

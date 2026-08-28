@@ -94,7 +94,35 @@ export function registerPaymentIpcHandlers(): void {
     }
   })
 
-  // 7. Client / Public: Get Enabled Gateways for Checkout
+  // 7. Admin: Get Global Free Trial Policy
+  ipcMain.handle('admin:get-global-trial-config', async (_event, sessionToken: string) => {
+    const auth = authorizeUser(sessionToken, { requireAdmin: true })
+    if (auth.error || !auth.user) {
+      return { success: false, error: auth.error || 'Admin access required.' }
+    }
+    try {
+      const data = paymentService.getGlobalTrialConfig()
+      return { success: true, data }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // 8. Admin: Save Global Free Trial Policy
+  ipcMain.handle('admin:save-global-trial-config', async (_event, sessionToken: string, config: any) => {
+    const auth = authorizeUser(sessionToken, { requireAdmin: true })
+    if (auth.error || !auth.user) {
+      return { success: false, error: auth.error || 'Admin access required.' }
+    }
+    try {
+      const data = paymentService.saveGlobalTrialConfig(config)
+      return { success: true, data }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // 9. Client / Public: Get Enabled Gateways for Checkout
   ipcMain.handle('payment:get-available-gateways', async () => {
     try {
       const gateways = paymentService.getPublicGateways()

@@ -65,6 +65,15 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
   const [statusFilter, setStatusFilter] = useState('all')
   const [gatewayFilter, setGatewayFilter] = useState('all')
 
+  // Global Registration Free Trial Policy State
+  const [globalTrialPolicy, setGlobalTrialPolicy] = useState({
+    is_enabled: true,
+    trial_duration_days: 7,
+    default_plan_id: 'plan_starter',
+    applies_to_packages: 'all'
+  })
+  const [savingGlobalTrial, setSavingGlobalTrial] = useState(false)
+
   // Modals
   const [editingGateway, setEditingGateway] = useState<GatewayItem | null>(null)
   const [savingGateway, setSavingGateway] = useState(false)
@@ -119,6 +128,23 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
         }
       }
 
+      // Fetch Global Registration Free Trial Policy
+      try {
+        if ((window as any).api?.adminGetGlobalTrialConfig) {
+          const tRes = await (window as any).api.adminGetGlobalTrialConfig(token)
+          if (tRes?.success && tRes.data) {
+            setGlobalTrialPolicy(tRes.data)
+          }
+        } else {
+          const tRes = await fetch('/api/admin.php?action=get-global-trial-config', {
+            headers: { Authorization: `Bearer ${token}` }
+          }).then(r => r.json())
+          if (tRes?.success && tRes.data) {
+            setGlobalTrialPolicy(tRes.data)
+          }
+        }
+      } catch {}
+
       // Fetch users for dropdowns
       let rawUsers: any[] = []
       try {
@@ -148,6 +174,42 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
       showToast('error', err.message || 'Failed to load payments.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveGlobalTrialPolicy = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingGlobalTrial(true)
+    try {
+      const token = localStorage.getItem('pv_session_token') || ''
+      if ((window as any).api?.adminSaveGlobalTrialConfig) {
+        const res = await (window as any).api.adminSaveGlobalTrialConfig(token, globalTrialPolicy)
+        if (res?.success) {
+          showToast('success', '✅ Global Automatic Free Trial Policy saved successfully!')
+          setGlobalTrialPolicy(res.data)
+        } else {
+          showToast('error', res?.error || 'Failed to save global trial policy.')
+        }
+      } else {
+        const res = await fetch('/api/admin.php?action=save-global-trial-config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(globalTrialPolicy)
+        }).then(r => r.json())
+        if (res?.success) {
+          showToast('success', '✅ Global Automatic Free Trial Policy saved successfully!')
+          setGlobalTrialPolicy(res.data)
+        } else {
+          showToast('error', res?.error || 'Failed to save global trial policy.')
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    } finally {
+      setSavingGlobalTrial(false)
     }
   }
 
@@ -615,99 +677,227 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
         </div>
       )}
 
-      {/* ── Sub-Tab 3: Grant Free Trial Period ── */}
+      {/* ── Sub-Tab 3: Global Registration Trial Policy & Manual User Grant ── */}
       {activeSubTab === 'trial_grant' && (
-        <div style={{ maxWidth: '600px', backgroundColor: '#1E1E2E', borderRadius: '16px', border: '1px solid #2C2C3E', padding: '28px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '24px' }}>⏱️</span>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#FFF' }}>Set Free Trial Period for User</h3>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94A3B8' }}>
-                Instantly grant or extend full software access for any user without requiring a credit card or payment.
-              </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px', alignItems: 'start' }}>
+          
+          {/* Card 1: Global Free Trial Policy for All New Users */}
+          <div style={{ backgroundColor: '#1E1E2E', borderRadius: '16px', border: '1px solid #3B82F650', padding: '28px', boxShadow: '0 8px 24px rgba(59,130,246,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '24px' }}>🌐</span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#FFF' }}>Global Automatic Free Trial Policy</h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                  Automatically provision a free trial subscription when any new user registers an account.
+                </p>
+              </div>
             </div>
+
+            <form onSubmit={handleSaveGlobalTrialPolicy} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{
+                backgroundColor: globalTrialPolicy.is_enabled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                border: `1px solid ${globalTrialPolicy.is_enabled ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                borderRadius: '10px',
+                padding: '14px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: globalTrialPolicy.is_enabled ? '#10B981' : '#F87171' }}>
+                    {globalTrialPolicy.is_enabled ? '🟢 Automatic Trial Active on New Signups' : '🔴 Automatic Trial Disabled'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                    {globalTrialPolicy.is_enabled
+                      ? `Every newly created user receives ${globalTrialPolicy.trial_duration_days} days of free trial on signup.`
+                      : 'New users will register on the standard Free plan (3 profiles limit).'}
+                  </div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: '48px', height: '26px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={globalTrialPolicy.is_enabled}
+                    onChange={e => setGlobalTrialPolicy({ ...globalTrialPolicy, is_enabled: e.target.checked })}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute', cursor: 'pointer', inset: 0,
+                    backgroundColor: globalTrialPolicy.is_enabled ? '#10B981' : '#334155',
+                    borderRadius: '26px', transition: '0.3s'
+                  }}>
+                    <span style={{
+                      position: 'absolute', content: '""', height: '20px', width: '20px', left: globalTrialPolicy.is_enabled ? '25px' : '3px', bottom: '3px',
+                      backgroundColor: '#FFF', borderRadius: '50%', transition: '0.3s'
+                    }} />
+                  </span>
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                    Default Trial Duration *
+                  </label>
+                  <select
+                    value={globalTrialPolicy.trial_duration_days}
+                    onChange={e => setGlobalTrialPolicy({ ...globalTrialPolicy, trial_duration_days: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                  >
+                    <option value={3}>3 Days Trial</option>
+                    <option value={7}>7 Days Trial (Recommended)</option>
+                    <option value={14}>14 Days Trial</option>
+                    <option value={30}>30 Days Trial</option>
+                    <option value={60}>60 Days Trial</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                    Default Plan Tier to Unlock
+                  </label>
+                  <select
+                    value={globalTrialPolicy.default_plan_id}
+                    onChange={e => setGlobalTrialPolicy({ ...globalTrialPolicy, default_plan_id: e.target.value })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                  >
+                    <option value="plan_starter">Starter Plan (25 Profiles)</option>
+                    <option value="plan_pro">Professional Plan (100 Profiles)</option>
+                    <option value="plan_business">Business Plan (500 Profiles)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Package Eligibility Scope
+                </label>
+                <select
+                  value={globalTrialPolicy.applies_to_packages}
+                  onChange={e => setGlobalTrialPolicy({ ...globalTrialPolicy, applies_to_packages: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                >
+                  <option value="all">All Packages & All New Registrations (Global)</option>
+                  <option value="starter_only">Starter Tier Only</option>
+                  <option value="pro_only">Professional Tier Only</option>
+                </select>
+              </div>
+
+              <div style={{ marginTop: '6px' }}>
+                <button
+                  type="submit"
+                  disabled={savingGlobalTrial}
+                  style={{
+                    width: '100%',
+                    padding: '11px 20px',
+                    borderRadius: '8px',
+                    backgroundColor: '#2563EB',
+                    color: '#FFF',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
+                  }}
+                >
+                  {savingGlobalTrial ? 'Saving Global Policy...' : '💾 Save Global Free Trial Policy'}
+                </button>
+              </div>
+            </form>
           </div>
 
-          <form onSubmit={handleGrantTrial} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-                Select User *
-              </label>
-              <select
-                required
-                value={trialForm.userId}
-                onChange={e => setTrialForm({ ...trialForm, userId: e.target.value })}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
-              >
-                <option value="">-- Choose User --</option>
-                {usersList.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          {/* Card 2: Grant / Extend Free Trial for a Specific User */}
+          <div style={{ backgroundColor: '#1E1E2E', borderRadius: '16px', border: '1px solid #2C2C3E', padding: '28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '24px' }}>⏱️</span>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-                  Trial Duration (Days) *
-                </label>
-                <select
-                  value={trialForm.trialDays}
-                  onChange={e => setTrialForm({ ...trialForm, trialDays: Number(e.target.value) })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
-                >
-                  <option value={3}>3 Days Trial</option>
-                  <option value={7}>7 Days Trial (Recommended)</option>
-                  <option value={14}>14 Days Trial</option>
-                  <option value={30}>30 Days Trial</option>
-                  <option value={60}>60 Days Trial</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-                  Plan Tier to Unlock
-                </label>
-                <select
-                  value={trialForm.planId}
-                  onChange={e => setTrialForm({ ...trialForm, planId: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
-                >
-                  <option value="plan_starter">Starter Plan (25 Profiles)</option>
-                  <option value="plan_pro">Professional Plan (100 Profiles)</option>
-                  <option value="plan_business">Business Plan (500 Profiles)</option>
-                </select>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#FFF' }}>Set Free Trial for Individual User</h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                  Instantly grant or extend full software access for any specific user without requiring payment.
+                </p>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('transactions')}
-                style={{ padding: '10px 18px', borderRadius: '8px', backgroundColor: '#1E293B', border: '1px solid #334155', color: '#CBD5E1', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={grantingTrial}
-                style={{
-                  flex: 1,
-                  padding: '10px 22px',
-                  borderRadius: '8px',
-                  backgroundColor: '#A855F7',
-                  color: '#FFF',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)'
-                }}
-              >
-                {grantingTrial ? 'Granting Trial...' : '🚀 Grant Free Trial Access'}
-              </button>
-            </div>
-          </form>
+            <form onSubmit={handleGrantTrial} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Select User *
+                </label>
+                <select
+                  required
+                  value={trialForm.userId}
+                  onChange={e => setTrialForm({ ...trialForm, userId: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                >
+                  <option value="">-- Choose User --</option>
+                  {usersList.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                    Trial Duration (Days) *
+                  </label>
+                  <select
+                    value={trialForm.trialDays}
+                    onChange={e => setTrialForm({ ...trialForm, trialDays: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                  >
+                    <option value={3}>3 Days Trial</option>
+                    <option value={7}>7 Days Trial (Recommended)</option>
+                    <option value={14}>14 Days Trial</option>
+                    <option value={30}>30 Days Trial</option>
+                    <option value={60}>60 Days Trial</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                    Plan Tier to Unlock
+                  </label>
+                  <select
+                    value={trialForm.planId}
+                    onChange={e => setTrialForm({ ...trialForm, planId: e.target.value })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                  >
+                    <option value="plan_starter">Starter Plan (25 Profiles)</option>
+                    <option value="plan_pro">Professional Plan (100 Profiles)</option>
+                    <option value="plan_business">Business Plan (500 Profiles)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('transactions')}
+                  style={{ padding: '10px 18px', borderRadius: '8px', backgroundColor: '#1E293B', border: '1px solid #334155', color: '#CBD5E1', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={grantingTrial}
+                  style={{
+                    flex: 1,
+                    padding: '11px 22px',
+                    borderRadius: '8px',
+                    backgroundColor: '#A855F7',
+                    color: '#FFF',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)'
+                  }}
+                >
+                  {grantingTrial ? 'Granting Trial...' : '🚀 Grant Free Trial Access'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

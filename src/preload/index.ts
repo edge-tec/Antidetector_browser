@@ -78,7 +78,8 @@ const api = {
   adminSavePaymentGateway: (token: string, gatewayData: any) => ipcRenderer.invoke('admin:save-payment-gateway', token, gatewayData),
   adminSetUserTrial: (token: string, input: { userId: string; trialDays: number; planId?: string }) =>
     ipcRenderer.invoke('admin:set-user-trial', token, input),
-  adminRecordManualPayment: (token: string, paymentData: any) => ipcRenderer.invoke('admin:record-manual-payment', token, paymentData),
+  adminGetGlobalTrialConfig: (token: string) => ipcRenderer.invoke('admin:get-global-trial-config', token),
+  adminSaveGlobalTrialConfig: (token: string, config: any) => ipcRenderer.invoke('admin:save-global-trial-config', token, config),
   adminRefundPayment: (token: string, input: { paymentId: string; reason?: string }) => ipcRenderer.invoke('admin:refund-payment', token, input),
   getAvailablePaymentGateways: () => ipcRenderer.invoke('payment:get-available-gateways'),
 

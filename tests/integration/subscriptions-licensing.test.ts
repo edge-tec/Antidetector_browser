@@ -28,9 +28,17 @@ describe('Subscription & Licensing System', () => {
     const license = subscriptionRepo.validateLicense('user-test-1', 'inst-123', 'windows', '1.0.0')
     expect(license.valid).toBe(true)
     expect(license.account_status).toBe('active')
-    expect(license.subscription_status).toBe('active')
+    expect(['active', 'trial']).toContain(license.subscription_status)
     expect(license.plan.name).toBeDefined()
     expect(license.features.browser_profiles).toBe(true)
+  })
+
+  it('should automatically provision free trial for new users based on global policy', () => {
+    db.prepare('DELETE FROM subscriptions').run()
+    const sub = subscriptionRepo.getOrCreateSubscription('user-test-1')
+    expect(sub.status).toBe('trial')
+    expect(sub.plan_id).toBe('plan_starter')
+    expect(sub.expires_at).toBeDefined()
   })
 
   it('should enforce device limits per subscription', () => {
