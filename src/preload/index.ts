@@ -366,8 +366,10 @@ const api = {
   seoGet404Logs: (token?: string) => ipcRenderer.invoke('seo:get-404-logs', token),
   seoRunAudit: (token: string) => ipcRenderer.invoke('seo:run-audit', token),
   seoGetLatestAudit: (token?: string) => ipcRenderer.invoke('seo:get-latest-audit', token),
-  seoGenerateContentAssistant: (token: string, params: any) => ipcRenderer.invoke('seo:generate-content-assistant', token, params),
-  seoGetSitemapXml: () => ipcRenderer.invoke('seo:get-sitemap-xml'),
+  seoGetSitemapXml: (baseUrl?: string) => ipcRenderer.invoke('seo:get-sitemap-xml', baseUrl),
+  seoGenerateRobotsTxt: (baseUrl?: string) => ipcRenderer.invoke('seo:generate-robots-txt', baseUrl),
+  seoPingSearchEngines: (token: string, sitemapUrl?: string) => ipcRenderer.invoke('seo:ping-search-engines', token, sitemapUrl),
+  seoGenerateAndSyncAll: (token: string, baseUrl?: string) => ipcRenderer.invoke('seo:generate-and-sync-all', token, baseUrl),
   seoGetLlmsTxt: () => ipcRenderer.invoke('seo:get-llms-txt'),
 
   // ── Software Release Management & Auto-Updates ──

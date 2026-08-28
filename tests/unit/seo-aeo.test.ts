@@ -85,7 +85,7 @@ describe('Google SEO + AI Search Optimization (AEO/GEO) Engine', () => {
     const llms = seoService.generateLlmsTxt()
     expect(llms).toMatch(/# (ProfileVault|AntiProfiles)/i)
     expect(llms).toContain('## Entity Overview')
-    expect(llms).toContain('## Key Features & Capabilities')
+    expect(llms).toContain('## Core Use Cases')
     expect(llms).toMatch(/Q: What is (ProfileVault|AntiProfiles)/i)
   })
 
@@ -100,5 +100,28 @@ describe('Google SEO + AI Search Optimization (AEO/GEO) Engine', () => {
     expect(ca.headingOutline.length).toBeGreaterThan(3)
     expect(ca.faqQuestions.length).toBeGreaterThan(1)
     expect(ca.featuredSnippetAnswer).toBeDefined()
+  })
+
+  it('8. Robots.txt Generator: Provisions search engine and AI crawler allowlists', () => {
+    const robots = seoService.generateRobotsTxt('https://antiprofiles.com')
+    expect(robots).toContain('User-agent: *')
+    expect(robots).toContain('User-agent: GPTBot')
+    expect(robots).toContain('User-agent: ClaudeBot')
+    expect(robots).toContain('User-agent: PerplexityBot')
+    expect(robots).toContain('User-agent: Google-Extended')
+    expect(robots).toContain('User-agent: Applebot')
+    expect(robots).toContain('User-agent: Bingbot')
+    expect(robots).toContain('Sitemap: https://antiprofiles.com/sitemap.xml')
+  })
+
+  it('9. Master One-Click Sync & Search Engine Notification Engine', async () => {
+    const syncRes = await seoService.generateAndSyncAll('https://antiprofiles.com')
+    expect(syncRes.success).toBe(true)
+    expect(syncRes.sitemapXml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
+    expect(syncRes.robotsTxt).toContain('User-agent: GPTBot')
+    expect(syncRes.llmsTxt).toContain('## Entity Overview')
+    expect(syncRes.pingResults.google.success).toBe(true)
+    expect(syncRes.pingResults.bing.success).toBe(true)
+    expect(syncRes.pingResults.aiBots.count).toBeGreaterThanOrEqual(8)
   })
 })

@@ -245,9 +245,48 @@ export function registerSeoHandlers(): void {
   })
 
   // Get Sitemap XML
-  safeHandle('seo:get-sitemap-xml', async (_event) => {
+  safeHandle('seo:get-sitemap-xml', async (_event, baseUrl?: string) => {
     try {
-      return { success: true, data: seoService.generateSitemapXml() }
+      return { success: true, data: seoService.generateSitemapXml(baseUrl) }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Generate Robots.txt with full AI Engine Directives
+  safeHandle('seo:generate-robots-txt', async (_event, baseUrl?: string) => {
+    try {
+      const robots = seoService.generateRobotsTxt(baseUrl)
+      seoRepo.saveSettings({ robots_content: robots })
+      return { success: true, data: robots }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Ping Search Engines & AI Indexing
+  safeHandle('seo:ping-search-engines', async (_event, sessionToken: string, sitemapUrl?: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user || auth.user.role !== 'admin') {
+        return { success: false, error: 'Admin access required' }
+      }
+      const results = await seoService.pingSearchEngines(sitemapUrl)
+      return { success: true, data: results }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // Master Action: Generate Sitemap, Robots.txt, and Sync to Google & All AI Search Engines
+  safeHandle('seo:generate-and-sync-all', async (_event, sessionToken: string, baseUrl?: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user || auth.user.role !== 'admin') {
+        return { success: false, error: 'Admin access required' }
+      }
+      const results = await seoService.generateAndSyncAll(baseUrl)
+      return { success: true, data: results }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

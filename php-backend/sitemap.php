@@ -24,9 +24,13 @@ if (empty($pages)) {
 
 if (empty($pages)) {
     $pages = [
-        ['page_path' => '/', 'title' => 'ProfileVault Anti-Detect Browser', 'description' => 'Isolated browser profiles and fingerprint masking.', 'canonical_url' => 'https://antiprofiles.com/', 'updated_at' => date('Y-m-d')],
-        ['page_path' => '/download', 'title' => 'Download ProfileVault', 'description' => 'Download for Windows, macOS & Linux.', 'canonical_url' => 'https://antiprofiles.com/download', 'updated_at' => date('Y-m-d')],
-        ['page_path' => '/pricing', 'title' => 'Pricing & Plans', 'description' => 'Affordable multi-accounting browser plans.', 'canonical_url' => 'https://antiprofiles.com/pricing', 'updated_at' => date('Y-m-d')]
+        ['page_path' => '/', 'title' => 'AntiProfiles — Anti-Detect Browser & Multi-Account Management Tool', 'description' => 'Manage thousands of social media, e-commerce, and ads accounts seamlessly with 100% isolated browser profiles, fingerprint spoofing, and residential proxies.', 'canonical_url' => 'https://antiprofiles.com/', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/#features', 'title' => 'Browser Isolation & Fingerprint Spoofing Features', 'description' => 'Canvas, WebGL, WebRTC, Audio, and Hardware isolation per profile.', 'canonical_url' => 'https://antiprofiles.com/#features', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/#pricing', 'title' => 'AntiProfiles Pricing & Instant Free Trial', 'description' => 'Starter, Professional, and Business anti-detect browser pricing plans.', 'canonical_url' => 'https://antiprofiles.com/#pricing', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/#download', 'title' => 'Download AntiProfiles Desktop App', 'description' => 'Download for Windows 10/11, macOS Apple Silicon, macOS Intel, and Linux.', 'canonical_url' => 'https://antiprofiles.com/#download', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/#faq', 'title' => 'Frequently Asked Questions & Support', 'description' => 'Common questions about multi-accounting, proxies, and profile sharing.', 'canonical_url' => 'https://antiprofiles.com/#faq', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/privacy.php', 'title' => 'Privacy Policy — AntiProfiles', 'description' => 'Our commitment to data isolation, zero telemetry, and user privacy.', 'canonical_url' => 'https://antiprofiles.com/privacy.php', 'updated_at' => date('Y-m-d')],
+        ['page_path' => '/terms.php', 'title' => 'Terms of Service — AntiProfiles', 'description' => 'Software licensing terms and conditions.', 'canonical_url' => 'https://antiprofiles.com/terms.php', 'updated_at' => date('Y-m-d')]
     ];
 }
 
@@ -37,7 +41,7 @@ if ($format === 'html') {
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Sitemap — ProfileVault</title>
+        <title>Sitemap — AntiProfiles</title>
         <style>
             body { background: #0F0F14; color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; }
             h1 { color: #2DD4BF; border-bottom: 1px solid #2C2C3E; padding-bottom: 12px; }
@@ -48,7 +52,7 @@ if ($format === 'html') {
         </style>
     </head>
     <body>
-        <h1>🗺️ ProfileVault Website Sitemap</h1>
+        <h1>🗺️ AntiProfiles Website Sitemap</h1>
         <ul>
             <?php foreach ($pages as $p): ?>
                 <li>
@@ -70,7 +74,7 @@ header('Content-Type: application/xml; charset=utf-8');
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
-$baseUrl = defined('APP_URL') ? APP_URL : 'https://app.edgecash.net';
+$baseUrl = defined('APP_URL') ? APP_URL : 'https://antiprofiles.com';
 
 foreach ($pages as $p) {
     $loc = $p['canonical_url'] ?: (rtrim($baseUrl, '/') . $p['page_path']);

@@ -57,6 +57,11 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
   })
 
   // Load Initial SEO Data
+  const [syncingAll, setSyncingAll] = useState(false)
+  const [syncResult, setSyncResult] = useState<any | null>(null)
+  const [sitemapXmlPreview, setSitemapXmlPreview] = useState<string>('')
+  const [robotsTxtPreview, setRobotsTxtPreview] = useState<string>('')
+
   const loadSeoData = async () => {
     setLoading(true)
     try {
@@ -98,11 +103,70 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
           const res = await api.seoGetLatestAudit(sessionToken)
           if (res?.success) setAuditReport(res.data)
         }
+
+        if (typeof api.seoGetSitemapXml === 'function') {
+          const res = await api.seoGetSitemapXml(settings.site_url || 'https://antiprofiles.com')
+          if (res?.success) setSitemapXmlPreview(res.data)
+        }
       }
     } catch (err) {
       console.error('Error loading SEO data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Master One-Click: Generate Sitemap, Robots.txt, and Sync to Google & All AI Engines
+  const handleGenerateAndSyncAll = async () => {
+    setSyncingAll(true)
+    try {
+      let res: any = null
+      if ((window as any).api?.seoGenerateAndSyncAll) {
+        res = await (window as any).api.seoGenerateAndSyncAll(sessionToken, settings.site_url || 'https://antiprofiles.com')
+      } else {
+        res = await fetch('/api/seo.php?action=generate-and-sync-all', {
+          headers: { Authorization: `Bearer ${sessionToken}` }
+        }).then(r => r.json())
+      }
+      if (res?.success) {
+        setSyncResult(res.data)
+        if (res.data?.sitemapXml) setSitemapXmlPreview(res.data.sitemapXml)
+        if (res.data?.robotsTxt) {
+          setRobotsTxtPreview(res.data.robotsTxt)
+          setSettings(prev => ({ ...prev, robots_content: res.data.robotsTxt }))
+        }
+        alert('✓ Sitemap & Robots.txt successfully generated and submitted to Google, Bing, IndexNow & AI engines!')
+        loadSeoData()
+      } else {
+        alert(`Sync failed: ${res?.error || 'Unknown error'}`)
+      }
+    } catch (err: any) {
+      alert(`Sync error: ${err.message}`)
+    } finally {
+      setSyncingAll(false)
+    }
+  }
+
+  // Generate standard AI-compliant Robots.txt
+  const handleGenerateRobotsTxt = async () => {
+    try {
+      if ((window as any).api?.seoGenerateRobotsTxt) {
+        const res = await (window as any).api.seoGenerateRobotsTxt(settings.site_url || 'https://antiprofiles.com')
+        if (res?.success) {
+          setSettings(prev => ({ ...prev, robots_content: res.data }))
+          alert('✓ AI & Search Engine compliant robots.txt rules generated and saved!')
+        }
+      } else {
+        const res = await fetch('/api/seo.php?action=generate-robots-txt', {
+          headers: { Authorization: `Bearer ${sessionToken}` }
+        }).then(r => r.json())
+        if (res?.success) {
+          setSettings(prev => ({ ...prev, robots_content: res.data }))
+          alert('✓ AI & Search Engine compliant robots.txt rules generated and saved!')
+        }
+      }
+    } catch (err: any) {
+      alert(`Robots generator error: ${err.message}`)
     }
   }
 
@@ -950,63 +1014,247 @@ export const AdminSeoManager: React.FC<AdminSeoManagerProps> = ({ sessionToken }
         </div>
       )}
 
-      {/* ── TAB 7: ROBOTS.TXT SAFETY EDITOR ── */}
+      {/* ── TAB 7: ROBOTS.TXT & AI CRAWLER CONTROLS ── */}
       {activeTab === 'robots' && (
-        <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>Robots.txt Rules & Safety Validator</h3>
-            {isRobotsDangerous && (
-              <span style={{ backgroundColor: '#EF444420', color: '#EF4444', border: '1px solid #EF4444', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 800 }}>
-                ⚠️ CRITICAL: DANGEROUS RULE DETECTED
-              </span>
-            )}
+        <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#F1F5F9' }}>
+                🤖 Robots.txt & AI Crawler Permissions
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94A3B8' }}>
+                Configures crawl access for search engines and generative AI agents (Perplexity, ChatGPT, Claude, Gemini, Copilot).
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={handleGenerateRobotsTxt}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: '#3B82F6',
+                  color: '#FFF',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                ⚡ Auto-Generate AI-Friendly Robots.txt
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '8px',
+                  backgroundColor: '#2DD4BF',
+                  color: '#0F0F17',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                💾 Save Robots.txt
+              </button>
+            </div>
           </div>
 
+          {/* AI Bots Supported Status Chips */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', padding: '10px 14px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8' }}>ACTIVE AI CRAWLERS:</span>
+            {['GPTBot (ChatGPT)', 'ClaudeBot (Claude)', 'PerplexityBot (Perplexity)', 'Google-Extended (Gemini)', 'Applebot (Apple Intelligence)', 'Bingbot (Copilot)', 'Bytespider'].map(bot => (
+              <span key={bot} style={{ backgroundColor: '#10B98120', color: '#10B981', border: '1px solid #10B98140', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>
+                ✓ {bot}
+              </span>
+            ))}
+          </div>
+
+          {isRobotsDangerous && (
+            <div style={{ backgroundColor: '#EF444420', color: '#EF4444', border: '1px solid #EF4444', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700 }}>
+              ⚠️ CRITICAL: DANGEROUS RULE DETECTED — Your rules may block all search engines from indexing the site!
+            </div>
+          )}
+
           <textarea
-            rows={10}
+            rows={14}
             value={settings.robots_content || ''}
             onChange={e => setSettings({ ...settings, robots_content: e.target.value })}
-            style={{ width: '100%', padding: '14px', borderRadius: '8px', backgroundColor: '#09090D', border: '1px solid #2C2C3E', color: '#2DD4BF', fontFamily: 'monospace', fontSize: '13px' }}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '8px',
+              backgroundColor: '#09090D',
+              border: '1px solid #2C2C3E',
+              color: '#2DD4BF',
+              fontFamily: 'monospace',
+              fontSize: '13px',
+              lineHeight: '1.6'
+            }}
           />
-
-          <button
-            type="button"
-            onClick={handleSaveSettings}
-            style={{ padding: '12px 24px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 800, border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}
-          >
-            💾 Save Robots.txt Configuration
-          </button>
         </div>
       )}
 
-      {/* ── TAB 8: SITEMAP & LLMS.TXT ── */}
+      {/* ── TAB 8: SITEMAP & SEARCH ENGINE + AI AUTO-PING ── */}
       {activeTab === 'sitemap' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>XML Sitemap (/sitemap.xml)</h3>
-            <div style={{ fontSize: '13px', color: '#94A3B8' }}>Automatically generated from indexable canonical pages.</div>
-            <a
-              href="http://localhost:3000/sitemap.xml"
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: '#2DD4BF', textDecoration: 'none', fontWeight: 700, fontSize: '13px' }}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Master Generator & Push Banner */}
+          <div style={{
+            backgroundColor: '#161622',
+            border: '1px solid #3B82F640',
+            borderRadius: '12px',
+            padding: '24px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+            background: 'linear-gradient(135deg, rgba(22, 22, 34, 0.95) 0%, rgba(30, 41, 59, 0.8) 100%)'
+          }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#F1F5F9' }}>
+                🚀 Master Sitemap & AI Submission Engine
+              </h3>
+              <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#94A3B8' }}>
+                Click below to auto-generate the latest <code style={{ color: '#2DD4BF' }}>/sitemap.xml</code> and <code style={{ color: '#2DD4BF' }}>/robots.txt</code>, and instantly ping Google Search Console, Bing Webmaster, IndexNow, and AI LLM search engines.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGenerateAndSyncAll}
+              disabled={syncingAll}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '8px',
+                backgroundColor: '#3B82F6',
+                color: '#FFF',
+                fontWeight: 800,
+                fontSize: '14px',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(59, 130, 246, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              🔗 View XML Sitemap Endpoint
-            </a>
+              {syncingAll ? '⏳ Generating & Pinging Engines...' : '⚡ Generate & Sync to Google & All AI Systems'}
+            </button>
           </div>
 
-          <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>AI Readability File (/llms.txt)</h3>
-            <div style={{ fontSize: '13px', color: '#94A3B8' }}>Standardized machine-readable file format for LLMs & AI Search Engines.</div>
-            <a
-              href="http://localhost:3000/llms.txt"
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: '#2DD4BF', textDecoration: 'none', fontWeight: 700, fontSize: '13px' }}
-            >
-              🔗 View /llms.txt Machine File
-            </a>
+          {/* Sync Results Status Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '10px', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '16px' }}>🌐</span>
+                <strong style={{ color: '#F1F5F9', fontSize: '14px' }}>Google Search Console</strong>
+              </div>
+              <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 700 }}>
+                {syncResult?.pingResults?.google?.success ? '✓ Ping Submitted' : '🟢 Ready for Automated Ping'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                Endpoint: https://www.google.com/ping?sitemap=...
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '10px', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '16px' }}>⚡</span>
+                <strong style={{ color: '#F1F5F9', fontSize: '14px' }}>Bing & IndexNow API</strong>
+              </div>
+              <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 700 }}>
+                {syncResult?.pingResults?.indexNow?.success ? '✓ Dispatched to IndexNow' : '🟢 Instant Indexing Ready'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                Pushes to Bing, Yandex, Seznam & Naver
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '10px', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '16px' }}>🤖</span>
+                <strong style={{ color: '#F1F5F9', fontSize: '14px' }}>AI Search & LLM Engines</strong>
+              </div>
+              <div style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 700 }}>
+                ✓ 8 AI Bot Directives Active
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                ChatGPT, Claude, Perplexity, Gemini, Applebot
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '10px', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '16px' }}>🗺️</span>
+                <strong style={{ color: '#F1F5F9', fontSize: '14px' }}>Sitemap URL Entries</strong>
+              </div>
+              <div style={{ fontSize: '12px', color: '#2DD4BF', fontWeight: 700 }}>
+                {pages.length > 0 ? `${pages.length} Canonical URLs` : '7 Default Core URLs'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                Daily change frequency & priority: 1.0
+              </div>
+            </div>
           </div>
+
+          {/* XML Sitemap & /llms.txt Preview Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#F1F5F9' }}>🗺️ XML Sitemap (/sitemap.xml)</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(sitemapXmlPreview || '')
+                    alert('✓ XML Sitemap copied to clipboard!')
+                  }}
+                  style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#2DD4BF', fontSize: '12px', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  📋 Copy XML
+                </button>
+              </div>
+              <textarea
+                readOnly
+                rows={12}
+                value={sitemapXmlPreview || 'Click "Generate & Sync" above to compile XML sitemap.'}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', backgroundColor: '#09090D', border: '1px solid #2C2C3E', color: '#60A5FA', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5' }}
+              />
+            </div>
+
+            <div style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#F1F5F9' }}>🤖 AI Specification (/llms.txt)</h4>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if ((window as any).api?.seoGetLlmsTxt) {
+                      const res = await (window as any).api.seoGetLlmsTxt()
+                      if (res?.data) {
+                        navigator.clipboard.writeText(res.data)
+                        alert('✓ /llms.txt copied to clipboard!')
+                      }
+                    }
+                  }}
+                  style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#2DD4BF', fontSize: '12px', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  📋 Copy LLMS.txt
+                </button>
+              </div>
+              <textarea
+                readOnly
+                rows={12}
+                value={`# AntiProfiles Software Inc. — AI Machine-Readable Specification\n> Official Website: https://antiprofiles.com\n\n## Entity Overview\nAntiProfiles is an anti-detect browser for multi-account management, affiliate CPA marketing, and fingerprint isolation.\n\n## Competitor Alternatives\n- GoLogin alternative\n- AdsPower alternative\n- Multilogin alternative\n- Dolphin Anty alternative\n- Incogniton alternative\n\n## Supported Platforms\nWindows 10/11, macOS Apple Silicon (M1-M4), macOS Intel, Linux.`}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', backgroundColor: '#09090D', border: '1px solid #2C2C3E', color: '#34D399', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5' }}
+              />
+            </div>
+          </div>
+
         </div>
       )}
 
