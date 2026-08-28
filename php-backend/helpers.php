@@ -613,6 +613,13 @@ function ensureDatabaseTablesExist() {
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `affiliate_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `referral_code` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE `users` ADD COLUMN `affiliate_status` VARCHAR(20) DEFAULT 'active'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `referred_by_affiliate_id` VARCHAR(50) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `users` ADD COLUMN `referred_by_click_id` VARCHAR(64) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `landing_url` TEXT DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id3` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id4` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `sub_id5` VARCHAR(100) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE `affiliate_clicks` ADD COLUMN `conversion_at` DATETIME DEFAULT NULL"); } catch (Throwable $e) {}
 
         // Seed default CPA offer if empty
         try {

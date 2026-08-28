@@ -288,7 +288,7 @@ function processSuccessfulPayment(
 
         // I. Send Purchase Confirmation & Invoice Email
         try {
-            $uStmt = $db->prepare("SELECT id, name, email FROM users WHERE id = ?");
+            $uStmt = $db->prepare("SELECT id, name, email, referred_by_affiliate_id, referred_by_click_id FROM users WHERE id = ?");
             $uStmt->execute([$userId]);
             $userRow = $uStmt->fetch(PDO::FETCH_ASSOC);
             if ($userRow && !empty($userRow['email'])) {
@@ -301,8 +301,115 @@ function processSuccessfulPayment(
                     'profile_limit' => $plan['profile_limit'] ?? 10
                 ]);
             }
-        } catch (Throwable $mailEx) {
-            error_log("[AntiProfiles Payment Email Error] " . $mailEx->getMessage());
+
+            // J. CPA Affiliate Conversion & Referral Commission Tracking
+            $refAffId = $userRow['referred_by_affiliate_id'] ?? ($metadata['aff_id'] ?? null);
+            $refClickId = $userRow['referred_by_click_id'] ?? ($metadata['click_id'] ?? null);
+
+            // Fallback: If no click_id, search for recent click by affiliate
+            if (!empty($refAffId) && empty($refClickId)) {
+                $lastClkStmt = $db->prepare("SELECT click_id, offer_id FROM affiliate_clicks WHERE affiliate_id = ? ORDER BY created_at DESC LIMIT 1");
+                $lastClkStmt->execute([$refAffId]);
+                $lastClk = $lastClkStmt->fetch(PDO::FETCH_ASSOC);
+                if ($lastClk) {
+                    $refClickId = $lastClk['click_id'];
+                }
+            }
+
+            if (!empty($refAffId)) {
+                $offerId = 'offer_main_saas';
+                if (!empty($refClickId)) {
+                    $cOfferStmt = $db->prepare("SELECT offer_id FROM affiliate_clicks WHERE click_id = ?");
+                    $cOfferStmt->execute([$refClickId]);
+                    $cOffer = $cOfferStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($cOffer && !empty($cOffer['offer_id'])) {
+                        $offerId = $cOffer['offer_id'];
+                    }
+                }
+
+                $offStmt = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ?");
+                $offStmt->execute([$offerId]);
+                $offer = $offStmt->fetch(PDO::FETCH_ASSOC);
+
+                $commission = 0.0;
+                if ($offer) {
+                    if ($offer['payout_type'] === 'fixed') {
+                        $commission = (float)($offer['fixed_payout_usd'] ?? 0);
+                    } else {
+                        $rate = (float)($offer['revshare_percent'] ?? $offer['commission_rate'] ?? 15);
+                        $commission = round($amount * ($rate / 100), 2);
+                    }
+                } else {
+                    $commission = round($amount * 0.15, 2);
+                }
+
+                $conversionId = 'conv_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(4)), 0, 8);
+                $convClickId = $refClickId ?: ('clk_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(4)), 0, 8));
+
+                $insConv = $db->prepare("
+                    INSERT INTO affiliate_conversions (
+                        conversion_id, click_id, affiliate_id, offer_id, user_id,
+                        order_amount, payout_amount, currency, status, idempotency_key, created_at
+                    ) VALUES (
+                        ?, ?, ?, ?, ?,
+                        ?, ?, ?, 'approved', ?, CURRENT_TIMESTAMP
+                    )
+                    ON DUPLICATE KEY UPDATE payout_amount = VALUES(payout_amount)
+                ");
+                $insConv->execute([
+                    $conversionId, $convClickId, $refAffId, $offerId, $userId,
+                    $amount, $commission, $currency, 'inv_' . $invoice['id']
+                ]);
+
+                // Mark click as converted
+                if (!empty($refClickId)) {
+                    $db->prepare("UPDATE affiliate_clicks SET converted = 1, conversion_id = ?, conversion_at = CURRENT_TIMESTAMP WHERE click_id = ?")->execute([$conversionId, $refClickId]);
+                }
+
+                if ($offer) {
+                    $db->prepare("UPDATE affiliate_offers SET total_conversions = total_conversions + 1 WHERE id = ?")->execute([$offer['id']]);
+                }
+
+                // Dispatch S2S Postback if configured
+                $pbStmt = $db->prepare("SELECT * FROM affiliate_postback_configs WHERE affiliate_id = ? AND is_active = 1 LIMIT 1");
+                $pbStmt->execute([$refAffId]);
+                $pbCfg = $pbStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($pbCfg && !empty($pbCfg['postback_url'])) {
+                    $renderedUrl = str_ireplace(
+                        ['{CLICK_ID}', '{AFFILIATE_ID}', '{OFFER_ID}', '{CONVERSION_ID}', '{STATUS}', '{PAYOUT}', '{AMOUNT}'],
+                        [urlencode($convClickId), urlencode($refAffId), urlencode($offerId), urlencode($conversionId), 'approved', urlencode($commission), urlencode($amount)],
+                        $pbCfg['postback_url']
+                    );
+
+                    $ch = curl_init($renderedUrl);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+                    curl_setopt($ch, CURLOPT_USERAGENT, 'AntiProfiles-CPA-Postback/1.0');
+                    $pbResp = curl_exec($ch);
+                    $pbHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    $pbErr = curl_error($ch);
+                    curl_close($ch);
+
+                    $pbStatus = ($pbHttpCode >= 200 && $pbHttpCode < 300) ? 'confirmed' : 'failed';
+                    $pbId = 'pb_' . round(microtime(true) * 1000) . '_' . substr(bin2hex(random_bytes(4)), 0, 7);
+
+                    $db->prepare("
+                        INSERT INTO affiliate_postbacks (
+                            id, conversion_id, click_id, affiliate_id, url, http_method, http_status,
+                            response_body, status, error_message, last_attempt_at, created_at
+                        ) VALUES (
+                            ?, ?, ?, ?, ?, 'GET', ?,
+                            ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                        )
+                    ")->execute([
+                        $pbId, $conversionId, $convClickId, $refAffId, $renderedUrl, $pbHttpCode ?: null,
+                        substr($pbResp ?: '', 0, 500), $pbStatus, $pbErr ?: null
+                    ]);
+                }
+            }
+        } catch (Throwable $affEx) {
+            error_log("[AntiProfiles Affiliate Conversion Error] " . $affEx->getMessage());
         }
 
         $db->commit();

@@ -59,15 +59,16 @@ switch ($action) {
 
         $affInfo = ensureUserAffiliateId($db, $user);
         $affId = $affInfo['affiliate_id'];
+        $refCode = $affInfo['referral_code'];
 
         // Clicks count
-        $stmtClicks = $db->prepare("SELECT COUNT(*) as total, COUNT(DISTINCT ip_address) as unique_ips FROM affiliate_clicks WHERE affiliate_id = ?");
-        $stmtClicks->execute([$affId]);
+        $stmtClicks = $db->prepare("SELECT COUNT(*) as total, COUNT(DISTINCT ip_address) as unique_ips FROM affiliate_clicks WHERE affiliate_id = ? OR affiliate_id = ?");
+        $stmtClicks->execute([$affId, $refCode]);
         $clickStats = $stmtClicks->fetch(PDO::FETCH_ASSOC);
 
         // Conversions & Commissions
-        $stmtConv = $db->prepare("SELECT COUNT(*) as total_conversions, COALESCE(SUM(payout_amount), 0) as total_earnings FROM affiliate_conversions WHERE affiliate_id = ? AND status = 'approved'");
-        $stmtConv->execute([$affId]);
+        $stmtConv = $db->prepare("SELECT COUNT(*) as total_conversions, COALESCE(SUM(payout_amount), 0) as total_earnings FROM affiliate_conversions WHERE (affiliate_id = ? OR affiliate_id = ? OR user_id = ?) AND status = 'approved'");
+        $stmtConv->execute([$affId, $refCode, $user['id']]);
         $convStats = $stmtConv->fetch(PDO::FETCH_ASSOC);
 
         // Paid Withdrawals
@@ -100,18 +101,18 @@ switch ($action) {
         $conversionRate = $totalClicks > 0 ? round(($totalConversions / $totalClicks) * 100, 2) : 0;
 
         // Postback Configuration
-        $stmtPb = $db->prepare("SELECT postback_url, http_method, is_active FROM affiliate_postback_configs WHERE affiliate_id = ? LIMIT 1");
-        $stmtPb->execute([$affId]);
+        $stmtPb = $db->prepare("SELECT postback_url, http_method, is_active FROM affiliate_postback_configs WHERE affiliate_id = ? OR affiliate_id = ? LIMIT 1");
+        $stmtPb->execute([$affId, $refCode]);
         $postbackConfig = $stmtPb->fetch(PDO::FETCH_ASSOC);
 
         // Recent Clicks (last 15)
-        $stmtRecClicks = $db->prepare("SELECT click_id, offer_id, ip_address, referrer, sub_id1, converted, created_at FROM affiliate_clicks WHERE affiliate_id = ? ORDER BY created_at DESC LIMIT 15");
-        $stmtRecClicks->execute([$affId]);
+        $stmtRecClicks = $db->prepare("SELECT click_id, offer_id, ip_address, referrer, sub_id1, converted, created_at FROM affiliate_clicks WHERE affiliate_id = ? OR affiliate_id = ? ORDER BY created_at DESC LIMIT 15");
+        $stmtRecClicks->execute([$affId, $refCode]);
         $recentClicks = $stmtRecClicks->fetchAll(PDO::FETCH_ASSOC);
 
         // Recent Conversions (last 15)
-        $stmtRecConv = $db->prepare("SELECT conversion_id, click_id, offer_id, order_amount, payout_amount, status, created_at FROM affiliate_conversions WHERE affiliate_id = ? ORDER BY created_at DESC LIMIT 15");
-        $stmtRecConv->execute([$affId]);
+        $stmtRecConv = $db->prepare("SELECT conversion_id, click_id, offer_id, order_amount, payout_amount, status, created_at FROM affiliate_conversions WHERE affiliate_id = ? OR affiliate_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 15");
+        $stmtRecConv->execute([$affId, $refCode, $user['id']]);
         $recentConversions = $stmtRecConv->fetchAll(PDO::FETCH_ASSOC);
 
         // Withdrawal History

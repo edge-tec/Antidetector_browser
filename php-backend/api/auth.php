@@ -159,13 +159,19 @@ switch ($action) {
         $isAdmin = ($userCount === 0 || $lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false);
         $role = $isAdmin ? 'admin' : 'user';
         $emailVerified = $isAdmin ? 1 : 0;
-        $accountStatus = $isAdmin ? 'active' : 'pending_verification';
+        $refAffId = trim($input['aff_id'] ?? $input['ref'] ?? $_COOKIE['aff_id'] ?? $_COOKIE['ref'] ?? '');
+        $refClickId = trim($input['click_id'] ?? $_COOKIE['click_id'] ?? '');
+
+        // Generate user's own affiliate ID and referral code
+        $cleanId = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $userId), 0, 8));
+        $userAffId = 'AFF-' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
+        $userRefCode = 'REF_' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
 
         $insertStmt = $db->prepare("
-            INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, affiliate_id, referral_code, referred_by_affiliate_id, referred_by_click_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ");
-        $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $emailVerified, $accountStatus]);
+        $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $emailVerified, $accountStatus, $userAffId, $userRefCode, $refAffId ?: null, $refClickId ?: null]);
 
         // Automatically provision Free plan subscription for new user
         ensureUserFreeSubscription($db, $userId, $role);
@@ -321,15 +327,18 @@ switch ($action) {
             $userId = 'usr_g_' . bin2hex(random_bytes(6));
             $passwordHash = hashUserPassword('google_oauth_' . bin2hex(random_bytes(16)));
 
-            $userCount = (int)$db->query("SELECT COUNT(*) FROM users")->fetchColumn();
-            $lowerEmail = strtolower($email);
-            $role = ($userCount === 0 || $lowerEmail === 'edge@gmail.com' || strpos($lowerEmail, 'admin') !== false || strpos($lowerEmail, 'mizanur') !== false) ? 'admin' : 'user';
+            $refAffId = trim($input['aff_id'] ?? $input['ref'] ?? $_COOKIE['aff_id'] ?? $_COOKIE['ref'] ?? '');
+            $refClickId = trim($input['click_id'] ?? $_COOKIE['click_id'] ?? '');
+
+            $cleanId = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $userId), 0, 8));
+            $userAffId = 'AFF-' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
+            $userRefCode = 'REF_' . ($cleanId ?: strtoupper(bin2hex(random_bytes(4))));
 
             $insertStmt = $db->prepare("
-                INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, google_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 1, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, google_id, affiliate_id, referral_code, referred_by_affiliate_id, referred_by_click_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 1, 'active', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ");
-            $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $googleId]);
+            $insertStmt->execute([$userId, $name, strtolower($email), $passwordHash, $role, $googleId, $userAffId, $userRefCode, $refAffId ?: null, $refClickId ?: null]);
 
             // Automatically provision Free plan subscription for new user
             ensureUserFreeSubscription($db, $userId, $role);

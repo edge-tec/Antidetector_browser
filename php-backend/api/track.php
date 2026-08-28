@@ -2,12 +2,23 @@
 // ──────────────────────────────────────────────
 // AntiProfiles — Public CPA Click Tracker & Redirection Endpoint
 // Route: /track?aff_id=AFF-10025&offer_id=offer_pro&click_id=...&sub_id1=...
+// Also supports /r/{refCode} or /track/{affId}
 // ──────────────────────────────────────────────
 
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../helpers.php';
 
-$affId = isset($_GET['aff_id']) ? trim($_GET['aff_id']) : (isset($_GET['ref']) ? trim($_GET['ref']) : '');
+ensureDatabaseTablesExist();
+$db = Database::getConnection();
+
+// Extract parameters from Query String or URI path
+$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+$pathAffId = '';
+if (preg_match('#^/(?:r|track)/([^/?]+)#i', $requestUri, $matches)) {
+    $pathAffId = trim($matches[1]);
+}
+
+$affId = isset($_GET['aff_id']) ? trim($_GET['aff_id']) : (isset($_GET['ref']) ? trim($_GET['ref']) : $pathAffId);
 $offerId = isset($_GET['offer_id']) ? trim($_GET['offer_id']) : 'offer_main_saas';
 $subId1 = isset($_GET['sub_id1']) ? trim($_GET['sub_id1']) : '';
 $subId2 = isset($_GET['sub_id2']) ? trim($_GET['sub_id2']) : '';
@@ -27,67 +38,101 @@ if (strpos($ipAddress, ',') !== false) {
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 $referrer = $_SERVER['HTTP_REFERER'] ?? '';
 
-$targetUrl = 'https://antiprofiles.com/pricing';
+// Determine Base Origin
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
+$baseOrigin = defined('APP_URL') && !empty(APP_URL) ? rtrim(APP_URL, '/') : "$scheme://$host";
+
+$targetUrl = "$baseOrigin/#pricing";
 
 try {
-    $db = getDbConnection();
+    // 1. Resolve Affiliate from Code if needed
+    if (!empty($affId)) {
+        $uStmt = $db->prepare("SELECT affiliate_id, referral_code FROM users WHERE affiliate_id = ? OR referral_code = ? LIMIT 1");
+        $uStmt->execute([$affId, $affId]);
+        $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+        if ($uRow && !empty($uRow['affiliate_id'])) {
+            $affId = $uRow['affiliate_id'];
+        }
+    }
 
-    // 1. Resolve Offer
+    // 2. Resolve Offer
     $stmtOffer = $db->prepare("SELECT * FROM affiliate_offers WHERE id = ? AND status = 'active' LIMIT 1");
     $stmtOffer->execute([$offerId]);
-    $offer = $stmtOffer->fetch();
+    $offer = $stmtOffer->fetch(PDO::FETCH_ASSOC);
 
     if (!$offer) {
-        $stmtDefault = $db->query("SELECT * FROM affiliate_offers WHERE status = 'active' LIMIT 1");
-        $offer = $stmtDefault->fetch();
+        $stmtDefault = $db->query("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC LIMIT 1");
+        $offer = $stmtDefault->fetch(PDO::FETCH_ASSOC);
     }
 
     if ($offer && !empty($offer['target_url'])) {
-        $targetUrl = $offer['target_url'];
+        $rawTarget = trim($offer['target_url']);
+        if (strpos($rawTarget, 'http://') === 0 || strpos($rawTarget, 'https://') === 0) {
+            $targetUrl = $rawTarget;
+        } else {
+            $targetUrl = $baseOrigin . '/' . ltrim($rawTarget, '/');
+        }
     }
 
-    // 2. Record Click (Idempotent by click_id)
+    // 3. Record Click in Database
     $stmtClick = $db->prepare("
-        INSERT IGNORE INTO affiliate_clicks (
+        INSERT INTO affiliate_clicks (
             click_id, affiliate_id, offer_id, ip_address, user_agent, referrer, landing_url,
             sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, created_at
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, NOW()
+            ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
         )
+        ON DUPLICATE KEY UPDATE ip_address = VALUES(ip_address), user_agent = VALUES(user_agent)
     ");
     $stmtClick->execute([
-        $clickId, $affId, $offer ? $offer['id'] : $offerId, $ipAddress, $userAgent, $referrer, $targetUrl,
+        $clickId, $affId ?: 'AFF-DIRECT', $offer ? $offer['id'] : $offerId, $ipAddress, $userAgent, $referrer, $targetUrl,
         $subId1 ?: null, $subId2 ?: null, $subId3 ?: null, $subId4 ?: null, $subId5 ?: null
     ]);
 
     if ($offer) {
         $db->prepare("UPDATE affiliate_offers SET total_clicks = total_clicks + 1 WHERE id = ?")->execute([$offer['id']]);
     }
-} catch (Exception $e) {
-    error_log('[CPA Track] Error recording click: ' . $e->getMessage());
+} catch (Throwable $e) {
+    error_log('[CPA Track Error] ' . $e->getMessage());
 }
 
-// Preserve click_id, aff_id, offer_id in destination redirect
+// 4. Set 30-Day Cookies for Client Attribution
+$cookieDuration = time() + (86400 * 30);
+if (!empty($affId)) {
+    @setcookie('aff_id', $affId, $cookieDuration, '/', '', false, false);
+}
+@setcookie('click_id', $clickId, $cookieDuration, '/', '', false, false);
+@setcookie('offer_id', $offer ? $offer['id'] : $offerId, $cookieDuration, '/', '', false, false);
+if (!empty($subId1)) {
+    @setcookie('sub_id1', $subId1, $cookieDuration, '/', '', false, false);
+}
+if (!empty($subId2)) {
+    @setcookie('sub_id2', $subId2, $cookieDuration, '/', '', false, false);
+}
+
+// 5. Preserve click_id, aff_id, offer_id in destination redirect
 $parsed = parse_url($targetUrl);
 $query = [];
 if (!empty($parsed['query'])) {
     parse_str($parsed['query'], $query);
 }
+if (!empty($affId)) $query['aff_id'] = $affId;
 $query['click_id'] = $clickId;
-$query['aff_id'] = $affId;
-$query['offer_id'] = $offerId;
-if ($subId1) $query['sub_id1'] = $subId1;
+$query['offer_id'] = $offer ? $offer['id'] : $offerId;
+if (!empty($subId1)) $query['sub_id1'] = $subId1;
+if (!empty($subId2)) $query['sub_id2'] = $subId2;
 
-$scheme   = isset($parsed['scheme']) ? $parsed['scheme'] . '://' : 'https://';
-$host     = isset($parsed['host']) ? $parsed['host'] : 'antiprofiles.com';
-$port     = isset($parsed['port']) ? ':' . $parsed['port'] : '';
-$path     = isset($parsed['path']) ? $parsed['path'] : '/';
-$newQuery = '?' . http_build_query($query);
-$fragment = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
+$destScheme = isset($parsed['scheme']) ? $parsed['scheme'] . '://' : 'https://';
+$destHost   = isset($parsed['host']) ? $parsed['host'] : $host;
+$destPort   = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+$destPath   = isset($parsed['path']) ? $parsed['path'] : '/';
+$newQuery   = '?' . http_build_query($query);
+$fragment   = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
 
-$finalDestination = "$scheme$host$port$path$newQuery$fragment";
+$finalDestination = "$destScheme$destHost$destPort$destPath$newQuery$fragment";
 
-// 302 Redirect
+// 6. 302 Redirect
 header("Location: $finalDestination", true, 302);
 exit();

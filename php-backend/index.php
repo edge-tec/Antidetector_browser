@@ -78,6 +78,18 @@ if ($requestUri === '/verify-email' || $requestUri === '/verify') {
     exit();
 }
 
+// ── 0.3 Public CPA Click Tracking Redirect (/track, /r) ──
+if ($requestUri === '/track' || strpos($requestUri, '/track?') === 0 || strpos($requestUri, '/track/') === 0 || strpos($requestUri, '/r/') === 0 || $requestUri === '/r') {
+    require_once __DIR__ . '/api/track.php';
+    exit();
+}
+
+// ── 0.4 Server-to-Server Postback Ingestion (/postback) ──
+if ($requestUri === '/postback' || strpos($requestUri, '/postback?') === 0 || strpos($requestUri, '/postback/') === 0) {
+    require_once __DIR__ . '/api/postback.php';
+    exit();
+}
+
 // ── 1. API Route Dispatcher ──
 if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
     
@@ -4750,7 +4762,14 @@ try {
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, password, captcha_token: captchaToken })
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        captcha_token: captchaToken,
+                        aff_id: localStorage.getItem('aff_id') || '',
+                        click_id: localStorage.getItem('click_id') || ''
+                    })
                 });
 
                 if (!res.ok && res.status >= 500) {
@@ -5031,10 +5050,15 @@ try {
             }
 
             try {
+                const enrichedPayload = Object.assign({}, payload, {
+                    aff_id: localStorage.getItem('aff_id') || '',
+                    click_id: localStorage.getItem('click_id') || ''
+                });
+
                 const res = await fetch('/api/auth/google', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(enrichedPayload)
                 });
 
                 if (!res.ok && res.status >= 500) {
@@ -10326,6 +10350,37 @@ try {
 
         // Router & Route Guard on Page Load
         window.addEventListener('DOMContentLoaded', () => {
+            // Auto capture & persist CPA affiliate referral tracking parameters
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const affId = urlParams.get('aff_id') || urlParams.get('ref') || urlParams.get('partner');
+                const clickId = urlParams.get('click_id');
+                const offerId = urlParams.get('offer_id');
+                const subId1 = urlParams.get('sub_id1');
+                const subId2 = urlParams.get('sub_id2');
+
+                if (affId) {
+                    localStorage.setItem('aff_id', affId);
+                    document.cookie = `aff_id=${encodeURIComponent(affId)}; path=/; max-age=2592000; SameSite=Lax`;
+                }
+                if (clickId) {
+                    localStorage.setItem('click_id', clickId);
+                    document.cookie = `click_id=${encodeURIComponent(clickId)}; path=/; max-age=2592000; SameSite=Lax`;
+                }
+                if (offerId) {
+                    localStorage.setItem('offer_id', offerId);
+                    document.cookie = `offer_id=${encodeURIComponent(offerId)}; path=/; max-age=2592000; SameSite=Lax`;
+                }
+                if (subId1) {
+                    localStorage.setItem('sub_id1', subId1);
+                    document.cookie = `sub_id1=${encodeURIComponent(subId1)}; path=/; max-age=2592000; SameSite=Lax`;
+                }
+                if (subId2) {
+                    localStorage.setItem('sub_id2', subId2);
+                    document.cookie = `sub_id2=${encodeURIComponent(subId2)}; path=/; max-age=2592000; SameSite=Lax`;
+                }
+            } catch(e) {}
+
             initCaptchaSystem();
             initGoogleOAuth();
             checkUrlEmailVerificationToken();
