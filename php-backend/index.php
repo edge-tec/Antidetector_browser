@@ -451,6 +451,9 @@ try {
                 adminModal.classList.remove('active');
                 adminModal.style.display = 'none';
             }
+            if (typeof toggleAdminSidebar === 'function') {
+                toggleAdminSidebar(true);
+            }
         };
 
         window.switchAuthTab = function(mode) {
@@ -934,52 +937,74 @@ try {
             .hero h1 { font-size: 32px !important; line-height: 1.25 !important; }
             .status-box { flex-direction: column; gap: 16px; text-align: center; }
             
-            /* Admin Dashboard Layout — Sidebar → Horizontal Scroll Tabs */
+            /* Admin Dashboard Layout — Left Slide-Out Sidebar Drawer */
+            .admin-sidebar-toggle {
+                display: inline-flex !important;
+            }
+            .admin-sidebar-close-row {
+                display: block !important;
+            }
             .admin-workspace-layout {
-                flex-direction: column;
+                flex-direction: row;
+                position: relative;
             }
             .admin-sidebar {
-                width: 100%;
-                min-width: 100%;
-                max-height: none;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 270px;
+                min-width: 270px;
+                height: 100vh;
+                z-index: 9999;
+                background: #0F1016;
+                border-right: 1px solid var(--border);
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 16px 10px;
                 display: flex;
-                flex-direction: row;
-                overflow-x: auto;
-                overflow-y: hidden;
-                white-space: nowrap;
-                padding: 8px 12px;
-                gap: 6px;
-                background: #11131C;
+                flex-direction: column;
+                box-sizing: border-box;
+                box-shadow: none;
                 -webkit-overflow-scrolling: touch;
-                scrollbar-width: thin;
             }
-            .admin-sidebar::-webkit-scrollbar {
-                height: 4px;
-            }
-            .admin-sidebar::-webkit-scrollbar-thumb {
-                background: rgba(99, 102, 241, 0.4);
-                border-radius: 4px;
+            .admin-sidebar.mobile-open {
+                transform: translateX(0);
+                box-shadow: 8px 0 40px rgba(0, 0, 0, 0.7);
             }
             .admin-sidebar-header {
-                display: none !important;
+                display: block !important;
             }
             .admin-sidebar-btn {
-                width: auto !important;
-                flex-shrink: 0;
-                padding: 7px 14px;
-                font-size: 12px;
-                border-radius: 18px;
-                background: rgba(255,255,255,0.05);
-                border: 1px solid rgba(255,255,255,0.08);
+                width: 100% !important;
+                padding: 10px 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                background: transparent;
+                border: none;
+                text-align: left;
+                white-space: normal;
             }
             .admin-sidebar-btn.active {
                 background: linear-gradient(135deg, var(--primary), #4F46E5);
                 border-color: transparent;
             }
+            /* Dark overlay behind sidebar */
+            .admin-sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(4px);
+                z-index: 9998;
+            }
+            .admin-sidebar-overlay.active {
+                display: block;
+            }
             .admin-viewport-wrapper {
                 padding: 14px 12px 60px 12px;
+                width: 100%;
             }
             .admin-grid-2col {
                 grid-template-columns: 1fr;
@@ -1118,14 +1143,10 @@ try {
                 font-size: 15px !important;
             }
 
-            /* Sidebar tabs: smaller on mobile */
-            .admin-sidebar {
-                padding: 6px 10px;
-                gap: 5px;
-            }
+            /* Left Drawer menu buttons on mobile */
             .admin-sidebar-btn {
-                padding: 6px 10px;
-                font-size: 11px;
+                padding: 9px 12px;
+                font-size: 12.5px;
             }
 
             /* Tables need smaller min-width on mobile */
@@ -1191,12 +1212,6 @@ try {
             }
             #adminDashboardModal [style*="font-size: 15px"] {
                 font-size: 13px !important;
-            }
-
-            /* Admin sidebar even tighter */
-            .admin-sidebar-btn {
-                padding: 5px 8px;
-                font-size: 10.5px;
             }
 
             /* Admin card shrink */
@@ -2481,7 +2496,10 @@ try {
             
             <!-- Top Bar Header -->
             <div style="padding: 12px 20px; background: #151720; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="admin-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="Toggle Menu" style="display:none; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #818CF8; font-size: 15px; padding: 6px 10px; border-radius: 8px; cursor: pointer; line-height: 1; align-items: center; gap: 6px; font-weight: 700;" id="adminSidebarToggleBtn">
+                        <span>☰</span> <span style="font-size: 12px;">Menu</span>
+                    </button>
                     <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 34px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
                     <div>
                         <h2 style="font-size: 15px; color: #FFF; margin: 0;">Central Web Control Center</h2>
@@ -2494,11 +2512,21 @@ try {
                 </div>
             </div>
 
+            <!-- Mobile Sidebar Overlay Backdrop -->
+            <div class="admin-sidebar-overlay" id="adminSidebarOverlay" onclick="toggleAdminSidebar()"></div>
+
             <!-- Main Workspace Container: Sidebar + Content -->
             <div class="admin-workspace-layout">
                 
                 <!-- Left Navigation Sidebar -->
                 <div class="admin-sidebar" id="adminSidebar">
+                    <!-- Mobile Sidebar Close Button -->
+                    <div class="admin-sidebar-close-row" style="display: none; padding: 10px 8px 14px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 13px; font-weight: 700; color: #FFF; display: flex; align-items: center; gap: 6px;">📂 Navigation</span>
+                            <button onclick="toggleAdminSidebar(true)" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #FFF; font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: 600;">✕ Close</button>
+                        </div>
+                    </div>
                     <!-- User Profile & Controls Section (Visible to ALL users) -->
                     <div class="admin-sidebar-header" style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">MY ACCOUNT PORTAL</div>
                     <button class="admin-sidebar-btn active" id="btnTabMyProfile" onclick="switchAdminTab('my-profile', this)">👤 My Profile & Password</button>
@@ -5949,7 +5977,28 @@ try {
             if (drawer) drawer.classList.remove('active');
         }
 
+        function toggleAdminSidebar(forceClose) {
+            const sidebar = document.getElementById('adminSidebar');
+            const overlay = document.getElementById('adminSidebarOverlay');
+            if (!sidebar) return;
+            if (forceClose === true) {
+                sidebar.classList.remove('mobile-open');
+                if (overlay) overlay.classList.remove('active');
+                return;
+            }
+            const isOpen = sidebar.classList.toggle('mobile-open');
+            if (overlay) {
+                overlay.classList.toggle('active', isOpen);
+            }
+        }
+        window.toggleAdminSidebar = toggleAdminSidebar;
+
         function switchAdminTab(tabName, btn) {
+            // Auto-close left drawer on mobile when tab is selected
+            if (window.innerWidth <= 900) {
+                toggleAdminSidebar(true);
+            }
+
             document.querySelectorAll('.admin-sidebar-btn').forEach(b => {
                 b.classList.remove('active');
             });
