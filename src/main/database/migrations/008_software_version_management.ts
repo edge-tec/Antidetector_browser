@@ -77,16 +77,16 @@ export function up(db: Database.Database): void {
         0,
         'https://releases.antiprofiles.com/AntiProfiles-Windows-x64.exe',
         85400000,
-        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        '',
         'https://releases.antiprofiles.com/AntiProfiles-macOS-Intel-x64.dmg',
         92100000,
-        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        '',
         'https://releases.antiprofiles.com/AntiProfiles-macOS-Apple-Silicon-arm64.dmg',
         89600000,
-        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        '',
         'https://releases.antiprofiles.com/AntiProfiles-Linux-x86_64.AppImage',
         81200000,
-        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        '',
         datetime('now')
       )
     `).run()

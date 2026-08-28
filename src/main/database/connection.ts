@@ -93,6 +93,15 @@ export function initDatabase(): any {
     try { db.exec(colSql) } catch {}
   }
 
+  try {
+    db.exec(`
+      UPDATE software_versions SET win_sha256 = '' WHERE win_sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+      UPDATE software_versions SET mac_intel_sha256 = '' WHERE mac_intel_sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+      UPDATE software_versions SET mac_arm_sha256 = '' WHERE mac_arm_sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+      UPDATE software_versions SET linux_sha256 = '' WHERE linux_sha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    `)
+  } catch {}
+
   return db
 }
 
