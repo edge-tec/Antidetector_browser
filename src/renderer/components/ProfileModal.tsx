@@ -964,38 +964,117 @@ const POPULAR_BOOKMARKS = [
   { title: 'Gmail', url: 'https://mail.google.com', icon: '✉️' }
 ]
 
-function parseProxyString(raw: string) {
+export function parseProxyString(raw: string): { type: string; host: string; port: string; username: string; password: string } | null {
+  if (!raw || typeof raw !== 'string') return null
   const trimmed = raw.trim()
   if (!trimmed) return null
 
+  // Normalize newlines and excess whitespace into single spaces for unified regex matching
+  const normalized = trimmed.replace(/[\r\n\t]+/g, ' ')
+
+  // 1. Key-Value Labeled Formats (e.g. Proxy Server:proxy.smartproxy.net Port:3120 username:user password:pass)
+  // Smartproxy, BrightData, Oxylabs, Webshare, IPRoyal labeled formats
+  const hostMatch = normalized.match(/(?:proxy[\s_-]*(?:server|host|ip|address)|server|host|ip|endpoint)\s*[:=]\s*([^\s,;]+)/i)
+  const portMatch = normalized.match(/(?:proxy[\s_-]*port|port)\s*[:=]\s*(\d{1,5})/i)
+  const userMatch = normalized.match(/(?:proxy[\s_-]*(?:username|user|login)|username|user|login|auth[\s_-]*user)\s*[:=]\s*([^\s,;]+)/i)
+  const passMatch = normalized.match(/(?:proxy[\s_-]*(?:password|pass|pwd)|password|pass|pwd|auth[\s_-]*pass)\s*[:=]\s*([^\s,;]+)/i)
+  const typeMatch = normalized.match(/(?:proxy[\s_-]*type|protocol|scheme|type)\s*[:=]\s*(https?|socks[45])/i)
+
+  if (hostMatch || (portMatch && (userMatch || passMatch))) {
+    const host = hostMatch ? hostMatch[1].trim() : ''
+    const port = portMatch ? portMatch[1].trim() : '8080'
+    const username = userMatch ? userMatch[1].trim() : ''
+    const password = passMatch ? passMatch[1].trim() : ''
+    let type = typeMatch ? typeMatch[1].toLowerCase() : 'http'
+    if (type === 'socks') type = 'socks5'
+    if (host) {
+      return { type, host, port, username, password }
+    }
+  }
+
+  // 2. Standard Protocol URL URI Format (e.g. http://user:pass@host:port or socks5://host:port)
   if (trimmed.includes('://')) {
     try {
       const url = new URL(trimmed)
-      const type = url.protocol.replace(':', '').toLowerCase()
+      let type = url.protocol.replace(':', '').toLowerCase()
+      if (type === 'socks') type = 'socks5'
+      if (!['http', 'https', 'socks4', 'socks5'].includes(type)) {
+        type = 'http'
+      }
       const host = url.hostname
       const port = url.port || (type.startsWith('socks') ? '1080' : '8080')
       const username = decodeURIComponent(url.username || '')
       const password = decodeURIComponent(url.password || '')
-      return { type, host, port, username, password }
+      if (host) {
+        return { type, host, port, username, password }
+      }
     } catch { /* fallback */ }
   }
 
-  const parts = trimmed.split(':').map(p => p.trim())
-  if (parts.length === 4) {
-    const isIpOrDomain = (str: string) => /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(str)
-    const isPort = (str: string) => /^\d{1,5}$/.test(str) && Number(str) > 0 && Number(str) <= 65535
+  // 3. Delimited formats with @ (e.g. user:pass@host:port or host:port@user:pass)
+  if (normalized.includes('@')) {
+    const atParts = normalized.split('@').map(s => s.trim())
+    if (atParts.length === 2) {
+      const isIpOrDomain = (str: string) => /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(str)
+      const isPort = (str: string) => /^\d{1,5}$/.test(str) && Number(str) > 0 && Number(str) <= 65535
 
-    if (isIpOrDomain(parts[0]) && isPort(parts[1])) {
-      return { type: 'socks5', host: parts[0], port: parts[1], username: parts[2], password: parts[3] }
+      const part0Colon = atParts[0].split(':').map(s => s.trim())
+      const part1Colon = atParts[1].split(':').map(s => s.trim())
+
+      // user:pass@host:port
+      if (part1Colon.length === 2 && isIpOrDomain(part1Colon[0]) && isPort(part1Colon[1])) {
+        return {
+          type: 'http',
+          host: part1Colon[0],
+          port: part1Colon[1],
+          username: part0Colon[0] || '',
+          password: part0Colon[1] || ''
+        }
+      }
+
+      // host:port@user:pass
+      if (part0Colon.length === 2 && isIpOrDomain(part0Colon[0]) && isPort(part0Colon[1])) {
+        return {
+          type: 'http',
+          host: part0Colon[0],
+          port: part0Colon[1],
+          username: part1Colon[0] || '',
+          password: part1Colon[1] || ''
+        }
+      }
     }
-    if (isIpOrDomain(parts[2]) && isPort(parts[3])) {
-      return { type: 'socks5', host: parts[2], port: parts[3], username: parts[0], password: parts[1] }
-    }
-    return { type: 'socks5', host: parts[0], port: parts[1], username: parts[2], password: parts[3] }
   }
 
-  if (parts.length === 2) {
-    return { type: 'socks5', host: parts[0], port: parts[1], username: '', password: '' }
+  // 4. Delimited by Colons, Pipes, Semicolons, Commas, Tabs, or Spaces
+  // Formats: host:port:user:pass, user:pass:host:port, type:host:port:user:pass, host:port
+  const delimiters = [':', '|', ';', ',', '\t', ' ']
+  for (const delim of delimiters) {
+    if (normalized.includes(delim)) {
+      const parts = normalized.split(delim).map(p => p.trim()).filter(Boolean)
+      const isIpOrDomain = (str: string) => /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(str)
+      const isPort = (str: string) => /^\d{1,5}$/.test(str) && Number(str) > 0 && Number(str) <= 65535
+
+      if (parts.length === 4) {
+        if (isIpOrDomain(parts[0]) && isPort(parts[1])) {
+          return { type: 'http', host: parts[0], port: parts[1], username: parts[2], password: parts[3] }
+        }
+        if (isIpOrDomain(parts[2]) && isPort(parts[3])) {
+          return { type: 'http', host: parts[2], port: parts[3], username: parts[0], password: parts[1] }
+        }
+        return { type: 'http', host: parts[0], port: parts[1], username: parts[2], password: parts[3] }
+      }
+
+      if (parts.length === 5 && ['http', 'https', 'socks4', 'socks5'].includes(parts[0].toLowerCase())) {
+        const type = parts[0].toLowerCase()
+        if (isIpOrDomain(parts[1]) && isPort(parts[2])) {
+          return { type, host: parts[1], port: parts[2], username: parts[3], password: parts[4] }
+        }
+      }
+
+      if (parts.length === 2 && isIpOrDomain(parts[0]) && isPort(parts[1])) {
+        return { type: 'http', host: parts[0], port: parts[1], username: '', password: '' }
+      }
+    }
   }
 
   return null
@@ -2894,7 +2973,7 @@ export const ProfileModal: React.FC<Props> = ({
                               setCustomProxyPass(parsed.password)
                             }
                           }}
-                          placeholder="e.g. socks5://nwkfcetx:pass@31.59.20.176:6754 or 31.59.20.176:6754:nwkfcetx:pass"
+                          placeholder="e.g. Proxy Server:proxy.smartproxy.net Port:3120 username:user password:pass or 31.59.20.176:6754:user:pass"
                           style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#FFF', fontSize: '13px' }}
                         />
                       </div>
