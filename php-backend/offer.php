@@ -451,31 +451,39 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
             };
 
             try {
-                const res = await fetch('/api/auth.php', {
+                const res = await fetch('/api/auth.php?action=register', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
+                const data = await res.json().catch(() => null);
 
-                if (data.success) {
-                    successDiv.textContent = 'Account created successfully! Redirecting to your dashboard...';
-                    successDiv.classList.remove('hidden');
-                    if (data.token) {
-                        localStorage.setItem('sessionToken', data.token);
-                        localStorage.setItem('user', JSON.stringify(data.user || {}));
+                if (data && data.success) {
+                    if (data.requiresVerification) {
+                        successDiv.textContent = data.message || 'Account created! Please check your email inbox to verify your account.';
+                        successDiv.classList.remove('hidden');
+                        setTimeout(() => {
+                            window.location.href = '/verify-email?email=' + encodeURIComponent(form.email.value.trim());
+                        }, 2000);
+                    } else {
+                        successDiv.textContent = 'Account created successfully! Redirecting to your dashboard...';
+                        successDiv.classList.remove('hidden');
+                        if (data.sessionToken || data.token) {
+                            localStorage.setItem('sessionToken', data.sessionToken || data.token);
+                            if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+                        }
+                        setTimeout(() => {
+                            window.location.href = '/?welcome=1&plan=' + encodeURIComponent(PACKAGE_ID);
+                        }, 1200);
                     }
-                    setTimeout(() => {
-                        window.location.href = '/?welcome=1&plan=' + encodeURIComponent(PACKAGE_ID);
-                    }, 1200);
                 } else {
-                    errorDiv.textContent = data.error || 'Failed to create account. Please try again.';
+                    errorDiv.textContent = (data && data.error) ? data.error : 'Failed to create account. Please check your details and try again.';
                     errorDiv.classList.remove('hidden');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Activate 7-Day Free Account';
                 }
             } catch (err) {
-                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.textContent = 'Network or server error (' + (err.message || 'Unknown') + '). Please try again.';
                 errorDiv.classList.remove('hidden');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Activate 7-Day Free Account';

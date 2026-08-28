@@ -5,7 +5,17 @@
 
 require_once __DIR__ . '/../helpers.php';
 
-$action = $_GET['action'] ?? '';
+$rawBody = file_get_contents('php://input');
+$parsedBody = json_decode($rawBody, true) ?: [];
+$action = $_GET['action'] ?? ($parsedBody['action'] ?? ($_POST['action'] ?? ''));
+
+if (empty($action)) {
+    $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+    if (preg_match('#/api/auth(?:\\.php)?/([^/?]+)#i', $reqPath, $m)) {
+        $action = trim($m[1]);
+    }
+}
+
 $db = Database::getConnection();
 
 switch ($action) {
