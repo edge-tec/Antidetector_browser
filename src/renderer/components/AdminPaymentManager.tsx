@@ -259,15 +259,26 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
   const handleGrantTrial = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!trialForm.userId) {
-      showToast('error', 'Please select a user to grant a trial.')
+      showToast('error', 'Please select a specific user or "ALL USERS (Global Bulk Trial)".')
       return
     }
     setGrantingTrial(true)
     try {
       const token = localStorage.getItem('pv_session_token') || ''
-      const res = await (window as any).api.adminSetUserTrial(token, trialForm)
+      const res = await (window as any).api?.adminSetUserTrial
+        ? await (window as any).api.adminSetUserTrial(token, trialForm)
+        : await fetch('/api/admin.php?action=set-user-trial', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(trialForm)
+          }).then(r => r.json())
+
       if (res?.success) {
-        showToast('success', `🎉 Successfully granted ${trialForm.trialDays}-day Free Trial for ${res.data.user_email}!`)
+        if (trialForm.userId === 'all') {
+          showToast('success', `🎉 Successfully granted ${trialForm.trialDays}-day Free Trial to ALL registered users (${res.data?.affected_count || usersList.length} users updated)!`)
+        } else {
+          showToast('success', `🎉 Successfully granted ${trialForm.trialDays}-day Free Trial for ${res.data?.user_email || 'user'}!`)
+        }
         setActiveSubTab('transactions')
         await loadPaymentsOverview()
         if (onSubscriptionUpdated) onSubscriptionUpdated()
@@ -805,35 +816,99 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
             </form>
           </div>
 
-          {/* Card 2: Grant / Extend Free Trial for a Specific User */}
-          <div style={{ backgroundColor: '#1E1E2E', borderRadius: '16px', border: '1px solid #2C2C3E', padding: '28px' }}>
+          {/* Card 2: Grant / Extend Free Trial for a Specific User or ALL Users */}
+          <div style={{
+            backgroundColor: '#1E1E2E',
+            borderRadius: '16px',
+            border: trialForm.userId === 'all' ? '1px solid #38BDF8' : '1px solid #2C2C3E',
+            padding: '28px',
+            transition: 'border-color 0.2s',
+            boxShadow: trialForm.userId === 'all' ? '0 8px 30px rgba(56, 189, 248, 0.15)' : 'none'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <span style={{ fontSize: '24px' }}>⏱️</span>
+              <span style={{ fontSize: '24px' }}>{trialForm.userId === 'all' ? '🌐' : '⏱️'}</span>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#FFF' }}>Set Free Trial for Individual User</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#FFF' }}>
+                    {trialForm.userId === 'all' ? 'Set Global Free Trial (All Registered Users)' : 'Set Free Trial for User'}
+                  </h3>
+                  {trialForm.userId === 'all' && (
+                    <span style={{ backgroundColor: '#0284C725', color: '#38BDF8', border: '1px solid #38BDF8', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      GLOBAL BULK
+                    </span>
+                  )}
+                </div>
                 <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
-                  Instantly grant or extend full software access for any specific user without requiring payment.
+                  {trialForm.userId === 'all'
+                    ? 'Instantly activate or extend full trial subscription access for all registered accounts at once.'
+                    : 'Instantly grant or extend full software access for any specific user without requiring payment.'}
                 </p>
               </div>
             </div>
 
             <form onSubmit={handleGrantTrial} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-                  Select User *
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#CBD5E1' }}>
+                    Select User Scope *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTrialForm({ ...trialForm, userId: trialForm.userId === 'all' ? '' : 'all' })}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: trialForm.userId === 'all' ? '#F59E0B' : '#38BDF8',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    {trialForm.userId === 'all' ? '↩ Switch to Individual User' : '⚡ Select ALL Users (Global)'}
+                  </button>
+                </div>
                 <select
                   required
                   value={trialForm.userId}
                   onChange={e => setTrialForm({ ...trialForm, userId: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    backgroundColor: trialForm.userId === 'all' ? '#082F49' : '#101018',
+                    border: trialForm.userId === 'all' ? '1px solid #38BDF8' : '1px solid #334155',
+                    color: '#FFF',
+                    fontSize: '13px',
+                    fontWeight: trialForm.userId === 'all' ? 700 : 500
+                  }}
                 >
                   <option value="">-- Choose User --</option>
+                  <option value="all" style={{ fontWeight: 800, color: '#38BDF8', backgroundColor: '#0C4A6E' }}>
+                    🌐 ALL USERS (Global Bulk Free Trial — Grant to All {usersList.length} Users)
+                  </option>
                   {usersList.map(u => (
                     <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                   ))}
                 </select>
               </div>
+
+              {trialForm.userId === 'all' && (
+                <div style={{
+                  backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <span style={{ fontSize: '18px' }}>💡</span>
+                  <div style={{ fontSize: '12px', color: '#BAE6FD', lineHeight: '1.4' }}>
+                    <strong>Global Action:</strong> This will immediately update all <strong>{usersList.length} registered accounts</strong> with a <strong>{trialForm.trialDays}-day</strong> trial on the <strong>{trialForm.planId.replace('plan_', '').toUpperCase()}</strong> plan.
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
@@ -884,16 +959,23 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
                     flex: 1,
                     padding: '11px 22px',
                     borderRadius: '8px',
-                    backgroundColor: '#A855F7',
+                    backgroundColor: trialForm.userId === 'all' ? '#0284C7' : '#A855F7',
                     color: '#FFF',
                     fontWeight: 700,
                     fontSize: '13px',
                     border: 'none',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)'
+                    boxShadow: trialForm.userId === 'all'
+                      ? '0 4px 14px rgba(2, 132, 199, 0.5)'
+                      : '0 4px 12px rgba(168, 85, 247, 0.4)',
+                    transition: 'background-color 0.2s'
                   }}
                 >
-                  {grantingTrial ? 'Granting Trial...' : '🚀 Grant Free Trial Access'}
+                  {grantingTrial
+                    ? 'Granting Trial...'
+                    : trialForm.userId === 'all'
+                      ? `🚀 Grant Free Trial to ALL ${usersList.length} USERS (Global)`
+                      : '🚀 Grant Free Trial Access'}
                 </button>
               </div>
             </form>

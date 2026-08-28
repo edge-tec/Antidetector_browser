@@ -317,13 +317,49 @@ export class PaymentService {
     this.ensureTablesExist()
     const db = getDatabase()
 
-    const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(userId) as any
-    if (!user) throw new Error('User not found.')
-
     const days = Math.max(1, parseInt(String(trialDays), 10) || 7)
     const startsAt = new Date().toISOString()
     const expiresAtDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
     const expiresAt = expiresAtDate.toISOString()
+
+    // ── Global Bulk Grant for ALL Registered Users ──
+    if (userId === 'all' || userId === 'global') {
+      const allUsers = db.prepare('SELECT id, name, email FROM users').all() as any[]
+      let grantedCount = 0
+
+      for (const u of allUsers) {
+        const sub = subscriptionRepo.getOrCreateSubscription(u.id)
+        db.prepare(`
+          UPDATE subscriptions
+          SET plan_id = ?,
+              status = 'trial',
+              starts_at = ?,
+              expires_at = ?,
+              grace_period_days = 3,
+              updated_at = datetime('now')
+          WHERE id = ?
+        `).run(planId, startsAt, expiresAt, sub.id)
+        grantedCount++
+      }
+
+      logger.info('payment', `[PaymentService] Granted GLOBAL ${days}-day Free Trial for all ${grantedCount} users (Plan: ${planId}, Expires: ${expiresAt})`)
+
+      return {
+        success: true,
+        user_id: 'all',
+        user_email: `ALL USERS (${grantedCount} Total)`,
+        is_global: true,
+        affected_count: grantedCount,
+        plan_id: planId,
+        status: 'trial',
+        trial_days: days,
+        starts_at: startsAt,
+        expires_at: expiresAt
+      }
+    }
+
+    const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(userId) as any
+    if (!user) throw new Error('User not found.')
 
     const sub = subscriptionRepo.getOrCreateSubscription(userId)
 
@@ -344,6 +380,7 @@ export class PaymentService {
       success: true,
       user_id: userId,
       user_email: user.email,
+      is_global: false,
       plan_id: planId,
       status: 'trial',
       trial_days: days,

@@ -185,6 +185,101 @@ switch ($action) {
         ]);
         break;
 
+    case 'set-user-trial':
+    case 'grant-user-trial':
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $targetUserId = trim($input['userId'] ?? $input['user_id'] ?? $_GET['user_id'] ?? '');
+        $trialDays = max(1, (int)($input['trialDays'] ?? $input['trial_days'] ?? 7));
+        $planId = trim($input['planId'] ?? $input['plan_id'] ?? 'plan_starter');
+
+        if (!$targetUserId) {
+            respondJson(['success' => false, 'error' => 'Target User ID or "all" is required.'], 400);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $expiresAt = date('Y-m-d H:i:s', time() + ($trialDays * 86400));
+
+        if ($targetUserId === 'all' || $targetUserId === 'global') {
+            // Bulk Global Trial Provisioning for ALL registered users
+            $allUsersStmt = $db->query("SELECT id, email FROM users");
+            $allUsers = $allUsersStmt ? $allUsersStmt->fetchAll() : [];
+            $count = 0;
+
+            $subStmt = $db->prepare("
+                INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, updated_at)
+                VALUES (?, ?, ?, 'trial', ?, ?, 3, CURRENT_TIMESTAMP)
+                ON DUPLICATE KEY UPDATE
+                    plan_id = VALUES(plan_id),
+                    status = 'trial',
+                    starts_at = VALUES(starts_at),
+                    expires_at = VALUES(expires_at),
+                    grace_period_days = 3,
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+
+            foreach ($allUsers as $u) {
+                $subId = 'sub_' . bin2hex(random_bytes(8));
+                $subStmt->execute([$subId, $u['id'], $planId, $now, $expiresAt]);
+                $count++;
+            }
+
+            logAdminAction($admin['id'], $admin['email'], 'GLOBAL_TRIAL_GRANTED', 'all', "Granted global {$trialDays}-day free trial to all {$count} users (Plan: {$planId})");
+
+            respondJson([
+                'success' => true,
+                'data' => [
+                    'user_id' => 'all',
+                    'user_email' => "ALL USERS ({$count} Total)",
+                    'affected_count' => $count,
+                    'is_global' => true,
+                    'plan_id' => $planId,
+                    'status' => 'trial',
+                    'trial_days' => $trialDays,
+                    'starts_at' => $now,
+                    'expires_at' => $expiresAt
+                ]
+            ]);
+        } else {
+            $uStmt = $db->prepare("SELECT id, email FROM users WHERE id = ?");
+            $uStmt->execute([$targetUserId]);
+            $targetUser = $uStmt->fetch();
+
+            if (!$targetUser) {
+                respondJson(['success' => false, 'error' => 'User not found.'], 404);
+            }
+
+            $subId = 'sub_' . bin2hex(random_bytes(8));
+            $subStmt = $db->prepare("
+                INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, expires_at, grace_period_days, updated_at)
+                VALUES (?, ?, ?, 'trial', ?, ?, 3, CURRENT_TIMESTAMP)
+                ON DUPLICATE KEY UPDATE
+                    plan_id = VALUES(plan_id),
+                    status = 'trial',
+                    starts_at = VALUES(starts_at),
+                    expires_at = VALUES(expires_at),
+                    grace_period_days = 3,
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            $subStmt->execute([$subId, $targetUserId, $planId, $now, $expiresAt]);
+
+            logAdminAction($admin['id'], $admin['email'], 'USER_TRIAL_GRANTED', $targetUserId, "Granted {$trialDays}-day free trial to {$targetUser['email']} (Plan: {$planId})");
+
+            respondJson([
+                'success' => true,
+                'data' => [
+                    'user_id' => $targetUserId,
+                    'user_email' => $targetUser['email'],
+                    'is_global' => false,
+                    'plan_id' => $planId,
+                    'status' => 'trial',
+                    'trial_days' => $trialDays,
+                    'starts_at' => $now,
+                    'expires_at' => $expiresAt
+                ]
+            ]);
+        }
+        break;
+
     case 'update-user-role':
     case 'update-role':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
