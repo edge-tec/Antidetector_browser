@@ -35,7 +35,6 @@ try {
 } catch (Throwable $e) {}
 
 if (!$landingPage) {
-    // Fallback to professional
     try {
         $stmt = $db->prepare("SELECT * FROM affiliate_landing_pages WHERE slug = 'professional' LIMIT 1");
         $stmt->execute();
@@ -87,21 +86,17 @@ $faqs = json_decode($landingPage['faq_json'] ?? '[]', true) ?: [
 $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
     ['name' => 'Alexandre R.', 'role' => 'Performance Media Buyer', 'comment' => 'AntiProfiles has replaced all other antidetect browsers for our team. Flawless fingerprint consistency.']
 ];
-
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'] ?? 'antiprofiles.com';
-$currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($landingPage['seo_title'] ?? ($packageName . ' — AntiProfiles Antidetect Browser')) ?></title>
     <meta name="description" content="<?= htmlspecialchars($landingPage['meta_desc'] ?? $heroSubtitle) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -111,55 +106,63 @@ $currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                         heading: ['Outfit', 'sans-serif']
-                    },
-                    colors: {
-                        brand: {
-                            50: '#F0FDFA',
-                            400: '<?= htmlspecialchars($themeColor) ?>',
-                            500: '<?= htmlspecialchars($themeColor) ?>',
-                            600: '#0D9488'
-                        }
                     }
                 }
             }
         }
     </script>
     <style>
-        body {
-            background-color: #0B1120;
-            color: #F8FAFC;
+        html, body {
+            background-color: #070B14 !important;
+            background-image: 
+                radial-gradient(at 50% 0%, rgba(45, 212, 191, 0.12) 0px, transparent 60%),
+                radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+                radial-gradient(at 0% 50%, rgba(99, 102, 241, 0.06) 0px, transparent 50%) !important;
+            background-attachment: fixed !important;
+            color: #F8FAFC !important;
             font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
         }
-        .glow-gradient {
-            background: radial-gradient(circle at 50% -20%, rgba(45, 212, 191, 0.15), transparent 70%);
+        .text-glow {
+            text-shadow: 0 0 30px rgba(45, 212, 191, 0.25);
         }
-        .glass-card {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .glass-card-hover:hover {
-            border-color: rgba(45, 212, 191, 0.35);
-            transform: translateY(-2px);
-            box-shadow: 0 12px 30px -10px rgba(45, 212, 191, 0.15);
+        .glass-panel:hover {
+            border-color: rgba(45, 212, 191, 0.4);
+        }
+        .btn-glow {
+            box-shadow: 0 0 25px -5px rgba(45, 212, 191, 0.5);
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 35px 0px rgba(45, 212, 191, 0.7);
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col glow-gradient antialiased selection:bg-brand-500 selection:text-slate-900">
+<body class="min-h-screen flex flex-col antialiased text-slate-100 selection:bg-teal-400 selection:text-slate-950">
 
     <!-- Header Navigation -->
-    <header class="sticky top-0 z-50 glass-card border-b border-slate-800/80">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-brand-500/20 font-bold text-slate-950 text-xl font-heading">
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-400 to-cyan-400 flex items-center justify-center shadow-lg shadow-teal-500/25 font-black text-slate-950 text-xl font-heading group-hover:scale-105 transition-transform">
                     A
                 </div>
-                <span class="text-xl font-bold font-heading tracking-tight text-white">AntiProfiles</span>
+                <div class="flex flex-col">
+                    <span class="text-xl font-extrabold font-heading tracking-tight text-white group-hover:text-teal-300 transition-colors">AntiProfiles</span>
+                    <span class="text-[10px] uppercase font-bold tracking-widest text-teal-400 -mt-1">Antidetect Browser</span>
+                </div>
             </a>
 
-            <div class="flex items-center gap-4">
-                <a href="/login" class="text-sm font-medium text-slate-300 hover:text-white transition">Sign In</a>
-                <button onclick="openOfferRegistrationModal()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-brand-500 text-slate-950 hover:bg-brand-400 transition shadow-lg shadow-brand-500/20">
+            <div class="flex items-center gap-3 sm:gap-5">
+                <a href="/login" class="text-sm font-semibold text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-colors">Sign In</a>
+                <button onclick="openOfferRegistrationModal()" class="px-4 sm:px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-teal-400 to-cyan-400 text-slate-950 hover:from-teal-300 hover:to-cyan-300 transition-all shadow-lg shadow-teal-500/20 active:scale-95">
                     Get Started Free
                 </button>
             </div>
@@ -168,114 +171,121 @@ $currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
 
     <!-- Main Dynamic Hero Section -->
     <main class="flex-grow">
-        <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 text-center">
+        <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-16 sm:pb-24 text-center">
             
             <!-- Offer Badge -->
-            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20 mb-6 animate-pulse">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold bg-teal-500/15 text-teal-300 border border-teal-500/30 mb-6 sm:mb-8 shadow-lg shadow-teal-500/10">
                 <span><?= htmlspecialchars($badgeText) ?></span>
             </div>
 
             <!-- Hero Headline -->
-            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold font-heading text-white tracking-tight leading-tight max-w-4xl mx-auto mb-6">
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black font-heading text-white tracking-tight leading-[1.15] max-w-4xl mx-auto mb-6 text-glow">
                 <?= htmlspecialchars($heroTitle) ?>
             </h1>
 
             <!-- Hero Subtitle -->
-            <p class="text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
+            <p class="text-base sm:text-lg lg:text-xl text-slate-300 max-w-3xl mx-auto mb-10 sm:mb-14 leading-relaxed font-normal">
                 <?= htmlspecialchars($heroSubtitle) ?>
             </p>
 
-            <!-- Pricing & Call to Action Box -->
-            <div class="max-w-md mx-auto glass-card rounded-2xl p-8 border-2 border-brand-500/30 shadow-2xl relative mb-12">
-                <div class="absolute -top-3.5 right-6 px-3 py-1 rounded-full text-[11px] font-bold bg-gradient-to-r from-brand-500 to-cyan-400 text-slate-950 uppercase tracking-wider shadow">
+            <!-- Pricing & Call to Action Card -->
+            <div class="max-w-lg mx-auto glass-panel rounded-3xl p-6 sm:p-10 border-2 border-teal-500/30 shadow-2xl relative mb-12 sm:mb-16 text-left">
+                <div class="absolute -top-3.5 right-6 sm:right-8 px-3.5 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-teal-400 to-cyan-400 text-slate-950 uppercase tracking-wider shadow-md">
                     <?= htmlspecialchars($packageName) ?>
                 </div>
 
-                <div class="text-center mb-6">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Pricing Plan</span>
+                <div class="text-center pb-6 border-b border-slate-800">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Official Package Pricing</span>
                     <div class="flex items-baseline justify-center gap-2">
                         <?php if ($discountPercent > 0 && $originalPrice > $priceMonthly): ?>
-                            <span class="text-xl text-slate-500 line-through font-medium">$<?= number_format($originalPrice, 2) ?></span>
+                            <span class="text-2xl text-slate-500 line-through font-semibold">$<?= number_format($originalPrice, 2) ?></span>
                         <?php endif; ?>
-                        <span class="text-5xl font-extrabold text-white font-heading">$<?= number_format($priceMonthly, 2) ?></span>
-                        <span class="text-slate-400 text-sm">/month</span>
+                        <span class="text-5xl sm:text-6xl font-black text-white font-heading tracking-tight">$<?= number_format($priceMonthly, 2) ?></span>
+                        <span class="text-slate-400 font-semibold text-base">/month</span>
                     </div>
                     <?php if ($discountPercent > 0): ?>
-                        <span class="inline-block mt-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            Save <?= (int)$discountPercent ?>% Special Promo
+                        <span class="inline-block mt-2 text-xs font-extrabold text-emerald-300 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/40">
+                            ⚡ Save <?= (int)$discountPercent ?>% Special Promotion
                         </span>
                     <?php endif; ?>
                 </div>
 
                 <!-- Features Checklist -->
-                <ul class="space-y-3 text-left text-sm text-slate-300 mb-8 border-t border-b border-slate-800 py-6">
-                    <?php foreach ($features as $feat): ?>
-                        <li class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-brand-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            <span><?= htmlspecialchars($feat) ?></span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
+                <div class="py-6 border-b border-slate-800">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-4">Included In This Plan:</span>
+                    <ul class="space-y-3.5 text-sm sm:text-base text-slate-200">
+                        <?php foreach ($features as $feat): ?>
+                            <li class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center shrink-0 mt-0.5 border border-teal-500/40">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                                <span class="font-medium text-slate-200"><?= htmlspecialchars($feat) ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
 
-                <!-- OS Smart Detection Button -->
-                <div class="space-y-3">
-                    <button id="primary-cta-btn" onclick="openOfferRegistrationModal()" class="w-full py-4 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-brand-500 to-cyan-400 hover:from-brand-400 hover:to-cyan-300 transition shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 text-base">
+                <!-- OS Smart Detection Button & CTA -->
+                <div class="pt-6 space-y-3.5">
+                    <button id="primary-cta-btn" onclick="openOfferRegistrationModal()" class="w-full py-4 sm:py-4.5 rounded-2xl font-extrabold text-slate-950 bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-300 hover:from-teal-300 hover:to-cyan-200 transition-all btn-glow flex items-center justify-center gap-2.5 text-base sm:text-lg active:scale-[0.98]">
                         <span id="cta-label"><?= htmlspecialchars($ctaText) ?></span>
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                         </svg>
                     </button>
 
                     <!-- Auto-Detected Download Option -->
-                    <div id="os-detect-badge" class="text-xs text-slate-400 flex items-center justify-center gap-1.5">
-                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <div id="os-detect-badge" class="text-xs sm:text-sm text-slate-400 flex items-center justify-center gap-2 pt-1 font-medium">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span id="detected-os-text">Detecting your system architecture...</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Trust Badges -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 text-slate-400 text-xs font-medium">
-                <div class="glass-card p-3 rounded-xl flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    <span>100% Anti-Ban Guarantee</span>
+            <!-- Trust Highlights Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto pt-2 text-slate-300 text-xs sm:text-sm font-semibold">
+                <div class="glass-panel p-4 rounded-2xl flex items-center justify-center gap-2.5">
+                    <svg class="w-5 h-5 text-teal-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <span>100% Anti-Ban Protection</span>
                 </div>
-                <div class="glass-card p-3 rounded-xl flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <div class="glass-panel p-4 rounded-2xl flex items-center justify-center gap-2.5">
+                    <svg class="w-5 h-5 text-teal-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     <span>Instant Cloud Sync</span>
                 </div>
-                <div class="glass-card p-3 rounded-xl flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>7-Day Full Trial</span>
+                <div class="glass-panel p-4 rounded-2xl flex items-center justify-center gap-2.5">
+                    <svg class="w-5 h-5 text-teal-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>7-Day Risk-Free Trial</span>
                 </div>
-                <div class="glass-card p-3 rounded-xl flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                    <span>Multi-Platform Desktop</span>
+                <div class="glass-panel p-4 rounded-2xl flex items-center justify-center gap-2.5">
+                    <svg class="w-5 h-5 text-teal-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span>Windows / Mac / Linux</span>
                 </div>
             </div>
         </section>
 
         <!-- Testimonials Section -->
         <?php if (!empty($reviews)): ?>
-        <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 border-t border-slate-800/60">
-            <h2 class="text-2xl font-bold font-heading text-center text-white mb-8">Trusted by Global Automation & Affiliate Teams</h2>
+        <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 border-t border-slate-800/80">
+            <h2 class="text-2xl sm:text-3xl font-extrabold font-heading text-center text-white mb-8 sm:mb-12">
+                Trusted by Top Media Buyers & Automation Agencies
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <?php foreach ($reviews as $rev): ?>
-                    <div class="glass-card p-6 rounded-2xl border border-slate-800">
-                        <div class="flex items-center gap-1 text-amber-400 mb-3">
+                    <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800">
+                        <div class="flex items-center gap-1 text-amber-400 mb-4 text-base">
                             ★★★★★
                         </div>
-                        <p class="text-slate-300 text-sm italic mb-4 leading-relaxed">
+                        <p class="text-slate-200 text-sm sm:text-base italic mb-6 leading-relaxed">
                             "<?= htmlspecialchars($rev['comment']) ?>"
                         </p>
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-xs">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-teal-500 to-cyan-500 text-slate-950 flex items-center justify-center font-black text-sm">
                                 <?= strtoupper(substr($rev['name'], 0, 1)) ?>
                             </div>
                             <div>
-                                <h4 class="text-sm font-semibold text-white"><?= htmlspecialchars($rev['name']) ?></h4>
+                                <h4 class="text-sm sm:text-base font-bold text-white"><?= htmlspecialchars($rev['name']) ?></h4>
                                 <span class="text-xs text-slate-400"><?= htmlspecialchars($rev['role']) ?></span>
                             </div>
                         </div>
@@ -287,15 +297,17 @@ $currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
 
         <!-- FAQ Section -->
         <?php if (!empty($faqs)): ?>
-        <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800/60">
-            <h2 class="text-2xl sm:text-3xl font-bold font-heading text-center text-white mb-8">Frequently Asked Questions</h2>
+        <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 border-t border-slate-800/80">
+            <h2 class="text-2xl sm:text-3xl font-extrabold font-heading text-center text-white mb-8 sm:mb-12">
+                Frequently Asked Questions
+            </h2>
             <div class="space-y-4">
-                <?php foreach ($faqs as $idx => $faq): ?>
-                    <div class="glass-card rounded-xl p-5 border border-slate-800">
-                        <h3 class="text-base font-semibold text-white mb-2 flex items-center justify-between">
-                            <span><?= htmlspecialchars($faq['q']) ?></span>
+                <?php foreach ($faqs as $faq): ?>
+                    <div class="glass-panel rounded-2xl p-5 sm:p-6 border border-slate-800/80 text-left">
+                        <h3 class="text-base sm:text-lg font-bold text-white mb-2.5">
+                            <?= htmlspecialchars($faq['q']) ?>
                         </h3>
-                        <p class="text-sm text-slate-400 leading-relaxed">
+                        <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
                             <?= htmlspecialchars($faq['a']) ?>
                         </p>
                     </div>
@@ -306,30 +318,33 @@ $currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
     </main>
 
     <!-- Footer -->
-    <footer class="glass-card border-t border-slate-800/80 py-8 text-center text-xs text-slate-500">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span>&copy; <?= date('Y') ?> AntiProfiles Inc. All rights reserved.</span>
-            <div class="flex items-center gap-6">
-                <a href="/privacy" class="hover:text-slate-400 transition">Privacy Policy</a>
-                <a href="/terms" class="hover:text-slate-400 transition">Terms of Service</a>
-                <a href="/support" class="hover:text-slate-400 transition">Support</a>
+    <footer class="glass-panel border-t border-slate-800/90 py-8 sm:py-12 text-center text-xs sm:text-sm text-slate-400 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+                <div class="w-6 h-6 rounded-lg bg-teal-400 text-slate-950 font-black flex items-center justify-center text-xs">A</div>
+                <span>&copy; <?= date('Y') ?> AntiProfiles Inc. All rights reserved.</span>
+            </div>
+            <div class="flex items-center gap-6 font-medium">
+                <a href="/privacy" class="hover:text-teal-300 transition-colors">Privacy Policy</a>
+                <a href="/terms" class="hover:text-teal-300 transition-colors">Terms of Service</a>
+                <a href="/support" class="hover:text-teal-300 transition-colors">Help & Support</a>
             </div>
         </div>
     </footer>
 
     <!-- Interactive Registration / Free Trial Modal -->
-    <div id="offer-reg-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-md rounded-2xl p-6 sm:p-8 border border-brand-500/40 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <button onclick="closeOfferRegistrationModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold p-1">✕</button>
+    <div id="offer-reg-modal" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 sm:p-8 border-2 border-teal-500/40 shadow-2xl relative">
+            <button onclick="closeOfferRegistrationModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-xl font-bold p-1 transition-colors">✕</button>
             
             <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 mb-3">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-500/15 text-teal-300 border border-teal-500/30 mb-3 shadow-md">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold font-heading text-white">Start Your 7-Day Free Trial</h3>
-                <p class="text-xs text-slate-400 mt-1">Package: <strong class="text-brand-400"><?= htmlspecialchars($packageName) ?></strong> ($<?= number_format($priceMonthly, 2) ?>/mo)</p>
+                <h3 class="text-2xl font-black font-heading text-white">Start Your 7-Day Free Trial</h3>
+                <p class="text-sm text-slate-300 mt-1">Package: <strong class="text-teal-300 font-bold"><?= htmlspecialchars($packageName) ?></strong> ($<?= number_format($priceMonthly, 2) ?>/mo)</p>
             </div>
 
             <form id="offer-signup-form" onsubmit="handleOfferSignup(event)" class="space-y-4">
@@ -340,24 +355,24 @@ $currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
                 <input type="hidden" name="landing_page_slug" value="<?= htmlspecialchars($slug) ?>">
 
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
-                    <input type="text" name="name" required placeholder="Alex Turner" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-brand-400">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Full Name</label>
+                    <input type="text" name="name" required placeholder="Alex Turner" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-teal-400 transition-colors">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
-                    <input type="email" name="email" required placeholder="alex@agency.com" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-brand-400">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Email Address</label>
+                    <input type="email" name="email" required placeholder="alex@agency.com" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-teal-400 transition-colors">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
-                    <input type="password" name="password" required minlength="6" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-brand-400">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Password</label>
+                    <input type="password" name="password" required minlength="6" placeholder="••••••••" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-teal-400 transition-colors">
                 </div>
 
-                <div id="signup-error-msg" class="hidden p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs"></div>
-                <div id="signup-success-msg" class="hidden p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"></div>
+                <div id="signup-error-msg" class="hidden p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium"></div>
+                <div id="signup-success-msg" class="hidden p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"></div>
 
-                <button type="submit" id="submit-signup-btn" class="w-full py-3.5 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-brand-500 to-cyan-400 hover:from-brand-400 hover:to-cyan-300 transition shadow-lg shadow-brand-500/20 text-sm">
+                <button type="submit" id="submit-signup-btn" class="w-full py-4 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 transition-all btn-glow text-base active:scale-[0.98]">
                     Activate 7-Day Free Account
                 </button>
             </form>
@@ -377,25 +392,21 @@ $currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
             const platform = window.navigator.platform || '';
             let osName = 'Windows';
             let archName = 'x64';
-            let downloadText = 'Download for Windows';
 
             if (/Macintosh|MacIntel|MacPPC|Mac68K/i.test(userAgent) || /Mac/i.test(platform)) {
                 osName = 'macOS';
-                // Detect Apple Silicon vs Intel
                 const isAppleSilicon = userAgent.includes('ARM64') || (window.navigator.userAgentData && window.navigator.userAgentData.architecture === 'arm');
                 if (isAppleSilicon) {
                     archName = 'Apple Silicon (M1/M2/M3/M4)';
-                    downloadText = 'Download AntiProfiles for Apple Silicon';
                 } else {
                     archName = 'Intel x86_64';
-                    downloadText = 'Download AntiProfiles for macOS Intel';
                 }
             } else if (/Win32|Win64|Windows|WinCE/i.test(userAgent) || /Win/i.test(platform)) {
                 osName = 'Windows';
-                downloadText = 'Download AntiProfiles for Windows (x64)';
+                archName = 'x64 / ARM';
             } else if (/Linux/i.test(userAgent) || /Linux/i.test(platform)) {
                 osName = 'Linux';
-                downloadText = 'Download AntiProfiles for Linux (.AppImage / .deb)';
+                archName = '.AppImage / .deb';
             }
 
             const osBadge = document.getElementById('detected-os-text');
@@ -471,7 +482,6 @@ $currentUrl = "$scheme://$host" . ($_SERVER['REQUEST_URI'] ?? '');
             }
         }
 
-        // Initialize OS detection on load
         document.addEventListener('DOMContentLoaded', detectUserOS);
     </script>
 </body>
