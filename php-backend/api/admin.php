@@ -2034,6 +2034,107 @@ switch ($action) {
         ]);
         break;
 
+    case 'update-app-release':
+    case 'edit-app-release':
+        @ini_set('upload_max_filesize', '1024M');
+        @ini_set('post_max_size', '1024M');
+        @ini_set('memory_limit', '1024M');
+        @ini_set('max_execution_time', '1800');
+        @ini_set('max_input_time', '1800');
+        @set_time_limit(1800);
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? [];
+        $releaseId = trim($_POST['releaseId'] ?? $_POST['id'] ?? $input['releaseId'] ?? $input['id'] ?? '');
+
+        if (!$releaseId) {
+            respondJson(['success' => false, 'error' => 'Release ID is required.'], 400);
+        }
+
+        $relStmt = $db->prepare("SELECT * FROM app_releases WHERE id = ?");
+        $relStmt->execute([$releaseId]);
+        $existingRel = $relStmt->fetch();
+
+        if (!$existingRel) {
+            respondJson(['success' => false, 'error' => 'Release record not found.'], 404);
+        }
+
+        $platform = trim($_POST['platform'] ?? $input['platform'] ?? $existingRel['platform']);
+        $version = trim($_POST['version'] ?? $input['version'] ?? $existingRel['version']);
+        $releaseName = trim($_POST['release_name'] ?? $input['release_name'] ?? $existingRel['release_name']);
+        $releaseNotes = trim($_POST['release_notes'] ?? $input['release_notes'] ?? $existingRel['release_notes']);
+        $status = trim($_POST['status'] ?? $input['status'] ?? $existingRel['status']);
+        $directUrl = trim($_POST['download_url'] ?? $input['download_url'] ?? $existingRel['download_url']);
+        $filePath = trim($_POST['file_path'] ?? $input['file_path'] ?? $existingRel['file_path']);
+        $originalFilename = trim($_POST['original_filename'] ?? $input['original_filename'] ?? $existingRel['original_filename']);
+        $fileSize = intval($_POST['file_size'] ?? $input['file_size'] ?? $existingRel['file_size']);
+
+        // Check if direct file was uploaded
+        if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+            $releasesDir = __DIR__ . '/../releases';
+            if (!is_dir($releasesDir)) {
+                mkdir($releasesDir, 0755, true);
+            }
+
+            $allowedExtensions = ['exe', 'dmg', 'appimage', 'zip', 'tar.gz', 'tar.bz2', 'deb', 'rpm', 'pkg', 'msi', '7z'];
+            $ext = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowedExtensions)) {
+                respondJson(['success' => false, 'error' => "Invalid file format (.{$ext}). Allowed: " . implode(', ', $allowedExtensions)], 400);
+            }
+            $cleanVersion = preg_replace('/[^a-zA-Z0-9\._-]/', '', $version);
+            $targetFilename = "AntiProfiles-{$platform}-v{$cleanVersion}.{$ext}";
+            $targetPath = $releasesDir . '/' . $targetFilename;
+
+            if (move_uploaded_file($_FILES['file']['tmp_name'], $targetPath)) {
+                chmod($targetPath, 0644);
+                $filePath = 'releases/' . $targetFilename;
+                $originalFilename = $_FILES['file']['name'];
+                $fileSize = filesize($targetPath);
+            }
+        }
+
+        if (empty($directUrl) && !empty($filePath)) {
+            $slugMap = [
+                'windows-x64' => '/download/windows',
+                'macos-arm64' => '/download/macos-arm64',
+                'macos-x64' => '/download/macos-intel',
+                'linux-x64' => '/download/linux'
+            ];
+            $directUrl = $slugMap[$platform] ?? '/download/windows';
+        }
+
+        if ($status === 'active') {
+            // Archive other releases for platform
+            $archStmt = $db->prepare("UPDATE app_releases SET status = 'archived' WHERE platform = ? AND id != ?");
+            $archStmt->execute([$platform, $releaseId]);
+
+            // Sync with legacy config
+            $cfgVerKey = $platform === 'windows-x64' ? 'win_app_version' : ($platform === 'macos-arm64' ? 'mac_arm_app_version' : ($platform === 'macos-x64' ? 'mac_intel_app_version' : 'linux_app_version'));
+            $cfgUrlKey = $platform === 'windows-x64' ? 'win_download_url' : ($platform === 'macos-arm64' ? 'mac_arm_download_url' : ($platform === 'macos-x64' ? 'mac_intel_download_url' : 'linux_download_url'));
+
+            $syncStmt = $db->prepare("INSERT INTO desktop_app_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+            $syncStmt->execute([$cfgVerKey, $version]);
+            $syncStmt->execute([$cfgUrlKey, $directUrl]);
+        }
+
+        $updStmt = $db->prepare("
+            UPDATE app_releases 
+            SET platform = ?, version = ?, release_name = ?, file_path = ?, download_url = ?, original_filename = ?, file_size = ?, release_notes = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+        $updStmt->execute([
+            $platform, $version, $releaseName, $filePath, $directUrl,
+            $originalFilename, $fileSize, $releaseNotes, $status, $releaseId
+        ]);
+
+        logAdminAction($adminUser['id'], $adminUser['email'], 'UPDATE_APP_RELEASE', null, "Updated release v{$version} for {$platform} (ID: {$releaseId})");
+
+        respondJson([
+            'success' => true,
+            'message' => "Application release v{$version} for {$platform} updated successfully!",
+            'releaseId' => $releaseId
+        ]);
+        break;
+
     case 'activate-app-release':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $releaseId = $input['releaseId'] ?? '';

@@ -2063,6 +2063,103 @@ try {
         </div>
     </div>
 
+    <!-- Edit Application Release Modal -->
+    <div class="modal-overlay" id="editReleaseModal" style="z-index: 3500 !important; display: none; align-items: center; justify-content: center;">
+        <div class="modal-box" style="max-width: 640px; width: 92%; max-height: 90vh; overflow-y: auto; border-radius: 16px; padding: 26px; background: #12141D; border: 1px solid #272A3B; box-shadow: 0 25px 60px rgba(0,0,0,0.85); position: relative;">
+            <button class="close-modal" onclick="closeEditReleaseModal()" style="position: absolute; top: 18px; right: 18px; background: transparent; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+            
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(45,212,191,0.15); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #2DD4BF;">
+                    ✏️
+                </div>
+                <div>
+                    <h3 style="font-size: 18px; color: #FFF; margin: 0; font-weight: 700;">Edit Application Release</h3>
+                    <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0 0;">Update release version, name, status, direct download URL, or replace the installer binary.</p>
+                </div>
+            </div>
+
+            <div id="editReleaseModalMsg" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;"></div>
+
+            <form id="formEditRelease" onsubmit="handleUpdateRelease(event)" enctype="multipart/form-data">
+                <input type="hidden" id="editRelId">
+                <input type="hidden" id="editRelExistingFilePath">
+                <input type="hidden" id="editRelExistingFilename">
+                <input type="hidden" id="editRelExistingFileSize">
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Target Platform</label>
+                        <select id="editRelPlatform" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px; font-size: 13px;">
+                            <option value="windows-x64">🪟 Windows Client (x64 Architecture)</option>
+                            <option value="macos-arm64">🍏 macOS Apple Silicon (M1 / M2 / M3 / M4)</option>
+                            <option value="macos-x64">🍏 macOS Intel (x64 Processors)</option>
+                            <option value="linux-x64">🐧 Linux Client (.AppImage)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Version Number</label>
+                        <input type="text" id="editRelVersion" placeholder="2.1.0" required style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px; font-size: 13px;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Release Name / Headline</label>
+                        <input type="text" id="editRelName" placeholder="Release Headline" required style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Publish Status</label>
+                        <select id="editRelStatus" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px; font-size: 13px;">
+                            <option value="active">Active (Set as current active release)</option>
+                            <option value="draft">Save as Draft (Not public)</option>
+                            <option value="archived">Archived (Historical version)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">📦 Current Associated File</span>
+                        <span id="editRelFileBadge" style="font-size: 11px; color: #2DD4BF; font-weight: 700;">Server Storage</span>
+                    </div>
+                    <div id="editRelCurrentFileInfo" style="font-size: 13px; color: #FFF; word-break: break-all;">No binary file attached</div>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">External Direct Download URL (Optional)</label>
+                    <input type="text" id="editRelDirectUrl" placeholder="https://github.com/... or Google Drive URL" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px; font-size: 13px;">
+                    <span style="font-size: 11px; color: var(--text-muted); margin-top: 2px; display: block;">Used if direct URL or external cloud CDN is preferred.</span>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Upload Replacement Binary File (Optional)</label>
+                    <input type="file" id="editRelFile" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; color: #FFF; margin-top: 6px; font-size: 12px;">
+                    <span style="font-size: 11px; color: var(--text-muted); margin-top: 2px; display: block;">Leave empty to keep existing binary file. Slices & uploads in fast chunks if a large file is chosen.</span>
+                </div>
+
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Release Notes & Changelog</label>
+                    <textarea id="editRelNotes" rows="3" placeholder="List new features, performance improvements, and security enhancements in this version..." style="width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 6px; font-size: 13px;"></textarea>
+                </div>
+
+                <div id="editReleaseProgressBarContainer" style="display: none; margin-bottom: 16px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #FFF; margin-bottom: 8px;">
+                        <span id="editReleaseProgressLabel">⏳ Uploading replacement binary...</span>
+                        <span id="editReleaseProgressPercent" style="color: #2DD4BF; font-weight: 800;">0%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                        <div id="editReleaseProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #2DD4BF, #06B6D4); transition: width 0.1s ease;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeEditReleaseModal()" style="padding: 10px 18px; font-size: 13px;">Cancel</button>
+                    <button type="submit" id="btnSaveEditRelease" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 22px; font-size: 13px;">💾 Save Release Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Admin Dashboard Overlay Modal -->
     <div class="modal-overlay" id="adminDashboardModal" style="padding: 0;">
         <div class="modal-box" style="width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; border-radius: 0; border: none; padding: 0; display: flex; flex-direction: column; background: #0B0C10;">
@@ -8215,6 +8312,8 @@ try {
             }
         }
 
+        window.currentAppReleases = [];
+
         async function loadAppReleasesTable() {
             const token = localStorage.getItem('sessionToken');
             if (!token) return;
@@ -8226,6 +8325,7 @@ try {
                 const res = await fetch('/api/admin/get-app-releases', { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    window.currentAppReleases = data.data;
                     const iconMap = {
                         'windows-x64': '🪟 Windows',
                         'macos-arm64': '🍏 Mac Apple Silicon',
@@ -8253,7 +8353,8 @@ try {
                                 <td style="padding: 12px 16px;">${dlLink} <span style="color:var(--text-muted); font-size:11px;">(${sizeMb})</span></td>
                                 <td style="padding: 12px 16px; color:var(--text-muted); font-size:12px;">${r.published_at || r.created_at}</td>
                                 <td style="padding: 12px 16px;">${statusBadge}</td>
-                                <td style="padding: 12px 16px; display:flex; gap:6px;">
+                                <td style="padding: 12px 16px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                    <button class="btn btn-outline" style="padding:3px 8px; font-size:11px; border-color:#2DD4BF; color:#2DD4BF; font-weight:700;" onclick="openEditReleaseModal('${r.id}')">✏️ Edit</button>
                                     ${!isAct ? `<button class="btn btn-primary" style="padding:3px 8px; font-size:11px; background:#2DD4BF; color:#000; font-weight:800;" onclick="activateAppRelease('${r.id}')">✅ Make Active</button>` : ''}
                                     <button class="btn btn-outline" style="padding:3px 8px; font-size:11px; border-color:#EF4444; color:#F87171;" onclick="deleteAppRelease('${r.id}')">🗑️ Delete</button>
                                 </td>
@@ -8261,10 +8362,294 @@ try {
                         `;
                     }).join('');
                 } else {
+                    window.currentAppReleases = [];
                     tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">No releases found in release history. Use the form above to publish your first release.</td></tr>';
                 }
             } catch(e) {
                 tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:#F87171;">Error loading release history records.</td></tr>';
+            }
+        }
+
+        function openEditReleaseModal(releaseId) {
+            const releases = window.currentAppReleases || [];
+            const r = releases.find(item => String(item.id) === String(releaseId));
+            if (!r) {
+                alert('Release record not found. Please refresh release history.');
+                return;
+            }
+
+            document.getElementById('editRelId').value = r.id;
+            document.getElementById('editRelPlatform').value = r.platform || 'windows-x64';
+            document.getElementById('editRelVersion').value = r.version || '';
+            document.getElementById('editRelName').value = r.release_name || '';
+            document.getElementById('editRelStatus').value = r.status || 'active';
+            document.getElementById('editRelDirectUrl').value = r.download_url || '';
+            document.getElementById('editRelNotes').value = r.release_notes || '';
+            document.getElementById('editRelExistingFilePath').value = r.file_path || '';
+            document.getElementById('editRelExistingFilename').value = r.original_filename || '';
+            document.getElementById('editRelExistingFileSize').value = r.file_size || 0;
+
+            const fileInput = document.getElementById('editRelFile');
+            if (fileInput) fileInput.value = '';
+
+            const infoEl = document.getElementById('editRelCurrentFileInfo');
+            const badgeEl = document.getElementById('editRelFileBadge');
+            if (r.file_path || r.original_filename) {
+                const sizeStr = r.file_size > 0 ? (r.file_size / (1024 * 1024)).toFixed(2) + ' MB' : '';
+                infoEl.innerHTML = `<span style="font-weight:700;">${r.original_filename || 'binary-installer'}</span> ${sizeStr ? `<span style="color:var(--text-muted);">(${sizeStr})</span>` : ''} <br><code style="color:#2DD4BF; font-size:11px;">${r.file_path || r.download_url}</code>`;
+                if (badgeEl) {
+                    badgeEl.innerText = r.file_path ? 'Server Storage' : 'External Link';
+                    badgeEl.style.color = '#2DD4BF';
+                }
+            } else if (r.download_url) {
+                infoEl.innerHTML = `<span style="color:#818CF8; font-weight:700;">External URL:</span> <code style="color:#FFF; font-size:11px;">${r.download_url}</code>`;
+                if (badgeEl) {
+                    badgeEl.innerText = 'External Link';
+                    badgeEl.style.color = '#818CF8';
+                }
+            } else {
+                infoEl.innerHTML = '<span style="color:var(--text-muted);">No binary file or URL attached</span>';
+                if (badgeEl) {
+                    badgeEl.innerText = 'None';
+                    badgeEl.style.color = 'var(--text-muted)';
+                }
+            }
+
+            const modalMsg = document.getElementById('editReleaseModalMsg');
+            if (modalMsg) {
+                modalMsg.style.display = 'none';
+                modalMsg.innerText = '';
+            }
+
+            const progressContainer = document.getElementById('editReleaseProgressBarContainer');
+            if (progressContainer) progressContainer.style.display = 'none';
+
+            const modal = document.getElementById('editReleaseModal');
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeEditReleaseModal() {
+            const modal = document.getElementById('editReleaseModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+            const modalMsg = document.getElementById('editReleaseModalMsg');
+            if (modalMsg) modalMsg.style.display = 'none';
+            const progressContainer = document.getElementById('editReleaseProgressBarContainer');
+            if (progressContainer) progressContainer.style.display = 'none';
+        }
+
+        async function handleUpdateRelease(e) {
+            e.preventDefault();
+            const token = getAdminSessionToken();
+            if (!token) {
+                alert('Session expired. Please sign in as administrator.');
+                return;
+            }
+
+            const releaseId = document.getElementById('editRelId').value;
+            const platform = document.getElementById('editRelPlatform').value;
+            const version = document.getElementById('editRelVersion').value.trim();
+            const releaseName = document.getElementById('editRelName').value.trim();
+            const status = document.getElementById('editRelStatus').value;
+            const directUrl = document.getElementById('editRelDirectUrl').value.trim();
+            const notes = document.getElementById('editRelNotes').value.trim();
+            const fileInput = document.getElementById('editRelFile');
+            const submitBtn = document.getElementById('btnSaveEditRelease');
+
+            const existingFilePath = document.getElementById('editRelExistingFilePath').value;
+            const existingFilename = document.getElementById('editRelExistingFilename').value;
+            const existingFileSize = parseInt(document.getElementById('editRelExistingFileSize').value) || 0;
+
+            if (!releaseId) {
+                alert('Release ID missing.');
+                return;
+            }
+            if (!version || !releaseName) {
+                alert('Please enter version number and release headline.');
+                return;
+            }
+
+            const hasNewFile = fileInput && fileInput.files && fileInput.files.length > 0;
+            if (!hasNewFile && !existingFilePath && !directUrl) {
+                alert('Please either provide an installer binary file or an external download URL.');
+                return;
+            }
+
+            const modalMsg = document.getElementById('editReleaseModalMsg');
+            const progressContainer = document.getElementById('editReleaseProgressBarContainer');
+            const progressLabel = document.getElementById('editReleaseProgressLabel');
+            const progressPercent = document.getElementById('editReleaseProgressPercent');
+            const progressBar = document.getElementById('editReleaseProgressBar');
+
+            if (modalMsg) {
+                modalMsg.style.display = 'block';
+                modalMsg.style.background = 'rgba(99,102,241,0.2)';
+                modalMsg.style.color = '#818CF8';
+                modalMsg.innerText = hasNewFile ? '⏳ Slicing and uploading replacement binary...' : 'Saving changes...';
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+                submitBtn.innerText = '⏳ Saving...';
+            }
+
+            if (hasNewFile && progressContainer) {
+                progressContainer.style.display = 'block';
+                if (progressBar) progressBar.style.width = '0%';
+                if (progressPercent) progressPercent.innerText = '0%';
+                if (progressLabel) progressLabel.innerText = '⏳ Initializing chunked upload...';
+            }
+
+            let uploadedFilePath = existingFilePath;
+            let uploadedFileSize = existingFileSize;
+            let uploadedFilename = existingFilename;
+
+            // If a replacement file is provided, chunk upload it
+            if (hasNewFile) {
+                const file = fileInput.files[0];
+                const chunkSize = 2 * 1024 * 1024; // 2MB safe chunks
+                const totalChunks = Math.ceil(file.size / chunkSize);
+                const uploadId = 'upl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                uploadedFilename = file.name;
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
+                    const chunkBlob = file.slice(start, end);
+
+                    const chunkForm = new FormData();
+                    chunkForm.append('uploadId', uploadId);
+                    chunkForm.append('chunkIndex', i);
+                    chunkForm.append('totalChunks', totalChunks);
+                    chunkForm.append('platform', platform);
+                    chunkForm.append('version', version);
+                    chunkForm.append('filename', file.name);
+                    chunkForm.append('chunk', chunkBlob, 'chunk.part');
+                    chunkForm.append('token', token);
+
+                    let attempt = 0;
+                    let chunkSuccess = false;
+                    while (attempt < 3 && !chunkSuccess) {
+                        try {
+                            const res = await fetch('/api/admin/upload-release-chunk?token=' + encodeURIComponent(token), {
+                                method: 'POST',
+                                headers: { 'Authorization': 'Bearer ' + token },
+                                body: chunkForm
+                            });
+                            const data = await res.json();
+                            if (data && data.success) {
+                                chunkSuccess = true;
+                                if (data.completed) {
+                                    uploadedFilePath = data.filePath;
+                                    uploadedFileSize = data.fileSize || file.size;
+                                }
+                            } else {
+                                attempt++;
+                                await new Promise(r => setTimeout(r, 1000));
+                            }
+                        } catch(err) {
+                            attempt++;
+                            await new Promise(r => setTimeout(r, 1500));
+                        }
+                    }
+
+                    if (!chunkSuccess) {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.style.opacity = '1';
+                            submitBtn.innerText = '💾 Save Release Changes';
+                        }
+                        if (modalMsg) {
+                            modalMsg.style.background = 'rgba(239,68,68,0.2)';
+                            modalMsg.style.color = '#F87171';
+                            modalMsg.innerText = `⚠️ Upload failed on chunk ${i + 1}/${totalChunks}. Please try again.`;
+                        }
+                        return;
+                    }
+
+                    const progressBytes = end;
+                    const percent = Math.min(100, Math.round((progressBytes / file.size) * 100));
+                    const uploadedMB = (progressBytes / (1024 * 1024)).toFixed(1);
+                    const totalMB = (file.size / (1024 * 1024)).toFixed(1);
+
+                    if (progressBar) progressBar.style.width = percent + '%';
+                    if (progressPercent) progressPercent.innerText = `${percent}% (${uploadedMB} MB / ${totalMB} MB)`;
+                    if (progressLabel) {
+                        if (percent >= 100) {
+                            progressLabel.innerText = '⚙️ Finalizing updated application release...';
+                        } else {
+                            progressLabel.innerText = `⏳ Uploading chunk ${i + 1}/${totalChunks} (${percent}%)...`;
+                        }
+                    }
+                }
+            }
+
+            // Post update payload
+            const updateForm = new FormData();
+            updateForm.append('releaseId', releaseId);
+            updateForm.append('platform', platform);
+            updateForm.append('version', version);
+            updateForm.append('release_name', releaseName);
+            updateForm.append('status', status);
+            updateForm.append('download_url', directUrl);
+            updateForm.append('release_notes', notes);
+            updateForm.append('file_path', uploadedFilePath || '');
+            updateForm.append('original_filename', uploadedFilename || '');
+            updateForm.append('file_size', uploadedFileSize || 0);
+            updateForm.append('token', token);
+
+            try {
+                const res = await fetch('/api/admin/update-app-release?token=' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: updateForm
+                });
+                const data = await res.json();
+
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerText = '💾 Save Release Changes';
+                }
+
+                if (data && data.success) {
+                    closeEditReleaseModal();
+                    
+                    const topMsg = document.getElementById('releasesConfigMsg');
+                    if (topMsg) {
+                        topMsg.style.display = 'block';
+                        topMsg.style.background = 'rgba(45,212,191,0.2)';
+                        topMsg.style.color = '#2DD4BF';
+                        topMsg.innerText = '✓ ' + (data.message || 'Application release updated successfully!');
+                    }
+
+                    await fetchReleasesAndUpdateLanding();
+                    loadAppReleasesTable();
+                    loadUserPortalData();
+                } else {
+                    if (modalMsg) {
+                        modalMsg.style.background = 'rgba(239,68,68,0.2)';
+                        modalMsg.style.color = '#F87171';
+                        modalMsg.innerText = '⚠️ ' + (data?.error || 'Failed to update release.');
+                    }
+                }
+            } catch(e) {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerText = '💾 Save Release Changes';
+                }
+                if (modalMsg) {
+                    modalMsg.style.background = 'rgba(239,68,68,0.2)';
+                    modalMsg.style.color = '#F87171';
+                    modalMsg.innerText = '⚠️ Network error saving release changes.';
+                }
             }
         }
 
