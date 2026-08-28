@@ -1682,9 +1682,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <p style="font-size: 16px; color: var(--text-muted); line-height: 1.6; margin-bottom: 32px; max-width: 520px;">
                 Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.
             </p>
-            <div class="hero-actions" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
-                <a href="/register" class="btn btn-primary" style="padding: 14px 32px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; text-decoration: none;" onclick="openModal('register'); return false;">Start Free</a>
-                <a href="#pricing" class="btn btn-outline" style="padding: 14px 28px; font-size: 15px;">View Pricing</a>
+            <div class="hero-actions" style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
+                <a href="/register" class="btn btn-primary" style="padding: 14px 28px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; text-decoration: none;" onclick="openModal('register'); return false;">Start Free</a>
+                <a href="<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['url'] ?? '#downloads') ?>" id="heroDynamicDownloadBtn" class="btn btn-outline" style="padding: 14px 24px; font-size: 14.5px; border-color: rgba(45,212,191,0.4); display: inline-flex; align-items: center; gap: 8px;">⬇️ Download App</a>
+                <a href="#pricing" class="btn btn-outline" style="padding: 14px 22px; font-size: 14.5px;">View Pricing</a>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;">⚡ No credit card required • Free trial available • Cancel anytime</p>
         </div>
@@ -2069,6 +2070,161 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 <a href="<?= htmlspecialchars($activeLandingReleases['linux-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'linux-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; <?= ($detectedPlatform === 'linux-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);' : 'border-color: rgba(250,204,21,0.4); font-size: 13px;' ?>" id="landingBtnLinuxDl">Download Linux .AppImage (v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>)</a>
             </div>
         </div>
+
+        <script>
+        (function() {
+            function detectAndApplyOsRecommendation() {
+                try {
+                    var ua = (navigator.userAgent || '').toLowerCase();
+                    var plat = (navigator.platform || '').toLowerCase();
+                    var uad = navigator.userAgentData;
+                    var uadPlat = (uad && uad.platform) ? uad.platform.toLowerCase() : '';
+
+                    var isAndroid = (ua.indexOf('android') !== -1 || plat.indexOf('android') !== -1);
+                    var isWin = (uadPlat.indexOf('win') !== -1 || ua.indexOf('windows') !== -1 || ua.indexOf('win64') !== -1 || ua.indexOf('wow64') !== -1 || ua.indexOf('win32') !== -1 || plat.indexOf('win') !== -1);
+                    var isLinux = !isAndroid && (uadPlat.indexOf('linux') !== -1 || ua.indexOf('linux') !== -1 || ua.indexOf('x11') !== -1 || plat.indexOf('linux') !== -1);
+                    var isMac = !isAndroid && !isWin && !isLinux && (uadPlat.indexOf('mac') !== -1 || ua.indexOf('macintosh') !== -1 || ua.indexOf('mac os') !== -1 || plat.indexOf('mac') !== -1 || ua.indexOf('darwin') !== -1);
+
+                    var targetKey = 'windows-x64';
+                    var osLabel = 'Windows 10 / 11 (64-Bit)';
+                    var landingCardId = 'landingCardWin';
+                    var userCardId = 'cardWinPlatform';
+
+                    if (isWin) {
+                        targetKey = 'windows-x64';
+                        osLabel = 'Windows 10 / 11 (64-Bit)';
+                        landingCardId = 'landingCardWin';
+                        userCardId = 'cardWinPlatform';
+                    } else if (isLinux) {
+                        targetKey = 'linux-x64';
+                        osLabel = 'Linux (x86_64 AppImage & .deb)';
+                        landingCardId = 'landingCardLinux';
+                        userCardId = 'cardLinuxPlatform';
+                    } else if (isMac) {
+                        var isAppleSilicon = false;
+                        if (ua.indexOf('arm64') !== -1 || ua.indexOf('aarch64') !== -1) {
+                            isAppleSilicon = true;
+                        } else {
+                            try {
+                                var c = document.createElement('canvas');
+                                var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+                                if (gl) {
+                                    var ext = gl.getExtension('WEBGL_debug_renderer_info');
+                                    if (ext) {
+                                        var rend = (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
+                                        if (rend.indexOf('apple m') !== -1 || rend.indexOf('apple silicon') !== -1 || rend.indexOf('apple gpu') !== -1) {
+                                            isAppleSilicon = true;
+                                        }
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+
+                        if (isAppleSilicon) {
+                            targetKey = 'macos-arm64';
+                            osLabel = 'macOS Apple Silicon (M1 / M2 / M3 / M4)';
+                            landingCardId = 'landingCardMacArm';
+                            userCardId = 'cardMacArmPlatform';
+                        } else {
+                            targetKey = 'macos-x64';
+                            osLabel = 'macOS Intel (x86_64)';
+                            landingCardId = 'landingCardMacIntel';
+                            userCardId = 'cardMacIntelPlatform';
+                        }
+                    }
+
+                    // 1. Update Detection Pill
+                    var pill = document.getElementById('landingDetectedSystemPill');
+                    if (pill) {
+                        pill.innerHTML = '✓ Auto-Detected System: <strong>' + osLabel + '</strong>';
+                    }
+
+                    // 2. Update Landing Page Cards
+                    var landingCards = ['landingCardWin', 'landingCardMacArm', 'landingCardMacIntel', 'landingCardLinux'];
+                    landingCards.forEach(function(cid) {
+                        var card = document.getElementById(cid);
+                        if (!card) return;
+                        var isMatch = (cid === landingCardId);
+                        card.classList.toggle('card-recommended', isMatch);
+                        
+                        var badges = card.querySelectorAll('.card-rec-badge');
+                        for (var b = 0; b < badges.length; b++) {
+                            badges[b].remove();
+                        }
+
+                        if (isMatch) {
+                            var newBadge = document.createElement('span');
+                            newBadge.className = 'card-rec-badge';
+                            newBadge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;');
+                            newBadge.textContent = 'RECOMMENDED FOR YOUR DEVICE';
+                            card.appendChild(newBadge);
+                        }
+
+                        var btn = card.querySelector('a.btn');
+                        if (btn) {
+                            if (isMatch) {
+                                btn.className = 'btn btn-primary';
+                                btn.setAttribute('style', 'width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13.5px; box-shadow: 0 4px 14px rgba(45,212,191,0.35);');
+                            } else {
+                                btn.className = 'btn btn-outline';
+                                btn.setAttribute('style', 'width: 100%; justify-content: center; font-size: 13px;');
+                            }
+                        }
+                    });
+
+                    // 3. Update User Portal Cards if present
+                    var userCards = ['cardWinPlatform', 'cardMacArmPlatform', 'cardMacIntelPlatform', 'cardLinuxPlatform'];
+                    userCards.forEach(function(cid) {
+                        var card = document.getElementById(cid);
+                        if (!card) return;
+                        var isMatch = (cid === userCardId);
+                        card.classList.toggle('card-recommended', isMatch);
+                        var badges = card.querySelectorAll('.card-rec-badge');
+                        for (var b = 0; b < badges.length; b++) {
+                            badges[b].remove();
+                        }
+                        if (isMatch) {
+                            var newBadge = document.createElement('span');
+                            newBadge.className = 'card-rec-badge';
+                            newBadge.setAttribute('style', 'position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4); z-index: 10;');
+                            newBadge.textContent = 'RECOMMENDED';
+                            card.appendChild(newBadge);
+                        }
+                        var btn = card.querySelector('a.btn');
+                        if (btn) {
+                            if (isMatch) {
+                                btn.className = 'btn btn-primary';
+                                btn.setAttribute('style', 'width: 100%; justify-content: center; padding: 10px 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;');
+                            } else {
+                                btn.className = 'btn btn-outline';
+                                btn.setAttribute('style', 'width: 100%; justify-content: center; padding: 10px 12px; font-weight: 700; font-size: 13px;');
+                            }
+                        }
+                    });
+
+                    // 4. Update Hero dynamic button
+                    var heroBtn = document.getElementById('heroDynamicDownloadBtn');
+                    if (heroBtn) {
+                        var cardBtn = document.querySelector('#' + landingCardId + ' a.btn');
+                        if (cardBtn && cardBtn.href) {
+                            heroBtn.href = cardBtn.href;
+                            heroBtn.innerHTML = '⬇️ Download for ' + (isWin ? 'Windows' : (isLinux ? 'Linux' : (isAppleSilicon ? 'Apple Silicon' : 'macOS Intel')));
+                        }
+                    }
+                } catch(err) {
+                    console.error('[AntiProfiles] Immediate OS detection error:', err);
+                }
+            }
+
+            window.initDownloadOsDetection = detectAndApplyOsRecommendation;
+            detectAndApplyOsRecommendation();
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', detectAndApplyOsRecommendation);
+            }
+            window.addEventListener('load', detectAndApplyOsRecommendation);
+        })();
+        </script>
     </section>
 
     <!-- 6. Pricing Section (4 Plan Cards) -->
@@ -6645,9 +6801,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 if (!c) return;
                 const isMatch = (cid === landingCardId);
                 c.classList.toggle('card-recommended', isMatch);
-                
-                const existingBadge = c.querySelector('.card-rec-badge');
-                if (existingBadge) existingBadge.remove();
+                const badges = c.querySelectorAll('.card-rec-badge');
+                for (let b = 0; b < badges.length; b++) {
+                    badges[b].remove();
+                }
                 
                 if (isMatch) {
                     const badge = document.createElement('span');
@@ -6697,10 +6854,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 const c = document.getElementById(cid);
                 if (!c) return;
                 const isMatch = (cid === userCardId);
-                c.classList.toggle('card-recommended', isMatch);
-                
-                const existingBadge = c.querySelector('.card-rec-badge');
-                if (existingBadge) existingBadge.remove();
+                const badges = c.querySelectorAll('.card-rec-badge');
+                for (let b = 0; b < badges.length; b++) {
+                    badges[b].remove();
+                }
                 if (isMatch) {
                     const badge = document.createElement('span');
                     badge.className = 'card-rec-badge';

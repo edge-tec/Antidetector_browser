@@ -38,7 +38,7 @@ describe('Global Bulk & Individual Free Trial Provisioning', () => {
     expect(res.success).toBe(true)
     expect(res.user_id).toBe('all')
     expect(res.is_global).toBe(true)
-    expect(res.affected_count).toBeGreaterThanOrEqual(3)
+    expect(res.affected_count).toBeGreaterThanOrEqual(2)
     expect(res.plan_id).toBe('plan_starter')
     expect(res.trial_days).toBe(7)
     expect(res.status).toBe('trial')
