@@ -930,20 +930,42 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
           {pricingPlans.map((plan: any) => {
             const price = billingCycle === 'yearly' ? plan.yearly_price : plan.monthly_price
+            const isTrial = isPlanTrialActive(plan)
+            const buttonLabel = isTrial ? `🎁 Start ${trialDays}-Day Free Trial` : (plan.monthly_price === 0 ? 'Start Free' : plan.button_text || `⚡ Pay & Upgrade (${plan.currency}${price})`)
             return (
               <div
                 key={plan.id}
                 style={{
                   backgroundColor: plan.is_popular ? '#1C1C2B' : '#161622',
-                  border: plan.is_popular ? `2px solid ${accentColor}` : '1px solid #2C2C3E',
+                  border: isTrial ? `2px solid ${accentColor}` : (plan.is_popular ? `2px solid ${accentColor}` : '1px solid #2C2C3E'),
                   borderRadius: '16px',
                   padding: '32px 24px',
                   display: 'flex',
                   flexDirection: 'column',
-                  position: 'relative'
+                  position: 'relative',
+                  boxShadow: isTrial ? `0 8px 30px ${accentColor}25` : undefined
                 }}
               >
-                {plan.badge && (
+                {isTrial ? (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-12px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #2DD4BF, #06B6D4)',
+                    color: '#0F0F17',
+                    fontWeight: 800,
+                    fontSize: '11px',
+                    padding: '4px 14px',
+                    borderRadius: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    boxShadow: '0 4px 12px rgba(45, 212, 191, 0.4)',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    🎁 {trialDays}-DAY FREE TRIAL AVAILABLE
+                  </div>
+                ) : plan.badge ? (
                   <div style={{
                     position: 'absolute',
                     top: '-12px',
@@ -960,9 +982,16 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                   }}>
                     {plan.badge}
                   </div>
-                )}
+                ) : null}
 
-                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#F8FAFC', margin: '0 0 6px' }}>{plan.name}</h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 6px' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#F8FAFC', margin: 0 }}>{plan.name}</h3>
+                  {isTrial && (
+                    <span style={{ backgroundColor: `${accentColor}25`, color: accentColor, border: `1px solid ${accentColor}50`, borderRadius: '10px', fontSize: '11px', fontWeight: 700, padding: '2px 8px' }}>
+                      Trial Active
+                    </span>
+                  )}
+                </div>
                 <p style={{ fontSize: '12px', color: '#94A3B8', margin: '0 0 20px', minHeight: '36px' }}>{plan.description}</p>
 
                 <div style={{ margin: '0 0 24px' }}>
@@ -980,16 +1009,17 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                     width: '100%',
                     padding: '12px',
                     borderRadius: '8px',
-                    backgroundColor: plan.is_popular ? accentColor : '#14141F',
-                    border: plan.is_popular ? 'none' : '1px solid #2C2C3E',
-                    color: plan.is_popular ? '#0F0F17' : '#F1F5F9',
-                    fontWeight: 700,
+                    backgroundColor: isTrial ? accentColor : (plan.is_popular ? accentColor : '#14141F'),
+                    border: isTrial || plan.is_popular ? 'none' : '1px solid #2C2C3E',
+                    color: isTrial || plan.is_popular ? '#0F0F17' : '#F1F5F9',
+                    fontWeight: 800,
                     fontSize: '14px',
                     cursor: 'pointer',
-                    marginBottom: '24px'
+                    marginBottom: '24px',
+                    boxShadow: isTrial ? `0 4px 14px ${accentColor}40` : undefined
                   }}
                 >
-                  {plan.button_text}
+                  {buttonLabel}
                 </button>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #2C2C3E', paddingTop: '20px' }}>

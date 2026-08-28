@@ -13,11 +13,11 @@ describe('Global Bulk & Individual Free Trial Provisioning', () => {
     // Create mock users if not exist
     try {
       db.prepare(`
-        INSERT OR IGNORE INTO users (id, name, email, role, password_hash, is_active, created_at, updated_at)
+        INSERT OR REPLACE INTO users (id, name, email, role, password_hash, created_at, updated_at)
         VALUES 
-          ('user_trial_test_1', 'Alice Trader', 'alice_trial@test.com', 'user', 'hash', 1, datetime('now'), datetime('now')),
-          ('user_trial_test_2', 'Bob Marketer', 'bob_trial@test.com', 'user', 'hash', 1, datetime('now'), datetime('now')),
-          ('user_trial_test_3', 'Charlie Aff', 'charlie_trial@test.com', 'user', 'hash', 1, datetime('now'), datetime('now'))
+          ('user_trial_test_1', 'Alice Trader', 'alice_trial@test.com', 'user', 'hash', datetime('now'), datetime('now')),
+          ('user_trial_test_2', 'Bob Marketer', 'bob_trial@test.com', 'user', 'hash', datetime('now'), datetime('now')),
+          ('user_trial_test_3', 'Charlie Aff', 'charlie_trial@test.com', 'user', 'hash', datetime('now'), datetime('now'))
       `).run()
     } catch {}
   })

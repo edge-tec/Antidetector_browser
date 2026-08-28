@@ -136,6 +136,25 @@ $releases = [
     ]
 ];
 
+// 11. Global Trial Configuration for Dynamic Landing Badges & Buttons
+$trialSettings = [
+    'is_enabled' => false,
+    'trial_duration_days' => 7,
+    'default_plan_id' => 'plan_starter',
+    'applies_to_packages' => 'all'
+];
+try {
+    $tStmt = $db->query("SELECT * FROM global_trial_settings WHERE id = 'global_trial_config' LIMIT 1");
+    if ($tStmt && $tRow = $tStmt->fetch()) {
+        $trialSettings = [
+            'is_enabled' => (bool)$tRow['is_enabled'],
+            'trial_duration_days' => max(1, (int)($tRow['trial_duration_days'] ?? 7)),
+            'default_plan_id' => $tRow['default_plan_id'] ?? 'plan_starter',
+            'applies_to_packages' => $tRow['applies_to_packages'] ?? 'all'
+        ];
+    }
+} catch (Throwable $e) {}
+
 respondJson([
     'success' => true,
     'data' => [
@@ -148,6 +167,7 @@ respondJson([
         'faqs' => $faqs,
         'testimonials' => $testimonials,
         'seo' => $seo,
-        'releases' => $releases
+        'releases' => $releases,
+        'trial_settings' => $trialSettings
     ]
 ]);

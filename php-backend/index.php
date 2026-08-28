@@ -389,6 +389,33 @@ try {
         }
     }
 } catch (Throwable $e) {}
+
+// Server-Side Global Free Trial Settings for Dynamic Pricing
+$globalTrial = [
+    'is_enabled' => 0,
+    'trial_duration_days' => 7,
+    'default_plan_id' => 'plan_starter',
+    'applies_to_packages' => 'all'
+];
+try {
+    if ($pdo) {
+        $tStmt = $pdo->query("SELECT * FROM global_trial_settings WHERE id = 'global_trial_config' LIMIT 1");
+        if ($tStmt && $tRow = $tStmt->fetch()) {
+            $globalTrial = $tRow;
+        }
+    }
+} catch (Throwable $e) {}
+
+$trialActive = !empty($globalTrial['is_enabled']);
+$trialDays = max(1, (int)($globalTrial['trial_duration_days'] ?? 7));
+$trialPlanId = $globalTrial['default_plan_id'] ?? 'plan_starter';
+$trialScope = $globalTrial['applies_to_packages'] ?? 'all';
+
+$isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
+    if (!$trialActive) return false;
+    if ($trialScope === 'all') return true;
+    return $trialPlanId === $planId;
+};
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -2020,10 +2047,22 @@ try {
             </div>
 
             <!-- Starter Plan -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column;">
-                <h3 style="font-size: 18px; color: #FFF;">Starter</h3>
+            <div style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_starter') ? '#2DD4BF' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
+                <?php if ($isPlanTrial('plan_starter')): ?>
+                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY FREE TRIAL</span>
+                <?php endif; ?>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="font-size: 18px; color: #FFF; margin: 0;">Starter</h3>
+                    <?php if ($isPlanTrial('plan_starter')): ?>
+                        <span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Trial Available</span>
+                    <?php endif; ?>
+                </div>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$19 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">⚡ Pay & Upgrade ($19)</button>
+                <?php if ($isPlanTrial('plan_starter')): ?>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                <?php else: ?>
+                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">⚡ Pay & Upgrade ($19)</button>
+                <?php endif; ?>
                 <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
                     <li>✓ Browser Profiles: <strong>25 Profiles</strong></li>
                     <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS</strong></li>
@@ -2035,11 +2074,24 @@ try {
             </div>
 
             <!-- Professional Plan -->
-            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
-                <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">MOST POPULAR</span>
-                <h3 style="font-size: 18px; color: #FFF;">Professional</h3>
+            <div style="background: var(--bg-card); border: 1px solid #2DD4BF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; box-shadow: 0 8px 30px rgba(45, 212, 191, 0.15);">
+                <?php if ($isPlanTrial('plan_pro')): ?>
+                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY FREE TRIAL • MOST POPULAR</span>
+                <?php else: ?>
+                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">MOST POPULAR</span>
+                <?php endif; ?>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="font-size: 18px; color: #FFF; margin: 0;">Professional</h3>
+                    <?php if ($isPlanTrial('plan_pro')): ?>
+                        <span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Free Trial</span>
+                    <?php endif; ?>
+                </div>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$49 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">⚡ Pay & Upgrade ($49)</button>
+                <?php if ($isPlanTrial('plan_pro')): ?>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                <?php else: ?>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">⚡ Pay & Upgrade ($49)</button>
+                <?php endif; ?>
                 <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
                     <li>✓ Browser Profiles: <strong>100 Profiles</strong></li>
                     <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
@@ -2051,11 +2103,24 @@ try {
             </div>
 
             <!-- Business Plan -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
-                <span style="position: absolute; top: -12px; right: 20px; background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">BEST VALUE</span>
-                <h3 style="font-size: 18px; color: #FFF;">Business</h3>
+            <div style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_business') ? '#818CF8' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative;">
+                <?php if ($isPlanTrial('plan_business')): ?>
+                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY TRIAL • BEST VALUE</span>
+                <?php else: ?>
+                    <span style="position: absolute; top: -12px; right: 20px; background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">BEST VALUE</span>
+                <?php endif; ?>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="font-size: 18px; color: #FFF; margin: 0;">Business</h3>
+                    <?php if ($isPlanTrial('plan_business')): ?>
+                        <span style="background: rgba(129, 140, 248, 0.15); color: #818CF8; border: 1px solid rgba(129, 140, 248, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Trial Available</span>
+                    <?php endif; ?>
+                </div>
                 <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$99 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">⚡ Pay & Upgrade ($99)</button>
+                <?php if ($isPlanTrial('plan_business')): ?>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);" onclick="openModal('register')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                <?php else: ?>
+                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">⚡ Pay & Upgrade ($99)</button>
+                <?php endif; ?>
                 <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
                     <li>✓ Browser Profiles: <strong>500 Profiles</strong></li>
                     <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
