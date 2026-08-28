@@ -130,38 +130,247 @@ export function getLanguageLabel(code: string): string {
 }
 
 // Pre-defined timezones with UTC offset for timezone search
-const TIMEZONE_LIST = [
+function computeTimezoneOffset(tz: string): string {
+  try {
+    const d = new Date()
+    const str = d.toLocaleString('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+    const match = str.match(/GMT([+-]\d{2}:\d{2})/)
+    return match ? match[1] : (str.includes('GMT') ? '+00:00' : '+00:00')
+  } catch {
+    return '+00:00'
+  }
+}
+
+// Built-in comprehensive timezone catalog covering all America/ city timezones and major global hubs
+const STATIC_TIMEZONE_LIST: Array<{ tz: string; offset: string }> = [
   { tz: 'Africa/Abidjan', offset: '+00:00' },
   { tz: 'Africa/Accra', offset: '+00:00' },
   { tz: 'Africa/Algiers', offset: '+01:00' },
   { tz: 'Africa/Bissau', offset: '+00:00' },
-  { tz: 'Africa/Cairo', offset: '+02:00' },
-  { tz: 'Africa/Casablanca', offset: '+00:00' },
-  { tz: 'Africa/Ceuta', offset: '+01:00' },
-  { tz: 'Africa/El_Aaiun', offset: '+00:00' },
-  { tz: 'America/Anchorage', offset: '-09:00' },
-  { tz: 'America/Chicago', offset: '-06:00' },
-  { tz: 'America/Denver', offset: '-07:00' },
-  { tz: 'America/Los_Angeles', offset: '-08:00' },
-  { tz: 'America/New_York', offset: '-05:00' },
+  { tz: 'Africa/Cairo', offset: '+03:00' },
+  { tz: 'Africa/Casablanca', offset: '+01:00' },
+  { tz: 'Africa/Ceuta', offset: '+02:00' },
+  { tz: 'Africa/El_Aaiun', offset: '+01:00' },
+  { tz: 'Africa/Johannesburg', offset: '+02:00' },
+  { tz: 'Africa/Lagos', offset: '+01:00' },
+  { tz: 'Africa/Nairobi', offset: '+03:00' },
+  { tz: 'America/Adak', offset: '-09:00' },
+  { tz: 'America/Anchorage', offset: '-08:00' },
+  { tz: 'America/Anguilla', offset: '-04:00' },
+  { tz: 'America/Antigua', offset: '-04:00' },
+  { tz: 'America/Araguaina', offset: '-03:00' },
+  { tz: 'America/Argentina/Buenos_Aires', offset: '-03:00' },
+  { tz: 'America/Argentina/Catamarca', offset: '-03:00' },
+  { tz: 'America/Argentina/Cordoba', offset: '-03:00' },
+  { tz: 'America/Argentina/Jujuy', offset: '-03:00' },
+  { tz: 'America/Argentina/La_Rioja', offset: '-03:00' },
+  { tz: 'America/Argentina/Mendoza', offset: '-03:00' },
+  { tz: 'America/Argentina/Rio_Gallegos', offset: '-03:00' },
+  { tz: 'America/Argentina/Salta', offset: '-03:00' },
+  { tz: 'America/Argentina/San_Juan', offset: '-03:00' },
+  { tz: 'America/Argentina/San_Luis', offset: '-03:00' },
+  { tz: 'America/Argentina/Tucuman', offset: '-03:00' },
+  { tz: 'America/Argentina/Ushuaia', offset: '-03:00' },
+  { tz: 'America/Aruba', offset: '-04:00' },
+  { tz: 'America/Asuncion', offset: '-03:00' },
+  { tz: 'America/Atikokan', offset: '-05:00' },
+  { tz: 'America/Bahia', offset: '-03:00' },
+  { tz: 'America/Bahia_Banderas', offset: '-06:00' },
+  { tz: 'America/Barbados', offset: '-04:00' },
+  { tz: 'America/Belem', offset: '-03:00' },
+  { tz: 'America/Belize', offset: '-06:00' },
+  { tz: 'America/Blanc-Sablon', offset: '-04:00' },
+  { tz: 'America/Boa_Vista', offset: '-04:00' },
+  { tz: 'America/Bogota', offset: '-05:00' },
+  { tz: 'America/Boise', offset: '-06:00' },
+  { tz: 'America/Buenos_Aires', offset: '-03:00' },
+  { tz: 'America/Cambridge_Bay', offset: '-06:00' },
+  { tz: 'America/Campo_Grande', offset: '-04:00' },
+  { tz: 'America/Cancun', offset: '-05:00' },
+  { tz: 'America/Caracas', offset: '-04:00' },
+  { tz: 'America/Catamarca', offset: '-03:00' },
+  { tz: 'America/Cayenne', offset: '-03:00' },
+  { tz: 'America/Cayman', offset: '-05:00' },
+  { tz: 'America/Chicago', offset: '-05:00' },
+  { tz: 'America/Chihuahua', offset: '-06:00' },
+  { tz: 'America/Ciudad_Juarez', offset: '-06:00' },
+  { tz: 'America/Coral_Harbour', offset: '-05:00' },
+  { tz: 'America/Cordoba', offset: '-03:00' },
+  { tz: 'America/Costa_Rica', offset: '-06:00' },
+  { tz: 'America/Coyhaique', offset: '-03:00' },
+  { tz: 'America/Creston', offset: '-07:00' },
+  { tz: 'America/Cuiaba', offset: '-04:00' },
+  { tz: 'America/Curacao', offset: '-04:00' },
+  { tz: 'America/Danmarkshavn', offset: '+00:00' },
+  { tz: 'America/Dawson', offset: '-07:00' },
+  { tz: 'America/Dawson_Creek', offset: '-07:00' },
+  { tz: 'America/Denver', offset: '-06:00' },
+  { tz: 'America/Detroit', offset: '-04:00' },
+  { tz: 'America/Dominica', offset: '-04:00' },
+  { tz: 'America/Edmonton', offset: '-06:00' },
+  { tz: 'America/Eirunepe', offset: '-05:00' },
+  { tz: 'America/El_Salvador', offset: '-06:00' },
+  { tz: 'America/Fort_Nelson', offset: '-07:00' },
+  { tz: 'America/Fortaleza', offset: '-03:00' },
+  { tz: 'America/Glace_Bay', offset: '-03:00' },
+  { tz: 'America/Godthab', offset: '-01:00' },
+  { tz: 'America/Goose_Bay', offset: '-03:00' },
+  { tz: 'America/Grand_Turk', offset: '-04:00' },
+  { tz: 'America/Grenada', offset: '-04:00' },
+  { tz: 'America/Guadeloupe', offset: '-04:00' },
+  { tz: 'America/Guatemala', offset: '-06:00' },
+  { tz: 'America/Guayaquil', offset: '-05:00' },
+  { tz: 'America/Guyana', offset: '-04:00' },
+  { tz: 'America/Halifax', offset: '-03:00' },
+  { tz: 'America/Havana', offset: '-04:00' },
+  { tz: 'America/Hermosillo', offset: '-07:00' },
+  { tz: 'America/Indiana/Indianapolis', offset: '-04:00' },
+  { tz: 'America/Indiana/Knox', offset: '-05:00' },
+  { tz: 'America/Indiana/Marengo', offset: '-04:00' },
+  { tz: 'America/Indiana/Petersburg', offset: '-04:00' },
+  { tz: 'America/Indiana/Tell_City', offset: '-05:00' },
+  { tz: 'America/Indiana/Vevay', offset: '-04:00' },
+  { tz: 'America/Indiana/Vincennes', offset: '-04:00' },
+  { tz: 'America/Indiana/Winamac', offset: '-04:00' },
+  { tz: 'America/Indianapolis', offset: '-04:00' },
+  { tz: 'America/Inuvik', offset: '-06:00' },
+  { tz: 'America/Iqaluit', offset: '-04:00' },
+  { tz: 'America/Jamaica', offset: '-05:00' },
+  { tz: 'America/Jujuy', offset: '-03:00' },
+  { tz: 'America/Juneau', offset: '-08:00' },
+  { tz: 'America/Kentucky/Louisville', offset: '-04:00' },
+  { tz: 'America/Kentucky/Monticello', offset: '-04:00' },
+  { tz: 'America/Kralendijk', offset: '-04:00' },
+  { tz: 'America/La_Paz', offset: '-04:00' },
+  { tz: 'America/Lima', offset: '-05:00' },
+  { tz: 'America/Los_Angeles', offset: '-07:00' },
+  { tz: 'America/Louisville', offset: '-04:00' },
+  { tz: 'America/Lower_Princes', offset: '-04:00' },
+  { tz: 'America/Maceio', offset: '-03:00' },
+  { tz: 'America/Managua', offset: '-06:00' },
+  { tz: 'America/Manaus', offset: '-04:00' },
+  { tz: 'America/Marigot', offset: '-04:00' },
+  { tz: 'America/Martinique', offset: '-04:00' },
+  { tz: 'America/Matamoros', offset: '-05:00' },
+  { tz: 'America/Mazatlan', offset: '-07:00' },
+  { tz: 'America/Mendoza', offset: '-03:00' },
+  { tz: 'America/Menominee', offset: '-05:00' },
+  { tz: 'America/Merida', offset: '-06:00' },
+  { tz: 'America/Metlakatla', offset: '-08:00' },
+  { tz: 'America/Mexico_City', offset: '-06:00' },
+  { tz: 'America/Miquelon', offset: '-02:00' },
+  { tz: 'America/Moncton', offset: '-03:00' },
+  { tz: 'America/Monterrey', offset: '-06:00' },
+  { tz: 'America/Montevideo', offset: '-03:00' },
+  { tz: 'America/Montserrat', offset: '-04:00' },
+  { tz: 'America/Nassau', offset: '-04:00' },
+  { tz: 'America/New_York', offset: '-04:00' },
+  { tz: 'America/Nipigon', offset: '-04:00' },
+  { tz: 'America/Nome', offset: '-08:00' },
+  { tz: 'America/Noronha', offset: '-02:00' },
+  { tz: 'America/North_Dakota/Beulah', offset: '-05:00' },
+  { tz: 'America/North_Dakota/Center', offset: '-05:00' },
+  { tz: 'America/North_Dakota/New_Salem', offset: '-05:00' },
+  { tz: 'America/Nuuk', offset: '-01:00' },
+  { tz: 'America/Ojinaga', offset: '-05:00' },
+  { tz: 'America/Panama', offset: '-05:00' },
+  { tz: 'America/Pangnirtung', offset: '-04:00' },
+  { tz: 'America/Paramaribo', offset: '-03:00' },
+  { tz: 'America/Phoenix', offset: '-07:00' },
+  { tz: 'America/Port-au-Prince', offset: '-04:00' },
+  { tz: 'America/Port_of_Spain', offset: '-04:00' },
+  { tz: 'America/Porto_Velho', offset: '-04:00' },
+  { tz: 'America/Puerto_Rico', offset: '-04:00' },
+  { tz: 'America/Punta_Arenas', offset: '-03:00' },
+  { tz: 'America/Rainy_River', offset: '-05:00' },
+  { tz: 'America/Rankin_Inlet', offset: '-05:00' },
+  { tz: 'America/Recife', offset: '-03:00' },
+  { tz: 'America/Regina', offset: '-06:00' },
+  { tz: 'America/Resolute', offset: '-05:00' },
+  { tz: 'America/Rio_Branco', offset: '-05:00' },
+  { tz: 'America/Santarem', offset: '-03:00' },
+  { tz: 'America/Santiago', offset: '-04:00' },
+  { tz: 'America/Santo_Domingo', offset: '-04:00' },
   { tz: 'America/Sao_Paulo', offset: '-03:00' },
-  { tz: 'America/Toronto', offset: '-05:00' },
+  { tz: 'America/Scoresbysund', offset: '-01:00' },
+  { tz: 'America/Sitka', offset: '-08:00' },
+  { tz: 'America/St_Barthelemy', offset: '-04:00' },
+  { tz: 'America/St_Johns', offset: '-02:30' },
+  { tz: 'America/St_Kitts', offset: '-04:00' },
+  { tz: 'America/St_Lucia', offset: '-04:00' },
+  { tz: 'America/St_Thomas', offset: '-04:00' },
+  { tz: 'America/St_Vincent', offset: '-04:00' },
+  { tz: 'America/Swift_Current', offset: '-06:00' },
+  { tz: 'America/Tegucigalpa', offset: '-06:00' },
+  { tz: 'America/Thule', offset: '-03:00' },
+  { tz: 'America/Thunder_Bay', offset: '-04:00' },
+  { tz: 'America/Tijuana', offset: '-07:00' },
+  { tz: 'America/Toronto', offset: '-04:00' },
+  { tz: 'America/Tortola', offset: '-04:00' },
+  { tz: 'America/Vancouver', offset: '-07:00' },
+  { tz: 'America/Whitehorse', offset: '-07:00' },
+  { tz: 'America/Winnipeg', offset: '-05:00' },
+  { tz: 'America/Yakutat', offset: '-08:00' },
+  { tz: 'America/Yellowknife', offset: '-06:00' },
+  { tz: 'Asia/Bangkok', offset: '+07:00' },
   { tz: 'Asia/Dhaka', offset: '+06:00' },
   { tz: 'Asia/Dubai', offset: '+04:00' },
   { tz: 'Asia/Hong_Kong', offset: '+08:00' },
+  { tz: 'Asia/Jakarta', offset: '+07:00' },
   { tz: 'Asia/Kolkata', offset: '+05:30' },
+  { tz: 'Asia/Manila', offset: '+08:00' },
+  { tz: 'Asia/Riyadh', offset: '+03:00' },
   { tz: 'Asia/Seoul', offset: '+09:00' },
   { tz: 'Asia/Shanghai', offset: '+08:00' },
+  { tz: 'Asia/Singapore', offset: '+08:00' },
   { tz: 'Asia/Tokyo', offset: '+09:00' },
-  { tz: 'Australia/Sydney', offset: '+11:00' },
-  { tz: 'Europe/Amsterdam', offset: '+01:00' },
-  { tz: 'Europe/Berlin', offset: '+01:00' },
-  { tz: 'Europe/London', offset: '+00:00' },
-  { tz: 'Europe/Madrid', offset: '+01:00' },
-  { tz: 'Europe/Paris', offset: '+01:00' },
-  { tz: 'Europe/Rome', offset: '+01:00' },
+  { tz: 'Australia/Melbourne', offset: '+10:00' },
+  { tz: 'Australia/Perth', offset: '+08:00' },
+  { tz: 'Australia/Sydney', offset: '+10:00' },
+  { tz: 'Europe/Amsterdam', offset: '+02:00' },
+  { tz: 'Europe/Athens', offset: '+03:00' },
+  { tz: 'Europe/Berlin', offset: '+02:00' },
+  { tz: 'Europe/Brussels', offset: '+02:00' },
+  { tz: 'Europe/Dublin', offset: '+01:00' },
+  { tz: 'Europe/Helsinki', offset: '+03:00' },
+  { tz: 'Europe/Istanbul', offset: '+03:00' },
+  { tz: 'Europe/Lisbon', offset: '+01:00' },
+  { tz: 'Europe/London', offset: '+01:00' },
+  { tz: 'Europe/Madrid', offset: '+02:00' },
+  { tz: 'Europe/Moscow', offset: '+03:00' },
+  { tz: 'Europe/Paris', offset: '+02:00' },
+  { tz: 'Europe/Rome', offset: '+02:00' },
+  { tz: 'Europe/Stockholm', offset: '+02:00' },
+  { tz: 'Europe/Vienna', offset: '+02:00' },
+  { tz: 'Europe/Warsaw', offset: '+02:00' },
+  { tz: 'Europe/Zurich', offset: '+02:00' },
+  { tz: 'Pacific/Auckland', offset: '+12:00' },
+  { tz: 'Pacific/Fiji', offset: '+12:00' },
+  { tz: 'Pacific/Guam', offset: '+10:00' },
   { tz: 'Pacific/Honolulu', offset: '-10:00' }
 ]
+
+function getAllTimezones(): Array<{ tz: string; offset: string }> {
+  try {
+    if (typeof Intl !== 'undefined' && typeof (Intl as any).supportedValuesOf === 'function') {
+      const ianaList = (Intl as any).supportedValuesOf('timeZone') as string[]
+      const known = new Set(STATIC_TIMEZONE_LIST.map(t => t.tz))
+      const combined = [...STATIC_TIMEZONE_LIST]
+      for (const tz of ianaList) {
+        if (!known.has(tz)) {
+          combined.push({ tz, offset: computeTimezoneOffset(tz) })
+          known.add(tz)
+        }
+      }
+      return combined.sort((a, b) => a.tz.localeCompare(b.tz))
+    }
+  } catch {
+    // fallback
+  }
+  return STATIC_TIMEZONE_LIST
+}
+
+export const TIMEZONE_LIST = getAllTimezones()
 
 const CHROME_VERSIONS = [
   '128.0.6613.120',
@@ -1756,8 +1965,13 @@ export const ProfileModal: React.FC<Props> = ({
 
   const filteredTimezones = useMemo(() => {
     if (!timezoneSearch.trim()) return TIMEZONE_LIST
-    const q = timezoneSearch.toLowerCase()
-    return TIMEZONE_LIST.filter(t => t.tz.toLowerCase().includes(q) || t.offset.includes(q))
+    const q = timezoneSearch.toLowerCase().trim()
+    const qNoSpace = q.replace(/\s+/g, '_')
+    return TIMEZONE_LIST.filter(t => {
+      const tzLower = t.tz.toLowerCase()
+      const tzSpace = tzLower.replace(/_/g, ' ')
+      return tzLower.includes(q) || tzLower.includes(qNoSpace) || tzSpace.includes(q) || t.offset.includes(q)
+    })
   }, [timezoneSearch])
 
   const copyUAToClipboard = () => {
