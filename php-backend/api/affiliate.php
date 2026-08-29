@@ -75,9 +75,17 @@ switch ($action) {
         $searchAffIds = array_values(array_unique(array_filter([
             $affId, 
             $refCode, 
+            strtoupper($affId),
+            strtolower($affId),
+            strtoupper($refCode),
+            strtolower($refCode),
             $cleanSuffix, 
-            'REF_' . $cleanSuffix, 
-            'AFF-' . $cleanSuffix, 
+            strtoupper($cleanSuffix),
+            strtolower($cleanSuffix),
+            'REF_' . strtoupper($cleanSuffix), 
+            'REF_' . strtolower($cleanSuffix), 
+            'AFF-' . strtoupper($cleanSuffix), 
+            'AFF-' . strtolower($cleanSuffix), 
             $user['id']
         ])));
         $inPlaceholders = implode(',', array_fill(0, count($searchAffIds), '?'));
@@ -89,10 +97,10 @@ switch ($action) {
                 COUNT(DISTINCT ip_address) as unique_ips,
                 SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as today_clicks
             FROM affiliate_clicks 
-            WHERE (affiliate_id IN ($inPlaceholders) OR user_id = ?)
+            WHERE (affiliate_id IN ($inPlaceholders) OR LOWER(affiliate_id) IN ($inPlaceholders) OR user_id = ?)
               AND (is_fraud = 0 OR is_fraud IS NULL)
         ");
-        $stmtClicks->execute(array_merge($searchAffIds, [$user['id']]));
+        $stmtClicks->execute(array_merge($searchAffIds, $searchAffIds, [$user['id']]));
         $clickStats = $stmtClicks->fetch(PDO::FETCH_ASSOC);
 
         $totalClicks = (int)($clickStats['total'] ?? 0);
@@ -144,11 +152,11 @@ switch ($action) {
                    COALESCE(o.price, 49.00) as package_price
             FROM affiliate_clicks c 
             LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
-            WHERE (c.affiliate_id IN ($inPlaceholders) OR c.user_id = ?)
+            WHERE (c.affiliate_id IN ($inPlaceholders) OR LOWER(c.affiliate_id) IN ($inPlaceholders) OR c.user_id = ?)
             ORDER BY c.created_at DESC 
             LIMIT 50
         ");
-        $stmtRecClicks->execute(array_merge($searchAffIds, [$user['id']]));
+        $stmtRecClicks->execute(array_merge($searchAffIds, $searchAffIds, [$user['id']]));
         $recentClicks = $stmtRecClicks->fetchAll(PDO::FETCH_ASSOC);
 
         // Recent Conversions (last 30)
@@ -158,10 +166,10 @@ switch ($action) {
                    COALESCE(o.package_name, 'Professional') as package_name
             FROM affiliate_conversions c
             LEFT JOIN affiliate_offers o ON o.id = c.offer_id
-            WHERE (c.affiliate_id IN ($inPlaceholders) OR c.user_id = ?)
+            WHERE (c.affiliate_id IN ($inPlaceholders) OR LOWER(c.affiliate_id) IN ($inPlaceholders) OR c.user_id = ?)
             ORDER BY c.created_at DESC LIMIT 30
         ");
-        $stmtRecConv->execute(array_merge($searchAffIds, [$user['id']]));
+        $stmtRecConv->execute(array_merge($searchAffIds, $searchAffIds, [$user['id']]));
         $recentConversions = $stmtRecConv->fetchAll(PDO::FETCH_ASSOC);
 
         // Withdrawal History
@@ -789,9 +797,17 @@ switch ($action) {
         $searchAffIds = array_values(array_unique(array_filter([
             $affId, 
             $refCode, 
+            strtoupper($affId),
+            strtolower($affId),
+            strtoupper($refCode),
+            strtolower($refCode),
             $cleanSuffix, 
-            'REF_' . $cleanSuffix, 
-            'AFF-' . $cleanSuffix, 
+            strtoupper($cleanSuffix),
+            strtolower($cleanSuffix),
+            'REF_' . strtoupper($cleanSuffix), 
+            'REF_' . strtolower($cleanSuffix), 
+            'AFF-' . strtoupper($cleanSuffix), 
+            'AFF-' . strtolower($cleanSuffix), 
             $user['id']
         ])));
         $inPlaceholders = implode(',', array_fill(0, count($searchAffIds), '?'));
@@ -802,11 +818,11 @@ switch ($action) {
                    COALESCE(o.package_name, 'Professional') as package_name
             FROM affiliate_clicks c 
             LEFT JOIN affiliate_offers o ON o.id = c.offer_id 
-            WHERE (c.affiliate_id IN ($inPlaceholders) OR c.user_id = ?) 
+            WHERE (c.affiliate_id IN ($inPlaceholders) OR LOWER(c.affiliate_id) IN ($inPlaceholders) OR c.user_id = ?) 
             ORDER BY c.created_at DESC 
             LIMIT 100
         ");
-        $stmt->execute(array_merge($searchAffIds, [$user['id']]));
+        $stmt->execute(array_merge($searchAffIds, $searchAffIds, [$user['id']]));
         $clicks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         respondJson(['success' => true, 'data' => $clicks]);

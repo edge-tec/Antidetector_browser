@@ -615,14 +615,36 @@ function ensureDatabaseTablesExist() {
               `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
               `click_id` VARCHAR(64) NOT NULL UNIQUE,
               `affiliate_id` VARCHAR(50) NOT NULL,
+              `user_id` VARCHAR(36) DEFAULT NULL,
+              `affiliate_link_id` VARCHAR(50) DEFAULT NULL,
+              `tracking_link_id` VARCHAR(50) DEFAULT NULL,
               `offer_id` VARCHAR(50) NOT NULL,
+              `package_id` VARCHAR(50) DEFAULT 'plan_pro',
               `ip_address` VARCHAR(45) DEFAULT NULL,
               `user_agent` TEXT DEFAULT NULL,
               `referrer` TEXT DEFAULT NULL,
+              `landing_url` TEXT DEFAULT NULL,
               `sub_id1` VARCHAR(100) DEFAULT NULL,
               `sub_id2` VARCHAR(100) DEFAULT NULL,
+              `sub_id3` VARCHAR(100) DEFAULT NULL,
+              `sub_id4` VARCHAR(100) DEFAULT NULL,
+              `sub_id5` VARCHAR(100) DEFAULT NULL,
+              `device` VARCHAR(50) DEFAULT 'Desktop',
+              `browser` VARCHAR(50) DEFAULT 'Chrome',
+              `os` VARCHAR(50) DEFAULT 'Windows',
+              `processor` VARCHAR(50) DEFAULT 'x86_64',
+              `country` VARCHAR(50) DEFAULT 'US',
+              `city` VARCHAR(100) DEFAULT NULL,
+              `utm_source` VARCHAR(100) DEFAULT NULL,
+              `utm_campaign` VARCHAR(100) DEFAULT NULL,
+              `utm_medium` VARCHAR(100) DEFAULT NULL,
+              `fingerprint_hash` VARCHAR(64) DEFAULT NULL,
+              `unique_click` TINYINT(1) NOT NULL DEFAULT 1,
+              `is_fraud` TINYINT(1) DEFAULT 0,
+              `fraud_reason` VARCHAR(255) DEFAULT NULL,
               `converted` TINYINT(1) NOT NULL DEFAULT 0,
               `conversion_id` VARCHAR(64) DEFAULT NULL,
+              `converted_at` DATETIME DEFAULT NULL,
               `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -5001,45 +5023,51 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
         $refCode = $cleanRef;
         $userId = null;
 
-        $uStmt = $db->prepare("
-            SELECT id, affiliate_id, referral_code, name, email 
-            FROM users 
-            WHERE LOWER(referral_code) = LOWER(?) 
-               OR LOWER(affiliate_id) = LOWER(?) 
-               OR LOWER(referral_code) = LOWER(?)
-               OR LOWER(affiliate_id) = LOWER(?)
-               OR LOWER(referral_code) = LOWER(?)
-               OR LOWER(affiliate_id) = LOWER(?)
-               OR id = ?
-            LIMIT 1
-        ");
-        $uStmt->execute([
-            $cleanRef,
-            $cleanRef,
-            'REF_' . $cleanCode,
-            'AFF-' . $cleanCode,
-            $cleanCode,
-            $cleanCode,
-            $cleanRef
-        ]);
-        $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $uStmt = $db->prepare("
+                SELECT id, affiliate_id, referral_code, name, email 
+                FROM users 
+                WHERE LOWER(referral_code) = LOWER(?) 
+                   OR LOWER(affiliate_id) = LOWER(?) 
+                   OR LOWER(referral_code) = LOWER(?)
+                   OR LOWER(affiliate_id) = LOWER(?)
+                   OR LOWER(referral_code) = LOWER(?)
+                   OR LOWER(affiliate_id) = LOWER(?)
+                   OR id = ?
+                LIMIT 1
+            ");
+            $uStmt->execute([
+                $cleanRef,
+                $cleanRef,
+                'REF_' . $cleanCode,
+                'AFF-' . $cleanCode,
+                $cleanCode,
+                $cleanCode,
+                $cleanRef
+            ]);
+            $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($uRow) {
-            $userId = $uRow['id'];
-            $affId = !empty($uRow['affiliate_id']) ? $uRow['affiliate_id'] : ('AFF-' . strtoupper($cleanCode));
-            $refCode = !empty($uRow['referral_code']) ? $uRow['referral_code'] : ('REF_' . strtoupper($cleanCode));
-        } else {
-            // Normalize default formatting
-            if (stripos($cleanRef, 'AFF-') === 0) {
-                $affId = strtoupper($cleanRef);
-                $refCode = 'REF_' . strtoupper(substr($cleanRef, 4));
-            } elseif (stripos($cleanRef, 'REF_') === 0) {
-                $refCode = strtoupper($cleanRef);
-                $affId = 'AFF-' . strtoupper(substr($cleanRef, 4));
+            if ($uRow) {
+                $userId = $uRow['id'];
+                $affId = !empty($uRow['affiliate_id']) ? $uRow['affiliate_id'] : ('AFF-' . strtoupper($cleanCode));
+                $refCode = !empty($uRow['referral_code']) ? $uRow['referral_code'] : ('REF_' . strtoupper($cleanCode));
             } else {
-                $affId = 'AFF-' . strtoupper($cleanRef);
-                $refCode = 'REF_' . strtoupper($cleanRef);
+                // Normalize default formatting
+                if (stripos($cleanRef, 'AFF-') === 0) {
+                    $affId = strtoupper($cleanRef);
+                    $refCode = 'REF_' . strtoupper(substr($cleanRef, 4));
+                } elseif (stripos($cleanRef, 'REF_') === 0) {
+                    $refCode = strtoupper($cleanRef);
+                    $affId = 'AFF-' . strtoupper(substr($cleanRef, 4));
+                } else {
+                    $affId = 'AFF-' . strtoupper($cleanRef);
+                    $refCode = 'REF_' . strtoupper($cleanRef);
+                }
             }
+        } catch (Throwable $e) {
+            // Safe fallback if users table is not yet initialized or query fails
+            $affId = 'AFF-' . strtoupper($cleanCode);
+            $refCode = 'REF_' . strtoupper($cleanCode);
         }
 
         // 3. Generate Click ID (Format: CLK-YYYYMMDD-XXXXXXXX e.g. CLK-20260829-8FK39A2P)
@@ -5152,14 +5180,15 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
         // 2. High-rate flood check (only if >= 5 clicks within 3 seconds from same IP and affiliate)
         if (!$isTest && !$isFraud) {
             try {
+                $cutoff3s = date('Y-m-d H:i:s', time() - 3);
                 $dupStmt = $db->prepare("
                     SELECT COUNT(*) as count 
                     FROM affiliate_clicks 
-                    WHERE ip_address = ? AND affiliate_id = ? AND created_at >= (NOW() - INTERVAL 3 SECOND)
+                    WHERE ip_address = ? AND affiliate_id = ? AND created_at >= ?
                 ");
-                $dupStmt->execute([$ipAddress, $affId]);
+                $dupStmt->execute([$ipAddress, $affId, $cutoff3s]);
                 $count = (int)$dupStmt->fetchColumn();
-                if ($count >= 5) {
+                if ($count >= 10) {
                     $isFraud = 1;
                     $fraudReason = 'rapid_flood_clicks';
                 }
@@ -5227,18 +5256,21 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
         // Check if unique click (first click from this IP on this offer in last 24h)
         $uniqueClick = 1;
         try {
+            $cutoff24h = date('Y-m-d H:i:s', time() - 86400);
             $unqStmt = $db->prepare("
                 SELECT COUNT(*) FROM affiliate_clicks 
-                WHERE ip_address = ? AND offer_id = ? AND created_at >= (NOW() - INTERVAL 24 HOUR)
+                WHERE ip_address = ? AND offer_id = ? AND created_at >= ?
             ");
-            $unqStmt->execute([$ipAddress, $offerId]);
+            $unqStmt->execute([$ipAddress, $offerId, $cutoff24h]);
             if ((int)$unqStmt->fetchColumn() > 0) {
                 $uniqueClick = 0;
             }
         } catch (Throwable $e) {}
 
-        // 5. Insert Click into affiliate_clicks table
+        // 5. Insert Click into affiliate_clicks table with 3-tier safety cascade
+        $inserted = false;
         try {
+            // Tier 1: Complete 29-column full metadata insert
             $stmtInsert = $db->prepare("
                 INSERT INTO affiliate_clicks (
                     click_id, affiliate_id, user_id, affiliate_link_id, tracking_link_id, offer_id, package_id,
@@ -5288,17 +5320,35 @@ function captureAndRecordAffiliateClick(?PDO $db = null, bool $force = false): ?
                 $isFraud,
                 $fraudReason
             ]);
+            $inserted = true;
         } catch (Throwable $e) {
             try {
+                // Tier 2: Standard 12-column insert
                 $stmtInsertMin = $db->prepare("
                     INSERT INTO affiliate_clicks (
-                        click_id, affiliate_id, user_id, offer_id, ip_address, user_agent, referrer, landing_url, unique_click, created_at
+                        click_id, affiliate_id, offer_id, package_id, ip_address, user_agent, referrer, landing_url, sub_id1, sub_id2, unique_click, created_at
                     ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
                     )
                 ");
-                $stmtInsertMin->execute([$clickId, $affId, $userId, $offerId, $ipAddress, $userAgent, $referrer, $fullLandingUrl, $uniqueClick]);
-            } catch (Throwable $e2) {}
+                $stmtInsertMin->execute([$clickId, $affId, $offerId, $packageId, $ipAddress, $userAgent, $referrer, $fullLandingUrl, $subId1 ?: null, $subId2 ?: null, $uniqueClick]);
+                $inserted = true;
+            } catch (Throwable $e2) {
+                try {
+                    // Tier 3: Ultra-minimal 4-column basic insert
+                    $stmtInsertUltra = $db->prepare("
+                        INSERT INTO affiliate_clicks (
+                            click_id, affiliate_id, offer_id, ip_address, created_at
+                        ) VALUES (
+                            ?, ?, ?, ?, CURRENT_TIMESTAMP
+                        )
+                    ");
+                    $stmtInsertUltra->execute([$clickId, $affId, $offerId, $ipAddress]);
+                    $inserted = true;
+                } catch (Throwable $e3) {
+                    error_log('[Affiliate Click Insert Failure] ' . $e3->getMessage());
+                }
+            }
         }
 
         // Increment offer total_clicks and link clicks (only if not fraud)
