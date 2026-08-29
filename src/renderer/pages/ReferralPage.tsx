@@ -36,29 +36,54 @@ export const ReferralPage: React.FC<{ showToast?: (type: 'success' | 'error' | '
       if (!currentUser) return
       setLoading(true)
       try {
-        if (typeof window !== 'undefined' && (window as any).api?.getOrCreateReferralCode) {
-          const res = await (window as any).api.getOrCreateReferralCode(currentUser.id)
-          if (res && res.referralCode && isMounted) {
-            const domain = 'https://antiprofiles.com'
-            setReferralData(prev => ({
-              ...prev,
-              referralCode: res.referralCode,
-              referralLink: res.referralLink || `${domain}/register?ref=${res.referralCode}`,
-              activeBonusRate: res.activeBonusRate || `${res.bonusRatePercent || 10}% Bonus Credits`
-            }))
-          }
+        let activeRateNum = 10
+
+        // 1. Fetch Global Settings directly
+        if (typeof window !== 'undefined' && (window as any).api?.getAffiliateSettings) {
+          try {
+            const stRes = await (window as any).api.getAffiliateSettings()
+            if (stRes?.success && stRes?.data) {
+              const r = Number(stRes.data.commission_rate_percent ?? stRes.data.default_commission_rate ?? activeRateNum)
+              if (!isNaN(r) && r > 0) activeRateNum = r
+            }
+          } catch {}
         }
+
+        // 2. Fetch or create referral code
+        if (typeof window !== 'undefined' && (window as any).api?.getOrCreateReferralCode) {
+          try {
+            const res = await (window as any).api.getOrCreateReferralCode(currentUser.id)
+            if (res && res.referralCode && isMounted) {
+              if (res.bonusRatePercent && !isNaN(Number(res.bonusRatePercent))) {
+                activeRateNum = Number(res.bonusRatePercent)
+              }
+              const domain = 'https://antiprofiles.com'
+              setReferralData(prev => ({
+                ...prev,
+                referralCode: res.referralCode,
+                referralLink: res.referralLink || `${domain}/register?ref=${res.referralCode}`,
+                activeBonusRate: `${activeRateNum}% Bonus Credits`
+              }))
+            }
+          } catch {}
+        }
+
+        // 3. Fetch user summary for live conversions and earnings
         if (typeof window !== 'undefined' && (window as any).api?.affiliateGetUserSummary) {
-          const sumRes = await (window as any).api.affiliateGetUserSummary(currentUser.id)
-          if (sumRes?.success && sumRes?.data && isMounted) {
-            const sum = sumRes.data
-            setReferralData(prev => ({
-              ...prev,
-              totalReferrals: sum.totalConversions || sum.totalClicks || 0,
-              rewardsEarned: sum.totalEarned > 0 ? `$${Number(sum.totalEarned).toFixed(2)} Earned` : `${sum.totalConversions || 0} Bonus Days`,
-              activeBonusRate: `${sum.commissionRate || 10}% Bonus Credits`
-            }))
-          }
+          try {
+            const sumRes = await (window as any).api.affiliateGetUserSummary(currentUser.id)
+            if (sumRes?.success && sumRes?.data && isMounted) {
+              const sum = sumRes.data
+              const rate = Number(sum.commissionRate ?? sum.systemSettings?.commission_rate_percent ?? sum.systemSettings?.defaultRate ?? activeRateNum)
+              const finalRate = (!isNaN(rate) && rate > 0) ? rate : activeRateNum
+              setReferralData(prev => ({
+                ...prev,
+                totalReferrals: sum.totalConversions || sum.totalClicks || 0,
+                rewardsEarned: sum.totalEarned > 0 ? `$${Number(sum.totalEarned).toFixed(2)} Earned` : `${sum.totalConversions || 0} Bonus Days`,
+                activeBonusRate: `${finalRate}% Bonus Credits`
+              }))
+            }
+          } catch {}
         }
       } catch (err) {
         console.warn('Could not fetch referral code from IPC:', err)

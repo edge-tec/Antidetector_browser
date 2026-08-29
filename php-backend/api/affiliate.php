@@ -244,11 +244,12 @@ switch ($action) {
                 'offers' => $offers,
                 'recentClicks' => $recentClicks,
                 'recentConversions' => $recentConversions,
-                'withdrawals' => $withdrawals,
+                'commissionRate' => (float)($settings['commission_rate_percent'] ?? $settings['default_commission_rate'] ?? $settings['affiliate_default_commission_rate'] ?? 15),
                 'systemSettings' => [
                     'enabled' => ($settings['affiliate_system_enabled'] ?? '1') === '1',
-                    'defaultRate' => (float)($settings['affiliate_default_commission_rate'] ?? 15),
-                    'minPayout' => (float)($settings['affiliate_min_payout_usd'] ?? 50),
+                    'defaultRate' => (float)($settings['commission_rate_percent'] ?? $settings['default_commission_rate'] ?? $settings['affiliate_default_commission_rate'] ?? 15),
+                    'commission_rate_percent' => (float)($settings['commission_rate_percent'] ?? $settings['default_commission_rate'] ?? $settings['affiliate_default_commission_rate'] ?? 15),
+                    'minPayout' => (float)($settings['min_withdrawal_usd'] ?? $settings['affiliate_min_payout_usd'] ?? 20),
                     'cookieDays' => (int)($settings['affiliate_cookie_duration_days'] ?? 30)
                 ]
             ]
