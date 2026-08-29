@@ -17,7 +17,8 @@ import {
   startGoogleSystemBrowserOAuth,
   getProfileGoogleAccount,
   disconnectProfileGoogleAccount,
-  callGmailApi
+  callGmailApi,
+  getGoogleProfileRuntimeStatus
 } from '../security/google-oauth-loopback'
 
 function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string; locked?: boolean; expired?: boolean } {
@@ -536,6 +537,19 @@ export function registerProfileHandlers(): void {
 
       const apiResult = await callGmailApi(profileId, 'users/me/profile')
       return apiResult
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:get-google-status', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const status = getGoogleProfileRuntimeStatus(profileId)
+      return { success: true, data: status }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

@@ -577,3 +577,30 @@ export async function callGmailApi(
   })
 }
 
+export interface GoogleProfileRuntimeStatus {
+  profileId: string
+  googleConnected: boolean
+  googleEmail?: string
+  googleName?: string
+  connectedAt?: string
+  oauthTokenAvailable: boolean
+  hasRefreshToken: boolean
+}
+
+/**
+ * Get safe diagnostic runtime status of Google connection for a profile.
+ * Never exposes raw tokens, secrets, or cookies.
+ */
+export function getGoogleProfileRuntimeStatus(profileId: string): GoogleProfileRuntimeStatus {
+  const account = getProfileGoogleAccount(profileId)
+  return {
+    profileId,
+    googleConnected: !!account,
+    googleEmail: account?.email,
+    googleName: account?.name,
+    connectedAt: account?.connectedAt,
+    oauthTokenAvailable: !!account?.encryptedAccessToken,
+    hasRefreshToken: !!account?.encryptedRefreshToken
+  }
+}
+

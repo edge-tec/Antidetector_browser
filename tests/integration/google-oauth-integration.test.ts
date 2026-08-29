@@ -11,7 +11,8 @@ import {
   disconnectProfileGoogleAccount,
   saveLinkedAccountsToDisk,
   loadLinkedAccountsFromDisk,
-  callGmailApi
+  callGmailApi,
+  getGoogleProfileRuntimeStatus
 } from '../../src/main/security/google-oauth-loopback'
 
 describe('Comprehensive Google OAuth 2.0 & Profile Integration Test Suite (RFC 8252)', () => {
@@ -150,5 +151,16 @@ describe('Comprehensive Google OAuth 2.0 & Profile Integration Test Suite (RFC 8
     expect(decryptOAuthToken(accountA.encryptedAccessToken)).toBe('token_alpha_secret')
     expect(decryptOAuthToken(accountB.encryptedAccessToken)).toBe('token_beta_secret')
     expect(accountA.email).not.toBe(accountB.email)
+  })
+
+  it('Test M: getGoogleProfileRuntimeStatus returns safe diagnostic metadata without exposing raw secrets', () => {
+    const unlinkedStatus = getGoogleProfileRuntimeStatus('unlinked-profile-id')
+    expect(unlinkedStatus.googleConnected).toBe(false)
+    expect(unlinkedStatus.oauthTokenAvailable).toBe(false)
+
+    // Ensure status object has no secret leakage
+    expect((unlinkedStatus as any).accessToken).toBeUndefined()
+    expect((unlinkedStatus as any).refreshToken).toBeUndefined()
+    expect((unlinkedStatus as any).clientSecret).toBeUndefined()
   })
 })

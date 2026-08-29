@@ -203,6 +203,11 @@ const api = {
     const token = maybeId ? sessionTokenOrId : getSavedToken()
     return ipcRenderer.invoke('profiles:test-gmail-api', token, id)
   },
+  getGoogleProfileRuntimeStatus: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:get-google-status', token, id)
+  },
 
   // ── Browser Control ──
   startProfile: (sessionTokenOrId: string, maybeId?: string) => {
