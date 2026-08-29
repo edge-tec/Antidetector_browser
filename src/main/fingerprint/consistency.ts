@@ -388,8 +388,8 @@ function checkScreenDPR(fp: Fingerprint, family: OSFamily, osType: OSType): Cons
     }
     // Check if resolution matches typical iPhone screens
     const validIosDims = [
-      [393, 852], [430, 932], [390, 844], [428, 926], [375, 812], [414, 896], [375, 667],
-      [1179, 2556], [1290, 2796], [1170, 2532], [1284, 2778], [1125, 2436], [828, 1792], [750, 1334]
+      [440, 956], [402, 874], [414, 896], [393, 852], [430, 932], [390, 844], [428, 926], [375, 812], [375, 667],
+      [1320, 2868], [1206, 2622], [1179, 2556], [1290, 2796], [1170, 2532], [1284, 2778], [1125, 2436], [828, 1792], [750, 1334]
     ]
     const matchesDim = validIosDims.some(([w, h]) => (width === w && height === h) || (width === h && height === w))
     if (!matchesDim && (width === 1920 && height === 1080)) {
@@ -565,14 +565,14 @@ function checkRamDeviceClass(fp: Fingerprint, family: OSFamily, osType: OSType):
   const cat = 'RAM ↔ Device Class'
   const mem = fp.navigator?.deviceMemory || 8
 
-  if (osType === 'ios' && mem > 8) {
+  if (osType === 'ios' && mem > 16) {
     return makeCheck(id, cat, `${mem}GB RAM`, 'iOS', 'fail',
-      `Contradiction: iPhone RAM cannot exceed 8GB (configured: ${mem}GB)`, 8)
+      `Contradiction: iPhone RAM cannot exceed 16GB (configured: ${mem}GB)`, 8)
   }
 
-  if (family === 'android' && mem > 16) {
+  if (family === 'android' && mem > 24) {
     return makeCheck(id, cat, `${mem}GB RAM`, 'Android', 'warn',
-      `Android RAM rarely exceeds 16GB (configured: ${mem}GB)`, 5)
+      `Android RAM rarely exceeds 24GB (configured: ${mem}GB)`, 5)
   }
 
   return makeCheck(id, cat, `${mem}GB`, family, 'pass',
