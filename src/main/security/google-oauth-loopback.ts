@@ -449,3 +449,55 @@ export function disconnectProfileGoogleAccount(profileId: string): boolean {
   if (!profileId) return false
   return linkedAccountsMap.delete(profileId)
 }
+
+/**
+ * Call Gmail API for a linked profile using its decrypted OAuth access token.
+ * Demonstrates API-based Gmail integration without web password automation.
+ */
+export async function callGmailApi(
+  profileId: string,
+  endpoint: string = 'users/me/profile'
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const account = getProfileGoogleAccount(profileId)
+  if (!account || !account.encryptedAccessToken) {
+    return { success: false, error: 'No Google account linked to this profile.' }
+  }
+
+  const accessToken = decryptOAuthToken(account.encryptedAccessToken)
+  if (!accessToken) {
+    return { success: false, error: 'Could not decrypt OAuth access token.' }
+  }
+
+  return new Promise((resolve) => {
+    https
+      .get(
+        `https://gmail.googleapis.com/gmail/v1/${endpoint}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json'
+          }
+        },
+        (res) => {
+          let body = ''
+          res.on('data', (chunk) => (body += chunk))
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(body)
+              if (data.error) {
+                resolve({ success: false, error: data.error.message || 'Gmail API Error' })
+              } else {
+                resolve({ success: true, data })
+              }
+            } catch (e: any) {
+              resolve({ success: false, error: `Invalid Gmail API response: ${e.message}` })
+            }
+          })
+        }
+      )
+      .on('error', (err) => {
+        resolve({ success: false, error: `Gmail API request failed: ${err.message}` })
+      })
+  })
+}
+

@@ -1,9 +1,3 @@
-// ──────────────────────────────────────────────────────────────────
-// AntiProfiles — Comprehensive Unit Tests: Google OAuth 2.0 PKCE & Loopback
-// Tests RFC 7636 (PKCE), RFC 8252 (OAuth 2.0 for Native Apps),
-// Multi-Profile Isolation, and Safe Token Encryption.
-// ──────────────────────────────────────────────────────────────────
-
 import { describe, it, expect, beforeEach } from 'vitest'
 import crypto from 'crypto'
 import {
@@ -12,7 +6,8 @@ import {
   encryptOAuthToken,
   decryptOAuthToken,
   getProfileGoogleAccount,
-  disconnectProfileGoogleAccount
+  disconnectProfileGoogleAccount,
+  callGmailApi
 } from '../../src/main/security/google-oauth-loopback'
 
 describe('Google OAuth 2.0 PKCE & Loopback Standards (RFC 8252 / RFC 7636)', () => {
@@ -87,6 +82,15 @@ describe('Google OAuth 2.0 PKCE & Loopback Standards (RFC 8252 / RFC 7636)', () 
 
       // Disconnecting non-existent profile returns false
       expect(disconnectProfileGoogleAccount(profileA)).toBe(false)
+    })
+  })
+
+  describe('Test 11 & Test 12: Gmail API Integration Architecture', () => {
+    it('rejects Gmail API access when profile has no linked OAuth credentials', async () => {
+      const unlinkedProfileId = 'unlinked-profile-id-123'
+      const res = await callGmailApi(unlinkedProfileId)
+      expect(res.success).toBe(false)
+      expect(res.error).toContain('No Google account linked')
     })
   })
 })
