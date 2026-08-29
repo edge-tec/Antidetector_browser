@@ -1,13 +1,22 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — Google OAuth 2.0 PKCE Loopback Authentication Module
 // Implements RFC 8252 (OAuth 2.0 for Native Apps) using the System Browser.
-// Compliant with Google Identity Services & Embedded WebView Disallowance Policy.
+// Configured with Google Cloud Desktop OAuth Client ID & Secret.
 // ──────────────────────────────────────────────────────────────────
 
 import http from 'http'
 import crypto from 'crypto'
+import https from 'https'
 import { shell } from 'electron'
 import { logger } from '../logging/logger'
+
+export const getGoogleClientId = (): string => {
+  return process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID || ''
+}
+
+export const getGoogleClientSecret = (): string => {
+  return process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_OAUTH_CLIENT_SECRET || ''
+}
 
 export interface PKCEPair {
   verifier: string
@@ -15,7 +24,7 @@ export interface PKCEPair {
 }
 
 export interface GoogleOAuthConfig {
-  clientId: string
+  clientId?: string
   clientSecret?: string
   scopes?: string[]
   redirectPath?: string
@@ -27,6 +36,20 @@ export interface OAuthAuthResult {
   code?: string
   state?: string
   codeVerifier?: string
+  redirectUri?: string
+  tokens?: {
+    accessToken?: string
+    refreshToken?: string
+    idToken?: string
+    expiresIn?: number
+  }
+  userProfile?: {
+    id: string
+    email: string
+    name: string
+    picture?: string
+    verifiedEmail?: boolean
+  }
   error?: string
 }
 
@@ -35,15 +58,9 @@ export interface OAuthAuthResult {
  * Conforms to RFC 7636.
  */
 export function generatePKCE(): PKCEPair {
-  // 1. Generate 32-96 bytes of random entropy (base64url encoded)
   const verifier = crypto.randomBytes(32).toString('base64url')
-  
-  // 2. SHA-256 hash of verifier
   const hash = crypto.createHash('sha256').update(verifier).digest()
-  
-  // 3. Base64URL encode the hash
   const challenge = hash.toString('base64url')
-
   return { verifier, challenge }
 }
 
@@ -55,22 +72,128 @@ export function generateOAuthState(): string {
 }
 
 /**
+ * Exchange Authorization Code and PKCE Verifier for Google Access/ID Tokens.
+ */
+export async function exchangeCodeForTokens(
+  code: string,
+  codeVerifier: string,
+  redirectUri: string,
+  clientId: string = getGoogleClientId(),
+  clientSecret: string = getGoogleClientSecret()
+): Promise<{ success: boolean; tokens?: any; userProfile?: any; error?: string }> {
+  return new Promise((resolve) => {
+    const postData = new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+      code_verifier: codeVerifier
+    }).toString()
+
+    const req = https.request(
+      'https://oauth2.googleapis.com/token',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      },
+      (res) => {
+        let body = ''
+        res.on('data', (chunk) => (body += chunk))
+        res.on('end', async () => {
+          try {
+            const data = JSON.parse(body)
+            if (data.error) {
+              resolve({ success: false, error: data.error_description || data.error })
+              return
+            }
+
+            const tokens = {
+              accessToken: data.access_token,
+              refreshToken: data.refresh_token,
+              idToken: data.id_token,
+              expiresIn: data.expires_in
+            }
+
+            // Fetch User Profile with Access Token
+            if (tokens.accessToken) {
+              try {
+                const profile = await fetchGoogleUserProfile(tokens.accessToken)
+                resolve({ success: true, tokens, userProfile: profile })
+                return
+              } catch {}
+            }
+
+            resolve({ success: true, tokens })
+          } catch (e: any) {
+            resolve({ success: false, error: `Failed to parse token response: ${e.message}` })
+          }
+        })
+      }
+    )
+
+    req.on('error', (err) => {
+      resolve({ success: false, error: `Token exchange request failed: ${err.message}` })
+    })
+
+    req.write(postData)
+    req.end()
+  })
+}
+
+/**
+ * Fetch Google User Info using the Access Token.
+ */
+export async function fetchGoogleUserProfile(accessToken: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    https
+      .get(
+        'https://www.googleapis.com/oauth2/v3/userinfo',
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        },
+        (res) => {
+          let body = ''
+          res.on('data', (chunk) => (body += chunk))
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(body)
+              resolve({
+                id: data.sub,
+                email: data.email,
+                name: data.name,
+                picture: data.picture,
+                verifiedEmail: data.email_verified
+              })
+            } catch (err) {
+              reject(err)
+            }
+          })
+        }
+      )
+      .on('error', reject)
+  })
+}
+
+/**
  * Execute a standard RFC 8252 OAuth 2.0 PKCE flow using the System Browser
  * and a temporary local HTTP loopback server (127.0.0.1).
  */
 export async function startGoogleSystemBrowserOAuth(
-  config: GoogleOAuthConfig
+  config: GoogleOAuthConfig = {}
 ): Promise<OAuthAuthResult> {
   const {
-    clientId,
+    clientId = getGoogleClientId(),
+    clientSecret = getGoogleClientSecret(),
     scopes = ['openid', 'email', 'profile'],
     redirectPath = '/oauth2callback',
     timeoutMs = 180000 // 3 minutes timeout
   } = config
-
-  if (!clientId) {
-    return { success: false, error: 'Google Client ID is required for OAuth 2.0' }
-  }
 
   const pkce = generatePKCE()
   const expectedState = generateOAuthState()
@@ -108,7 +231,7 @@ export async function startGoogleSystemBrowserOAuth(
             res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
             res.end(`
               <html>
-                <body style="font-family:system-ui;text-align:center;padding:50px;background:#1e1e2e;color:#fff;">
+                <body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:50px;background:#1e1e2e;color:#fff;">
                   <h2 style="color:#f38ba8;">Authentication Error</h2>
                   <p>State parameter validation failed (CSRF check). Please try again.</p>
                 </body>
@@ -124,7 +247,7 @@ export async function startGoogleSystemBrowserOAuth(
             res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
             res.end(`
               <html>
-                <body style="font-family:system-ui;text-align:center;padding:50px;background:#1e1e2e;color:#fff;">
+                <body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:50px;background:#1e1e2e;color:#fff;">
                   <h2 style="color:#f38ba8;">Sign-in Cancelled</h2>
                   <p>${authError}</p>
                 </body>
@@ -137,12 +260,40 @@ export async function startGoogleSystemBrowserOAuth(
 
           // 3. Successful Authorization Code Capture
           if (authCode) {
+            const serverPort = (server?.address() as any)?.port
+            const redirectUri = `http://127.0.0.1:${serverPort}${redirectPath}`
+
+            // Exchange token immediately if clientSecret is available
+            let tokens: any = undefined
+            let userProfile: any = undefined
+
+            if (clientSecret) {
+              try {
+                const exchangeRes = await exchangeCodeForTokens(
+                  authCode,
+                  pkce.verifier,
+                  redirectUri,
+                  clientId,
+                  clientSecret
+                )
+                if (exchangeRes.success) {
+                  tokens = exchangeRes.tokens
+                  userProfile = exchangeRes.userProfile
+                }
+              } catch {}
+            }
+
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
             res.end(`
               <html>
-                <body style="font-family:system-ui;text-align:center;padding:50px;background:#181825;color:#cdd6f4;">
-                  <h2 style="color:#a6e3a1;">✓ Authentication Successful</h2>
-                  <p>You have signed in successfully with Google. You can close this tab and return to AntiProfiles.</p>
+                <body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:50px;background:#181825;color:#cdd6f4;">
+                  <div style="max-width:480px;margin:0 auto;background:#1e1e2e;padding:30px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+                    <h2 style="color:#a6e3a1;margin-bottom:12px;">✓ Authentication Successful</h2>
+                    <p style="color:#a6adc8;font-size:15px;line-height:1.6;">
+                      You have signed in successfully with Google.<br/>
+                      You can close this window and return to <strong>AntiProfiles</strong>.
+                    </p>
+                  </div>
                 </body>
               </html>
             `)
@@ -151,7 +302,10 @@ export async function startGoogleSystemBrowserOAuth(
               success: true,
               code: authCode,
               state: returnedState,
-              codeVerifier: pkce.verifier
+              codeVerifier: pkce.verifier,
+              redirectUri,
+              tokens,
+              userProfile
             })
             return
           }
