@@ -767,7 +767,14 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
       const res = await window.api.connectProfileGoogle(sessionToken, p.id)
       if (res?.success) {
         showToast('success', `✓ Google Account successfully connected to "${p.name}"!`)
-        loadProfiles()
+        if (res.data) {
+          setProfiles((prev) =>
+            prev.map((prof) =>
+              prof.id === p.id ? { ...prof, googleAccount: res.data } : prof
+            )
+          )
+        }
+        await loadProfiles()
       } else {
         showToast('error', res?.error || 'Failed to connect Google account')
       }
@@ -817,7 +824,12 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
         const res = await window.api.disconnectProfileGoogle(sessionToken, p.id)
         if (res?.success) {
           showToast('success', `Google account disconnected from "${p.name}"`)
-          loadProfiles()
+          setProfiles((prev) =>
+            prev.map((prof) =>
+              prof.id === p.id ? { ...prof, googleAccount: null } : prof
+            )
+          )
+          await loadProfiles()
         } else {
           showToast('error', res?.error || 'Failed to disconnect')
         }
