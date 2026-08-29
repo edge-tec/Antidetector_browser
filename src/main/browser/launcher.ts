@@ -3,7 +3,7 @@
 // Integrated with v3 Device Template resolver pipeline
 // ──────────────────────────────────────────────────────────────────
 
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, execSync, ChildProcess } from 'child_process'
 import fs from 'fs'
 import net from 'net'
 import path from 'path'
@@ -537,6 +537,13 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   const args: string[] = [
     '--no-first-run',
     '--no-default-browser-check',
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu-sandbox',
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
     '--window-size=1280,800',
     '--window-position=100,60',
     '--password-store=basic',
@@ -1014,22 +1021,62 @@ export async function launchBrowser(
 
   try {
     const effectiveTz = fingerprint?.timezone?.timezone || profile.timezone || 'America/New_York'
-    const browser = await puppeteer.launch({
-      executablePath: executablePath,
-      userDataDir,
-      headless: false,
-      defaultViewport: null,
-      args,
-      ignoreDefaultArgs: ['--enable-automation'],
-      timeout: 60000,
-      handleSIGINT: false,
-      handleSIGTERM: false,
-      handleSIGHUP: false,
-      env: {
-        ...process.env,
-        TZ: effectiveTz
+
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      try { fs.chmodSync(executablePath, 0o755) } catch {}
+      if (process.platform === 'darwin') {
+        try { execSync(`xattr -dr com.apple.quarantine "${executablePath}" 2>/dev/null || true`, { stdio: 'ignore' }) } catch {}
       }
-    })
+    }
+
+    let browser: Browser
+    try {
+      browser = await puppeteer.launch({
+        executablePath: executablePath,
+        userDataDir,
+        headless: false,
+        defaultViewport: null,
+        args,
+        ignoreDefaultArgs: ['--enable-automation'],
+        timeout: 60000,
+        handleSIGINT: false,
+        handleSIGTERM: false,
+        handleSIGHUP: false,
+        env: {
+          ...process.env,
+          TZ: effectiveTz
+        }
+      })
+    } catch (launchErr: any) {
+      logger.warn('browser', `[BrowserLaunch] Initial launch failed with "${executablePath}": ${launchErr.message}. Attempting fallback to system browser...`)
+      const { findChromiumPath } = await import('./chromium-resolver')
+      const systemCandidate = await findChromiumPath()
+
+      if (systemCandidate && systemCandidate !== executablePath && fs.existsSync(systemCandidate)) {
+        logger.info('browser', `[BrowserLaunch] Retrying launch with system Chromium binary: ${systemCandidate}`)
+        if (process.platform === 'darwin' || process.platform === 'linux') {
+          try { fs.chmodSync(systemCandidate, 0o755) } catch {}
+        }
+        browser = await puppeteer.launch({
+          executablePath: systemCandidate,
+          userDataDir,
+          headless: false,
+          defaultViewport: null,
+          args,
+          ignoreDefaultArgs: ['--enable-automation'],
+          timeout: 60000,
+          handleSIGINT: false,
+          handleSIGTERM: false,
+          handleSIGHUP: false,
+          env: {
+            ...process.env,
+            TZ: effectiveTz
+          }
+        })
+      } else {
+        throw launchErr
+      }
+    }
 
     const wsEndpoint = browser.wsEndpoint()
     const browserProcess = browser.process()

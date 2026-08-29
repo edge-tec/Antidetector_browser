@@ -615,6 +615,17 @@ export function ensureProfileDataDir(profileId: string): string {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
+  // Clear any stale Chromium singleton locks and socket files that cause launch failures
+  const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile', 'parent.lock', '.parentlock']
+  for (const f of lockFiles) {
+    try {
+      const lockPath = path.join(dir, f)
+      if (fs.existsSync(lockPath)) {
+        fs.rmSync(lockPath, { force: true, recursive: true })
+        try { fs.unlinkSync(lockPath) } catch {}
+      }
+    } catch {}
+  }
   return dir
 }
 

@@ -398,24 +398,26 @@ export class BrowserIconManager {
 
         if (process.platform === 'darwin') {
           const appBundle = targetExec.includes('.app') ? targetExec.split('.app')[0] + '.app' : (targetExec.endsWith('.app') ? targetExec : null)
-          if (appBundle && fs.existsSync(appBundle)) {
+          if (appBundle && fs.existsSync(appBundle) && !appBundle.startsWith('/Applications')) {
             const resDir = path.join(appBundle, 'Contents', 'Resources')
             if (fs.existsSync(resDir)) {
               if (resolvedIcon.icnsPath && fs.existsSync(resolvedIcon.icnsPath)) {
-                fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'app.icns'))
-                fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'document.icns'))
-                const appProfileIcns = path.join(resDir, 'app_profile.icns')
-                if (fs.existsSync(appProfileIcns)) {
-                  fs.copyFileSync(resolvedIcon.icnsPath, appProfileIcns)
-                }
-                const chromeIcns = path.join(resDir, 'chrome.icns')
-                if (fs.existsSync(chromeIcns)) {
-                  fs.copyFileSync(resolvedIcon.icnsPath, chromeIcns)
-                }
-                const chromiumIcns = path.join(resDir, 'chromium.icns')
-                if (fs.existsSync(chromiumIcns)) {
-                  fs.copyFileSync(resolvedIcon.icnsPath, chromiumIcns)
-                }
+                try {
+                  fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'app.icns'))
+                  fs.copyFileSync(resolvedIcon.icnsPath, path.join(resDir, 'document.icns'))
+                  const appProfileIcns = path.join(resDir, 'app_profile.icns')
+                  if (fs.existsSync(appProfileIcns)) {
+                    fs.copyFileSync(resolvedIcon.icnsPath, appProfileIcns)
+                  }
+                  const chromeIcns = path.join(resDir, 'chrome.icns')
+                  if (fs.existsSync(chromeIcns)) {
+                    fs.copyFileSync(resolvedIcon.icnsPath, chromeIcns)
+                  }
+                  const chromiumIcns = path.join(resDir, 'chromium.icns')
+                  if (fs.existsSync(chromiumIcns)) {
+                    fs.copyFileSync(resolvedIcon.icnsPath, chromiumIcns)
+                  }
+                } catch {}
               }
             }
             const infoPlist = path.join(appBundle, 'Contents', 'Info.plist')

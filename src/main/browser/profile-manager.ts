@@ -83,11 +83,20 @@ class ProfileManager {
     }
 
     // ── Auto-Provision & Verify AntiProfiles-Managed Browser Runtime ──
-    logger.info('browser', `[BrowserLaunch] Ensuring standalone managed ${targetEngine.toUpperCase()} runtime for profile "${profile.name}" (${profileId})...`)
-    const executablePath = await ensureBrowserRuntime(targetEngine, profileId)
+    let executablePath: string | null = null
+    try {
+      executablePath = await ensureBrowserRuntime(targetEngine, profileId)
+    } catch (err: any) {
+      logger.warn('browser', `[BrowserLaunch] Managed runtime error: ${err.message}. Finding fallback browser...`)
+      executablePath = await findBrowserExecutable(browserType)
+    }
 
     if (!executablePath || !fs.existsSync(executablePath)) {
-      throw new Error(`Failed to locate verified ${targetEngine.toUpperCase()} executable after provisioning.`)
+      executablePath = await findBrowserExecutable(browserType)
+    }
+
+    if (!executablePath || !fs.existsSync(executablePath)) {
+      throw new Error(`Failed to locate verified ${targetEngine.toUpperCase()} executable. Please check Settings > Browser Runtime.`)
     }
 
     // Ensure profile data directory is accessible and created
