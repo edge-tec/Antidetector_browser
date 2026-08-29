@@ -27,6 +27,7 @@ import { buildGeolocationScript } from './scripts/geolocation'
 import { buildTimezoneScript } from './scripts/timezone'
 import { buildWebRTCScript } from './scripts/webrtc'
 import { buildGoogleRedirectBypassScript } from './scripts/google-redirect-bypass'
+import { buildGoogleAuthNoticeScript } from './scripts/google-auth-notice'
 import { setupGoogleRedirectInterceptor } from './google-redirect-interceptor'
 
 /**
@@ -51,7 +52,8 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     buildGeolocationScript(fingerprint.geolocation),
     buildTimezoneScript(fingerprint.timezone),
     buildWebRTCScript(fingerprint.webrtc),
-    buildGoogleRedirectBypassScript()
+    buildGoogleRedirectBypassScript(),
+    buildGoogleAuthNoticeScript()
   ]
 
   // Wrap all scripts in a single IIFE with error isolation

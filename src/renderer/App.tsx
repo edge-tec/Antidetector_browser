@@ -241,6 +241,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   onStop?: () => void
   onClearCookies?: () => void
   onRefreshProxy?: () => void
+  onConnectGoogle?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -323,6 +324,16 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
           </button>
         )}
+        {onConnectGoogle && (
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={onConnectGoogle}
+            title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
+            style={{ color: '#4285F4', fontWeight: 600 }}
+          >
+            <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
+          </button>
+        )}
         {profile.proxyId && onRefreshProxy && (
           <button
             className="btn btn-sm btn-ghost"
@@ -363,7 +374,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
@@ -372,6 +383,7 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
   onStop?: () => void
   onClearCookies?: () => void
   onRefreshProxy?: () => void
+  onConnectGoogle?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -455,6 +467,16 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
         ) : (
           <button className="btn btn-sm btn-success" onClick={onStart} disabled={isLaunching}>
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
+          </button>
+        )}
+        {onConnectGoogle && (
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={onConnectGoogle}
+            title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
+            style={{ color: '#4285F4', fontWeight: 600, fontSize: 12, padding: '4px 8px' }}
+          >
+            <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
           </button>
         )}
         {profile.proxyId && onRefreshProxy && (
@@ -600,6 +622,22 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
       }
     }
     loadProfiles()
+  }
+
+  const handleConnectGoogle = async (p: Profile) => {
+    if (!sessionToken) return
+    showToast('info', `Opening System Browser for Google OAuth (RFC 8252) for "${p.name}"...`)
+    try {
+      const res = await window.api.connectProfileGoogle(sessionToken, p.id)
+      if (res?.success) {
+        showToast('success', `✓ Google Account successfully connected to "${p.name}"!`)
+        loadProfiles()
+      } else {
+        showToast('error', res?.error || 'Failed to connect Google account')
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Google OAuth connection failed')
+    }
   }
 
   const handleSaveProfile = async (input: any) => {
@@ -861,6 +899,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
                 loadProfiles()
               }}
               onRefreshProxy={() => handleRefreshProxy(p)}
+              onConnectGoogle={() => handleConnectGoogle(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
@@ -917,6 +956,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
                 loadProfiles()
               }}
               onRefreshProxy={() => handleRefreshProxy(p)}
+              onConnectGoogle={() => handleConnectGoogle(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,

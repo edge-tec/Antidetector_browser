@@ -178,6 +178,21 @@ const api = {
     const token = maybeId ? sessionTokenOrId : getSavedToken()
     return ipcRenderer.invoke('profiles:getSize', token, id)
   },
+  connectProfileGoogle: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:connect-google', token, id)
+  },
+  getProfileGoogleAccount: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:get-google-account', token, id)
+  },
+  disconnectProfileGoogle: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:disconnect-google', token, id)
+  },
 
   // ── Browser Control ──
   startProfile: (sessionTokenOrId: string, maybeId?: string) => {
