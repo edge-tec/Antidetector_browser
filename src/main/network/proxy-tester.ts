@@ -70,7 +70,11 @@ export async function testProxyConnection(proxyId: string): Promise<ProxyTestRes
         region: geo.region,
         city: geo.city,
         isp: geo.isp,
-        asn: geo.asn
+        asn: geo.asn,
+        timezone: geo.timezone,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        publicIp: resolvedIp
       } as any)
     }
 

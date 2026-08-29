@@ -2570,7 +2570,10 @@ function AppContent() {
 
   const showToast = useCallback((type: ToastItem['type'], message: string) => {
     const id = ++toastId
-    setToasts((prev) => [...prev, { id, type, message }])
+    setToasts((prev) => {
+      const filtered = prev.filter((t) => t.message !== message)
+      return [...filtered, { id, type, message }]
+    })
     setTimeout(() => setToasts((prev) => prev.map((t) => t.id === id ? { ...t, leaving: true } : t)), 3500)
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3800)
   }, [])

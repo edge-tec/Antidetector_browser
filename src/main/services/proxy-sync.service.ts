@@ -9,6 +9,7 @@ import { proxyRepo } from '../database/repositories/proxy.repo'
 import { profileRepo } from '../database/repositories/profile.repo'
 import { centralApi } from './api-client.service'
 import { resolveLocationGeo, invalidateGeoCache, lookupGeoIP } from '../network/geo-lookup'
+import { testProxyConnection } from '../network/proxy-tester'
 import { processTracker } from '../browser/process-tracker'
 import { Proxy, Profile } from '../database/models'
 import { logger } from '../logging/logger'
@@ -140,28 +141,42 @@ export class ProxySyncService {
           invalidateGeoCache(localProxy.publicIp)
         }
 
-        // 3. Resolve authoritative City, State/Region, Country, Timezone, and Coordinates
+        // 3. Actively probe real-time exit IP and fresh Geolocation through the proxy tunnel
+        if (localProxy.type !== 'direct' && localProxy.host && localProxy.port > 0) {
+          try {
+            logger.info('proxy', `[ProxySync] 🌐 Probing live proxy connection for "${localProxy.name}" (${localProxy.host}:${localProxy.port})...`)
+            const probePromise = testProxyConnection(proxyId)
+            const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500))
+            const probe = await Promise.race([probePromise, timeoutPromise])
+            if (probe && (probe as any).success) {
+              localProxy = proxyRepo.getById(proxyId) || localProxy
+              logger.info('proxy', `[ProxySync] ✓ Live probe detected IP: ${localProxy.publicIp || (probe as any).ip}, City: ${localProxy.city || (probe as any).city}, TZ: ${localProxy.timezone || (probe as any).timezone}`)
+            }
+          } catch (probeErr: any) {
+            logger.warn('proxy', `[ProxySync] Live proxy test probe warning for ${proxyId}: ${probeErr.message}`)
+          }
+        }
+
+        // 4. Resolve authoritative City, State/Region, Country, Timezone, and Coordinates
         const resolvedGeo = resolveLocationGeo(localProxy.country, localProxy.region, localProxy.city)
         
         let effectiveTimezone = localProxy.timezone?.trim() || resolvedGeo.timezone
         let effectiveLat = typeof localProxy.latitude === 'number' && !isNaN(localProxy.latitude) ? localProxy.latitude : resolvedGeo.latitude
         let effectiveLon = typeof localProxy.longitude === 'number' && !isNaN(localProxy.longitude) ? localProxy.longitude : resolvedGeo.longitude
 
-        // If local proxy was missing timezone or coordinates, persist the resolved values
-        if (!localProxy.timezone || localProxy.latitude === undefined || localProxy.longitude === undefined) {
-          proxyRepo.updateGeoLocation(proxyId, {
-            country: localProxy.country || resolvedGeo.country,
-            region: localProxy.region || resolvedGeo.region,
-            city: localProxy.city || resolvedGeo.city,
-            isp: localProxy.isp,
-            asn: localProxy.asn,
-            timezone: effectiveTimezone,
-            latitude: effectiveLat,
-            longitude: effectiveLon,
-            publicIp: localProxy.publicIp || localProxy.host
-          })
-          localProxy = proxyRepo.getById(proxyId)
-        }
+        // Ensure database reflects the fresh effective coordinates and timezone
+        proxyRepo.updateGeoLocation(proxyId, {
+          country: localProxy.country || resolvedGeo.country,
+          region: localProxy.region || resolvedGeo.region,
+          city: localProxy.city || resolvedGeo.city,
+          isp: localProxy.isp || resolvedGeo.countryName,
+          asn: localProxy.asn,
+          timezone: effectiveTimezone,
+          latitude: effectiveLat,
+          longitude: effectiveLon,
+          publicIp: localProxy.publicIp || localProxy.host
+        })
+        localProxy = proxyRepo.getById(proxyId) || localProxy
 
         // Pre-warm geo cache with authoritative data
         if (localProxy?.host) {
