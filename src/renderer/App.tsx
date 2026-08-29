@@ -325,14 +325,33 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
           </button>
         )}
         {onConnectGoogle && (
-          <button
-            className="btn btn-sm btn-ghost"
-            onClick={onConnectGoogle}
-            title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
-            style={{ color: '#4285F4', fontWeight: 600 }}
-          >
-            <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
-          </button>
+          (profile as any).googleAccount ? (
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#10B981',
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title={`Google Account: ${(profile as any).googleAccount.email} (Connected via System Browser OAuth)`}
+            >
+              <span>✓ G:</span> {(profile as any).googleAccount.email.split('@')[0]}
+            </span>
+          ) : (
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={onConnectGoogle}
+              title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
+              style={{ color: '#4285F4', fontWeight: 600 }}
+            >
+              <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
+            </button>
+          )
         )}
         {profile.proxyId && onRefreshProxy && (
           <button
@@ -470,14 +489,33 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
           </button>
         )}
         {onConnectGoogle && (
-          <button
-            className="btn btn-sm btn-ghost"
-            onClick={onConnectGoogle}
-            title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
-            style={{ color: '#4285F4', fontWeight: 600, fontSize: 12, padding: '4px 8px' }}
-          >
-            <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
-          </button>
+          (profile as any).googleAccount ? (
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#10B981',
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title={`Google Account: ${(profile as any).googleAccount.email} (Connected via System Browser OAuth)`}
+            >
+              <span>✓ G:</span> {(profile as any).googleAccount.email.split('@')[0]}
+            </span>
+          ) : (
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={onConnectGoogle}
+              title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
+              style={{ color: '#4285F4', fontWeight: 600, fontSize: 12, padding: '4px 8px' }}
+            >
+              <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
+            </button>
+          )
         )}
         {profile.proxyId && onRefreshProxy && (
           <button
@@ -624,8 +662,12 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
     loadProfiles()
   }
 
+  const [connectingGoogleProfileId, setConnectingGoogleProfileId] = useState<string | null>(null)
+
   const handleConnectGoogle = async (p: Profile) => {
     if (!sessionToken) return
+    if (connectingGoogleProfileId === p.id) return
+    setConnectingGoogleProfileId(p.id)
     showToast('info', `Opening System Browser for Google OAuth (RFC 8252) for "${p.name}"...`)
     try {
       const res = await window.api.connectProfileGoogle(sessionToken, p.id)
@@ -637,6 +679,8 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
       }
     } catch (e: any) {
       showToast('error', e.message || 'Google OAuth connection failed')
+    } finally {
+      setConnectingGoogleProfileId(null)
     }
   }
 

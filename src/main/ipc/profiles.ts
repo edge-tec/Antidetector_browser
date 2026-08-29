@@ -86,7 +86,14 @@ export function registerProfileHandlers(): void {
       const filterUserId = isAdmin ? undefined : auth.user.id
 
       // 1. Get local profiles
-      const localProfiles = profileRepo.getAll(filterUserId, search, groupId, status)
+      const { getProfileGoogleAccount } = require('../security/google-oauth-loopback')
+      const localProfiles = profileRepo.getAll(filterUserId, search, groupId, status).map((p: any) => {
+        const ga = getProfileGoogleAccount(p.id)
+        return {
+          ...p,
+          googleAccount: ga ? { email: ga.email, name: ga.name, picture: ga.picture, connectedAt: ga.connectedAt } : null
+        }
+      })
 
       // 2. Fetch from Central API in background to keep state synchronized
       centralApi.getProfiles(search, groupId, status).then((res) => {
@@ -148,7 +155,16 @@ export function registerProfileHandlers(): void {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
-      return { success: true, data: profile }
+      const { getProfileGoogleAccount } = require('../security/google-oauth-loopback')
+      const ga = getProfileGoogleAccount(id)
+
+      return {
+        success: true,
+        data: {
+          ...profile,
+          googleAccount: ga ? { email: ga.email, name: ga.name, picture: ga.picture, connectedAt: ga.connectedAt } : null
+        }
+      }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
