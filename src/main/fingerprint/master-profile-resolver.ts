@@ -190,16 +190,18 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
     : isLinux
     ? 'Linux x86_64'
     : isIos
-    ? `CPU iPhone OS ${(iosDev?.iosVersion || '18.0').replace('.', '_')} like Mac OS X`
+    ? `CPU iPhone OS ${(input.osVersion || input.customOverrides?.osVersion || iosDev?.iosVersion || '19.0').replace(/\./g, '_')} like Mac OS X`
     : 'Linux armv8l'
 
   // 3. Resolve User-Agent Strictly Without Contradicting Tokens
+  const resolvedOsVersion = input.osVersion || input.customOverrides?.osVersion || (isIos ? (iosDev?.iosVersion || '19.0') : isAndroid ? (androidDev?.androidVersion || '16') : undefined)
+
   const userAgent = buildConsistentUA({
     osType,
     browserType,
     browserVersion,
-    deviceModel: isIos ? (iosDev?.id || 'iphone-15-pro') : isAndroid ? (androidDev?.modelCode || 'SM-S928B') : undefined,
-    osVersion: isIos ? iosDev?.iosVersion : isAndroid ? androidDev?.androidVersion : undefined
+    deviceModel: isIos ? (iosDev?.id || 'iphone-17-pro-max') : isAndroid ? (androidDev?.modelCode || 'SM-S948B') : undefined,
+    osVersion: resolvedOsVersion
   })
 
   const appVersion = buildAppVersion(userAgent)

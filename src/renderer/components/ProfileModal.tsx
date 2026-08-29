@@ -1114,8 +1114,10 @@ export const ProfileModal: React.FC<Props> = ({
 
   const [processorGen, setProcessorGen] = useState('M4')
   const [androidBrand, setAndroidBrand] = useState('Samsung')
-  const [androidModelId, setAndroidModelId] = useState('samsung-s24-ultra')
-  const [iosModelId, setIosModelId] = useState('iphone-16-pro-max')
+  const [androidModelId, setAndroidModelId] = useState('samsung-s25-ultra')
+  const [iosModelId, setIosModelId] = useState('iphone-17-pro-max')
+  const [customAndroidVersion, setCustomAndroidVersion] = useState<string>('16')
+  const [customIosVersion, setCustomIosVersion] = useState<string>('19.0')
   const [groupId, setGroupId] = useState('')
   const [notes, setNotes] = useState('')
   const [startUrl, setStartUrl] = useState('')
@@ -1424,11 +1426,12 @@ export const ProfileModal: React.FC<Props> = ({
     }
   }
 
-  const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion, targetOs = 'android') => {
+  const applyAndroidDeviceToFp = (dev: AndroidDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion, targetOs = 'android', osVerOverride?: string) => {
+    const osVer = osVerOverride || customAndroidVersion || dev.androidVersion || '16'
     const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
     const newUa = bType === 'firefox'
-      ? `Mozilla/5.0 (Android ${dev.androidVersion}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
-      : `Mozilla/5.0 (Linux; Android ${dev.androidVersion}; ${dev.modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} Mobile Safari/537.36`
+      ? `Mozilla/5.0 (Android ${osVer}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
+      : `Mozilla/5.0 (Linux; Android ${osVer}; ${dev.modelCode}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} Mobile Safari/537.36`
 
     handleFpChange(prev => ({
       ...prev,
@@ -1441,8 +1444,8 @@ export const ProfileModal: React.FC<Props> = ({
         ...prev.navigator,
         userAgent: newUa,
         appVersion: bType === 'firefox'
-          ? `5.0 (Android ${dev.androidVersion})`
-          : `5.0 (Linux; Android ${dev.androidVersion}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} Mobile Safari/537.36`,
+          ? `5.0 (Android ${osVer})`
+          : `5.0 (Linux; Android ${osVer}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${bVer} Mobile Safari/537.36`,
         platform: 'Linux armv8l',
         deviceBrand: dev.brand,
         deviceModel: dev.modelName,
@@ -1482,7 +1485,7 @@ export const ProfileModal: React.FC<Props> = ({
     if (brandDevices.length > 0) {
       const firstDev = brandDevices[0]
       setAndroidModelId(firstDev.id)
-      applyAndroidDeviceToFp(firstDev, browserType, browserVersion, osType)
+      applyAndroidDeviceToFp(firstDev, browserType, browserVersion, osType, customAndroidVersion)
     }
   }
 
@@ -1490,7 +1493,23 @@ export const ProfileModal: React.FC<Props> = ({
     setAndroidModelId(newModelId)
     const dev = getDeviceById(newModelId)
     if (dev) {
-      applyAndroidDeviceToFp(dev, browserType, browserVersion, osType)
+      applyAndroidDeviceToFp(dev, browserType, browserVersion, osType, customAndroidVersion)
+    }
+  }
+
+  const handleAndroidVersionChange = (newVer: string) => {
+    setCustomAndroidVersion(newVer)
+    const dev = selectedAndroidDevice
+    if (dev) {
+      applyAndroidDeviceToFp(dev, browserType, browserVersion, osType, newVer)
+    }
+  }
+
+  const handleIosVersionChange = (newVer: string) => {
+    setCustomIosVersion(newVer)
+    const dev = selectedIosDevice
+    if (dev) {
+      applyIosDeviceToFp(dev, browserType, browserVersion, osType, newVer)
     }
   }
 
@@ -1501,10 +1520,10 @@ export const ProfileModal: React.FC<Props> = ({
   ) => {
     if (currentOs === 'ios') {
       const dev = getIosDeviceById(iosModelId) || IOS_DEVICES[0]
-      applyIosDeviceToFp(dev, bType, bVersion, currentOs)
+      applyIosDeviceToFp(dev, bType, bVersion, currentOs, customIosVersion)
     } else if (currentOs === 'android') {
       const dev = getDeviceById(androidModelId) || ANDROID_DEVICES[0]
-      applyAndroidDeviceToFp(dev, bType, bVersion, currentOs)
+      applyAndroidDeviceToFp(dev, bType, bVersion, currentOs, customAndroidVersion)
     } else {
       const newUa = generateUAForOS(currentOs, bVersion, bType)
       handleFpChange(prev => ({
@@ -1524,11 +1543,13 @@ export const ProfileModal: React.FC<Props> = ({
     }
   }
 
-  const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion, targetOs = 'ios') => {
+  const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion, targetOs = 'ios', osVerOverride?: string) => {
+    const osVer = osVerOverride || customIosVersion || dev.iosVersion || '19.0'
+    const osVerUnder = osVer.replace(/\./g, '_')
     const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
     const newUa = bType === 'firefox'
-      ? `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
-      : `Mozilla/5.0 (iPhone; CPU iPhone OS ${dev.iosVersion.replace('.', '_')} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/${bVer} Mobile/15E148 Safari/604.1`
+      ? `Mozilla/5.0 (iPhone; CPU iPhone OS ${osVerUnder} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`
+      : `Mozilla/5.0 (iPhone; CPU iPhone OS ${osVerUnder} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/${bVer} Mobile/15E148 Safari/604.1`
 
     handleFpChange(prev => ({
       ...prev,
@@ -1541,6 +1562,7 @@ export const ProfileModal: React.FC<Props> = ({
         ...prev.navigator,
         platform: 'iPhone',
         userAgent: newUa,
+        appVersion: `5.0 (iPhone; CPU iPhone OS ${osVerUnder} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${osVer} Mobile/15E148 Safari/604.1`,
         deviceModel: dev.modelName,
         deviceModelCode: dev.id,
         deviceBrand: 'Apple',
@@ -1558,15 +1580,17 @@ export const ProfileModal: React.FC<Props> = ({
         availWidth: dev.screenWidth || (dev as any).width || 440,
         availHeight: dev.screenHeight || (dev as any).height || 956,
         devicePixelRatio: dev.dpr || 3.0,
-        colorDepth: 32,
-        pixelDepth: 32
+        viewportWidth: dev.screenWidth || (dev as any).width || 440,
+        viewportHeight: Math.floor((dev.screenHeight || 956) * 0.9),
+        orientation: 'portrait-primary',
+        orientationAngle: 0
       },
       webgl: {
         ...prev.webgl,
         unmaskedVendor: 'Apple Inc.',
-        unmaskedRenderer: dev.gpuRenderer,
+        unmaskedRenderer: dev.gpuRenderer || 'Apple A19 Pro GPU',
         vendor: 'Apple Inc.',
-        renderer: dev.gpuRenderer
+        renderer: dev.gpuRenderer || 'Apple A19 Pro GPU'
       },
       fonts: {
         ...prev.fonts,
@@ -1579,7 +1603,7 @@ export const ProfileModal: React.FC<Props> = ({
     setIosModelId(newModelId)
     const dev = getIosDeviceById(newModelId)
     if (dev) {
-      applyIosDeviceToFp(dev, browserType, browserVersion, osType)
+      applyIosDeviceToFp(dev, browserType, browserVersion, osType, customIosVersion)
     }
   }
 
@@ -2542,30 +2566,59 @@ export const ProfileModal: React.FC<Props> = ({
                   {/* Dynamic Processor or Mobile Device Selection (v2 fallback when no template selected) */}
                   {!deviceTemplateId && osType === 'ios' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
-                          📱 iPhone Model & Generation
-                        </label>
-                        <select
-                          value={iosModelId}
-                          onChange={e => handleIosModelChange(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '10px 14px',
-                            borderRadius: '8px',
-                            backgroundColor: '#14141F',
-                            border: '1px solid #2C2C3E',
-                            color: '#FFF',
-                            fontSize: '14px',
-                            outline: 'none'
-                          }}
-                        >
-                          {IOS_DEVICES.map(d => (
-                            <option key={d.id} value={d.id}>
-                              {d.modelName} (iOS {d.iosVersion} • {d.cpu})
-                            </option>
-                          ))}
-                        </select>
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                            📱 iPhone Model & Generation
+                          </label>
+                          <select
+                            value={iosModelId}
+                            onChange={e => handleIosModelChange(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: '#FFF',
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                          >
+                            {IOS_DEVICES.map(d => (
+                              <option key={d.id} value={d.id}>
+                                {d.modelName} ({d.cpu})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                            🍏 iOS Version
+                          </label>
+                          <select
+                            value={customIosVersion}
+                            onChange={e => handleIosVersionChange(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: '#2DD4BF',
+                              fontWeight: 600,
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                          >
+                            <option value="19.0">iOS 19.0 (Latest Apple AI)</option>
+                            <option value="18.2">iOS 18.2 (Apple Intelligence)</option>
+                            <option value="18.0">iOS 18.0 (Stable)</option>
+                            <option value="17.5">iOS 17.5 (Legacy)</option>
+                            <option value="26.0">iOS 26.0 (Next-Gen Preview)</option>
+                          </select>
+                        </div>
                       </div>
 
                       {/* Realtime Specs Badge Bar */}
@@ -2589,17 +2642,17 @@ export const ProfileModal: React.FC<Props> = ({
                           <span>🎮 <strong>GPU:</strong> {selectedIosDevice.gpuRenderer}</span>
                           <span>📐 <strong>Display:</strong> {selectedIosDevice.screenWidth}x{selectedIosDevice.screenHeight} (@{selectedIosDevice.dpr}x DPR)</span>
                           <span>🧠 <strong>RAM:</strong> {selectedIosDevice.memory} GB</span>
-                          <span>🍏 <strong>iOS {selectedIosDevice.iosVersion}</strong></span>
+                          <span style={{ color: '#2DD4BF', fontWeight: 700 }}>🍏 iOS {customIosVersion || selectedIosDevice.iosVersion}</span>
                         </div>
                       )}
                     </div>
                   ) : !deviceTemplateId && osType === 'android' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 1fr', gap: '14px' }}>
                         {/* Device Brand Dropdown */}
                         <div>
                           <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
-                            📱 Device Brand / Manufacturer
+                            📱 Device Brand
                           </label>
                           <select
                             value={androidBrand}
@@ -2645,6 +2698,33 @@ export const ProfileModal: React.FC<Props> = ({
                             ))}
                           </select>
                         </div>
+
+                        {/* Android OS Version Dropdown */}
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', color: '#94A3B8', marginBottom: '8px', fontWeight: 500 }}>
+                            🤖 Android OS
+                          </label>
+                          <select
+                            value={customAndroidVersion}
+                            onChange={e => handleAndroidVersionChange(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              backgroundColor: '#14141F',
+                              border: '1px solid #2C2C3E',
+                              color: '#2DD4BF',
+                              fontWeight: 600,
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                          >
+                            <option value="16">Android 16 (Baklava)</option>
+                            <option value="15">Android 15 (One UI 7 / Vanilla)</option>
+                            <option value="14">Android 14 (Stable)</option>
+                            <option value="13">Android 13 (Legacy)</option>
+                          </select>
+                        </div>
                       </div>
 
                       {/* Realtime Specs Badge Bar */}
@@ -2668,7 +2748,7 @@ export const ProfileModal: React.FC<Props> = ({
                           <span>🎮 <strong>GPU:</strong> {selectedAndroidDevice.gpuRenderer}</span>
                           <span>📐 <strong>Display:</strong> {selectedAndroidDevice.screenWidth}x{selectedAndroidDevice.screenHeight} (@{selectedAndroidDevice.dpr}x DPR)</span>
                           <span>🧠 <strong>RAM:</strong> {selectedAndroidDevice.memory} GB</span>
-                          <span>🤖 <strong>Android {selectedAndroidDevice.androidVersion}</strong></span>
+                          <span style={{ color: '#2DD4BF', fontWeight: 700 }}>🤖 Android {customAndroidVersion || selectedAndroidDevice.androidVersion}</span>
                         </div>
                       )}
                     </div>

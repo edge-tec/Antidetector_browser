@@ -337,7 +337,67 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
     memory: 12
   },
 
-  // ── 2. Google Pixel ──
+  // ── 2. Google Pixel (Next-Gen & Modern) ──
+  {
+    id: 'pixel-9-pro-xl',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 9 Pro XL',
+    modelCode: 'Pixel 9 Pro XL',
+    androidVersion: '15',
+    cpu: 'Google Tensor G4 (Immortalis-G715)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G715 Immortalis MC12',
+    screenWidth: 412,
+    screenHeight: 924,
+    dpr: 3.0,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'pixel-9-pro',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 9 Pro',
+    modelCode: 'Pixel 9 Pro',
+    androidVersion: '15',
+    cpu: 'Google Tensor G4 (Immortalis-G715)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G715 Immortalis MC12',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.0,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'pixel-9',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 9',
+    modelCode: 'Pixel 9',
+    androidVersion: '15',
+    cpu: 'Google Tensor G4 (Immortalis-G715)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G715 Immortalis MC12',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 2.625,
+    cores: 8,
+    memory: 12
+  },
+  {
+    id: 'pixel-9-pro-fold',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 9 Pro Fold',
+    modelCode: 'Pixel 9 Pro Fold',
+    androidVersion: '15',
+    cpu: 'Google Tensor G4 (Immortalis-G715)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G715 Immortalis MC12',
+    screenWidth: 412,
+    screenHeight: 968,
+    dpr: 2.625,
+    cores: 8,
+    memory: 16
+  },
   {
     id: 'pixel-8-pro',
     brand: 'Google Pixel',
