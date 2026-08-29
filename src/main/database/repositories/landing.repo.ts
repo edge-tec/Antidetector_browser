@@ -22,6 +22,12 @@ export interface LandingPublicData {
   faqs: any[]
   testimonials: any[]
   seo: Record<string, string>
+  trial?: {
+    is_enabled: boolean
+    trial_duration_days: number
+    default_plan_id: string
+    applies_to_packages: string
+  }
 }
 
 export class LandingRepository {
@@ -172,6 +178,25 @@ export class LandingRepository {
       }
     } catch {}
 
+    let trial = {
+      is_enabled: true,
+      trial_duration_days: 7,
+      default_plan_id: 'plan_starter',
+      applies_to_packages: 'all'
+    }
+
+    try {
+      const trialRow = db.prepare("SELECT * FROM global_trial_settings WHERE id = 'global_trial_config'").get() as any
+      if (trialRow) {
+        trial = {
+          is_enabled: Boolean(trialRow.is_enabled),
+          trial_duration_days: Number(trialRow.trial_duration_days || 7),
+          default_plan_id: trialRow.default_plan_id || 'plan_starter',
+          applies_to_packages: trialRow.applies_to_packages || 'all'
+        }
+      }
+    } catch {}
+
     return {
       branding,
       hero,
@@ -181,7 +206,8 @@ export class LandingRepository {
       pricingPlans,
       faqs,
       testimonials,
-      seo
+      seo,
+      trial
     }
   }
 

@@ -793,7 +793,22 @@ export class UpdaterService {
       : (app ? app.getPath('temp') : '/tmp')
 
     const parsedUrl = new URL(urlStr)
-    const baseName = path.basename(parsedUrl.pathname) || `AntiProfiles-update-${Date.now()}`
+    let baseName = path.basename(parsedUrl.pathname) || `AntiProfiles-update-${Date.now()}`
+    
+    // Ensure proper binary installer extension based on target platform
+    const currentExt = path.extname(baseName).toLowerCase()
+    const validExtensions = ['.dmg', '.exe', '.appimage', '.pkg', '.zip', '.tar.gz', '.deb', '.rpm', '.msi']
+    if (!validExtensions.includes(currentExt)) {
+      const plat = process.platform
+      if (plat === 'darwin') {
+        baseName = `${baseName.replace(/\.[^/.]+$/, '')}.dmg`
+      } else if (plat === 'win32') {
+        baseName = `${baseName.replace(/\.[^/.]+$/, '')}.exe`
+      } else {
+        baseName = `${baseName.replace(/\.[^/.]+$/, '')}.AppImage`
+      }
+    }
+
     const destPath = path.join(tempDir, baseName)
     const partPath = `${destPath}.download`
     this.activeDownloadPath = partPath

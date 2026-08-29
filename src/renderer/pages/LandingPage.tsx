@@ -87,6 +87,12 @@ const DEFAULT_LANDING_DATA = {
   seo: {
     meta_title: 'AntiProfiles — Next-Gen Anti-Detect & Privacy Browser',
     meta_description: 'Manage isolated browser profiles, configure proxies, and automate workflows securely with AntiProfiles Antidetect Software.'
+  },
+  trial: {
+    is_enabled: true,
+    trial_duration_days: 7,
+    default_plan_id: 'plan_starter',
+    applies_to_packages: 'all'
   }
 }
 
@@ -217,9 +223,24 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
     )
   }
 
-  const { branding, hero, stats, features, steps, pricingPlans, faqs, testimonials } = data
+  const { branding, hero, stats, features, steps, pricingPlans, faqs, testimonials, trial } = data
   const accentColor = branding.accent_color || '#2DD4BF'
   const primaryColor = branding.primary_color || '#6366F1'
+
+  const trialActive = trial ? Boolean(trial.is_enabled) : true
+  const trialDays = trial ? Number(trial.trial_duration_days || 7) : 7
+  const trialPlanId = trial?.default_plan_id || 'plan_starter'
+  const trialScope = trial?.applies_to_packages || 'all'
+
+  const isPlanTrialActive = (plan: any) => {
+    if (!trialActive) return false
+    if (Number(plan.monthly_price) === 0) return false
+    if (trialScope === 'all') return true
+    const pId = String(plan.id || '').toLowerCase()
+    const tId = String(trialPlanId || '').toLowerCase()
+    const pName = String(plan.name || '').toLowerCase()
+    return pId === tId || tId.includes(pId) || pId.includes(tId) || (pName && tId.includes(pName))
+  }
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault()
