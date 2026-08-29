@@ -232,10 +232,11 @@ function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onN
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
+  isSyncingProxy?: boolean
   onStart?: () => void
   onStop?: () => void
   onClearCookies?: () => void
@@ -327,9 +328,21 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onSto
             className="btn btn-sm btn-ghost"
             onClick={onRefreshProxy}
             title="Reload & Synchronize Proxy Location (Timezone, Coordinates, Geolocation)"
-            style={{ color: '#38BDF8' }}
+            style={{
+              color: '#38BDF8',
+              cursor: isSyncingProxy ? 'wait' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            disabled={isSyncingProxy}
           >
-            🔄
+            <span style={{
+              display: 'inline-block',
+              animation: isSyncingProxy ? 'spin 0.8s linear infinite' : 'none'
+            }}>
+              🔄
+            </span>
           </button>
         )}
         {onClearCookies && (
@@ -350,10 +363,11 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, onStart, onSto
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
+  isSyncingProxy?: boolean
   onStart?: () => void
   onStop?: () => void
   onClearCookies?: () => void
@@ -448,9 +462,22 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, onStart, on
             className="btn btn-sm btn-ghost btn-icon"
             onClick={onRefreshProxy}
             title="Reload & Synchronize Proxy Location (Timezone, Coordinates, Geolocation)"
-            style={{ color: '#38BDF8', fontSize: 13 }}
+            style={{
+              color: '#38BDF8',
+              fontSize: 13,
+              cursor: isSyncingProxy ? 'wait' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            disabled={isSyncingProxy}
           >
-            🔄
+            <span style={{
+              display: 'inline-block',
+              animation: isSyncingProxy ? 'spin 0.8s linear infinite' : 'none'
+            }}>
+              🔄
+            </span>
           </button>
         )}
         {onClearCookies && (
@@ -493,6 +520,34 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [editProfile, setEditProfile] = useState<Profile | null>(null)
+  const [syncingProfileId, setSyncingProfileId] = useState<string | null>(null)
+
+  const handleRefreshProxy = async (p: Profile) => {
+    if (!p.proxyId) {
+      showToast('info', `No proxy is configured for profile "${p.name}".`)
+      return
+    }
+    setSyncingProfileId(p.id)
+    try {
+      const r = await window.api.refreshProxy(p.proxyId)
+      if (r && r.success && r.data) {
+        showToast('success', `✓ Proxy location synchronized for "${p.name}": ${r.data.city || 'N/A'}, ${r.data.region || 'N/A'}, ${r.data.country || 'N/A'} (Timezone: ${r.data.timezone || 'Auto'})`)
+      } else {
+        const pRes = await (window.api as any).syncProfileProxy?.(p.id)
+        if (pRes?.success) {
+          showToast('success', `✓ Proxy location synchronized for "${p.name}"`)
+        } else {
+          showToast('error', r?.error || pRes?.error || 'Failed to reload proxy')
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to reload proxy')
+    } finally {
+      setSyncingProfileId(null)
+      loadProfiles()
+      window.api.getProxies().then((res) => { if (res.success && res.data) setProxies(res.data) }).catch(() => {})
+    }
+  }
 
   const loadProfiles = useCallback(async () => {
     if (!sessionToken) return
@@ -796,6 +851,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               profile={p}
               proxies={proxies}
               brandingConfig={brandingConfig}
+              isSyncingProxy={syncingProfileId === p.id}
               onStart={() => handleStartProfile(p)}
               onStop={async () => {
                 if (!sessionToken) return
@@ -851,6 +907,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               profile={p}
               proxies={proxies}
               brandingConfig={brandingConfig}
+              isSyncingProxy={syncingProfileId === p.id}
               onStart={() => handleStartProfile(p)}
               onStop={async () => {
                 if (!sessionToken) return
