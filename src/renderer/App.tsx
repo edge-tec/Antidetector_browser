@@ -350,7 +350,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
                 <button
                   className="btn btn-sm btn-ghost"
                   onClick={onOpenGmail}
-                  title="Open Gmail in Profile Chromium Browser"
+                  title="Open Gmail Web in Secure Browser"
                   style={{ color: '#EA4335', fontSize: 11, padding: '2px 6px', height: 'auto', fontWeight: 600 }}
                 >
                   📧 Gmail
@@ -378,14 +378,26 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
               )}
             </div>
           ) : (
-            <button
-              className="btn btn-sm btn-ghost"
-              onClick={onConnectGoogle}
-              title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
-              style={{ color: '#4285F4', fontWeight: 600 }}
-            >
-              <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
-            </button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={onConnectGoogle}
+                title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
+                style={{ color: '#4285F4', fontWeight: 600 }}
+              >
+                <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
+              </button>
+              {onOpenGmail && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onOpenGmail}
+                  title="Open Gmail Web in Secure Browser"
+                  style={{ color: '#EA4335', fontSize: 11, padding: '2px 6px', height: 'auto', fontWeight: 600 }}
+                >
+                  📧 Gmail
+                </button>
+              )}
+            </div>
           )
         )}
         {profile.proxyId && onRefreshProxy && (
@@ -577,14 +589,26 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
               )}
             </div>
           ) : (
-            <button
-              className="btn btn-sm btn-ghost"
-              onClick={onConnectGoogle}
-              title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
-              style={{ color: '#4285F4', fontWeight: 600, fontSize: 12, padding: '4px 8px' }}
-            >
-              <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
-            </button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={onConnectGoogle}
+                title="Connect Google Account via Secure System Browser (OAuth 2.0 / RFC 8252)"
+                style={{ color: '#4285F4', fontWeight: 600, fontSize: 12, padding: '4px 8px' }}
+              >
+                <span style={{ fontSize: '13px', marginRight: 2 }}>G</span> Connect
+              </button>
+              {onOpenGmail && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onOpenGmail}
+                  title="Open Gmail Web in Secure Browser"
+                  style={{ color: '#EA4335', fontSize: 11, padding: '2px 6px', height: 'auto', fontWeight: 600 }}
+                >
+                  📧 Gmail
+                </button>
+              )}
+            </div>
           )
         )}
         {profile.proxyId && onRefreshProxy && (
