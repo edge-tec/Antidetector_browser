@@ -555,21 +555,17 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--no-first-run',
     '--no-default-browser-check',
     '--profile-directory=Default',
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-gpu-sandbox',
-    '--disable-background-timer-throttling',
-    '--disable-backgrounding-occluded-windows',
-    '--disable-renderer-backgrounding',
     '--window-size=1280,800',
     '--window-position=100,60',
-    '--password-store=basic',
     '--disable-blink-features=AutomationControlled',
-    '--disable-infobars',
     '--disable-features=ProfilePickerOnStartup',
     `--lang=${lang}`
   ]
+
+  // Only add container sandbox bypass if running as root on Linux (Docker CI)
+  if (process.platform === 'linux' && typeof (process as any).getuid === 'function' && (process as any).getuid() === 0) {
+    args.push('--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage')
+  }
 
   if (fingerprint?.navigator?.userAgent) {
     args.push(`--user-agent=${fingerprint.navigator.userAgent}`)
@@ -1053,13 +1049,7 @@ export async function launchBrowser(
         headless: false,
         defaultViewport: null,
         args,
-        ignoreDefaultArgs: [
-          '--enable-automation',
-          '--disable-extensions',
-          '--disable-component-extensions-with-background-pages',
-          '--disable-default-apps',
-          '--disable-component-update'
-        ],
+        ignoreDefaultArgs: true,
         timeout: 60000,
         handleSIGINT: false,
         handleSIGTERM: false,
@@ -1085,13 +1075,7 @@ export async function launchBrowser(
           headless: false,
           defaultViewport: null,
           args,
-          ignoreDefaultArgs: [
-          '--enable-automation',
-          '--disable-extensions',
-          '--disable-component-extensions-with-background-pages',
-          '--disable-default-apps',
-          '--disable-component-update'
-        ],
+          ignoreDefaultArgs: true,
           timeout: 60000,
           handleSIGINT: false,
           handleSIGTERM: false,
