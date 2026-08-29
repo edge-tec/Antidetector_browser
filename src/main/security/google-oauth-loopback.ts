@@ -1,13 +1,13 @@
 // ──────────────────────────────────────────────────────────────────
 // AntiProfiles — Google OAuth 2.0 PKCE Loopback Authentication Module
 // Implements RFC 8252 (OAuth 2.0 for Native Apps) using the System Browser.
-// Configured with Google Cloud Desktop OAuth Client ID & Secret.
+// Features Multi-Profile Isolation, PKCE, CSRF State Protection, and safeStorage Encryption.
 // ──────────────────────────────────────────────────────────────────
 
 import http from 'http'
 import crypto from 'crypto'
 import https from 'https'
-import { shell } from 'electron'
+import { shell, safeStorage } from 'electron'
 import { logger } from '../logging/logger'
 
 export const getGoogleClientId = (): string => {
@@ -29,6 +29,18 @@ export interface GoogleOAuthConfig {
   scopes?: string[]
   redirectPath?: string
   timeoutMs?: number
+  profileId?: string
+}
+
+export interface LinkedGoogleAccount {
+  profileId: string
+  googleId: string
+  email: string
+  name: string
+  picture?: string
+  connectedAt: string
+  encryptedAccessToken?: string
+  encryptedRefreshToken?: string
 }
 
 export interface OAuthAuthResult {
@@ -50,7 +62,56 @@ export interface OAuthAuthResult {
     picture?: string
     verifiedEmail?: boolean
   }
+  linkedAccount?: LinkedGoogleAccount
   error?: string
+}
+
+// In-Memory store for Linked Profile Google Accounts (isolated per profile)
+const linkedAccountsMap = new Map<string, LinkedGoogleAccount>()
+
+/**
+ * Safely encrypt token strings using safeStorage or AES-256 fallback.
+ */
+export function encryptOAuthToken(token: string): string {
+  if (!token) return ''
+  try {
+    if (typeof safeStorage !== 'undefined' && safeStorage?.isEncryptionAvailable && safeStorage.isEncryptionAvailable()) {
+      return safeStorage.encryptString(token).toString('base64')
+    }
+  } catch {}
+  // AES-256 Fallback
+  const key = crypto.createHash('sha256').update('antiprofiles-oauth-key-safe').digest()
+  const iv = crypto.randomBytes(16)
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv)
+  let encrypted = cipher.update(token, 'utf8', 'hex')
+  encrypted += cipher.final('hex')
+  return `${iv.toString('hex')}:${encrypted}`
+}
+
+/**
+ * Safely decrypt token strings.
+ */
+export function decryptOAuthToken(encryptedToken: string): string {
+  if (!encryptedToken) return ''
+  try {
+    if (typeof safeStorage !== 'undefined' && safeStorage?.isEncryptionAvailable && safeStorage.isEncryptionAvailable()) {
+      return safeStorage.decryptString(Buffer.from(encryptedToken, 'base64'))
+    }
+  } catch {}
+  // AES-256 Fallback
+  try {
+    const parts = encryptedToken.split(':')
+    if (parts.length === 2) {
+      const iv = Buffer.from(parts[0], 'hex')
+      const encrypted = parts[1]
+      const key = crypto.createHash('sha256').update('antiprofiles-oauth-key-safe').digest()
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv)
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8')
+      decrypted += decipher.final('utf8')
+      return decrypted
+    }
+  } catch {}
+  return ''
 }
 
 /**
@@ -192,7 +253,8 @@ export async function startGoogleSystemBrowserOAuth(
     clientSecret = getGoogleClientSecret(),
     scopes = ['openid', 'email', 'profile'],
     redirectPath = '/oauth2callback',
-    timeoutMs = 180000 // 3 minutes timeout
+    timeoutMs = 180000,
+    profileId
   } = config
 
   const pkce = generatePKCE()
@@ -210,7 +272,6 @@ export async function startGoogleSystemBrowserOAuth(
       }
     }
 
-    // Set timeout to abort hanging loopback servers
     timeoutTimer = setTimeout(() => {
       cleanup()
       resolve({ success: false, error: 'Google OAuth authentication timed out.' })
@@ -263,9 +324,9 @@ export async function startGoogleSystemBrowserOAuth(
             const serverPort = (server?.address() as any)?.port
             const redirectUri = `http://127.0.0.1:${serverPort}${redirectPath}`
 
-            // Exchange token immediately if clientSecret is available
             let tokens: any = undefined
             let userProfile: any = undefined
+            let linkedAccount: LinkedGoogleAccount | undefined = undefined
 
             if (clientSecret) {
               try {
@@ -279,6 +340,20 @@ export async function startGoogleSystemBrowserOAuth(
                 if (exchangeRes.success) {
                   tokens = exchangeRes.tokens
                   userProfile = exchangeRes.userProfile
+
+                  if (profileId && userProfile) {
+                    linkedAccount = {
+                      profileId,
+                      googleId: userProfile.id,
+                      email: userProfile.email,
+                      name: userProfile.name,
+                      picture: userProfile.picture,
+                      connectedAt: new Date().toISOString(),
+                      encryptedAccessToken: tokens?.accessToken ? encryptOAuthToken(tokens.accessToken) : undefined,
+                      encryptedRefreshToken: tokens?.refreshToken ? encryptOAuthToken(tokens.refreshToken) : undefined
+                    }
+                    linkedAccountsMap.set(profileId, linkedAccount)
+                  }
                 }
               } catch {}
             }
@@ -305,13 +380,13 @@ export async function startGoogleSystemBrowserOAuth(
               codeVerifier: pkce.verifier,
               redirectUri,
               tokens,
-              userProfile
+              userProfile,
+              linkedAccount
             })
             return
           }
         }
 
-        // Unhandled path
         res.writeHead(404, { 'Content-Type': 'text/plain' })
         res.end('Not Found')
       } catch (err: any) {
@@ -320,7 +395,6 @@ export async function startGoogleSystemBrowserOAuth(
       }
     })
 
-    // Listen on random available ephemeral port on 127.0.0.1
     server.listen(0, '127.0.0.1', async () => {
       const address = server?.address()
       if (!address || typeof address === 'string') {
@@ -332,7 +406,6 @@ export async function startGoogleSystemBrowserOAuth(
       const port = address.port
       const redirectUri = `http://127.0.0.1:${port}${redirectPath}`
 
-      // Build standard Google OAuth 2.0 Authorization Endpoint URL
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
       authUrl.searchParams.set('client_id', clientId)
       authUrl.searchParams.set('redirect_uri', redirectUri)
@@ -346,7 +419,6 @@ export async function startGoogleSystemBrowserOAuth(
 
       logger.info('auth', `[GoogleOAuth] Opening System Default Browser for RFC 8252 OAuth with redirect: ${redirectUri}`)
 
-      // Open in user's default secure desktop browser
       try {
         await shell.openExternal(authUrl.toString())
       } catch (shellErr: any) {
@@ -360,4 +432,20 @@ export async function startGoogleSystemBrowserOAuth(
       resolve({ success: false, error: `Loopback server error: ${err.message}` })
     })
   })
+}
+
+/**
+ * Get connected Google account info for a given profile ID.
+ */
+export function getProfileGoogleAccount(profileId: string): LinkedGoogleAccount | null {
+  if (!profileId) return null
+  return linkedAccountsMap.get(profileId) || null
+}
+
+/**
+ * Disconnect/Unlink Google account for a given profile ID.
+ */
+export function disconnectProfileGoogleAccount(profileId: string): boolean {
+  if (!profileId) return false
+  return linkedAccountsMap.delete(profileId)
 }

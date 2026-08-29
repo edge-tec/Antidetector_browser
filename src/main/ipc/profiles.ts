@@ -436,4 +436,60 @@ export function registerProfileHandlers(): void {
       return { success: false, error: err.message }
     }
   })
+
+  // ── Profile Google Account Association (RFC 8252 System Browser OAuth) ──
+  ipcMain.handle('profiles:connect-google', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      if (!profileRepo.verifyOwnership(profileId, auth.user.id, auth.user.role === 'admin')) {
+        return { success: false, error: 'Access denied. You do not own this profile.' }
+      }
+
+      const { startGoogleSystemBrowserOAuth } = require('../security/google-oauth-loopback')
+      const oauthRes = await startGoogleSystemBrowserOAuth({ profileId })
+
+      if (!oauthRes.success) {
+        return { success: false, error: oauthRes.error || 'Failed to connect Google account.' }
+      }
+
+      return {
+        success: true,
+        data: oauthRes.linkedAccount || oauthRes.userProfile,
+        message: 'Google Account successfully connected to profile via System Browser.'
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:get-google-account', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const { getProfileGoogleAccount } = require('../security/google-oauth-loopback')
+      const linked = getProfileGoogleAccount(profileId)
+      return { success: true, data: linked }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:disconnect-google', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const { disconnectProfileGoogleAccount } = require('../security/google-oauth-loopback')
+      const disconnected = disconnectProfileGoogleAccount(profileId)
+      return { success: true, disconnected }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }
