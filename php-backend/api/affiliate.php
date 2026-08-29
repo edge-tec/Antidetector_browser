@@ -576,6 +576,7 @@ switch ($action) {
     case 'admin-save-offer':
         try {
             $admin = requireAdmin();
+            ensureAffiliateDatabaseSchema($db);
 
             $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
             $offerId = trim($input['id'] ?? '');

@@ -6,6 +6,133 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 
+// Ensure full CPA Affiliate tables and all columns exist
+function ensureAffiliateDatabaseSchema(?PDO $db = null): void {
+    if (!$db) {
+        $db = Database::getConnection();
+    }
+
+    try {
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `affiliate_offers` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `title` VARCHAR(255) NOT NULL,
+              `description` TEXT DEFAULT NULL,
+              `target_url` VARCHAR(500) NOT NULL,
+              `signup_url` VARCHAR(255) NOT NULL DEFAULT '/signup',
+              `package_id` VARCHAR(50) NOT NULL DEFAULT 'plan_starter',
+              `package_name` VARCHAR(100) NOT NULL DEFAULT 'Starter',
+              `landing_page_slug` VARCHAR(100) NOT NULL DEFAULT 'starter',
+              `banner_url` VARCHAR(500) DEFAULT NULL,
+              `cta_url` VARCHAR(500) DEFAULT NULL,
+              `cta_text` VARCHAR(100) DEFAULT 'Subscribe',
+              `badge_text` VARCHAR(100) DEFAULT NULL,
+              `price` DECIMAL(10,2) NOT NULL DEFAULT 19.00,
+              `original_price` DECIMAL(10,2) NOT NULL DEFAULT 39.00,
+              `discount_type` VARCHAR(20) NOT NULL DEFAULT 'none',
+              `discount_value` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `discounted_price` DECIMAL(10,2) NOT NULL DEFAULT 19.00,
+              `trial_days` INT NOT NULL DEFAULT 7,
+              `trial_enabled` INT NOT NULL DEFAULT 0,
+              `payout_type` VARCHAR(20) NOT NULL DEFAULT 'revshare',
+              `commission_rate` DECIMAL(5,2) NOT NULL DEFAULT 50.00,
+              `revshare_percent` DECIMAL(5,2) NOT NULL DEFAULT 50.00,
+              `fixed_payout_usd` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+              `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
+              `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+              `billing_interval` VARCHAR(20) NOT NULL DEFAULT 'month',
+              `discount_start_date` DATETIME DEFAULT NULL,
+              `discount_end_date` DATETIME DEFAULT NULL,
+              `total_clicks` INT NOT NULL DEFAULT 0,
+              `total_conversions` INT NOT NULL DEFAULT 0,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+    } catch (Throwable $e) {}
+
+    $offerColumns = [
+        'package_id' => "VARCHAR(50) NOT NULL DEFAULT 'plan_starter'",
+        'package_name' => "VARCHAR(100) NOT NULL DEFAULT 'Starter'",
+        'landing_page_slug' => "VARCHAR(100) NOT NULL DEFAULT 'starter'",
+        'banner_url' => "VARCHAR(500) DEFAULT NULL",
+        'cta_url' => "VARCHAR(500) DEFAULT NULL",
+        'cta_text' => "VARCHAR(100) DEFAULT 'Subscribe'",
+        'badge_text' => "VARCHAR(100) DEFAULT NULL",
+        'price' => "DECIMAL(10,2) NOT NULL DEFAULT 19.00",
+        'original_price' => "DECIMAL(10,2) NOT NULL DEFAULT 39.00",
+        'discount_type' => "VARCHAR(20) NOT NULL DEFAULT 'none'",
+        'discount_value' => "DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+        'discounted_price' => "DECIMAL(10,2) NOT NULL DEFAULT 19.00",
+        'trial_days' => "INT NOT NULL DEFAULT 7",
+        'trial_enabled' => "INT NOT NULL DEFAULT 0",
+        'discount_start_date' => "DATETIME DEFAULT NULL",
+        'discount_end_date' => "DATETIME DEFAULT NULL",
+        'billing_interval' => "VARCHAR(20) NOT NULL DEFAULT 'month'",
+        'signup_url' => "VARCHAR(255) NOT NULL DEFAULT '/signup'",
+        'total_conversions' => "INT NOT NULL DEFAULT 0",
+        'commission_rate' => "DECIMAL(5,2) NOT NULL DEFAULT 50.00",
+        'revshare_percent' => "DECIMAL(5,2) NOT NULL DEFAULT 50.00",
+        'fixed_payout_usd' => "DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+        'currency' => "VARCHAR(10) NOT NULL DEFAULT 'USD'",
+        'status' => "VARCHAR(20) NOT NULL DEFAULT 'active'"
+    ];
+
+    foreach ($offerColumns as $col => $type) {
+        try {
+            $db->exec("ALTER TABLE `affiliate_offers` ADD COLUMN `{$col}` {$type}");
+        } catch (Throwable $e) {}
+    }
+
+    try {
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `affiliate_landing_pages` (
+              `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+              `slug` VARCHAR(100) NOT NULL UNIQUE,
+              `offer_id` VARCHAR(50) DEFAULT NULL,
+              `package_id` VARCHAR(50) NOT NULL DEFAULT 'plan_starter',
+              `package_name` VARCHAR(100) NOT NULL DEFAULT 'Starter',
+              `hero_title` VARCHAR(255) NOT NULL,
+              `hero_subtitle` TEXT DEFAULT NULL,
+              `price_monthly` DECIMAL(10,2) NOT NULL DEFAULT 19.00,
+              `price_yearly` DECIMAL(10,2) NOT NULL DEFAULT 15.00,
+              `original_price` DECIMAL(10,2) NOT NULL DEFAULT 39.00,
+              `discount_percent` INT NOT NULL DEFAULT 0,
+              `badge_text` VARCHAR(100) DEFAULT NULL,
+              `trial_enabled` INT NOT NULL DEFAULT 0,
+              `features_json` LONGTEXT DEFAULT NULL,
+              `faq_json` LONGTEXT DEFAULT NULL,
+              `reviews_json` LONGTEXT DEFAULT NULL,
+              `cta_text` VARCHAR(100) DEFAULT 'Get Started Now',
+              `theme_color` VARCHAR(30) DEFAULT '#38BDF8',
+              `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+              `seo_title` VARCHAR(255) DEFAULT NULL,
+              `meta_desc` TEXT DEFAULT NULL,
+              `discount_start_date` DATETIME DEFAULT NULL,
+              `discount_end_date` DATETIME DEFAULT NULL,
+              `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+    } catch (Throwable $e) {}
+
+    $lpColumns = [
+        'trial_enabled' => "INT NOT NULL DEFAULT 0",
+        'discount_start_date' => "DATETIME DEFAULT NULL",
+        'discount_end_date' => "DATETIME DEFAULT NULL",
+        'is_active' => "TINYINT(1) NOT NULL DEFAULT 1",
+        'theme_color' => "VARCHAR(30) DEFAULT '#38BDF8'",
+        'seo_title' => "VARCHAR(255) DEFAULT NULL",
+        'meta_desc' => "TEXT DEFAULT NULL"
+    ];
+
+    foreach ($lpColumns as $col => $type) {
+        try {
+            $db->exec("ALTER TABLE `affiliate_landing_pages` ADD COLUMN `{$col}` {$type}");
+        } catch (Throwable $e) {}
+    }
+}
+
 // Auto Ensure Core Database Tables Exist
 function ensureDatabaseTablesExist() {
     static $executed = false;
@@ -14,6 +141,7 @@ function ensureDatabaseTablesExist() {
 
     try {
         $db = Database::getConnection();
+        ensureAffiliateDatabaseSchema($db);
 
         // 1. Users Table
         $db->exec("
