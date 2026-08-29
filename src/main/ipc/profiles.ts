@@ -505,8 +505,13 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
       validateId(profileId)
 
+      const linked = getProfileGoogleAccount(profileId)
+      const targetGmailUrl = linked?.email
+        ? `https://accounts.google.com/AccountChooser?service=mail&continue=https://mail.google.com/mail/&Email=${encodeURIComponent(linked.email)}`
+        : 'https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/'
+
       if (openInSystemBrowser) {
-        await shell.openExternal('https://mail.google.com')
+        await shell.openExternal(targetGmailUrl)
         return { success: true, mode: 'system' }
       }
 
@@ -519,7 +524,7 @@ export function registerProfileHandlers(): void {
       if (browser) {
         const pages = await browser.pages()
         const targetPage = pages.length > 0 ? pages[0] : await browser.newPage()
-        await targetPage.goto('https://mail.google.com', { waitUntil: 'domcontentloaded' }).catch(() => {})
+        await targetPage.goto(targetGmailUrl, { waitUntil: 'domcontentloaded' }).catch(() => {})
         return { success: true, mode: 'profile-browser' }
       }
 

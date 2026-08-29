@@ -754,9 +754,9 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
     }
   }
 
-  const handleOpenGmail = async (p: Profile, openInSystemBrowser: boolean = false) => {
+  const handleOpenGmail = async (p: Profile, openInSystemBrowser: boolean = true) => {
     if (!sessionToken) return
-    showToast('info', openInSystemBrowser ? `Opening Gmail Web in System Browser for "${p.name}"...` : `Opening Gmail in Profile Browser for "${p.name}"...`)
+    showToast('info', `Opening Gmail Web in secure System Browser for "${p.name}"...`)
     try {
       const res = await (window.api as any).openProfileGmail(sessionToken, p.id, openInSystemBrowser)
       if (!res?.success) {
