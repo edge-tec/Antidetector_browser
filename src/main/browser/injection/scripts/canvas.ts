@@ -33,6 +33,7 @@ export function buildCanvasScript(canvas: CanvasFingerprint): string {
 // ═══ Canvas Noise (Seed: ${canvas.noiseSeed}) ═══
 (function() {
   'use strict';
+  const cloak = window.__cloakFunction || function(f) { return f; };
   const SEED = ${canvas.noiseSeed};
 
   function mulberry32(seed) {
@@ -59,14 +60,14 @@ export function buildCanvasScript(canvas: CanvasFingerprint): string {
   // Override CanvasRenderingContext2D.prototype.getImageData safely
   if (typeof CanvasRenderingContext2D !== 'undefined' && CanvasRenderingContext2D.prototype.getImageData) {
     const origGetImageData = CanvasRenderingContext2D.prototype.getImageData;
-    CanvasRenderingContext2D.prototype.getImageData = function(sx, sy, sw, sh) {
+    CanvasRenderingContext2D.prototype.getImageData = cloak(function(sx, sy, sw, sh) {
       const imageData = origGetImageData.apply(this, arguments);
       // Only apply noise on large standard canvases (>32x32) to protect cryptographic attestation canvases
       if (sw > 32 && sh > 32 && imageData && imageData.data && imageData.data.length > 4096) {
         addNoise(imageData.data);
       }
       return imageData;
-    };
+    }, 'getImageData');
   }
 })();`
 }

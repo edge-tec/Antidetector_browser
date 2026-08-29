@@ -552,7 +552,6 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   }
 
   const args: string[] = [
-    '--test-type',
     '--no-first-run',
     '--no-default-browser-check',
     '--profile-directory=Default',
@@ -566,11 +565,9 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--window-size=1280,800',
     '--window-position=100,60',
     '--password-store=basic',
-    '--use-mock-keychain',
     '--disable-blink-features=AutomationControlled',
     '--disable-infobars',
-    '--disable-features=IsolateOrigins,site-per-process,ProfilePickerOnStartup',
-    '--disable-site-isolation-trials',
+    '--disable-features=ProfilePickerOnStartup',
     `--lang=${lang}`
   ]
 
@@ -593,8 +590,8 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     args.push('--disable-software-rasterizer')
   }
 
-  // Google services
-  if (fingerprint?.browser && !fingerprint.browser.googleServicesEnabled) {
+  // Google services (only disable background telemetry if explicitly requested by custom profile)
+  if (fingerprint?.browser && fingerprint.browser.googleServicesEnabled === false) {
     args.push('--disable-background-networking')
     args.push('--disable-client-side-phishing-detection')
   }
@@ -1056,7 +1053,13 @@ export async function launchBrowser(
         headless: false,
         defaultViewport: null,
         args,
-        ignoreDefaultArgs: ['--enable-automation'],
+        ignoreDefaultArgs: [
+          '--enable-automation',
+          '--disable-extensions',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-default-apps',
+          '--disable-component-update'
+        ],
         timeout: 60000,
         handleSIGINT: false,
         handleSIGTERM: false,
@@ -1082,7 +1085,13 @@ export async function launchBrowser(
           headless: false,
           defaultViewport: null,
           args,
-          ignoreDefaultArgs: ['--enable-automation'],
+          ignoreDefaultArgs: [
+          '--enable-automation',
+          '--disable-extensions',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-default-apps',
+          '--disable-component-update'
+        ],
           timeout: 60000,
           handleSIGINT: false,
           handleSIGTERM: false,

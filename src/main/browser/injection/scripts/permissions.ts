@@ -35,11 +35,12 @@ export function buildPermissionsScript(perms: PermissionsFingerprint): string {
 // ═══ Permissions Override ═══
 (function() {
   'use strict';
+  const cloak = window.__cloakFunction || function(f) { return f; };
   const PERM_MAP = ${JSON.stringify(permMap)};
 
   if (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) {
     const origQuery = navigator.permissions.query;
-    navigator.permissions.query = function(desc) {
+    navigator.permissions.query = cloak(function(desc) {
       return origQuery.apply(this, arguments).then(function(permStatus) {
         const name = desc && desc.name;
         if (name && PERM_MAP[name] && permStatus) {
@@ -52,7 +53,7 @@ export function buildPermissionsScript(perms: PermissionsFingerprint): string {
         }
         return permStatus;
       });
-    };
+    }, 'query');
   }
 })();`
 }

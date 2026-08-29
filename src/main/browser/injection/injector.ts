@@ -11,6 +11,7 @@ import { getNotABrandVersion, getEngineForBrowser, hasFeatureFlag } from '../../
 import { logger } from '../../logging/logger'
 
 // Import injection script builders
+import { buildNativeCloakerScript } from './scripts/native-cloaker'
 import { buildNavigatorScript } from './scripts/navigator'
 import { buildScreenScript } from './scripts/screen'
 import { buildWebGLScript } from './scripts/webgl'
@@ -35,6 +36,7 @@ import { setupGoogleRedirectInterceptor } from './google-redirect-interceptor'
 export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'chrome' | 'firefox'): string {
   const bType = browserType || fingerprint.browser?.type || (fingerprint.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
   const scripts = [
+    buildNativeCloakerScript(),
     buildNavigatorScript(fingerprint.navigator, bType),
     buildScreenScript(fingerprint.screen),
     buildWebGLScript(fingerprint.webgl),
@@ -184,25 +186,52 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   try {
     const client = await page.target().createCDPSession()
 
-    // Remove Puppeteer/ChromeDriver CDP markers that Google uses for bot detection
+    // Remove Puppeteer/ChromeDriver CDP markers and automation artifacts that Google & Cloudflare inspect
     try {
       await client.send('Page.addScriptToEvaluateOnNewDocument', {
         source: `
-          // Remove cdc_ properties from document that Puppeteer/ChromeDriver inject
-          try {
-            Object.defineProperty(document, '$cdc_asdjflasutopfhvcZLmcfl_', { get: () => undefined, configurable: true });
-            for (const prop of Object.getOwnPropertyNames(document)) {
-              if (/^\\$cdc_/.test(prop)) {
-                try { delete document[prop]; } catch(e) {}
+          (function() {
+            try {
+              // 1. Remove cdc_ and $cdc_ properties from window and document
+              const cleanCdc = function(obj) {
+                if (!obj) return;
+                try {
+                  for (const prop of Object.getOwnPropertyNames(obj)) {
+                    if (/^\\$?cdc_/i.test(prop) || /^__puppeteer/i.test(prop)) {
+                      try { delete obj[prop]; } catch(e) {}
+                    }
+                  }
+                } catch(e) {}
+              };
+              cleanCdc(window);
+              cleanCdc(document);
+
+              // 2. Remove common automation indicators
+              const botProps = [
+                '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_function',
+                '__webdriver_script_func', '__webdriver_script_fn', '__fxdriver_evaluate',
+                '__driver_evaluate', '__webdriver_unwrapped', '__driver_unwrapped',
+                '__selenium_unwrapped', '__fxdriver_unwrapped', '_Selenium_IDE_Recorder',
+                '_phantom', '__nightmare', 'callPhantom', 'domAutomation', 'domAutomationController'
+              ];
+              for (const p of botProps) {
+                try {
+                  if (p in window) {
+                    delete window[p];
+                  }
+                } catch(e) {}
               }
-            }
-          } catch(e) {}
-          // Ensure navigator.webdriver is false
-          try {
-            Object.defineProperty(Navigator.prototype, 'webdriver', {
-              get: () => false, configurable: true, enumerable: true
-            });
-          } catch(e) {}
+
+              // 3. Ensure navigator.webdriver is false
+              try {
+                Object.defineProperty(Navigator.prototype, 'webdriver', {
+                  get: function() { return false; },
+                  configurable: true,
+                  enumerable: true
+                });
+              } catch(e) {}
+            } catch(e) {}
+          })();
         `
       })
     } catch {}

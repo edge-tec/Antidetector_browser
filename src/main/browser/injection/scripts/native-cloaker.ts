@@ -1,0 +1,64 @@
+// ──────────────────────────────────────────────────────────────────
+// AntiProfiles — Native Function Cloaker Script Builder
+// Transparently cloaks modified functions and getters to return
+// "function () { [native code] }" in Function.prototype.toString
+// and Function.prototype.toSource to defeat Botguard / anti-bot inspection.
+// ──────────────────────────────────────────────────────────────────
+
+export function buildNativeCloakerScript(): string {
+  return `
+// ═══ Native Function Cloaking Engine ═══
+(function() {
+  'use strict';
+
+  if (window.__antiprofiles_cloaker_installed) return;
+  window.__antiprofiles_cloaker_installed = true;
+
+  const nativeToString = Function.prototype.toString;
+  const cloakedFunctions = new WeakMap();
+
+  function makeNativeString(name) {
+    return 'function ' + (name || '') + '() { [native code] }';
+  }
+
+  function makeNativeGetterString(name) {
+    return 'function get ' + (name || '') + '() { [native code] }';
+  }
+
+  function customToString() {
+    if (this === customToString) {
+      return 'function toString() { [native code] }';
+    }
+    if (cloakedFunctions.has(this)) {
+      return cloakedFunctions.get(this);
+    }
+    return nativeToString.call(this);
+  }
+
+  try {
+    Object.defineProperty(Function.prototype, 'toString', {
+      value: customToString,
+      writable: true,
+      configurable: true,
+      enumerable: false
+    });
+    cloakedFunctions.set(customToString, 'function toString() { [native code] }');
+  } catch (e) {}
+
+  // Expose global helper within page context
+  window.__cloakFunction = function(fn, name) {
+    if (typeof fn === 'function') {
+      cloakedFunctions.set(fn, makeNativeString(name || fn.name));
+    }
+    return fn;
+  };
+
+  window.__cloakGetter = function(fn, name) {
+    if (typeof fn === 'function') {
+      cloakedFunctions.set(fn, makeNativeGetterString(name || fn.name));
+    }
+    return fn;
+  };
+})();
+`
+}

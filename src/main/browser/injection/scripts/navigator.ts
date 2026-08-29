@@ -23,6 +23,9 @@ export function buildNavigatorScript(
 (function() {
   'use strict';
 
+  const cloak = window.__cloakFunction || function(f) { return f; };
+  const cloakGetter = window.__cloakGetter || function(f) { return f; };
+
   // 1. Prototype Property Traps
   const protoOverrides = {
     platform: ${JSON.stringify(nav.platform || 'Win32')},
@@ -46,13 +49,15 @@ export function buildNavigatorScript(
   for (const [key, value] of Object.entries(protoOverrides)) {
     if (value === undefined) continue;
     try {
+      const getter = cloakGetter(function() {
+        if (this !== navigator && !(this instanceof Navigator)) {
+          throw new TypeError('Illegal invocation');
+        }
+        return value;
+      }, key);
+
       Object.defineProperty(Navigator.prototype, key, {
-        get: function() {
-          if (this !== navigator && !(this instanceof Navigator)) {
-            throw new TypeError('Illegal invocation');
-          }
-          return value;
-        },
+        get: getter,
         configurable: true,
         enumerable: true
       });
@@ -62,13 +67,16 @@ export function buildNavigatorScript(
   // 2. Override navigator.languages (frozen array)
   const _languages = ${JSON.stringify(nav.languages || ['en-US', 'en'])};
   try {
+    const langGetter = cloakGetter(function() { return _languages[0] || 'en-US'; }, 'language');
+    const langsGetter = cloakGetter(function() { return Object.freeze([..._languages]); }, 'languages');
+
     Object.defineProperty(Navigator.prototype, 'languages', {
-      get: function() { return Object.freeze([..._languages]); },
+      get: langsGetter,
       configurable: true,
       enumerable: true
     });
     Object.defineProperty(Navigator.prototype, 'language', {
-      get: function() { return _languages[0] || 'en-US'; },
+      get: langGetter,
       configurable: true,
       enumerable: true
     });
@@ -91,16 +99,20 @@ export function buildNavigatorScript(
       if (!window.chrome) {
         window.chrome = {};
       }
+
+      // Chrome App Object
       if (!window.chrome.app) {
         window.chrome.app = {
           isInstalled: false,
           InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
           RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
-          getDetails: function() { return null; },
-          getIsInstalled: function() { return false; },
-          runningState: function() { return 'cannot_run'; }
+          getDetails: cloak(function() { return null; }, 'getDetails'),
+          getIsInstalled: cloak(function() { return false; }, 'getIsInstalled'),
+          runningState: cloak(function() { return 'cannot_run'; }, 'runningState')
         };
       }
+
+      // Chrome Runtime Object
       if (!window.chrome.runtime) {
         window.chrome.runtime = {
           OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
@@ -109,8 +121,16 @@ export function buildNavigatorScript(
           PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
           PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
           RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' },
-          connect: function() { return { disconnect: function() {}, onDisconnect: { addListener: function() {} }, onMessage: { addListener: function() {} }, postMessage: function() {} }; },
-          sendMessage: function() {}
+          connect: cloak(function() {
+            return {
+              disconnect: cloak(function() {}, 'disconnect'),
+              onDisconnect: { addListener: cloak(function() {}, 'addListener') },
+              onMessage: { addListener: cloak(function() {}, 'addListener') },
+              postMessage: cloak(function() {}, 'postMessage')
+            };
+          }, 'connect'),
+          sendMessage: cloak(function() {}, 'sendMessage'),
+          id: undefined
         };
       }
     }
@@ -134,7 +154,7 @@ export function buildNavigatorScript(
       brands: Object.freeze(brandsList),
       mobile: ${isMobile ? 'true' : 'false'},
       platform: ${JSON.stringify(clientPlatform)},
-      getHighEntropyValues: function(hints) {
+      getHighEntropyValues: cloak(function(hints) {
         return Promise.resolve({
           brands: brandsList,
           mobile: ${isMobile ? 'true' : 'false'},
@@ -146,18 +166,19 @@ export function buildNavigatorScript(
           fullVersionList: fullVersionList,
           uaFullVersion: ${JSON.stringify(nav.browserVersion || '131.0.0.0')}
         });
-      },
-      toJSON: function() {
+      }, 'getHighEntropyValues'),
+      toJSON: cloak(function() {
         return {
           brands: brandsList,
           mobile: ${isMobile ? 'true' : 'false'},
           platform: ${JSON.stringify(clientPlatform)}
         };
-      }
+      }, 'toJSON')
     };
 
+    const uaDataGetter = cloakGetter(function() { return uaDataObj; }, 'userAgentData');
     Object.defineProperty(Navigator.prototype, 'userAgentData', {
-      get: function() { return uaDataObj; },
+      get: uaDataGetter,
       enumerable: true,
       configurable: true
     });
@@ -215,22 +236,22 @@ export function buildNavigatorScript(
         });
 
         Object.defineProperty(pluginsObj, 'length', { value: rawPlugins.length, enumerable: false });
-        Object.defineProperty(pluginsObj, 'item', { value: function(i) { return this[i] || null; } });
-        Object.defineProperty(pluginsObj, 'namedItem', { value: function(name) { return this[name] || null; } });
-        Object.defineProperty(pluginsObj, 'refresh', { value: function() {} });
+        Object.defineProperty(pluginsObj, 'item', { value: cloak(function(i) { return this[i] || null; }, 'item') });
+        Object.defineProperty(pluginsObj, 'namedItem', { value: cloak(function(name) { return this[name] || null; }, 'namedItem') });
+        Object.defineProperty(pluginsObj, 'refresh', { value: cloak(function() {}, 'refresh') });
 
         Object.defineProperty(mimeTypesObj, 'length', { value: rawMimes.length, enumerable: false });
-        Object.defineProperty(mimeTypesObj, 'item', { value: function(i) { return this[i] || null; } });
-        Object.defineProperty(mimeTypesObj, 'namedItem', { value: function(name) { return this[name] || null; } });
+        Object.defineProperty(mimeTypesObj, 'item', { value: cloak(function(i) { return this[i] || null; }, 'item') });
+        Object.defineProperty(mimeTypesObj, 'namedItem', { value: cloak(function(name) { return this[name] || null; }, 'namedItem') });
 
         Object.defineProperty(Navigator.prototype, 'plugins', {
-          get: function() { return pluginsObj; },
+          get: cloakGetter(function() { return pluginsObj; }, 'plugins'),
           enumerable: true,
           configurable: true
         });
 
         Object.defineProperty(Navigator.prototype, 'mimeTypes', {
-          get: function() { return mimeTypesObj; },
+          get: cloakGetter(function() { return mimeTypesObj; }, 'mimeTypes'),
           enumerable: true,
           configurable: true
         });

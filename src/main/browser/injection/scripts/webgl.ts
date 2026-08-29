@@ -33,6 +33,7 @@ export function buildWebGLScript(webgl: WebGLFingerprint): string {
 // ═══ WebGL Override ═══
 (function() {
   'use strict';
+  const cloak = window.__cloakFunction || function(f) { return f; };
   const UNMASKED_VENDOR = ${JSON.stringify(safeWebgl.unmaskedVendor)};
   const UNMASKED_RENDERER = ${JSON.stringify(safeWebgl.unmaskedRenderer)};
 
@@ -40,7 +41,7 @@ export function buildWebGLScript(webgl: WebGLFingerprint): string {
     if (!proto || !proto.getParameter) return;
     const origGetParam = proto.getParameter;
 
-    proto.getParameter = function(param) {
+    proto.getParameter = cloak(function(param) {
       // UNMASKED_VENDOR_WEBGL (0x9245)
       if (param === 0x9245 || param === 37445) return UNMASKED_VENDOR;
       // UNMASKED_RENDERER_WEBGL (0x9246)
@@ -51,7 +52,7 @@ export function buildWebGLScript(webgl: WebGLFingerprint): string {
       if (param === 0x1F01 || param === 7937) return ${JSON.stringify(safeWebgl.renderer)};
 
       return origGetParam.apply(this, arguments);
-    };
+    }, 'getParameter');
   }
 
   if (typeof WebGLRenderingContext !== 'undefined') {
