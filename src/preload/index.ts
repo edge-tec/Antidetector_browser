@@ -193,10 +193,10 @@ const api = {
     const token = maybeId ? sessionTokenOrId : getSavedToken()
     return ipcRenderer.invoke('profiles:disconnect-google', token, id)
   },
-  openProfileGmail: (sessionTokenOrId: string, maybeId?: string) => {
+  openProfileGmail: (sessionTokenOrId: string, maybeId?: string, openInSystemBrowser?: boolean) => {
     const id = maybeId || sessionTokenOrId
     const token = maybeId ? sessionTokenOrId : getSavedToken()
-    return ipcRenderer.invoke('profiles:open-gmail', token, id)
+    return ipcRenderer.invoke('profiles:open-gmail', token, id, openInSystemBrowser)
   },
   testProfileGmailApi: (sessionTokenOrId: string, maybeId?: string) => {
     const id = maybeId || sessionTokenOrId

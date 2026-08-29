@@ -52,14 +52,27 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     buildGeolocationScript(fingerprint.geolocation),
     buildTimezoneScript(fingerprint.timezone),
     buildWebRTCScript(fingerprint.webrtc),
-    buildGoogleRedirectBypassScript(),
-    buildGoogleAuthNoticeScript()
+    buildGoogleRedirectBypassScript()
   ]
 
-  // Wrap all scripts in a single IIFE with error isolation
+  // Wrap all scripts in a single IIFE with Safe Domain Policy & error isolation
   return `(function() {
   'use strict';
   try {
+    // ── Safe Domain Policy ──
+    // Preserve pristine native browser prototypes on Google Identity & Auth domains
+    // to prevent breaking legitimate browser sign-in and security challenges.
+    var h = (window.location && window.location.hostname) ? window.location.hostname.toLowerCase() : '';
+    if (
+      h === 'accounts.google.com' ||
+      h.endsWith('.accounts.google.com') ||
+      h === 'myaccount.google.com' ||
+      h === 'accounts.youtube.com' ||
+      h === 'oauth2.googleapis.com'
+    ) {
+      return;
+    }
+
     ${scripts.join('\n\n    ')}
   } catch(e) {
     // Silent failure — don't let injection errors break the page

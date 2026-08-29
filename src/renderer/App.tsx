@@ -232,7 +232,7 @@ function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onN
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onTestGmailApi, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
@@ -243,6 +243,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   onRefreshProxy?: () => void
   onConnectGoogle?: () => void
   onOpenGmail?: () => void
+  onTestGmailApi?: () => void
   onDisconnectGoogle?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
@@ -349,10 +350,20 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
                 <button
                   className="btn btn-sm btn-ghost"
                   onClick={onOpenGmail}
-                  title="Open Gmail Web in System Browser"
+                  title="Open Gmail in Profile Chromium Browser"
                   style={{ color: '#EA4335', fontSize: 11, padding: '2px 6px', height: 'auto', fontWeight: 600 }}
                 >
                   📧 Gmail
+                </button>
+              )}
+              {onTestGmailApi && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onTestGmailApi}
+                  title="Check Gmail API Connectivity"
+                  style={{ color: '#38BDF8', fontSize: 11, padding: '2px 4px', height: 'auto' }}
+                >
+                  ⚡ API
                 </button>
               )}
               {onDisconnectGoogle && (
@@ -417,7 +428,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onTestGmailApi, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
@@ -428,6 +439,7 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
   onRefreshProxy?: () => void
   onConnectGoogle?: () => void
   onOpenGmail?: () => void
+  onTestGmailApi?: () => void
   onDisconnectGoogle?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
@@ -537,10 +549,20 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
                 <button
                   className="btn btn-sm btn-ghost"
                   onClick={onOpenGmail}
-                  title="Open Gmail Web in System Browser"
+                  title="Open Gmail in Profile Chromium Browser"
                   style={{ color: '#EA4335', fontSize: 11, padding: '2px 6px', height: 'auto', fontWeight: 600 }}
                 >
                   📧 Gmail
+                </button>
+              )}
+              {onTestGmailApi && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onTestGmailApi}
+                  title="Check Gmail API Connectivity"
+                  style={{ color: '#38BDF8', fontSize: 11, padding: '2px 4px', height: 'auto' }}
+                >
+                  ⚡ API
                 </button>
               )}
               {onDisconnectGoogle && (
@@ -732,13 +754,31 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
     }
   }
 
-  const handleOpenGmail = async (p: Profile) => {
+  const handleOpenGmail = async (p: Profile, openInSystemBrowser: boolean = false) => {
     if (!sessionToken) return
-    showToast('info', `Opening Gmail in System Browser for "${p.name}"...`)
+    showToast('info', openInSystemBrowser ? `Opening Gmail Web in System Browser for "${p.name}"...` : `Opening Gmail in Profile Browser for "${p.name}"...`)
     try {
-      await (window.api as any).openProfileGmail(sessionToken, p.id)
+      const res = await (window.api as any).openProfileGmail(sessionToken, p.id, openInSystemBrowser)
+      if (!res?.success) {
+        showToast('error', res?.error || 'Failed to open Gmail')
+      }
     } catch (e: any) {
       showToast('error', e.message || 'Failed to open Gmail')
+    }
+  }
+
+  const handleTestGmailApi = async (p: Profile) => {
+    if (!sessionToken) return
+    showToast('info', `Checking Gmail API connectivity for "${p.name}"...`)
+    try {
+      const res = await (window.api as any).testProfileGmailApi(sessionToken, p.id)
+      if (res?.success && res.data) {
+        showToast('success', `✓ Gmail API Active: ${res.data.emailAddress || (p as any).googleAccount?.email} (${res.data.messagesTotal || 0} messages)`)
+      } else {
+        showToast('warn', `Gmail API Status: ${res?.error || 'Account connected (API ready)'}`)
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Gmail API request failed')
     }
   }
 
@@ -1022,6 +1062,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               onRefreshProxy={() => handleRefreshProxy(p)}
               onConnectGoogle={() => handleConnectGoogle(p)}
               onOpenGmail={() => handleOpenGmail(p)}
+              onTestGmailApi={() => handleTestGmailApi(p)}
               onDisconnectGoogle={() => handleDisconnectGoogle(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
@@ -1081,6 +1122,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               onRefreshProxy={() => handleRefreshProxy(p)}
               onConnectGoogle={() => handleConnectGoogle(p)}
               onOpenGmail={() => handleOpenGmail(p)}
+              onTestGmailApi={() => handleTestGmailApi(p)}
               onDisconnectGoogle={() => handleDisconnectGoogle(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',

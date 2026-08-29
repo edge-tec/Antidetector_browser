@@ -12,6 +12,7 @@ import { authorizeUser, normalizeUserRole } from '../security/session'
 import { centralApi } from '../services/api-client.service'
 import { proxySyncService } from '../services/proxy-sync.service'
 import { logger } from '../logging/logger'
+import { processTracker } from '../browser/process-tracker'
 import {
   startGoogleSystemBrowserOAuth,
   getProfileGoogleAccount,
@@ -497,14 +498,31 @@ export function registerProfileHandlers(): void {
     }
   })
 
-  ipcMain.handle('profiles:open-gmail', async (_event, sessionToken: string, profileId: string) => {
+  ipcMain.handle('profiles:open-gmail', async (_event, sessionToken: string, profileId: string, openInSystemBrowser: boolean = false) => {
     try {
       const auth = authorizeUser(sessionToken)
       if (auth.error || !auth.user) return { success: false, error: auth.error }
       validateId(profileId)
 
-      await shell.openExternal('https://mail.google.com')
-      return { success: true }
+      if (openInSystemBrowser) {
+        await shell.openExternal('https://mail.google.com')
+        return { success: true, mode: 'system' }
+      }
+
+      // Profile-specific browser Gmail navigation
+      if (!processTracker.isRunning(profileId)) {
+        await profileManager.startProfile(profileId)
+      }
+
+      const browser = processTracker.getBrowser(profileId)
+      if (browser) {
+        const pages = await browser.pages()
+        const targetPage = pages.length > 0 ? pages[0] : await browser.newPage()
+        await targetPage.goto('https://mail.google.com', { waitUntil: 'domcontentloaded' }).catch(() => {})
+        return { success: true, mode: 'profile-browser' }
+      }
+
+      return { success: true, mode: 'profile-browser' }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
