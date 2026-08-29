@@ -882,31 +882,6 @@ function ensureDatabaseTablesExist() {
         // Seed default CPA offers with explicit Package, Pricing & Landing Page mappings
         $defaultOffers = [
             [
-                'id' => 'offer_free',
-                'title' => 'AntiProfiles Free Forever Plan',
-                'description' => 'Entry-level free account with 3 browser profiles, basic proxy support, and standard fingerprint controls.',
-                'target_url' => '/offer/free',
-                'signup_url' => '/offer/free',
-                'landing_page_slug' => 'free',
-                'payout_type' => 'percentage',
-                'commission_rate' => 0.00,
-                'revshare_percent' => 0.00,
-                'fixed_payout_usd' => 0.00,
-                'package_id' => 'plan_free',
-                'package_name' => 'Free',
-                'price' => 0.00,
-                'original_price' => 0.00,
-                'discount_type' => 'none',
-                'discount_value' => 0.00,
-                'discounted_price' => 0.00,
-                'trial_days' => 0,
-                'trial_enabled' => 0,
-                'cta_text' => 'Start Free',
-                'badge_text' => 'FREE',
-                'billing_interval' => 'month',
-                'status' => 'active'
-            ],
-            [
                 'id' => 'offer_starter_license',
                 'title' => 'AntiProfiles Starter License',
                 'description' => 'Fixed $10.00 instant CPA payout per verified first-time starter license purchase ($19/mo package).',
@@ -982,101 +957,26 @@ function ensureDatabaseTablesExist() {
                 'status' => 'active'
             ],
             [
-                'id' => 'offer_pro_team',
-                'title' => 'AntiProfiles Pro + Team Plan',
-                'description' => 'Multi-seat team workspace with 50% lifetime recurring commissions ($49/mo).',
-                'target_url' => '/offer/pro-team',
-                'signup_url' => '/offer/pro-team',
-                'landing_page_slug' => 'pro-team',
+                'id' => 'offer_business',
+                'title' => 'AntiProfiles Enterprise Suite',
+                'description' => 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).',
+                'target_url' => '/offer/enterprise',
+                'signup_url' => '/offer/enterprise',
+                'landing_page_slug' => 'enterprise',
                 'payout_type' => 'revshare',
                 'commission_rate' => 50.00,
                 'revshare_percent' => 50.00,
                 'fixed_payout_usd' => 0.00,
-                'package_id' => 'plan_pro',
-                'package_name' => 'Professional Team',
-                'price' => 49.00,
-                'original_price' => 49.00,
+                'package_id' => 'plan_business',
+                'package_name' => 'Enterprise',
+                'price' => 99.00,
+                'original_price' => 99.00,
                 'discount_type' => 'none',
                 'discount_value' => 0.00,
-                'discounted_price' => 49.00,
-                'trial_days' => 7,
-                'trial_enabled' => 0,
-                'cta_text' => 'Subscribe Professional',
-                'badge_text' => 'MOST POPULAR',
-                'billing_interval' => 'month',
-                'status' => 'active'
-            ],
-            [
-                'id' => 'offer_enterprise_trial',
-                'title' => 'AntiProfiles Enterprise Trial',
-                'description' => 'Enterprise 7-day risk-free pilot with 50% recurring onboard commissions ($99/mo).',
-                'target_url' => '/offer/enterprise-trial',
-                'signup_url' => '/offer/enterprise-trial',
-                'landing_page_slug' => 'enterprise-trial',
-                'payout_type' => 'revshare',
-                'commission_rate' => 50.00,
-                'revshare_percent' => 50.00,
-                'fixed_payout_usd' => 0.00,
-                'package_id' => 'plan_business',
-                'package_name' => 'Enterprise Trial',
-                'price' => 99.00,
-                'original_price' => 149.00,
-                'discount_type' => 'percentage',
-                'discount_value' => 34.00,
-                'discounted_price' => 99.00,
-                'trial_days' => 7,
-                'trial_enabled' => 1,
-                'cta_text' => 'Start 7-Day Free Trial',
-                'badge_text' => 'BEST VALUE',
-                'billing_interval' => 'month',
-                'status' => 'active'
-            ],
-            [
-                'id' => 'offer_business',
-                'title' => 'AntiProfiles Business',
-                'description' => 'High-ticket 50% recurring onboarding commission on full Business subscriptions ($99/mo).',
-                'target_url' => '/offer/business',
-                'signup_url' => '/offer/business',
-                'landing_page_slug' => 'business',
-                'payout_type' => 'revshare',
-                'commission_rate' => 50.00,
-                'revshare_percent' => 50.00,
-                'fixed_payout_usd' => 0.00,
-                'package_id' => 'plan_business',
-                'package_name' => 'Business',
-                'price' => 99.00,
-                'original_price' => 149.00,
-                'discount_type' => 'percentage',
-                'discount_value' => 34.00,
                 'discounted_price' => 99.00,
                 'trial_days' => 7,
                 'trial_enabled' => 0,
-                'cta_text' => 'Subscribe Business',
-                'badge_text' => 'BEST VALUE',
-                'billing_interval' => 'month',
-                'status' => 'active'
-            ],
-            [
-                'id' => 'offer_business_custom',
-                'title' => 'AntiProfiles Custom Business',
-                'description' => 'Custom high-volume business licensing with dedicated infrastructure and 50% revenue share.',
-                'target_url' => '/offer/business-custom',
-                'signup_url' => '/offer/business-custom',
-                'landing_page_slug' => 'business-custom',
-                'payout_type' => 'revshare',
-                'commission_rate' => 50.00,
-                'revshare_percent' => 50.00,
-                'fixed_payout_usd' => 0.00,
-                'package_id' => 'plan_business',
-                'package_name' => 'Business',
-                'price' => 99.00,
-                'original_price' => 149.00,
-                'discount_type' => 'percentage',
-                'discount_value' => 34.00,
-                'discounted_price' => 99.00,
-                'trial_days' => 7,
-                'trial_enabled' => 0,
-                'cta_text' => 'Subscribe Business',
+                'cta_text' => 'Subscribe Enterprise',
                 'badge_text' => 'BEST VALUE',
                 'billing_interval' => 'month',
                 'status' => 'active'
@@ -1107,16 +1007,17 @@ function ensureDatabaseTablesExist() {
             }
         }
 
+        // Clean up legacy, redundant and inactive offers
+        try {
+            $db->exec("DELETE FROM `affiliate_offers` WHERE `id` IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free') OR `title` LIKE '%Starter Account Direct Bounty%' OR `title` LIKE '%Custom Business%' OR `title` LIKE '%Enterprise Trial%' OR `title` LIKE '%Pro + Team%'");
+        } catch (Throwable $e) {}
+
         // Auto-heal any legacy database rows with exact package-to-landing-page mappings
         try {
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_free', `package_name` = 'Free', `price` = 0.00, `original_price` = 0.00, `target_url` = '/offer/free', `signup_url` = '/offer/free', `landing_page_slug` = 'free', `cta_text` = 'Start Free', `badge_text` = 'FREE', `trial_enabled` = 0 WHERE `id` = 'offer_free' OR `title` LIKE '%Free%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter', `price` = 19.00, `original_price` = 19.00, `target_url` = '/offer/starter', `signup_url` = '/offer/starter', `landing_page_slug` = 'starter', `cta_text` = 'Subscribe Starter', `badge_text` = 'Starter', `trial_enabled` = 0 WHERE `id` = 'offer_starter' OR (`title` LIKE '%Starter%' AND `title` NOT LIKE '%License%' AND `title` NOT LIKE '%Bounty%')");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter License', `price` = 19.00, `original_price` = 19.00, `target_url` = '/offer/starter-license', `signup_url` = '/offer/starter-license', `landing_page_slug` = 'starter-license', `cta_text` = 'Subscribe Starter', `badge_text` = 'STARTER LICENSE', `trial_enabled` = 0 WHERE `id` IN ('offer_starter_license', 'offer_starter_bounty') OR `title` LIKE '%Starter License%' OR `title` LIKE '%Starter Account Direct Bounty%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional', `price` = 49.00, `original_price` = 49.00, `target_url` = '/offer/professional', `signup_url` = '/offer/professional', `landing_page_slug` = 'professional', `cta_text` = 'Subscribe Professional', `badge_text` = 'MOST POPULAR', `trial_enabled` = 0 WHERE `id` IN ('offer_main_saas', 'offer_pro') OR `title` LIKE '%Professional%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional Team', `price` = 49.00, `original_price` = 49.00, `target_url` = '/offer/pro-team', `signup_url` = '/offer/pro-team', `landing_page_slug` = 'pro-team', `cta_text` = 'Subscribe Professional', `badge_text` = 'MOST POPULAR', `trial_enabled` = 0 WHERE `id` IN ('offer_pro_team') OR `title` LIKE '%Pro & Team%' OR `title` LIKE '%Pro + Team%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Enterprise Trial', `price` = 99.00, `original_price` = 149.00, `target_url` = '/offer/enterprise-trial', `signup_url` = '/offer/enterprise-trial', `landing_page_slug` = 'enterprise-trial', `cta_text` = 'Start 7-Day Free Trial', `badge_text` = 'BEST VALUE', `trial_enabled` = 1 WHERE `id` IN ('offer_enterprise_trial') OR `title` LIKE '%Enterprise Custom Trial%' OR `title` LIKE '%Enterprise Trial%'");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Business', `price` = 99.00, `original_price` = 149.00, `target_url` = '/offer/business', `signup_url` = '/offer/business', `landing_page_slug` = 'business', `cta_text` = 'Subscribe Business', `badge_text` = 'BEST VALUE', `trial_enabled` = 0 WHERE `id` IN ('offer_business', 'offer_enterprise') OR `title` LIKE '%Business%' OR `title` LIKE '%Enterprise Suite%' OR (`title` LIKE '%Enterprise%' AND `title` NOT LIKE '%Trial%')");
-            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Custom Business', `price` = 99.00, `original_price` = 149.00, `target_url` = '/offer/business-custom', `signup_url` = '/offer/business-custom', `landing_page_slug` = 'business-custom', `cta_text` = 'Subscribe Business', `badge_text` = 'BEST VALUE', `trial_enabled` = 0 WHERE `id` IN ('offer_business_custom') OR `title` LIKE '%Custom Business%'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter License', `price` = 19.00, `original_price` = 19.00, `target_url` = '/offer/starter-license', `signup_url` = '/offer/starter-license', `landing_page_slug` = 'starter-license', `cta_text` = 'Subscribe Starter', `badge_text` = 'STARTER LICENSE', `status` = 'active', `trial_enabled` = 0 WHERE `id` = 'offer_starter_license'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_starter', `package_name` = 'Starter', `price` = 19.00, `original_price` = 19.00, `target_url` = '/offer/starter', `signup_url` = '/offer/starter', `landing_page_slug` = 'starter', `cta_text` = 'Subscribe Starter', `badge_text` = 'Starter', `status` = 'active', `trial_enabled` = 0 WHERE `id` = 'offer_starter'");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_pro', `package_name` = 'Professional', `price` = 49.00, `original_price` = 49.00, `target_url` = '/offer/professional', `signup_url` = '/offer/professional', `landing_page_slug` = 'professional', `cta_text` = 'Subscribe Professional', `badge_text` = 'MOST POPULAR', `status` = 'active', `trial_enabled` = 0 WHERE `id` IN ('offer_main_saas', 'offer_pro')");
+            $db->exec("UPDATE `affiliate_offers` SET `package_id` = 'plan_business', `package_name` = 'Enterprise', `price` = 99.00, `original_price` = 99.00, `target_url` = '/offer/enterprise', `signup_url` = '/offer/enterprise', `landing_page_slug` = 'enterprise', `cta_text` = 'Subscribe Enterprise', `badge_text` = 'BEST VALUE', `status` = 'active', `trial_enabled` = 0 WHERE `id` IN ('offer_business', 'offer_enterprise')");
         } catch (Throwable $e) {}
 
         // Seed Dynamic Landing Pages

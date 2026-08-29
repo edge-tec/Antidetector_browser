@@ -71,33 +71,29 @@ export function resolveOfferDetails(offer: any) {
     price = 19.00
     landingSlug = 'starter'
     targetUrl = '/offer/starter'
-  } else if (id === 'offer_enterprise_trial' || title.includes('enterprise custom trial') || title.includes('enterprise trial')) {
-    packageName = 'Enterprise Trial'
-    price = 99.00
-    landingSlug = 'enterprise-trial'
-    targetUrl = '/offer/enterprise-trial'
-  } else if (id === 'offer_business_custom' || title.includes('custom business')) {
-    packageName = 'Custom Business'
-    price = 99.00
-    landingSlug = 'business-custom'
-    targetUrl = '/offer/business-custom'
-  } else if (id === 'offer_business' || id.includes('enterprise') || pkgId === 'plan_business' || title.includes('enterprise') || title.includes('business')) {
+  } else if (id === 'offer_business' || id === 'offer_enterprise' || id.includes('enterprise') || pkgId === 'plan_business' || pkgId === 'plan_enterprise' || title.includes('enterprise') || title.includes('business')) {
     packageName = 'Enterprise'
     price = 99.00
     landingSlug = 'enterprise'
     targetUrl = '/offer/enterprise'
-  } else if (id === 'offer_pro_team' || title.includes('team')) {
-    packageName = 'Professional Team'
+  } else {
+    packageName = 'Professional'
     price = 49.00
-    landingSlug = 'pro-team'
-    targetUrl = '/offer/pro-team'
+    landingSlug = 'professional'
+    targetUrl = '/offer/professional'
   }
+
+  // Preserve explicit landing_page_slug if it does not equal the stale fallback
+  const explicitSlug = (offer?.landing_page_slug || '').trim()
+  const finalSlug = (explicitSlug && (id === 'offer_main_saas' || id === 'offer_pro' || explicitSlug !== 'professional'))
+    ? explicitSlug
+    : landingSlug
 
   return {
     packageName: offer?.package_name || packageName,
     price: offer?.price || price,
-    landingSlug: offer?.landing_page_slug || landingSlug,
-    targetUrl: offer?.signup_url || offer?.target_url || targetUrl
+    landingSlug: finalSlug,
+    targetUrl: offer?.target_url || `/offer/${finalSlug}`
   }
 }
 
@@ -154,40 +150,6 @@ const DEFAULT_FALLBACK_OFFERS: OfferItem[] = [
     status: 'active'
   },
   {
-    id: 'offer_pro_team',
-    title: 'AntiProfiles Pro + Team Plan',
-    description: 'Multi-seat team workspace with 50% lifetime recurring commissions ($49/mo).',
-    target_url: '/offer/pro-team',
-    signup_url: '/offer/pro-team',
-    landing_page_slug: 'pro-team',
-    payout_type: 'revshare',
-    commission_rate: 50.0,
-    revshare_percent: 50.0,
-    fixed_payout_usd: 0,
-    package_id: 'plan_pro',
-    package_name: 'Professional Team',
-    price: 49.00,
-    currency: 'USD',
-    status: 'active'
-  },
-  {
-    id: 'offer_enterprise_trial',
-    title: 'AntiProfiles Enterprise Trial',
-    description: 'Enterprise 7-day risk-free pilot with 50% recurring onboard commissions ($99/mo).',
-    target_url: '/offer/enterprise-trial',
-    signup_url: '/offer/enterprise-trial',
-    landing_page_slug: 'enterprise-trial',
-    payout_type: 'revshare',
-    commission_rate: 50.0,
-    revshare_percent: 50.0,
-    fixed_payout_usd: 0,
-    package_id: 'plan_business',
-    package_name: 'Enterprise Trial',
-    price: 99.00,
-    currency: 'USD',
-    status: 'active'
-  },
-  {
     id: 'offer_business',
     title: 'AntiProfiles Enterprise Suite',
     description: 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).',
@@ -200,23 +162,6 @@ const DEFAULT_FALLBACK_OFFERS: OfferItem[] = [
     fixed_payout_usd: 0,
     package_id: 'plan_business',
     package_name: 'Enterprise',
-    price: 99.00,
-    currency: 'USD',
-    status: 'active'
-  },
-  {
-    id: 'offer_business_custom',
-    title: 'AntiProfiles Custom Business',
-    description: 'Custom high-volume business licensing with dedicated infrastructure and 50% revenue share.',
-    target_url: '/offer/business-custom',
-    signup_url: '/offer/business-custom',
-    landing_page_slug: 'business-custom',
-    payout_type: 'revshare',
-    commission_rate: 50.0,
-    revshare_percent: 50.0,
-    fixed_payout_usd: 0,
-    package_id: 'plan_business',
-    package_name: 'Custom Business',
     price: 99.00,
     currency: 'USD',
     status: 'active'
@@ -339,16 +284,8 @@ export const ReferralDashboard: React.FC = () => {
 
   const getOfferLandingPageSlug = (off?: OfferItem): string => {
     if (!off) return 'professional'
-    if (off.landing_page_slug) return off.landing_page_slug
-    if (off.target_url) {
-      const clean = off.target_url.replace(/^\/offer\//, '').replace(/^\//, '')
-      if (clean) return clean
-    }
-    const pkg = (off.package_id || '').toLowerCase()
-    if (pkg.includes('starter')) return 'starter'
-    if (pkg.includes('business') || pkg.includes('enterprise')) return 'business'
-    if (pkg.includes('free')) return 'free'
-    return 'professional'
+    const details = resolveOfferDetails(off)
+    return details.landingSlug
   }
 
   const loadSummary = async (silent: boolean = false) => {
@@ -358,26 +295,35 @@ export const ReferralDashboard: React.FC = () => {
       if ((window as any).api?.affiliateGetUserSummary) {
         const res = await (window as any).api.affiliateGetUserSummary(uid)
         if (res?.success && res?.data) {
-          const offersList = (res.data.offers && res.data.offers.length > 0) ? res.data.offers : DEFAULT_FALLBACK_OFFERS
+          const rawOffers = Array.isArray(res.data.offers) ? res.data.offers : []
+          const activeOnly = rawOffers.filter((o: any) =>
+            o.status === 'active' &&
+            !['offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free'].includes(o.id)
+          )
+          const offersList = activeOnly.length > 0 ? activeOnly : DEFAULT_FALLBACK_OFFERS
           const updatedSummary = { ...res.data, offers: offersList }
           setSummary(updatedSummary)
           if (res.data.postbackConfig?.postback_url) {
             setPostbackUrl(res.data.postbackConfig.postback_url)
             setPostbackMethod(res.data.postbackConfig.http_method || 'GET')
           }
-          if (offersList.length > 0 && !selectedOfferForLink) {
-            const validOfferId = offersList.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : offersList[0].id
-            setSelectedOfferForLink(validOfferId)
-            handleGenerateLink(validOfferId, 'offer_default', updatedSummary)
-          }
+          const validOfferId = offersList.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : offersList[0].id
+          setSelectedOfferForLink(validOfferId)
+          handleGenerateLink(validOfferId, 'offer_default', updatedSummary)
         } else {
           // Fallback to fetching offers
           if ((window as any).api?.affiliateGetOffers) {
             const offersRes = await (window as any).api.affiliateGetOffers(true)
             if (offersRes?.success && Array.isArray(offersRes.data) && offersRes.data.length > 0) {
-              setSummary(prev => ({ ...prev, offers: offersRes.data }))
-              const validOfferId = offersRes.data.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : offersRes.data[0].id
+              const activeOnly = offersRes.data.filter((o: any) =>
+                o.status === 'active' &&
+                !['offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free'].includes(o.id)
+              )
+              const finalOffers = activeOnly.length > 0 ? activeOnly : DEFAULT_FALLBACK_OFFERS
+              setSummary(prev => ({ ...prev, offers: finalOffers }))
+              const validOfferId = finalOffers.some((o: any) => o.id === selectedOfferForLink) ? selectedOfferForLink : finalOffers[0].id
               setSelectedOfferForLink(validOfferId)
+              handleGenerateLink(validOfferId, 'offer_default')
             }
           }
         }
@@ -393,14 +339,12 @@ export const ReferralDashboard: React.FC = () => {
   const fallbackSuffix = cleanId.length >= 4 ? cleanId.slice(0, 6).toUpperCase() : (cleanId + '8888').slice(0, 6).toUpperCase()
 
   const rawRefCode = summary?.referralCode
-  const activeReferralCode = (rawRefCode && !rawRefCode.endsWith('_') && rawRefCode !== 'REF_USR' && rawRefCode !== 'REF_USER' && rawRefCode.length > 5)
-    ? rawRefCode
-    : `REF_${fallbackSuffix}`
+  const isRefInvalid = !rawRefCode || rawRefCode.includes('__') || rawRefCode.endsWith('_') || rawRefCode === 'REF_USR' || rawRefCode === 'REF_USER' || rawRefCode.startsWith('REF_USR_') || rawRefCode.length < 6
+  const activeReferralCode = !isRefInvalid ? rawRefCode : `REF_${fallbackSuffix}`
 
   const rawAffId = summary?.affiliateId
-  const activeAffiliateId = (rawAffId && !rawAffId.endsWith('_') && rawAffId !== 'AFF-USR' && rawAffId !== 'AFF-USER' && rawAffId.length > 5)
-    ? rawAffId
-    : `AFF-${fallbackSuffix}`
+  const isAffInvalid = !rawAffId || rawAffId.includes('__') || rawAffId.endsWith('_') || rawAffId === 'AFF-USR' || rawAffId === 'AFF-USER' || rawAffId.startsWith('AFF-USR_') || rawAffId.length < 6
+  const activeAffiliateId = !isAffInvalid ? rawAffId : `AFF-${fallbackSuffix}`
 
   const activeReferralLink = (summary?.referralLink && !summary.referralLink.endsWith('_') && !summary.referralLink.includes('REF_USR_'))
     ? summary.referralLink
@@ -483,27 +427,37 @@ export const ReferralDashboard: React.FC = () => {
 
     // Auto sync poller every 5 seconds for real-time background sync
     const poller = setInterval(() => {
-      loadSummary(true)
+      if (document.visibilityState === 'visible') {
+        loadSummary(true)
+      }
     }, 5000)
 
+    // Window focus and online listeners
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadSummary(true)
+      }
+    }
     const handleOnline = () => loadSummary(true)
+
+    window.addEventListener('focus', handleFocus)
     window.addEventListener('online', handleOnline)
 
     return () => {
+      if (unsubComm) unsubComm()
+      if (unsubRef) unsubRef()
+      if (unsubWith) unsubWith()
+      if (unsubSync) unsubSync()
+      if (unsubOffers) unsubOffers()
+      if (unsubClick) unsubClick()
+      if (unsubRealtime) unsubRealtime()
       clearInterval(poller)
+      window.removeEventListener('focus', handleFocus)
       window.removeEventListener('online', handleOnline)
-      unsubComm?.()
-      unsubRef?.()
-      unsubWith?.()
-      unsubSync?.()
-      unsubOffers?.()
-      unsubClick?.()
-      unsubRealtime?.()
     }
   }, [currentUser?.id])
 
-  const copyToClipboard = (text: string, isLink: boolean) => {
-    if (!text) return
+  const copyToClipboard = (text: string, isLink: boolean = true) => {
     navigator.clipboard.writeText(text)
     if (isLink) {
       setCopiedLink(true)
@@ -516,9 +470,12 @@ export const ReferralDashboard: React.FC = () => {
 
   const handleGenerateLink = async (offerId?: string, lpChoice?: string, currentSummaryState?: AffiliateSummary) => {
     const activeSummary = currentSummaryState || summary
-    const targetOfferId = offerId || selectedOfferForLink || activeSummary?.offers?.[0]?.id || 'offer_main_saas'
-    const uid = currentUser?.id || activeSummary?.affiliateId || 'admin-default'
-    const chosenOffer = (activeSummary?.offers || DEFAULT_FALLBACK_OFFERS).find(o => o.id === targetOfferId)
+    const allOffersList = (activeSummary?.offers && activeSummary.offers.length > 0)
+      ? activeSummary.offers.filter(o => o.status === 'active' && !['offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free'].includes(o.id))
+      : DEFAULT_FALLBACK_OFFERS
+    const targetOfferId = offerId || selectedOfferForLink || allOffersList[0]?.id || 'offer_main_saas'
+    const uid = currentUser?.id || activeAffiliateId || 'admin-default'
+    const chosenOffer = allOffersList.find(o => o.id === targetOfferId) || allOffersList[0]
     const offerSlug = getOfferLandingPageSlug(chosenOffer)
 
     const activeLp = lpChoice !== undefined ? lpChoice : selectedLandingPage
@@ -560,13 +517,12 @@ export const ReferralDashboard: React.FC = () => {
       }
 
       // Standalone / fallback local link generation
-      const affId = activeSummary?.affiliateId || (currentUser?.id ? `AFF-${currentUser.id.slice(0, 6).toUpperCase()}` : 'AFF-1001')
       const domain = 'https://antiprofiles.com'
       const params = new URLSearchParams({
-        aff_id: affId,
+        aff_id: activeAffiliateId,
         offer_id: targetOfferId
       })
-      if (resolvedLp) params.set('lp', resolvedLp.replace(/^\/offer\//, ''))
+      if (resolvedLp) params.set('landing_page', resolvedLp)
       if (customBilling && customBilling !== 'month') params.set('billing', customBilling)
       if (customSubId.trim()) params.set('sub_id1', customSubId.trim())
       if (customSubId2.trim()) params.set('sub_id2', customSubId2.trim())
@@ -973,8 +929,13 @@ export const ReferralDashboard: React.FC = () => {
               Select a CPA offer and landing page to generate your unique tracking URL with custom SubID tracking tags.
             </p>
             {(() => {
-              const allOffers = (summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS
-              const currentOfferObj = allOffers.find(o => o.id === selectedOfferForLink) || allOffers[0]
+              const rawOffers = (summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS
+              const allOffers = rawOffers.filter(o =>
+                o.status === 'active' &&
+                !['offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free'].includes(o.id)
+              )
+              const finalOffers = allOffers.length > 0 ? allOffers : DEFAULT_FALLBACK_OFFERS
+              const currentOfferObj = finalOffers.find(o => o.id === selectedOfferForLink) || finalOffers[0]
               const currentSlug = getOfferLandingPageSlug(currentOfferObj)
 
               return (
@@ -991,7 +952,7 @@ export const ReferralDashboard: React.FC = () => {
                         }}
                         style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '12px' }}
                       >
-                        {allOffers.map(o => {
+                        {finalOffers.map(o => {
                           const details = resolveOfferDetails(o)
                           const isRev = o.payout_type === 'percentage' || o.payout_type === 'revshare'
                           const rate = o.commission_rate !== undefined ? o.commission_rate : (o.revshare_percent !== undefined ? o.revshare_percent : 0)
@@ -1131,61 +1092,69 @@ export const ReferralDashboard: React.FC = () => {
 
           {/* Offers List */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
-            {((summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS).map(offer => {
-              const details = resolveOfferDetails(offer)
-              const isRev = offer.payout_type === 'percentage' || offer.payout_type === 'revshare'
-              const rate = offer.commission_rate !== undefined ? offer.commission_rate : (offer.revshare_percent !== undefined ? offer.revshare_percent : 0)
-              const badgeText = isRev ? `${rate}% RECURRING` : `$${Number(offer.fixed_payout_usd || 0).toFixed(2)} CPA FIXED`
-              const offerLpSlug = getOfferLandingPageSlug(offer)
-              return (
-                <div key={offer.id} style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                        {badgeText}
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#4ADE80', fontWeight: 600 }}>{offer.status === 'active' ? 'Active' : offer.status}</span>
-                    </div>
-                    <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#FFF' }}>{offer.title}</h4>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <span style={{ color: '#2DD4BF', fontWeight: 700 }}>
-                        Package: {details.packageName}
-                      </span>
-                      <span style={{ color: '#64748B' }}>•</span>
-                      <span style={{ color: '#F1F5F9', fontWeight: 600 }}>
-                        Price: ${details.price}/month
-                      </span>
-                      {offer.discount_value && offer.discount_value > 0 ? (
-                        <span style={{ color: '#4ADE80', fontSize: '10px', fontWeight: 700 }}>
-                          ({offer.discount_value}% OFF)
-                        </span>
-                      ) : null}
-                    </div>
-                    <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>
-                      {offer.description || 'Standard conversion offer for AntiProfiles products and subscriptions.'}
-                    </p>
-                  </div>
-
-                  <div style={{ borderTop: '1px solid #1E293B', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#38BDF8', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                      🎯 Landing: /offer/{offerLpSlug}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSelectedOfferForLink(offer.id)
-                        setSelectedLandingPage('offer_default')
-                        handleGenerateLink(offer.id, 'offer_default')
-                        const el = document.getElementById('cpaLinkBuilderCard')
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                      }}
-                      style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      ⚡ Create Link
-                    </button>
-                  </div>
-                </div>
+            {(() => {
+              const rawOffers = (summary?.offers && summary.offers.length > 0) ? summary.offers : DEFAULT_FALLBACK_OFFERS
+              const activeOffers = rawOffers.filter(o =>
+                o.status === 'active' &&
+                !['offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free'].includes(o.id)
               )
-            })}
+              const finalOffers = activeOffers.length > 0 ? activeOffers : DEFAULT_FALLBACK_OFFERS
+              return finalOffers.map(offer => {
+                const details = resolveOfferDetails(offer)
+                const isRev = offer.payout_type === 'percentage' || offer.payout_type === 'revshare'
+                const rate = offer.commission_rate !== undefined ? offer.commission_rate : (offer.revshare_percent !== undefined ? offer.revshare_percent : 0)
+                const badgeText = isRev ? `${rate}% RECURRING` : `$${Number(offer.fixed_payout_usd || 0).toFixed(2)} CPA FIXED`
+                const offerLpSlug = getOfferLandingPageSlug(offer)
+                return (
+                  <div key={offer.id} style={{ background: '#131826', border: '1px solid #1E293B', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                          {badgeText}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#4ADE80', fontWeight: 600 }}>{offer.status === 'active' ? 'Active' : offer.status}</span>
+                      </div>
+                      <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#FFF' }}>{offer.title}</h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <span style={{ color: '#2DD4BF', fontWeight: 700 }}>
+                          Package: {details.packageName}
+                        </span>
+                        <span style={{ color: '#64748B' }}>•</span>
+                        <span style={{ color: '#F1F5F9', fontWeight: 600 }}>
+                          Price: ${details.price}/month
+                        </span>
+                        {offer.discount_value && offer.discount_value > 0 ? (
+                          <span style={{ color: '#4ADE80', fontSize: '10px', fontWeight: 700 }}>
+                            ({offer.discount_value}% OFF)
+                          </span>
+                        ) : null}
+                      </div>
+                      <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>
+                        {offer.description || 'Standard conversion offer for AntiProfiles products and subscriptions.'}
+                      </p>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #1E293B', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', color: '#38BDF8', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                        🎯 Landing: /offer/{offerLpSlug}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSelectedOfferForLink(offer.id)
+                          setSelectedLandingPage('offer_default')
+                          handleGenerateLink(offer.id, 'offer_default')
+                          const el = document.getElementById('cpaLinkBuilderCard')
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        }}
+                        style={{ padding: '6px 12px', borderRadius: '6px', background: '#1E293B', color: '#38BDF8', border: '1px solid #334155', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        ⚡ Create Link
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
       )}

@@ -191,7 +191,7 @@ switch ($action) {
         } catch (Throwable $e) {}
 
         // Active CPA Offers
-        $stmtOffers = $db->prepare("SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC");
+        $stmtOffers = $db->prepare("SELECT * FROM affiliate_offers WHERE status = 'active' AND id NOT IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free') ORDER BY CASE id WHEN 'offer_starter_license' THEN 1 WHEN 'offer_starter' THEN 2 WHEN 'offer_main_saas' THEN 3 WHEN 'offer_business' THEN 4 ELSE 5 END ASC, created_at DESC");
         $offers = [];
         try {
             $stmtOffers->execute();
@@ -205,6 +205,7 @@ switch ($action) {
                     'description' => $o['description'] ?? '',
                     'target_url' => $o['target_url'] ?? '',
                     'signup_url' => $o['signup_url'] ?? '/signup',
+                    'landing_page_slug' => $o['landing_page_slug'] ?? '',
                     'payout_type' => $payoutType,
                     'commission_rate' => $rate,
                     'revshare_percent' => $rate,
@@ -256,7 +257,9 @@ switch ($action) {
 
     case 'get-offers':
         $onlyActive = !isset($_GET['all']) || $_GET['all'] !== '1';
-        $sql = $onlyActive ? "SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at ASC" : "SELECT * FROM affiliate_offers ORDER BY created_at ASC";
+        $sql = $onlyActive 
+            ? "SELECT * FROM affiliate_offers WHERE status = 'active' AND id NOT IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free') ORDER BY CASE id WHEN 'offer_starter_license' THEN 1 WHEN 'offer_starter' THEN 2 WHEN 'offer_main_saas' THEN 3 WHEN 'offer_business' THEN 4 ELSE 5 END ASC, created_at DESC"
+            : "SELECT * FROM affiliate_offers WHERE status != 'archived' AND id NOT IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free') ORDER BY CASE id WHEN 'offer_starter_license' THEN 1 WHEN 'offer_starter' THEN 2 WHEN 'offer_main_saas' THEN 3 WHEN 'offer_business' THEN 4 ELSE 5 END ASC, created_at DESC";
         $stmt = $db->prepare($sql);
         $stmt->execute();
         $rawOffers = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -267,12 +270,23 @@ switch ($action) {
                 'id' => $o['id'],
                 'title' => $o['title'],
                 'description' => $o['description'] ?? '',
-                'target_url' => $o['target_url'],
+                'target_url' => $o['target_url'] ?? '',
+                'signup_url' => $o['signup_url'] ?? '/signup',
+                'landing_page_slug' => $o['landing_page_slug'] ?? '',
                 'payout_type' => $payoutType,
                 'commission_rate' => $rate,
                 'revshare_percent' => $rate,
                 'fixed_payout_usd' => (float)($o['fixed_payout_usd'] ?? 0),
                 'currency' => $o['currency'] ?? 'USD',
+                'package_id' => $o['package_id'] ?? 'plan_pro',
+                'package_name' => $o['package_name'] ?? 'Professional',
+                'price' => (float)($o['price'] ?? 49.00),
+                'original_price' => (float)($o['original_price'] ?? 49.00),
+                'discount_type' => $o['discount_type'] ?? 'none',
+                'discount_value' => (float)($o['discount_value'] ?? 0),
+                'discounted_price' => (float)($o['discounted_price'] ?? 49.00),
+                'trial_days' => (int)($o['trial_days'] ?? 7),
+                'billing_interval' => $o['billing_interval'] ?? 'month',
                 'status' => $o['status'] ?? 'active'
             ];
         }, $rawOffers);

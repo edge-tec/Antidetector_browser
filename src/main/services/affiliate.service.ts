@@ -195,6 +195,93 @@ export class AffiliateService {
           );
         `)
       } catch {}
+
+      // Clean up legacy, redundant and inactive offers
+      try {
+        db.prepare(`
+          DELETE FROM affiliate_offers 
+          WHERE id IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free')
+             OR title LIKE '%Starter Account Direct Bounty%'
+             OR title LIKE '%Custom Business%'
+             OR title LIKE '%Enterprise Trial%'
+             OR title LIKE '%Pro + Team%'
+        `).run()
+      } catch {}
+
+      // Auto-heal active canonical CPA offers with correct package and landing page slugs
+      try {
+        db.prepare(`
+          UPDATE affiliate_offers SET
+            title = 'AntiProfiles Starter License',
+            description = 'Fixed $10.00 instant CPA payout per verified first-time starter license purchase ($19/mo package).',
+            target_url = '/offer/starter-license',
+            signup_url = '/offer/starter-license',
+            landing_page_slug = 'starter-license',
+            payout_type = 'fixed',
+            commission_rate = 0.0,
+            fixed_payout_usd = 10.0,
+            package_id = 'plan_starter',
+            package_name = 'Starter License',
+            price = 19.0,
+            original_price = 19.0,
+            status = 'active'
+          WHERE id = 'offer_starter_license'
+        `).run()
+
+        db.prepare(`
+          UPDATE affiliate_offers SET
+            title = 'AntiProfiles Starter Subscription',
+            description = 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).',
+            target_url = '/offer/starter',
+            signup_url = '/offer/starter',
+            landing_page_slug = 'starter',
+            payout_type = 'percentage',
+            commission_rate = 40.0,
+            fixed_payout_usd = 0.0,
+            package_id = 'plan_starter',
+            package_name = 'Starter',
+            price = 19.0,
+            original_price = 19.0,
+            status = 'active'
+          WHERE id = 'offer_starter'
+        `).run()
+
+        db.prepare(`
+          UPDATE affiliate_offers SET
+            title = 'AntiProfiles Professional',
+            description = 'Earn 50% lifetime recurring commissions on Professional browser subscription renewals ($49/mo).',
+            target_url = '/offer/professional',
+            signup_url = '/offer/professional',
+            landing_page_slug = 'professional',
+            payout_type = 'percentage',
+            commission_rate = 50.0,
+            fixed_payout_usd = 0.0,
+            package_id = 'plan_pro',
+            package_name = 'Professional',
+            price = 49.0,
+            original_price = 49.0,
+            status = 'active'
+          WHERE id = 'offer_main_saas' OR id = 'offer_pro'
+        `).run()
+
+        db.prepare(`
+          UPDATE affiliate_offers SET
+            title = 'AntiProfiles Enterprise Suite',
+            description = 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).',
+            target_url = '/offer/enterprise',
+            signup_url = '/offer/enterprise',
+            landing_page_slug = 'enterprise',
+            payout_type = 'percentage',
+            commission_rate = 50.0,
+            fixed_payout_usd = 0.0,
+            package_id = 'plan_business',
+            package_name = 'Enterprise',
+            price = 99.0,
+            original_price = 99.0,
+            status = 'active'
+          WHERE id = 'offer_business' OR id = 'offer_enterprise'
+        `).run()
+      } catch {}
     } catch {}
   }
 
@@ -208,42 +295,38 @@ export class AffiliateService {
     const map: Record<string, string> = {}
     rows.forEach(r => { map[r.key] = r.value })
 
-    let enabledMethods = ['crypto', 'wise', 'payoneer', 'apple_bank']
-    try {
-      if (map.enabled_payout_methods) {
-        enabledMethods = JSON.parse(map.enabled_payout_methods)
-      }
-    } catch {}
-
     return {
-      enabled: map.affiliate_system_enabled !== '0',
-      commission_rate_percent: parseFloat(map.commission_rate_percent || '10.0'),
-      holding_period_days: parseInt(map.holding_period_days || '7', 10),
-      min_withdrawal_usd: parseFloat(map.min_withdrawal_usd || '20.0'),
-      enabled_payout_methods: enabledMethods,
-      attribution_model: map.attribution_model || 'first_click',
-      self_referral_allowed: map.self_referral_allowed === '1',
-      system_domain: map.system_domain || 'https://antiprofiles.com'
+      affiliate_system_enabled: (map['affiliate_system_enabled'] || 'true') === 'true',
+      default_commission_rate: parseFloat(map['default_commission_rate'] || '15'),
+      min_withdrawal_usd: parseFloat(map['min_withdrawal_usd'] || '50'),
+      holding_period_days: parseInt(map['holding_period_days'] || '7', 10),
+      cookie_duration_days: parseInt(map['cookie_duration_days'] || '30', 10),
+      enabled_payout_methods: map['enabled_payout_methods'] ? JSON.parse(map['enabled_payout_methods']) : ['crypto', 'wise', 'payoneer', 'apple_bank'],
+      system_domain: map['system_domain'] || 'https://antiprofiles.com'
     }
   }
 
-  public saveSettings(settings: Partial<AffiliateSettings>, adminUserId: string = 'admin-default'): AffiliateSettings {
+  public updateSettings(settings: Partial<AffiliateSettings>, adminUserId: string = 'admin-default'): AffiliateSettings {
     const db = getDatabase()
-    if (settings.enabled !== undefined) {
+    if (settings.affiliate_system_enabled !== undefined) {
       db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('affiliate_system_enabled', ?, datetime('now'))")
-        .run(settings.enabled ? '1' : '0')
+        .run(String(settings.affiliate_system_enabled))
     }
-    if (settings.commission_rate_percent !== undefined) {
-      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('commission_rate_percent', ?, datetime('now'))")
-        .run(String(settings.commission_rate_percent))
+    if (settings.default_commission_rate !== undefined) {
+      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('default_commission_rate', ?, datetime('now'))")
+        .run(String(settings.default_commission_rate))
+    }
+    if (settings.min_withdrawal_usd !== undefined) {
+      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('min_withdrawal_usd', ?, datetime('now'))")
+        .run(String(settings.min_withdrawal_usd))
     }
     if (settings.holding_period_days !== undefined) {
       db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('holding_period_days', ?, datetime('now'))")
         .run(String(settings.holding_period_days))
     }
-    if (settings.min_withdrawal_usd !== undefined) {
-      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('min_withdrawal_usd', ?, datetime('now'))")
-        .run(String(settings.min_withdrawal_usd))
+    if (settings.cookie_duration_days !== undefined) {
+      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('cookie_duration_days', ?, datetime('now'))")
+        .run(String(settings.cookie_duration_days))
     }
     if (settings.enabled_payout_methods !== undefined) {
       db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('enabled_payout_methods', ?, datetime('now'))")
@@ -274,7 +357,7 @@ export class AffiliateService {
     const cleanId = (userId || 'PARTNER').replace(/^usr_/i, '').replace(/[^a-zA-Z0-9]/g, '')
     const defaultSuffix = cleanId.length >= 4 ? cleanId.slice(0, 6).toUpperCase() : (cleanId + '8888').slice(0, 6).toUpperCase()
 
-    const isInvalidRefCode = !refCode || refCode.endsWith('_') || refCode === 'REF_USR' || refCode === 'REF_USER' || refCode.length < 6
+    const isInvalidRefCode = !refCode || refCode.includes('__') || refCode.endsWith('_') || refCode === 'REF_USR' || refCode === 'REF_USER' || refCode.startsWith('REF_USR_') || refCode.length < 6
     if (isInvalidRefCode) {
       refCode = 'REF_' + defaultSuffix
       if (user) {
@@ -282,7 +365,7 @@ export class AffiliateService {
       }
     }
 
-    const isInvalidAffId = !affId || affId.endsWith('_') || affId === 'AFF-USR' || affId === 'AFF-USER' || affId.length < 6
+    const isInvalidAffId = !affId || affId.includes('__') || affId.endsWith('_') || affId === 'AFF-USR' || affId === 'AFF-USER' || affId.startsWith('AFF-USR_') || affId.length < 6
     if (isInvalidAffId) {
       affId = 'AFF-' + (refCode ? refCode.replace(/^REF_/, '') : defaultSuffix)
       if (user) {
@@ -329,11 +412,11 @@ export class AffiliateService {
         const db = getDatabase()
         const upsert = db.prepare(`
           INSERT INTO affiliate_offers (
-            id, title, description, target_url, signup_url, payout_type,
+            id, title, description, target_url, signup_url, landing_page_slug, payout_type,
             commission_rate, fixed_payout_usd, package_id, package_name, price,
             original_price, discount_type, discount_value, discounted_price, trial_days, status, updated_at
           ) VALUES (
-            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, datetime('now')
           )
@@ -342,6 +425,7 @@ export class AffiliateService {
             description = excluded.description,
             target_url = excluded.target_url,
             signup_url = excluded.signup_url,
+            landing_page_slug = excluded.landing_page_slug,
             payout_type = excluded.payout_type,
             commission_rate = excluded.commission_rate,
             fixed_payout_usd = excluded.fixed_payout_usd,
@@ -359,12 +443,16 @@ export class AffiliateService {
 
         const tx = db.transaction(() => {
           for (const off of res.data) {
+            if (['offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free'].includes(off.id)) {
+              continue
+            }
             upsert.run(
               off.id,
               off.title,
               off.description || '',
               off.target_url || off.targetUrl || '/offer/professional',
               off.signup_url || off.signupUrl || '/register',
+              off.landing_page_slug || off.landingPageSlug || 'professional',
               off.payout_type || off.payoutType || 'percentage',
               off.commission_rate ?? off.commissionRate ?? 50.0,
               off.fixed_payout_usd ?? off.fixedPayoutUsd ?? 0.0,
@@ -461,16 +549,24 @@ export class AffiliateService {
         deletedOfferIds = JSON.parse(deletedRow.value)
       }
     } catch {}
+
+    // Clean legacy / inactive offer IDs
+    try {
+      db.prepare(`
+        DELETE FROM affiliate_offers 
+        WHERE id IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free')
+           OR title LIKE '%Starter Account Direct Bounty%'
+           OR title LIKE '%Custom Business%'
+           OR title LIKE '%Enterprise Trial%'
+           OR title LIKE '%Pro + Team%'
+      `).run()
+    } catch {}
     
     const defaultOffersToSeed = [
-      ['offer_starter_license', 'AntiProfiles Starter License', 'Fixed $10.00 instant CPA payout per verified first-time starter license purchase ($19/mo package).', '/offer/starter-license', '/offer/starter-license', 'fixed', 0.0, 10.0, 'plan_starter', 'Starter License', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'],
-      ['offer_starter', 'AntiProfiles Starter Subscription', 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).', '/offer/starter', '/offer/starter', 'percentage', 40.0, 0.0, 'plan_starter', 'Starter', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'],
-      ['offer_main_saas', 'AntiProfiles Professional', 'Earn 50% lifetime recurring commissions on Professional browser subscription renewals ($49/mo).', '/offer/professional', '/offer/professional', 'percentage', 50.0, 0.0, 'plan_pro', 'Professional', 49.0, 49.0, 'none', 0.0, 49.0, 7, 'active'],
-      ['offer_pro_team', 'AntiProfiles Pro + Team Plan', 'Multi-seat team workspace with 50% lifetime recurring commissions ($49/mo).', '/offer/pro-team', '/offer/pro-team', 'percentage', 50.0, 0.0, 'plan_pro', 'Professional Team', 49.0, 49.0, 'none', 0.0, 49.0, 7, 'active'],
-      ['offer_enterprise_trial', 'AntiProfiles Enterprise Trial', 'Enterprise 7-day risk-free pilot with 50% recurring onboard commissions ($99/mo).', '/offer/enterprise-trial', '/offer/enterprise-trial', 'percentage', 50.0, 0.0, 'plan_business', 'Enterprise Trial', 99.0, 99.0, 'none', 0.0, 99.0, 7, 'active'],
-      ['offer_business', 'AntiProfiles Enterprise Suite', 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).', '/offer/enterprise', '/offer/enterprise', 'percentage', 50.0, 0.0, 'plan_business', 'Enterprise', 99.0, 99.0, 'none', 0.0, 99.0, 7, 'active'],
-      ['offer_business_custom', 'AntiProfiles Custom Business', 'Custom high-volume business licensing with dedicated infrastructure and 50% revenue share.', '/offer/business-custom', '/offer/business-custom', 'percentage', 50.0, 0.0, 'plan_business', 'Custom Business', 99.0, 99.0, 'none', 0.0, 99.0, 7, 'active'],
-      ['offer_starter_bounty', 'AntiProfiles Starter Account Direct Bounty', 'Earn a $10.00 instant CPA bounty for every newly verified paying user.', '/offer/starter-license', '/offer/starter-license', 'fixed', 0.0, 10.0, 'plan_starter', 'Starter License', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active']
+      ['offer_starter_license', 'AntiProfiles Starter License', 'Fixed $10.00 instant CPA payout per verified first-time starter license purchase ($19/mo package).', '/offer/starter-license', '/offer/starter-license', 'starter-license', 'fixed', 0.0, 10.0, 'plan_starter', 'Starter License', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'],
+      ['offer_starter', 'AntiProfiles Starter Subscription', 'Standard 40% recurring conversion offer for AntiProfiles Starter package ($19/mo).', '/offer/starter', '/offer/starter', 'starter', 'percentage', 40.0, 0.0, 'plan_starter', 'Starter', 19.0, 19.0, 'none', 0.0, 19.0, 7, 'active'],
+      ['offer_main_saas', 'AntiProfiles Professional', 'Earn 50% lifetime recurring commissions on Professional browser subscription renewals ($49/mo).', '/offer/professional', '/offer/professional', 'professional', 'percentage', 50.0, 0.0, 'plan_pro', 'Professional', 49.0, 49.0, 'none', 0.0, 49.0, 7, 'active'],
+      ['offer_business', 'AntiProfiles Enterprise Suite', 'High-ticket 50% recurring onboarding commission on full Enterprise subscriptions ($99/mo).', '/offer/enterprise', '/offer/enterprise', 'enterprise', 'percentage', 50.0, 0.0, 'plan_business', 'Enterprise', 99.0, 99.0, 'none', 0.0, 99.0, 7, 'active']
     ]
 
     for (const dof of defaultOffersToSeed) {
@@ -478,17 +574,25 @@ export class AffiliateService {
       try {
         db.prepare(`
           INSERT INTO affiliate_offers (
-            id, title, description, target_url, signup_url, payout_type, commission_rate, fixed_payout_usd,
+            id, title, description, target_url, signup_url, landing_page_slug, payout_type, commission_rate, fixed_payout_usd,
             package_id, package_name, price, original_price, discount_type, discount_value, discounted_price, trial_days, status, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-          ON CONFLICT(id) DO NOTHING
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+          ON CONFLICT(id) DO UPDATE SET
+            landing_page_slug = excluded.landing_page_slug,
+            target_url = excluded.target_url,
+            signup_url = excluded.signup_url,
+            package_name = excluded.package_name,
+            package_id = excluded.package_id,
+            price = excluded.price,
+            original_price = excluded.original_price,
+            status = excluded.status
         `).run(...dof)
       } catch {}
     }
 
     const query = onlyActive
-      ? "SELECT * FROM affiliate_offers WHERE status = 'active' ORDER BY created_at DESC"
-      : "SELECT * FROM affiliate_offers WHERE status != 'archived' ORDER BY created_at DESC"
+      ? `SELECT * FROM affiliate_offers WHERE status = 'active' AND id NOT IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free') ORDER BY CASE id WHEN 'offer_starter_license' THEN 1 WHEN 'offer_starter' THEN 2 WHEN 'offer_main_saas' THEN 3 WHEN 'offer_business' THEN 4 ELSE 5 END ASC, created_at DESC`
+      : `SELECT * FROM affiliate_offers WHERE status != 'archived' AND id NOT IN ('offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free') ORDER BY CASE id WHEN 'offer_starter_license' THEN 1 WHEN 'offer_starter' THEN 2 WHEN 'offer_main_saas' THEN 3 WHEN 'offer_business' THEN 4 ELSE 5 END ASC, created_at DESC`
     const offers = db.prepare(query).all() as AffiliateOffer[]
     return offers
   }
