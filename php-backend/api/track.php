@@ -43,7 +43,10 @@ try {
     if ($offer) {
         $resolvedOfferId = $offer['id'];
         $targetPlan = !empty($offer['package_id']) ? $offer['package_id'] : $targetPlan;
-        
+    }
+} catch (Exception $e) {
+    // Ignore and proceed with defaults
+}
 // Determine Landing Page & Destination URL based on Offer and Query Params
 $customLp = trim($_GET['lp'] ?? ($_GET['landing_page'] ?? ($_GET['target_url'] ?? ($_GET['url'] ?? ''))));
 $landingPageSlug = '';
