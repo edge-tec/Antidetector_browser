@@ -15,7 +15,8 @@ import { logger } from '../logging/logger'
 import {
   startGoogleSystemBrowserOAuth,
   getProfileGoogleAccount,
-  disconnectProfileGoogleAccount
+  disconnectProfileGoogleAccount,
+  callGmailApi
 } from '../security/google-oauth-loopback'
 
 function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string; locked?: boolean; expired?: boolean } {
@@ -504,6 +505,19 @@ export function registerProfileHandlers(): void {
 
       await shell.openExternal('https://mail.google.com')
       return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:test-gmail-api', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const apiResult = await callGmailApi(profileId, 'users/me/profile')
+      return apiResult
     } catch (err: any) {
       return { success: false, error: err.message }
     }

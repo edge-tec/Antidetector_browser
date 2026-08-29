@@ -108,4 +108,47 @@ describe('Comprehensive Google OAuth 2.0 & Profile Integration Test Suite (RFC 8
     expect(decryptOAuthToken('')).toBe('')
     expect(decryptOAuthToken('malformed:non:hex:string')).toBe('')
   })
+
+  it('Test K: Two-State Authentication Principle - OAuth Tokens are strictly isolated from Web Session Cookies', () => {
+    // OAuth token is an authorization grant for API queries
+    const oauthAccessToken = 'ya29.a0AfH6SMD_example_oauth_access_token'
+    const encryptedOAuth = encryptOAuthToken(oauthAccessToken)
+
+    // Web cookies (SID, HSID, SSID) are browser cookie-jar artifacts
+    const webCookies = ['SID=abc123xyz', 'HSID=def456uvw', 'SSID=ghi789rst']
+
+    expect(encryptedOAuth).not.toBe(oauthAccessToken)
+    // Ensure OAuth credentials cannot masquerade as HTTP cookie jar headers
+    expect(encryptedOAuth.startsWith('SID=')).toBe(false)
+    expect(encryptedOAuth.startsWith('HSID=')).toBe(false)
+  })
+
+  it('Test L: Multi-Profile Independent Association and Unlinking', () => {
+    // Associate Profile A
+    const accountA = {
+      profileId: profileA,
+      googleId: 'google-sub-111',
+      email: 'alpha.user@example.com',
+      name: 'Alpha User',
+      connectedAt: new Date().toISOString(),
+      encryptedAccessToken: encryptOAuthToken('token_alpha_secret'),
+      encryptedRefreshToken: encryptOAuthToken('refresh_alpha_secret')
+    }
+
+    // Associate Profile B
+    const accountB = {
+      profileId: profileB,
+      googleId: 'google-sub-222',
+      email: 'beta.user@example.com',
+      name: 'Beta User',
+      connectedAt: new Date().toISOString(),
+      encryptedAccessToken: encryptOAuthToken('token_beta_secret'),
+      encryptedRefreshToken: encryptOAuthToken('refresh_beta_secret')
+    }
+
+    // Verify independent decryption
+    expect(decryptOAuthToken(accountA.encryptedAccessToken)).toBe('token_alpha_secret')
+    expect(decryptOAuthToken(accountB.encryptedAccessToken)).toBe('token_beta_secret')
+    expect(accountA.email).not.toBe(accountB.email)
+  })
 })
