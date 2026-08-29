@@ -1229,16 +1229,24 @@ switch ($action) {
         $admin = requireAdmin();
 
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $enabled = isset($input['enabled']) ? ($input['enabled'] ? '1' : '0') : '1';
-        $defaultRate = (float)($input['default_commission_rate'] ?? 15.0);
-        $minPayout = (float)($input['min_payout_usd'] ?? 50.0);
+        $enabled = isset($input['enabled']) ? ($input['enabled'] ? '1' : '0') : (isset($input['affiliate_system_enabled']) ? ($input['affiliate_system_enabled'] ? '1' : '0') : '1');
+        $defaultRate = (float)($input['commission_rate_percent'] ?? $input['default_commission_rate'] ?? 15.0);
+        $minPayout = (float)($input['min_withdrawal_usd'] ?? $input['min_payout_usd'] ?? 20.0);
         $cookieDays = (int)($input['cookie_duration_days'] ?? 30);
+        $holdingDays = (int)($input['holding_period_days'] ?? 7);
+        $systemDomain = trim($input['system_domain'] ?? 'https://antiprofiles.com');
 
         $settings = [
             'affiliate_system_enabled' => $enabled,
             'affiliate_default_commission_rate' => (string)$defaultRate,
+            'default_commission_rate' => (string)$defaultRate,
+            'commission_rate_percent' => (string)$defaultRate,
             'affiliate_min_payout_usd' => (string)$minPayout,
-            'affiliate_cookie_duration_days' => (string)$cookieDays
+            'min_withdrawal_usd' => (string)$minPayout,
+            'affiliate_cookie_duration_days' => (string)$cookieDays,
+            'cookie_duration_days' => (string)$cookieDays,
+            'holding_period_days' => (string)$holdingDays,
+            'system_domain' => $systemDomain
         ];
 
         foreach ($settings as $k => $v) {
@@ -1246,7 +1254,25 @@ switch ($action) {
             $stmt->execute([$k, $v]);
         }
 
-        respondJson(['success' => true, 'message' => 'Affiliate global system settings saved successfully.']);
+        // Also insert into affiliate_settings table if it exists
+        try {
+            foreach ($settings as $k => $v) {
+                $stmtAff = $db->prepare("INSERT INTO affiliate_settings (`key`, `value`, `updated_at`) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = NOW()");
+                $stmtAff->execute([$k, $v]);
+            }
+        } catch (Throwable $e) {}
+
+        respondJson([
+            'success' => true,
+            'message' => 'Affiliate global system settings saved successfully.',
+            'data' => [
+                'enabled' => $enabled === '1',
+                'commission_rate_percent' => $defaultRate,
+                'min_withdrawal_usd' => $minPayout,
+                'holding_period_days' => $holdingDays,
+                'system_domain' => $systemDomain
+            ]
+        ]);
         break;
 
     default:

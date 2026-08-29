@@ -289,36 +289,55 @@ export class AffiliateService {
   // 1. Settings Management
   // ──────────────────────────────────────────────
 
-  public getSettings(): AffiliateSettings {
+  public getSettings(): any {
     const db = getDatabase()
     const rows = db.prepare('SELECT key, value FROM affiliate_settings').all() as { key: string; value: string }[]
     const map: Record<string, string> = {}
     rows.forEach(r => { map[r.key] = r.value })
 
+    const enabled = (map['affiliate_system_enabled'] || map['enabled'] || 'true') === 'true'
+    const commissionRate = parseFloat(map['default_commission_rate'] || map['commission_rate_percent'] || '15')
+    const minWithdrawal = parseFloat(map['min_withdrawal_usd'] || map['min_payout_usd'] || '20')
+    const holdingDays = parseInt(map['holding_period_days'] || '7', 10)
+    const cookieDays = parseInt(map['cookie_duration_days'] || '30', 10)
+    const systemDomain = map['system_domain'] || 'https://antiprofiles.com'
+
     return {
-      affiliate_system_enabled: (map['affiliate_system_enabled'] || 'true') === 'true',
-      default_commission_rate: parseFloat(map['default_commission_rate'] || '15'),
-      min_withdrawal_usd: parseFloat(map['min_withdrawal_usd'] || '50'),
-      holding_period_days: parseInt(map['holding_period_days'] || '7', 10),
-      cookie_duration_days: parseInt(map['cookie_duration_days'] || '30', 10),
+      enabled,
+      affiliate_system_enabled: enabled,
+      commission_rate_percent: commissionRate,
+      default_commission_rate: commissionRate,
+      min_withdrawal_usd: minWithdrawal,
+      holding_period_days: holdingDays,
+      cookie_duration_days: cookieDays,
       enabled_payout_methods: map['enabled_payout_methods'] ? JSON.parse(map['enabled_payout_methods']) : ['crypto', 'wise', 'payoneer', 'apple_bank'],
-      system_domain: map['system_domain'] || 'https://antiprofiles.com'
+      system_domain: systemDomain
     }
   }
 
-  public updateSettings(settings: Partial<AffiliateSettings>, adminUserId: string = 'admin-default'): AffiliateSettings {
+  public updateSettings(settings: any, adminUserId: string = 'admin-default'): AffiliateSettings {
     const db = getDatabase()
-    if (settings.affiliate_system_enabled !== undefined) {
+    const enabled = settings.enabled !== undefined ? settings.enabled : (settings.affiliate_system_enabled !== undefined ? settings.affiliate_system_enabled : undefined)
+    const rate = settings.commission_rate_percent !== undefined ? settings.commission_rate_percent : settings.default_commission_rate
+
+    if (enabled !== undefined) {
       db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('affiliate_system_enabled', ?, datetime('now'))")
-        .run(String(settings.affiliate_system_enabled))
+        .run(String(enabled))
+      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('enabled', ?, datetime('now'))")
+        .run(String(enabled))
     }
-    if (settings.default_commission_rate !== undefined) {
+    if (rate !== undefined) {
       db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('default_commission_rate', ?, datetime('now'))")
-        .run(String(settings.default_commission_rate))
+        .run(String(rate))
+      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('commission_rate_percent', ?, datetime('now'))")
+        .run(String(rate))
     }
-    if (settings.min_withdrawal_usd !== undefined) {
+    if (settings.min_withdrawal_usd !== undefined || settings.min_payout_usd !== undefined) {
+      const minVal = String(settings.min_withdrawal_usd !== undefined ? settings.min_withdrawal_usd : settings.min_payout_usd)
       db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('min_withdrawal_usd', ?, datetime('now'))")
-        .run(String(settings.min_withdrawal_usd))
+        .run(minVal)
+      db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('min_payout_usd', ?, datetime('now'))")
+        .run(minVal)
     }
     if (settings.holding_period_days !== undefined) {
       db.prepare("INSERT OR REPLACE INTO affiliate_settings (key, value, updated_at) VALUES ('holding_period_days', ?, datetime('now'))")
@@ -340,6 +359,19 @@ export class AffiliateService {
     this.recordAuditLog('settings_updated', adminUserId, 'global_settings', JSON.stringify(settings))
     logger.info('affiliate', '[AffiliateService] Updated global affiliate settings.')
     return this.getSettings()
+  }
+
+  public saveSettings(settings: any, adminUserId: string = 'admin-default'): AffiliateSettings {
+    const mapped: Partial<AffiliateSettings> = {
+      affiliate_system_enabled: settings.enabled !== undefined ? settings.enabled : (settings.affiliate_system_enabled !== undefined ? settings.affiliate_system_enabled : undefined),
+      default_commission_rate: settings.commission_rate_percent !== undefined ? Number(settings.commission_rate_percent) : (settings.default_commission_rate !== undefined ? Number(settings.default_commission_rate) : undefined),
+      min_withdrawal_usd: settings.min_withdrawal_usd !== undefined ? Number(settings.min_withdrawal_usd) : (settings.min_payout_usd !== undefined ? Number(settings.min_payout_usd) : undefined),
+      holding_period_days: settings.holding_period_days !== undefined ? Number(settings.holding_period_days) : undefined,
+      cookie_duration_days: settings.cookie_duration_days !== undefined ? Number(settings.cookie_duration_days) : undefined,
+      enabled_payout_methods: settings.enabled_payout_methods,
+      system_domain: settings.system_domain
+    }
+    return this.updateSettings(mapped, adminUserId)
   }
 
   // ──────────────────────────────────────────────
