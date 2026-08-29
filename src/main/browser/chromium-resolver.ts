@@ -615,7 +615,8 @@ export function ensureProfileDataDir(profileId: string): string {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
-  // Clear any stale Chromium singleton locks and socket files that cause launch failures
+
+  // 1. Clear any stale Chromium singleton locks and socket files that cause launch failures
   const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile', 'parent.lock', '.parentlock']
   for (const f of lockFiles) {
     try {
@@ -626,6 +627,36 @@ export function ensureProfileDataDir(profileId: string): string {
       }
     } catch {}
   }
+
+  // 2. Clear corrupted zero-byte DBs or corrupted lock journals in Default directory
+  const defaultDir = path.join(dir, 'Default')
+  if (fs.existsSync(defaultDir)) {
+    // If Bookmarks has a corrupted fake 32-zero checksum, remove it
+    const bmPath = path.join(defaultDir, 'Bookmarks')
+    if (fs.existsSync(bmPath)) {
+      try {
+        const rawBm = fs.readFileSync(bmPath, 'utf8')
+        if (rawBm.includes('"00000000000000000000000000000000"') || rawBm.trim() === '') {
+          fs.rmSync(bmPath, { force: true })
+        }
+      } catch {}
+    }
+
+    // Remove any zero-byte database files or orphaned lock journals that trigger ProfileErrorDialog
+    const dbFiles = ['Web Data', 'Web Data-journal', 'History', 'History-journal', 'Cookies', 'Cookies-journal', 'Login Data', 'Login Data-journal', 'Shortcuts', 'Shortcuts-journal', 'Top Sites', 'Top Sites-journal']
+    for (const dbFile of dbFiles) {
+      try {
+        const target = path.join(defaultDir, dbFile)
+        if (fs.existsSync(target)) {
+          const stats = fs.statSync(target)
+          if (stats.size === 0 || dbFile.endsWith('-journal')) {
+            fs.rmSync(target, { force: true })
+          }
+        }
+      } catch {}
+    }
+  }
+
   return dir
 }
 

@@ -4,6 +4,7 @@
 // ──────────────────────────────────────────────────────────────────
 
 import { spawn, execSync, ChildProcess } from 'child_process'
+import crypto from 'crypto'
 import fs from 'fs'
 import net from 'net'
 import path from 'path'
@@ -497,25 +498,41 @@ function setupProfileBookmarks(userDataDir: string, bookmarks: Array<{ title: st
       url: b.url.startsWith('http') ? b.url : `https://${b.url}`
     }))
 
-    const bookmarksJson = {
-      checksum: '00000000000000000000000000000000',
-      roots: {
-        bookmark_bar: {
-          children: bookmarkNodes,
-          date_added: '13300000000000000',
-          date_modified: '13300000000000000',
-          id: '1',
-          name: 'Bookmarks bar',
-          type: 'folder'
-        },
-        other: { children: [], date_added: '13300000000000000', date_modified: '0', id: '2', name: 'Other bookmarks', type: 'folder' },
-        synced: { children: [], date_added: '13300000000000000', date_modified: '0', id: '3', name: 'Mobile bookmarks', type: 'folder' }
+    const roots: any = {
+      bookmark_bar: {
+        children: bookmarkNodes,
+        date_added: '13300000000000000',
+        date_modified: '13300000000000000',
+        id: '1',
+        name: 'Bookmarks bar',
+        type: 'folder'
       },
+      other: { children: [], date_added: '13300000000000000', date_modified: '0', id: '2', name: 'Other bookmarks', type: 'folder' },
+      synced: { children: [], date_added: '13300000000000000', date_modified: '0', id: '3', name: 'Mobile bookmarks', type: 'folder' }
+    }
+
+    const md5 = crypto.createHash('md5')
+    const hashNode = (node: any) => {
+      md5.update(node.id || '')
+      md5.update(node.name || '')
+      if (node.type === 'url') md5.update(node.url || '')
+      if (node.children && Array.isArray(node.children)) {
+        for (const child of node.children) hashNode(child)
+      }
+    }
+    hashNode(roots.bookmark_bar)
+    hashNode(roots.other)
+    hashNode(roots.synced)
+    const checksum = md5.digest('hex')
+
+    const bookmarksJson = {
+      checksum,
+      roots,
       version: 1
     }
 
     fs.writeFileSync(bookmarksPath, JSON.stringify(bookmarksJson, null, 2), 'utf8')
-    logger.info('browser', `Wrote ${bookmarks.length} bookmarks to Chromium profile: ${bookmarksPath}`)
+    logger.info('browser', `Wrote ${bookmarks.length} bookmarks with valid checksum to Chromium profile: ${bookmarksPath}`)
   } catch (err: any) {
     logger.warn('browser', `Failed to write Chromium bookmarks: ${err.message}`)
   }
@@ -537,6 +554,7 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   const args: string[] = [
     '--no-first-run',
     '--no-default-browser-check',
+    '--profile-directory=Default',
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
@@ -550,7 +568,7 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--use-mock-keychain',
     '--disable-blink-features=AutomationControlled',
     '--disable-infobars',
-    '--disable-features=IsolateOrigins,site-per-process',
+    '--disable-features=IsolateOrigins,site-per-process,ProfilePickerOnStartup',
     '--disable-site-isolation-trials',
     `--lang=${lang}`
   ]
