@@ -176,9 +176,12 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     await page.setViewport(null)
   } catch {}
 
-  // Setup Google redirect interception (CDP Fetch layer)
+  // Setup Google redirect interception (CDP Fetch layer) - skip on accounts/auth pages
   try {
-    await setupGoogleRedirectInterceptor(page)
+    const currentUrl = page.url() || ''
+    if (!currentUrl.includes('accounts.google.') && !currentUrl.includes('mail.google.') && !currentUrl.includes('/signin') && !currentUrl.includes('/oauth')) {
+      await setupGoogleRedirectInterceptor(page)
+    }
   } catch (err: any) {
     logger.warn('browser', `Could not setup Google redirect interceptor: ${err.message}`)
   }

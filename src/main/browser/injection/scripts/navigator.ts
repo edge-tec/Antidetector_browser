@@ -29,13 +29,13 @@ export function buildNavigatorScript(
   // 1. Prototype Property Traps
   const protoOverrides = {
     platform: ${JSON.stringify(nav.platform || 'Win32')},
-    vendor: ${JSON.stringify(nav.vendor || '')},
+    vendor: ${JSON.stringify(nav.vendor || (isFirefox ? '' : 'Google Inc.'))},
     vendorSub: ${JSON.stringify(nav.vendorSub || '')},
     product: ${JSON.stringify(nav.product || 'Gecko')},
     productSub: ${JSON.stringify(nav.productSub || (isFirefox ? '20100101' : '20030107'))},
     appCodeName: 'Mozilla',
     appName: 'Netscape',
-    appVersion: ${JSON.stringify(nav.appVersion || '')},
+    appVersion: ${JSON.stringify(nav.appVersion || (isFirefox ? '5.0 (Windows)' : '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'))},
     userAgent: ${JSON.stringify(nav.userAgent || '')},
     hardwareConcurrency: ${nav.hardwareConcurrency || 8},
     deviceMemory: ${nav.deviceMemory || 8},
