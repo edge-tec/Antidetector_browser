@@ -158,150 +158,318 @@ function getPasswordFromProxy(proxy: Proxy, rawPassword?: string): string {
   }
 }
 
-function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: string }> {
-  return new Promise((resolve, reject) => {
-    const timeout = 15000
-    const password = getPasswordFromProxy(proxy, rawPassword)
+function extractIpFromBody(body: string): string | null {
+  if (!body) return null
+  try {
+    const json = JSON.parse(body)
+    const ip = json.ip || json.query || json.origin || json.ip_address || json.client_ip
+    if (typeof ip === 'string' && /^(\d{1,3}\.){3}\d{1,3}$/.test(ip.trim())) {
+      return ip.trim()
+    }
+  } catch {}
 
-    let proxyAuth = ''
-    if (proxy.username) {
-      proxyAuth = `${proxy.username}:${password}`
+  const ipv4Match = body.match(/\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/)
+  if (ipv4Match) return ipv4Match[0]
+
+  const ipv6Match = body.match(/\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b/)
+  if (ipv6Match) return ipv6Match[0]
+
+  return null
+}
+
+async function makeProxyRequest(proxy: Proxy, rawPassword?: string): Promise<{ ip: string }> {
+  const timeout = 12000
+  const password = getPasswordFromProxy(proxy, rawPassword)
+  const proxyType = (proxy.type || 'http').toLowerCase()
+
+  let proxyAuth = ''
+  if (proxy.username) {
+    proxyAuth = `${proxy.username}:${password}`
+  }
+
+  if (proxyType === 'http' || proxyType === 'https') {
+    // 1. Try standard HTTP Forward Proxy request across high-availability IP reflection endpoints
+    const testEndpoints = [
+      'http://api.ipify.org?format=json',
+      'http://ip-api.com/json',
+      'http://icanhazip.com',
+      'http://ifconfig.me/ip',
+      'http://checkip.amazonaws.com'
+    ]
+
+    for (const targetUrl of testEndpoints) {
+      try {
+        const res = await testHttpForwardProxy(proxy.host, proxy.port, proxyAuth, targetUrl, timeout)
+        if (res?.ip) return res
+      } catch (err: any) {
+        // If the error is 407 (Proxy Auth Required) or 403 (Forbidden), fail fast with clear message
+        if (err.message && (err.message.includes('407') || err.message.includes('Authentication'))) {
+          throw new Error('Proxy Authentication Required (407) — Invalid Username/Password')
+        }
+      }
     }
 
-    if (proxy.type === 'http' || proxy.type === 'https') {
-      // HTTP CONNECT method through proxy
-      const options: http.RequestOptions = {
-        host: proxy.host,
-        port: proxy.port,
-        method: 'CONNECT',
-        path: 'httpbin.org:443',
-        timeout,
-        headers: {}
+    // 2. Fallback: HTTP CONNECT tunnel method to api.ipify.org:80 (plain HTTP over tunnel)
+    try {
+      const res = await testHttpConnectTunnel(proxy.host, proxy.port, proxyAuth, 'api.ipify.org', 80, timeout)
+      if (res?.ip) return res
+    } catch {}
+
+    // 3. Fallback: HTTP CONNECT tunnel method to ip-api.com:80
+    try {
+      const res = await testHttpConnectTunnel(proxy.host, proxy.port, proxyAuth, 'ip-api.com', 80, timeout)
+      if (res?.ip) return res
+    } catch {}
+
+    throw new Error('Could not verify proxy IP — Proxy server unreachable or rejected connection')
+  } else if (proxyType === 'socks4') {
+    return testSocks4(proxy.host, proxy.port, timeout)
+  } else {
+    // SOCKS5 (Default)
+    try {
+      return await testSocks5(proxy.host, proxy.port, proxy.username || '', password, 'api.ipify.org', 80, timeout)
+    } catch (err: any) {
+      if (err.message && err.message.includes('authentication failed')) {
+        throw err
       }
+      return await testSocks5(proxy.host, proxy.port, proxy.username || '', password, 'ip-api.com', 80, timeout)
+    }
+  }
+}
 
-      if (proxyAuth) {
-        options.headers!['Proxy-Authorization'] = `Basic ${Buffer.from(proxyAuth).toString('base64')}`
+function testHttpForwardProxy(
+  proxyHost: string,
+  proxyPort: number,
+  proxyAuth: string,
+  targetUrl: string,
+  timeout: number
+): Promise<{ ip: string }> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(targetUrl)
+    const options: http.RequestOptions = {
+      host: proxyHost,
+      port: proxyPort,
+      method: 'GET',
+      path: targetUrl,
+      headers: {
+        'Host': u.hostname,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        ...(proxyAuth ? { 'Proxy-Authorization': `Basic ${Buffer.from(proxyAuth).toString('base64')}` } : {})
+      },
+      timeout
+    }
+
+    const req = http.request(options, (res) => {
+      let data = ''
+      res.on('data', (chunk) => { data += chunk.toString('utf8') })
+      res.on('end', () => {
+        if (res.statusCode === 407) {
+          return reject(new Error('Proxy Authentication Required (407) — Invalid Username/Password'))
+        }
+        const ip = extractIpFromBody(data)
+        if (ip) {
+          resolve({ ip })
+        } else if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error(`Proxy returned HTTP ${res.statusCode}`))
+        } else {
+          reject(new Error('Unable to parse IP from response'))
+        }
+      })
+    })
+
+    req.on('error', (err) => reject(new Error(`Proxy connection error: ${err.message}`)))
+    req.on('timeout', () => { req.destroy(); reject(new Error('Connection timed out')) })
+    req.end()
+  })
+}
+
+function testHttpConnectTunnel(
+  proxyHost: string,
+  proxyPort: number,
+  proxyAuth: string,
+  targetHost: string,
+  targetPort: number,
+  timeout: number
+): Promise<{ ip: string }> {
+  return new Promise((resolve, reject) => {
+    const options: http.RequestOptions = {
+      host: proxyHost,
+      port: proxyPort,
+      method: 'CONNECT',
+      path: `${targetHost}:${targetPort}`,
+      timeout,
+      headers: {}
+    }
+
+    if (proxyAuth) {
+      options.headers!['Proxy-Authorization'] = `Basic ${Buffer.from(proxyAuth).toString('base64')}`
+    }
+
+    const req = http.request(options)
+
+    req.on('connect', (res, socket) => {
+      if (res.statusCode === 200) {
+        let httpResp = ''
+        socket.on('data', (chunk: Buffer) => {
+          httpResp += chunk.toString('utf8')
+          const ip = extractIpFromBody(httpResp)
+          if (ip) {
+            socket.destroy()
+            resolve({ ip })
+          }
+        })
+        socket.on('end', () => {
+          const ip = extractIpFromBody(httpResp)
+          if (ip) resolve({ ip })
+          else reject(new Error('Could not parse IP from tunnel'))
+          socket.destroy()
+        })
+        socket.on('error', (err: Error) => {
+          socket.destroy()
+          reject(err)
+        })
+
+        socket.write(`GET /?format=json HTTP/1.1\r\nHost: ${targetHost}\r\nUser-Agent: AntiProfiles/2.0\r\nConnection: close\r\n\r\n`)
+      } else {
+        socket.destroy()
+        reject(new Error(`Proxy CONNECT failed with HTTP ${res.statusCode}`))
       }
+    })
 
-      const req = http.request(options)
+    req.on('error', (err) => reject(new Error(`Proxy CONNECT error: ${err.message}`)))
+    req.on('timeout', () => { req.destroy(); reject(new Error('Connection timed out')) })
+    req.end()
+  })
+}
 
-      req.on('connect', (res, socket) => {
-        if (res.statusCode === 200) {
-          const tls = require('tls')
-          const tlsSocket = tls.connect({
-            socket,
-            host: 'httpbin.org',
-            servername: 'httpbin.org'
-          }, () => {
-            const httpReq = `GET /ip HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n`
-            tlsSocket.write(httpReq)
-          })
+function testSocks5(
+  proxyHost: string,
+  proxyPort: number,
+  username: string,
+  password: string,
+  targetHost: string,
+  targetPort: number,
+  timeout: number
+): Promise<{ ip: string }> {
+  return new Promise((resolve, reject) => {
+    const net = require('net')
+    const socket = net.connect({ host: proxyHost, port: proxyPort, timeout })
 
-          let data = ''
-          tlsSocket.on('data', (chunk: Buffer) => { data += chunk.toString() })
-          tlsSocket.on('end', () => {
-            try {
-              const body = data.split('\r\n\r\n').pop() || ''
-              const json = JSON.parse(body)
-              resolve({ ip: json.origin || proxy.host })
-            } catch {
-              resolve({ ip: proxy.host })
-            }
-            socket.destroy()
-          })
-          tlsSocket.on('error', (err: Error) => {
-            socket.destroy()
-            reject(new Error(`TLS error: ${err.message}`))
-          })
+    let socksStage = 0
+
+    socket.on('connect', () => {
+      // Send SOCKS5 Greeting: 0x05, 2 auth methods (0x00 No Auth, 0x02 Username/Password)
+      socket.write(Buffer.from([0x05, 0x02, 0x00, 0x02]))
+    })
+
+    socket.on('data', (data: Buffer) => {
+      if (socksStage === 0) {
+        if (data[0] !== 0x05) {
+          socket.destroy()
+          return reject(new Error('Invalid SOCKS5 server response'))
+        }
+        const method = data[1]
+        if (method === 0x02 && username) {
+          const uBuf = Buffer.from(username, 'utf8')
+          const pBuf = Buffer.from(password, 'utf8')
+          const authReq = Buffer.concat([
+            Buffer.from([0x01, uBuf.length]),
+            uBuf,
+            Buffer.from([pBuf.length]),
+            pBuf
+          ])
+          socksStage = 1
+          socket.write(authReq)
+        } else if (method === 0x00) {
+          sendSocks5ConnectReq(socket, targetHost, targetPort)
+          socksStage = 2
         } else {
           socket.destroy()
-          reject(new Error(`Proxy returned status ${res.statusCode}`))
+          reject(new Error('SOCKS5 proxy rejected authentication method'))
         }
-      })
-
-      req.on('error', (err) => reject(new Error(`Proxy connection failed: ${err.message}`)))
-      req.on('timeout', () => { req.destroy(); reject(new Error('Connection timed out')) })
-      req.end()
-    } else {
-      // SOCKS5 connection with full IP resolution over tunnel
-      const net = require('net')
-      const socket = net.connect({ host: proxy.host, port: proxy.port, timeout })
-
-      let socksStage = 0
-
-      socket.on('connect', () => {
-        // Send SOCKS5 Greeting: 0x05, 2 auth methods (0x00 No Auth, 0x02 Username/Password)
-        socket.write(Buffer.from([0x05, 0x02, 0x00, 0x02]))
-      })
-
-      socket.on('data', (data: Buffer) => {
-        if (socksStage === 0) {
-          if (data[0] !== 0x05) {
-            socket.destroy()
-            return reject(new Error('Invalid SOCKS5 server response'))
-          }
-          const method = data[1]
-          if (method === 0x02 && proxy.username) {
-            const uBuf = Buffer.from(proxy.username, 'utf8')
-            const pBuf = Buffer.from(password, 'utf8')
-            const authReq = Buffer.concat([
-              Buffer.from([0x01, uBuf.length]),
-              uBuf,
-              Buffer.from([pBuf.length]),
-              pBuf
-            ])
-            socksStage = 1
-            socket.write(authReq)
-          } else if (method === 0x00) {
-            sendSocks5ConnectReq(socket, 'httpbin.org', 80)
-            socksStage = 2
-          } else {
-            socket.destroy()
-            reject(new Error('SOCKS5 proxy rejected authentication method'))
-          }
-        } else if (socksStage === 1) {
-          if (data[1] === 0x00) {
-            sendSocks5ConnectReq(socket, 'httpbin.org', 80)
-            socksStage = 2
-          } else {
-            socket.destroy()
-            reject(new Error('SOCKS5 proxy authentication failed (Invalid credentials)'))
-          }
-        } else if (socksStage === 2) {
-          if (data[1] === 0x00) {
-            // Send HTTP GET request over SOCKS5 tunnel to read actual public IP
-            socksStage = 3
-            let httpResp = ''
-            socket.on('data', (chunk: Buffer) => {
-              httpResp += chunk.toString('utf8')
-              if (httpResp.includes('\r\n\r\n')) {
-                try {
-                  const body = httpResp.split('\r\n\r\n').pop() || ''
-                  const json = JSON.parse(body)
-                  resolve({ ip: json.origin || proxy.host })
-                } catch {
-                  resolve({ ip: proxy.host })
-                }
-                socket.destroy()
-              }
-            })
-            socket.write('GET /ip HTTP/1.1\r\nHost: httpbin.org\r\nUser-Agent: curl/7.68.0\r\nConnection: close\r\n\r\n')
-          } else {
-            socket.destroy()
-            reject(new Error(`SOCKS5 CONNECT failed with status code 0x${data[1].toString(16)}`))
-          }
+      } else if (socksStage === 1) {
+        if (data[1] === 0x00) {
+          sendSocks5ConnectReq(socket, targetHost, targetPort)
+          socksStage = 2
+        } else {
+          socket.destroy()
+          reject(new Error('SOCKS5 proxy authentication failed (Invalid credentials)'))
         }
-      })
+      } else if (socksStage === 2) {
+        if (data[1] === 0x00) {
+          socksStage = 3
+          let httpResp = ''
+          socket.on('data', (chunk: Buffer) => {
+            httpResp += chunk.toString('utf8')
+            const ip = extractIpFromBody(httpResp)
+            if (ip) {
+              socket.destroy()
+              resolve({ ip })
+            }
+          })
+          socket.write(`GET /?format=json HTTP/1.1\r\nHost: ${targetHost}\r\nUser-Agent: AntiProfiles/2.0\r\nConnection: close\r\n\r\n`)
+        } else {
+          socket.destroy()
+          reject(new Error(`SOCKS5 CONNECT failed with status code 0x${data[1].toString(16)}`))
+        }
+      }
+    })
 
-      socket.on('error', (err: Error) => {
-        reject(new Error(`SOCKS5 connection failed: ${err.message}`))
-      })
+    socket.on('error', (err: Error) => {
+      reject(new Error(`SOCKS5 connection failed: ${err.message}`))
+    })
 
-      socket.on('timeout', () => {
-        socket.destroy()
-        reject(new Error('Connection timed out'))
-      })
-    }
+    socket.on('timeout', () => {
+      socket.destroy()
+      reject(new Error('Connection timed out'))
+    })
+  })
+}
+
+function testSocks4(
+  proxyHost: string,
+  proxyPort: number,
+  timeout: number
+): Promise<{ ip: string }> {
+  return new Promise((resolve, reject) => {
+    const net = require('net')
+    const socket = net.connect({ host: proxyHost, port: proxyPort, timeout })
+
+    socket.on('connect', () => {
+      // SOCKS4a request to api.ipify.org:80 (IP 0.0.0.1 signals domain name in SOCKS4a)
+      const hostBuf = Buffer.from('api.ipify.org', 'utf8')
+      const req = Buffer.concat([
+        Buffer.from([0x04, 0x01, 0x00, 0x50, 0x00, 0x00, 0x00, 0x01, 0x00]),
+        hostBuf,
+        Buffer.from([0x00])
+      ])
+      socket.write(req)
+    })
+
+    let stage = 0
+    socket.on('data', (data: Buffer) => {
+      if (stage === 0) {
+        if (data[1] === 0x5a) { // 0x5a = Granted
+          stage = 1
+          let httpResp = ''
+          socket.on('data', (chunk: Buffer) => {
+            httpResp += chunk.toString('utf8')
+            const ip = extractIpFromBody(httpResp)
+            if (ip) {
+              socket.destroy()
+              resolve({ ip })
+            }
+          })
+          socket.write('GET /?format=json HTTP/1.1\r\nHost: api.ipify.org\r\nConnection: close\r\n\r\n')
+        } else {
+          socket.destroy()
+          reject(new Error(`SOCKS4 CONNECT rejected with status 0x${data[1].toString(16)}`))
+        }
+      }
+    })
+
+    socket.on('error', (err: Error) => reject(new Error(`SOCKS4 connection error: ${err.message}`)))
+    socket.on('timeout', () => { socket.destroy(); reject(new Error('Connection timed out')) })
   })
 }
 
