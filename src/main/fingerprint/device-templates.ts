@@ -482,14 +482,14 @@ const MACOS_TEMPLATES: DeviceTemplate[] = [
     mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera (1080p)'], microphoneLabels: ['iMac Microphone'], speakerLabels: ['iMac Speakers'] }
   },
   {
-    deviceId: 'mac-mbp-intel',
-    manufacturer: 'Apple', model: 'MacBook Pro 15" (Intel)', deviceType: 'laptop', category: 'Pro Laptop (Intel)',
+    deviceId: 'mac-mbp15-intel-i7',
+    manufacturer: 'Apple', model: 'MacBook Pro 15" (Intel Core i7)', deviceType: 'laptop', category: 'Pro Laptop (Intel)',
     operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
     supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
     screenWidth: 2880, screenHeight: 1800, devicePixelRatio: 2, viewportWidth: 1440, viewportHeight: 829,
     orientation: 'landscape-primary', colorDepth: 24, pixelDepth: 24,
-    cpuClass: 'Intel Core i9-9880H', cpuThreads: 8, memoryGB: 16,
-    gpuVendor: 'Intel', gpuModel: 'Iris Plus Graphics 655',
+    cpuClass: 'Intel Core i7-8750H', cpuThreads: 12, memoryGB: 16,
+    gpuVendor: 'Intel', gpuModel: 'Intel Iris Plus Graphics 655',
     webglProfile: {
       version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
       unmaskedVendor: 'Google Inc. (Intel)', unmaskedRenderer: 'ANGLE (Intel Inc., Intel(R) Iris(TM) Plus Graphics 655, OpenGL 4.1)',
@@ -501,6 +501,174 @@ const MACOS_TEMPLATES: DeviceTemplate[] = [
     languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
     fontFamilies: MAC_FONTS,
     mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['MacBook Pro Microphone'], speakerLabels: ['MacBook Pro Speakers'] }
+  },
+  {
+    deviceId: 'mac-mbp16-intel-i9',
+    manufacturer: 'Apple', model: 'MacBook Pro 16" (Intel Core i9)', deviceType: 'laptop', category: 'Pro Laptop (Intel)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 3072, screenHeight: 1920, devicePixelRatio: 2, viewportWidth: 1536, viewportHeight: 960,
+    orientation: 'landscape-primary', colorDepth: 24, pixelDepth: 24,
+    cpuClass: 'Intel Core i9-9980HK', cpuThreads: 16, memoryGB: 32,
+    gpuVendor: 'AMD', gpuModel: 'AMD Radeon Pro 5500M',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (ATI Technologies Inc.)', unmaskedRenderer: 'ANGLE (ATI Technologies Inc., AMD Radeon Pro 5500M OpenGL Engine, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: true, pdfViewerEnabled: true,
+    networkType: 'wifi', networkDownlink: 100, networkRtt: 15,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['MacBook Pro Microphone'], speakerLabels: ['MacBook Pro Speakers'] }
+  },
+  {
+    deviceId: 'mac-mbp15-intel-i9',
+    manufacturer: 'Apple', model: 'MacBook Pro 15" (Intel Core i9)', deviceType: 'laptop', category: 'Pro Laptop (Intel)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 2880, screenHeight: 1800, devicePixelRatio: 2, viewportWidth: 1440, viewportHeight: 829,
+    orientation: 'landscape-primary', colorDepth: 24, pixelDepth: 24,
+    cpuClass: 'Intel Core i9-9880H', cpuThreads: 16, memoryGB: 16,
+    gpuVendor: 'AMD', gpuModel: 'AMD Radeon Pro 560X',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (ATI Technologies Inc.)', unmaskedRenderer: 'ANGLE (ATI Technologies Inc., AMD Radeon Pro 560X OpenGL Engine, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: true, pdfViewerEnabled: true,
+    networkType: 'wifi', networkDownlink: 80, networkRtt: 20,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['MacBook Pro Microphone'], speakerLabels: ['MacBook Pro Speakers'] }
+  },
+  {
+    deviceId: 'mac-mbp13-intel-i5',
+    manufacturer: 'Apple', model: 'MacBook Pro 13" (Intel Core i5)', deviceType: 'laptop', category: 'Pro Laptop (Intel)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 2560, screenHeight: 1600, devicePixelRatio: 2, viewportWidth: 1280, viewportHeight: 729,
+    orientation: 'landscape-primary', colorDepth: 24, pixelDepth: 24,
+    cpuClass: 'Intel Core i5-1038NG7', cpuThreads: 8, memoryGB: 16,
+    gpuVendor: 'Intel', gpuModel: 'Intel Iris Plus Graphics',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (Intel)', unmaskedRenderer: 'ANGLE (Intel Inc., Intel(R) Iris(TM) Plus Graphics, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: true, pdfViewerEnabled: true,
+    networkType: 'wifi', networkDownlink: 50, networkRtt: 25,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['MacBook Pro Microphone'], speakerLabels: ['MacBook Pro Speakers'] }
+  },
+  {
+    deviceId: 'mac-mba13-intel-i5',
+    manufacturer: 'Apple', model: 'MacBook Air 13" (Intel Core i5)', deviceType: 'laptop', category: 'Ultrabook (Intel)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 2560, screenHeight: 1600, devicePixelRatio: 2, viewportWidth: 1280, viewportHeight: 729,
+    orientation: 'landscape-primary', colorDepth: 24, pixelDepth: 24,
+    cpuClass: 'Intel Core i5-1030NG7', cpuThreads: 8, memoryGB: 8,
+    gpuVendor: 'Intel', gpuModel: 'Intel Iris Plus Graphics',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (Intel)', unmaskedRenderer: 'ANGLE (Intel Inc., Intel(R) Iris(TM) Plus Graphics, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: true, pdfViewerEnabled: true,
+    networkType: 'wifi', networkDownlink: 50, networkRtt: 25,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['MacBook Air Microphone'], speakerLabels: ['MacBook Air Speakers'] }
+  },
+  {
+    deviceId: 'mac-imac27-intel-i9',
+    manufacturer: 'Apple', model: 'iMac 27" 5K (Intel Core i9)', deviceType: 'desktop', category: 'Desktop (Intel 5K)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 5120, screenHeight: 2880, devicePixelRatio: 2, viewportWidth: 2560, viewportHeight: 1369,
+    orientation: 'landscape-primary', colorDepth: 30, pixelDepth: 30,
+    cpuClass: 'Intel Core i9-10910', cpuThreads: 20, memoryGB: 64,
+    gpuVendor: 'AMD', gpuModel: 'AMD Radeon Pro 5700 XT',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (ATI Technologies Inc.)', unmaskedRenderer: 'ANGLE (ATI Technologies Inc., AMD Radeon Pro 5700 XT OpenGL Engine, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: false, pdfViewerEnabled: true,
+    networkType: 'ethernet', networkDownlink: 100, networkRtt: 10,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera (1080p)'], microphoneLabels: ['iMac Microphone'], speakerLabels: ['iMac Speakers'] }
+  },
+  {
+    deviceId: 'mac-imac21-intel-i5',
+    manufacturer: 'Apple', model: 'iMac 21.5" 4K (Intel Core i5)', deviceType: 'desktop', category: 'Desktop (Intel 4K)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 4096, screenHeight: 2304, devicePixelRatio: 2, viewportWidth: 2048, viewportHeight: 1095,
+    orientation: 'landscape-primary', colorDepth: 30, pixelDepth: 30,
+    cpuClass: 'Intel Core i5-8500', cpuThreads: 6, memoryGB: 16,
+    gpuVendor: 'AMD', gpuModel: 'AMD Radeon Pro 560X',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (ATI Technologies Inc.)', unmaskedRenderer: 'ANGLE (ATI Technologies Inc., AMD Radeon Pro 560X OpenGL Engine, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: false, pdfViewerEnabled: true,
+    networkType: 'ethernet', networkDownlink: 100, networkRtt: 10,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 1, audioInputs: 1, audioOutputs: 1, cameraLabels: ['FaceTime HD Camera'], microphoneLabels: ['iMac Microphone'], speakerLabels: ['iMac Speakers'] }
+  },
+  {
+    deviceId: 'mac-mini-intel-i7',
+    manufacturer: 'Apple', model: 'Mac mini (Intel Core i7)', deviceType: 'desktop', category: 'Desktop (Intel Mini)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 1920, screenHeight: 1080, devicePixelRatio: 1, viewportWidth: 1920, viewportHeight: 1009,
+    orientation: 'landscape-primary', colorDepth: 24, pixelDepth: 24,
+    cpuClass: 'Intel Core i7-8700B', cpuThreads: 12, memoryGB: 32,
+    gpuVendor: 'Intel', gpuModel: 'Intel UHD Graphics 630',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (Intel)', unmaskedRenderer: 'ANGLE (Intel Inc., Intel(R) UHD Graphics 630, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: false, pdfViewerEnabled: true,
+    networkType: 'ethernet', networkDownlink: 100, networkRtt: 10,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 0, audioInputs: 1, audioOutputs: 1, cameraLabels: [], microphoneLabels: ['Default Microphone'], speakerLabels: ['Default Speaker'] }
+  },
+  {
+    deviceId: 'mac-pro-intel-xeon',
+    manufacturer: 'Apple', model: 'Mac Pro (Intel Xeon W)', deviceType: 'desktop', category: 'Workstation (Intel)',
+    operatingSystem: 'macos-intel', osVersion: '13.6', platform: 'MacIntel', architecture: 'x86_64', platformArchitecture: '64-bit',
+    supportedBrowsers: [{ browser: 'chrome', engine: 'blink' }, { browser: 'firefox', engine: 'gecko' }],
+    screenWidth: 5120, screenHeight: 2880, devicePixelRatio: 2, viewportWidth: 2560, viewportHeight: 1369,
+    orientation: 'landscape-primary', colorDepth: 30, pixelDepth: 30,
+    cpuClass: 'Intel Xeon W-3275M (28 Cores)', cpuThreads: 56, memoryGB: 96,
+    gpuVendor: 'AMD', gpuModel: 'AMD Radeon Pro Vega II Duo',
+    webglProfile: {
+      version: 'WebGL 2.0', vendor: 'WebKit', renderer: 'WebKit WebGL',
+      unmaskedVendor: 'Google Inc. (ATI Technologies Inc.)', unmaskedRenderer: 'ANGLE (ATI Technologies Inc., AMD Radeon Pro Vega II Duo OpenGL Engine, OpenGL 4.1)',
+      maxTextureSize: 16384, maxViewportDims: [16384, 16384], maxRenderbufferSize: 16384,
+      shadingLanguageVersion: 'WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)', antialiasing: true
+    },
+    touchSupport: false, maxTouchPoints: 0, batteryApi: false, pdfViewerEnabled: true,
+    networkType: 'ethernet', networkDownlink: 100, networkRtt: 10,
+    languageDefaults: ['en-US', 'en'], timezoneDefaults: ['America/New_York', 'America/Los_Angeles', 'America/Chicago'],
+    fontFamilies: MAC_FONTS,
+    mediaDevices: { videoInputs: 0, audioInputs: 1, audioOutputs: 1, cameraLabels: [], microphoneLabels: ['Default Microphone'], speakerLabels: ['Default Speaker'] }
   }
 ]
 
@@ -725,9 +893,27 @@ export function getDeviceTemplatesByOs(osType: OSType): DeviceTemplate[] {
 export function getDeviceTemplatesGrouped(): Record<string, DeviceTemplate[]> {
   const grouped: Record<string, DeviceTemplate[]> = {}
   for (const t of ALL_DEVICE_TEMPLATES) {
-    const family = getOSFamily(t.operatingSystem)
-    if (!grouped[family]) grouped[family] = []
-    grouped[family].push(t)
+    let groupName = 'Other'
+    if (t.operatingSystem === 'macos-intel') {
+      groupName = 'macOS (Intel Core & Xeon)'
+    } else if (t.operatingSystem === 'macos-arm') {
+      groupName = 'macOS (Apple Silicon M-Series)'
+    } else if (t.operatingSystem === 'windows-11') {
+      groupName = 'Windows 11'
+    } else if (t.operatingSystem === 'windows-10') {
+      groupName = 'Windows 10'
+    } else if (t.operatingSystem === 'linux') {
+      groupName = 'Linux'
+    } else if (t.operatingSystem === 'ios') {
+      groupName = 'Apple iOS (iPhone)'
+    } else if (t.operatingSystem === 'android') {
+      groupName = 'Android Mobile'
+    } else {
+      groupName = getOSFamily(t.operatingSystem)
+    }
+
+    if (!grouped[groupName]) grouped[groupName] = []
+    grouped[groupName].push(t)
   }
   return grouped
 }

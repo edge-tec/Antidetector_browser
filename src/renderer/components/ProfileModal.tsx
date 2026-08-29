@@ -955,13 +955,13 @@ function parseChromeExtensionInput(input: string): { id: string; name: string } 
 }
 
 const PROCESSOR_OPTIONS: Record<string, string[]> = {
-  'macos-arm': ['M4', 'M3', 'M2', 'M1', 'M3 Max', 'M2 Max', 'M1 Pro'],
-  'macos-intel': ['Intel Core i9-9880H', 'Intel Core i7-8850H', 'Intel Core i5-8259U', 'Intel Iris Plus Graphics'],
+  'macos-arm': ['M4 Pro', 'M4', 'M3 Max', 'M3 Pro', 'M3', 'M2 Max', 'M2 Pro', 'M2', 'M1 Max', 'M1 Pro', 'M1'],
+  'macos-intel': ['Intel Core i9-9980HK', 'Intel Core i9-9880H', 'Intel Core i7-10700K', 'Intel Core i7-8750H', 'Intel Core i5-1038NG7', 'Intel Xeon W-3275M'],
   'windows-10': ['Intel Core i9-13900K', 'Intel Core i7-12700K', 'Intel Core i5-11400', 'AMD Ryzen 9 7950X', 'AMD Ryzen 7 5800X'],
   'windows-11': ['Intel Core i9-14900K', 'Intel Core i7-13700K', 'Intel Core i5-13400', 'AMD Ryzen 7 7800X3D', 'AMD Ryzen 5 7600X'],
   'linux': ['Intel Core i9-13900K', 'Intel Core i7-12700K', 'AMD Ryzen 9 7900X', 'Mesa Intel UHD Graphics'],
-  'android': ['Snapdragon 8 Gen 3 (Adreno 750)', 'Snapdragon 8 Gen 2 (Adreno 740)', 'Google Tensor G3 (Mali-G715)', 'Exynos 2400 (Xclipse 940)'],
-  'ios': ['Apple A18 Pro (6 Cores)', 'Apple A18 (6 Cores)', 'Apple A17 Pro (6 Cores)', 'Apple A16 Bionic (6 Cores)', 'Apple A15 Bionic (6 Cores)', 'Apple A14 Bionic (6 Cores)']
+  'android': ['Snapdragon 8 Elite (Adreno 830)', 'Snapdragon 8 Gen 3 (Adreno 750)', 'Snapdragon 8 Gen 2 (Adreno 740)', 'Google Tensor G4 (Immortalis-G715)', 'Exynos 2400 (Xclipse 940)'],
+  'ios': ['Apple A19 Pro (6 Cores)', 'Apple A19 (6 Cores)', 'Apple A18 Pro (6 Cores)', 'Apple A18 (6 Cores)', 'Apple A17 Pro (6 Cores)', 'Apple A16 Bionic (6 Cores)', 'Apple A15 Bionic (6 Cores)']
 }
 
 const POPULAR_BOOKMARKS = [
@@ -2511,25 +2511,47 @@ export const ProfileModal: React.FC<Props> = ({
                       >
                         <option value="">— Select a hardware template (optional) —</option>
                         {Object.entries(deviceTemplatesGrouped)
-                          .filter(([category]) => {
-                            // Filter categories to match current OS
-                            const catLower = category.toLowerCase()
-                            if (osType.startsWith('windows')) return catLower.includes('windows')
-                            if (osType.startsWith('macos')) return catLower.includes('mac') || catLower.includes('apple')
-                            if (osType === 'linux') return catLower.includes('linux')
-                            if (osType === 'ios') return catLower.includes('iphone') || catLower.includes('ios')
-                            if (osType === 'android') return catLower.includes('android') || catLower.includes('samsung') || catLower.includes('google') || catLower.includes('oneplus') || catLower.includes('xiaomi')
-                            return true
-                          })
-                          .map(([category, templates]) => (
-                            <optgroup key={category} label={category}>
-                              {(templates as any[]).map((t: any) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.model} — {t.cpuModel} • {t.gpuModel} • {t.screenWidth}×{t.screenHeight} @{t.devicePixelRatio}x • {t.memoryGB}GB RAM
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
+                          .map(([category, templates]) => {
+                            const filteredTemplates = (templates as any[]).filter((t: any) => {
+                              const tOs = t.operatingSystem || ''
+                              const cpuStr = `${t.cpuModel || ''} ${t.cpuClass || ''}`.toLowerCase()
+                              const catStr = (t.category || '').toLowerCase()
+                              if (osType === 'macos-intel') {
+                                return tOs === 'macos-intel' || t.architecture === 'x86_64' || catStr.includes('intel') || cpuStr.includes('intel')
+                              }
+                              if (osType === 'macos-arm') {
+                                return tOs === 'macos-arm' || t.architecture === 'arm64' || cpuStr.includes('apple m')
+                              }
+                              if (osType === 'windows-10') {
+                                return tOs === 'windows-10' || tOs === 'windows' || tOs.startsWith('windows')
+                              }
+                              if (osType === 'windows-11') {
+                                return tOs === 'windows-11' || tOs === 'windows' || tOs.startsWith('windows')
+                              }
+                              if (osType === 'linux') {
+                                return tOs === 'linux'
+                              }
+                              if (osType === 'ios') {
+                                return tOs === 'ios'
+                              }
+                              if (osType === 'android') {
+                                return tOs === 'android'
+                              }
+                              return true
+                            })
+
+                            if (filteredTemplates.length === 0) return null
+
+                            return (
+                              <optgroup key={category} label={category}>
+                                {filteredTemplates.map((t: any) => (
+                                  <option key={t.id || t.deviceId} value={t.id || t.deviceId}>
+                                    {t.model} — {t.cpuModel || t.cpuClass} • {t.gpuModel} • {t.screenWidth}×{t.screenHeight} @{t.devicePixelRatio}x • {t.memoryGB}GB RAM
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )
+                          })}
                       </select>
 
                       {/* Template specs badge */}
