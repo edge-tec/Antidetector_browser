@@ -390,9 +390,9 @@ export const POPULAR_UA_PRESETS = [
   { label: '🍏 macOS Sonoma — Chrome 128 (Intel)', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'macos-intel', platform: 'MacIntel', browser: 'chrome' },
   { label: '🐧 Linux Ubuntu — Chrome 128 (x86_64)', ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', os: 'linux', platform: 'Linux x86_64', browser: 'chrome' },
   { label: '🦊 Linux Ubuntu — Firefox 129', ua: 'Mozilla/5.0 (X11; Linux x86_64; rv:129.0) Gecko/20100101 Firefox/129.0', os: 'linux', platform: 'Linux x86_64', browser: 'firefox' },
-  { label: '📱 iOS 19.0 — iPhone 17 Pro Max (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
-  { label: '📱 iOS 19.0 — iPhone 17 Pro (Chrome)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.86 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
-  { label: '📱 iOS 19.0 — iPhone 17 Air (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
+  { label: '📱 iOS 26.0 — iPhone 17 Pro Max (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
+  { label: '📱 iOS 26.0 — iPhone 17 Pro (Chrome)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.86 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
+  { label: '📱 iOS 26.0 — iPhone 17 Air (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
   { label: '📱 iOS 18.0 — iPhone 16 Pro Max (Chrome)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.114 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
   { label: '📱 iOS 18.0 — iPhone 16 Pro (Firefox)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/128.0 Mobile/15E148 Safari/605.1.15', os: 'ios', platform: 'iPhone', browser: 'firefox' },
   { label: '📱 iOS 17.5 — iPhone 15 Pro (Safari)', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', os: 'ios', platform: 'iPhone', browser: 'chrome' },
@@ -1117,7 +1117,7 @@ export const ProfileModal: React.FC<Props> = ({
   const [androidModelId, setAndroidModelId] = useState('samsung-s25-ultra')
   const [iosModelId, setIosModelId] = useState('iphone-17-pro-max')
   const [customAndroidVersion, setCustomAndroidVersion] = useState<string>('16')
-  const [customIosVersion, setCustomIosVersion] = useState<string>('19.0')
+  const [customIosVersion, setCustomIosVersion] = useState<string>('26.0')
   const [groupId, setGroupId] = useState('')
   const [notes, setNotes] = useState('')
   const [startUrl, setStartUrl] = useState('')
@@ -1544,7 +1544,7 @@ export const ProfileModal: React.FC<Props> = ({
   }
 
   const applyIosDeviceToFp = (dev: IosDeviceSpec, bType: 'chrome' | 'firefox' = browserType, bVer: string = browserVersion, targetOs = 'ios', osVerOverride?: string) => {
-    const osVer = osVerOverride || customIosVersion || dev.iosVersion || '19.0'
+    const osVer = osVerOverride || customIosVersion || dev.iosVersion || '26.0'
     const osVerUnder = osVer.replace(/\./g, '_')
     const ffVer = bVer.includes('.') ? bVer : `${bVer}.0`
     const newUa = bType === 'firefox'
@@ -2612,11 +2612,10 @@ export const ProfileModal: React.FC<Props> = ({
                               outline: 'none'
                             }}
                           >
-                            <option value="19.0">iOS 19.0 (Latest Apple AI)</option>
+                            <option value="26.0">iOS 26.0 (Latest Apple OS 2026)</option>
                             <option value="18.2">iOS 18.2 (Apple Intelligence)</option>
                             <option value="18.0">iOS 18.0 (Stable)</option>
                             <option value="17.5">iOS 17.5 (Legacy)</option>
-                            <option value="26.0">iOS 26.0 (Next-Gen Preview)</option>
                           </select>
                         </div>
                       </div>

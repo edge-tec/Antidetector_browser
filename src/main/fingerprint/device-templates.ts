@@ -609,10 +609,10 @@ function buildIosTemplate(
 }
 
 const IOS_TEMPLATES: DeviceTemplate[] = [
-  buildIosTemplate('iphone-17-pro-max', 'iPhone 17 Pro Max', '19.0', 'Apple A19 Pro (6 Cores)', 'Apple A19 Pro GPU', 440, 956, 3.0, 6, 12),
-  buildIosTemplate('iphone-17-pro', 'iPhone 17 Pro', '19.0', 'Apple A19 Pro (6 Cores)', 'Apple A19 Pro GPU', 402, 874, 3.0, 6, 12),
-  buildIosTemplate('iphone-17-air', 'iPhone 17 Air (Slim)', '19.0', 'Apple A19 (6 Cores)', 'Apple A19 GPU', 414, 896, 3.0, 6, 8),
-  buildIosTemplate('iphone-17', 'iPhone 17', '19.0', 'Apple A19 (6 Cores)', 'Apple A19 GPU', 393, 852, 3.0, 6, 8),
+  buildIosTemplate('iphone-17-pro-max', 'iPhone 17 Pro Max', '26.0', 'Apple A19 Pro (6 Cores)', 'Apple A19 Pro GPU', 440, 956, 3.0, 6, 12),
+  buildIosTemplate('iphone-17-pro', 'iPhone 17 Pro', '26.0', 'Apple A19 Pro (6 Cores)', 'Apple A19 Pro GPU', 402, 874, 3.0, 6, 12),
+  buildIosTemplate('iphone-17-air', 'iPhone 17 Air (Slim)', '26.0', 'Apple A19 (6 Cores)', 'Apple A19 GPU', 414, 896, 3.0, 6, 8),
+  buildIosTemplate('iphone-17', 'iPhone 17', '26.0', 'Apple A19 (6 Cores)', 'Apple A19 GPU', 393, 852, 3.0, 6, 8),
   buildIosTemplate('iphone-16-pro-max', 'iPhone 16 Pro Max', '18.0', 'Apple A18 Pro (6 Cores)', 'Apple A18 Pro GPU', 440, 956, 3.0, 6, 8),
   buildIosTemplate('iphone-16-pro', 'iPhone 16 Pro', '18.0', 'Apple A18 Pro (6 Cores)', 'Apple A18 Pro GPU', 402, 874, 3.0, 6, 8),
   buildIosTemplate('iphone-16-plus', 'iPhone 16 Plus', '18.0', 'Apple A18 (6 Cores)', 'Apple A18 GPU', 430, 932, 3.0, 6, 8),
