@@ -1846,6 +1846,14 @@ function verifyCaptchaTokenPhp(?string $token, string $action = 'submit', ?strin
         return ['success' => true, 'skipped' => true, 'client' => 'desktop_app'];
     }
 
+    // If provider keys are not configured in admin settings, gracefully skip verification
+    if ($provider === 'recaptcha_v3' && (empty($config['recaptchaSiteKey']) || empty($config['recaptchaSecretKey']))) {
+        return ['success' => true, 'skipped' => true, 'warning' => 'reCAPTCHA keys not configured'];
+    }
+    if ($provider === 'turnstile' && (empty($config['turnstileSiteKey']) || empty($config['turnstileSecretKey']))) {
+        return ['success' => true, 'skipped' => true, 'warning' => 'Turnstile keys not configured'];
+    }
+
     if (empty($token)) {
         return [
             'success' => false,

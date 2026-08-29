@@ -15,6 +15,9 @@ ensureDatabaseTablesExist();
 // Capture & record click if not already captured
 $trackData = captureAndRecordAffiliateClick($db);
 
+// Bot Protection & Captcha Configuration
+$captchaConfig = getCaptchaConfigPhp(false);
+
 // Resolve Slug from URL or query parameters
 $slug = trim($_GET['slug'] ?? $_GET['offer_id'] ?? $_GET['offer'] ?? $_GET['plan'] ?? $_GET['package'] ?? '');
 if (empty($slug)) {
@@ -525,6 +528,11 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
             }
         }
     </script>
+    <?php if ($captchaConfig['provider'] === 'turnstile' && !empty($captchaConfig['turnstileSiteKey'])): ?>
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <?php elseif ($captchaConfig['provider'] === 'recaptcha_v3' && !empty($captchaConfig['recaptchaSiteKey'])): ?>
+        <script src="https://www.google.com/recaptcha/api.js?render=<?= htmlspecialchars($captchaConfig['recaptchaSiteKey']) ?>"></script>
+    <?php endif; ?>
     <style>
         html, body {
             background-color: #070B14 !important;
@@ -899,6 +907,16 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
                     <input type="password" name="password" required minlength="6" placeholder="••••••••" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-teal-400 transition-colors">
                 </div>
 
+                <?php if ($captchaConfig['provider'] === 'turnstile' && !empty($captchaConfig['turnstileSiteKey'])): ?>
+                    <div id="offerTurnstileContainer" class="flex justify-center my-2 min-h-[65px]"></div>
+                <?php elseif ($captchaConfig['provider'] === 'recaptcha_v3' && !empty($captchaConfig['recaptchaSiteKey'])): ?>
+                    <p class="text-[11px] text-slate-400 text-center my-2 leading-relaxed">
+                        This site is protected by reCAPTCHA and the Google 
+                        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" class="text-teal-400 underline">Privacy Policy</a> and 
+                        <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" class="text-teal-400 underline">Terms of Service</a> apply.
+                    </p>
+                <?php endif; ?>
+
                 <div id="signup-error-msg" class="hidden p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium"></div>
                 <div id="signup-success-msg" class="hidden p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"></div>
 
@@ -916,6 +934,65 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
         const OFFER_ID = <?= json_encode($offerId) ?>;
         const PACKAGE_ID = <?= json_encode($packageId) ?>;
         const SLUG = <?= json_encode($slug) ?>;
+        const CAPTCHA_CONFIG = <?= json_encode($captchaConfig) ?>;
+        let offerTurnstileWidgetId = null;
+
+        function initOfferCaptcha() {
+            if (CAPTCHA_CONFIG.provider === 'turnstile' && CAPTCHA_CONFIG.turnstileSiteKey) {
+                const container = document.getElementById('offerTurnstileContainer');
+                if (container && typeof turnstile !== 'undefined') {
+                    if (offerTurnstileWidgetId !== null) {
+                        try { turnstile.reset(offerTurnstileWidgetId); return; } catch(e) {}
+                    }
+                    try {
+                        container.innerHTML = '';
+                        offerTurnstileWidgetId = turnstile.render('#offerTurnstileContainer', {
+                            sitekey: CAPTCHA_CONFIG.turnstileSiteKey,
+                            theme: 'dark'
+                        });
+                    } catch(e) {
+                        console.warn('[Turnstile] Render error:', e);
+                    }
+                }
+            }
+        }
+
+        async function getOfferCaptchaToken(action = 'register') {
+            const prov = CAPTCHA_CONFIG.provider;
+            if (!prov || prov === 'none') return null;
+
+            if (prov === 'recaptcha_v3' && CAPTCHA_CONFIG.recaptchaSiteKey) {
+                if (typeof grecaptcha !== 'undefined' && grecaptcha.execute) {
+                    try {
+                        return await new Promise((resolve) => {
+                            grecaptcha.ready(async () => {
+                                try {
+                                    const tok = await grecaptcha.execute(CAPTCHA_CONFIG.recaptchaSiteKey, { action: action });
+                                    resolve(tok);
+                                } catch(err) {
+                                    console.warn('[reCAPTCHA v3] Execute error:', err);
+                                    resolve(null);
+                                }
+                            });
+                        });
+                    } catch (e) {
+                        console.warn('[reCAPTCHA v3] Error:', e);
+                    }
+                }
+            } else if (prov === 'turnstile') {
+                if (typeof turnstile !== 'undefined') {
+                    if (offerTurnstileWidgetId !== null) {
+                        try {
+                            const tok = turnstile.getResponse(offerTurnstileWidgetId);
+                            if (tok) return tok;
+                        } catch(e) {}
+                    }
+                    const inp = document.querySelector('input[name="cf-turnstile-response"]');
+                    if (inp && inp.value) return inp.value;
+                }
+            }
+            return null;
+        }
 
         function detectUserOS() {
             const userAgent = window.navigator.userAgent || '';
@@ -948,6 +1025,7 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
         function openOfferRegistrationModal() {
             const modal = document.getElementById('offer-reg-modal');
             if (modal) modal.classList.remove('hidden');
+            setTimeout(initOfferCaptcha, 50);
         }
 
         function closeOfferRegistrationModal() {
@@ -967,11 +1045,15 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
             submitBtn.disabled = true;
             submitBtn.textContent = 'Processing...';
 
+            const captchaToken = await getOfferCaptchaToken('register');
+
             const payload = {
                 action: 'register',
                 name: form.name.value.trim(),
                 email: form.email.value.trim(),
                 password: form.password.value,
+                captcha_token: captchaToken,
+                captchaToken: captchaToken,
                 affiliate_id: AFF_ID,
                 referred_by_affiliate_id: AFF_ID,
                 referred_by_click_id: CLICK_ID,
@@ -1011,16 +1093,25 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
                     errorDiv.classList.remove('hidden');
                     submitBtn.disabled = false;
                     submitBtn.textContent = <?= json_encode($ctaText) ?>;
+                    if (typeof turnstile !== 'undefined' && offerTurnstileWidgetId !== null) {
+                        try { turnstile.reset(offerTurnstileWidgetId); } catch(e) {}
+                    }
                 }
             } catch (err) {
                 errorDiv.textContent = 'Network or server error (' + (err.message || 'Unknown') + '). Please try again.';
                 errorDiv.classList.remove('hidden');
                 submitBtn.disabled = false;
                 submitBtn.textContent = <?= json_encode($ctaText) ?>;
+                if (typeof turnstile !== 'undefined' && offerTurnstileWidgetId !== null) {
+                    try { turnstile.reset(offerTurnstileWidgetId); } catch(e) {}
+                }
             }
         }
 
-        document.addEventListener('DOMContentLoaded', detectUserOS);
+        document.addEventListener('DOMContentLoaded', () => {
+            detectUserOS();
+            initOfferCaptcha();
+        });
     </script>
 </body>
 </html>
