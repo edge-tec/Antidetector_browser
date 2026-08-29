@@ -1416,7 +1416,7 @@ export const ProfileModal: React.FC<Props> = ({
           seed: fp?.seed || `tpl-${Date.now()}`
         })
         if (res?.success && res?.data?.fingerprint) {
-          setFp(res.data.fingerprint)
+          setFp(ensureFpStructure(res.data.fingerprint, osType, browserType, browserVersion))
           setFpToast(true)
           setTimeout(() => setFpToast(false), 2200)
         }
@@ -2522,48 +2522,30 @@ export const ProfileModal: React.FC<Props> = ({
                         }}
                       >
                         <option value="">— Select a hardware template (optional) —</option>
-                        {Object.entries(deviceTemplatesGrouped)
-                          .map(([category, templates]) => {
-                            const filteredTemplates = (templates as any[]).filter((t: any) => {
-                              const tOs = t.operatingSystem || ''
-                              const cpuStr = `${t.cpuModel || ''} ${t.cpuClass || ''}`.toLowerCase()
-                              const catStr = (t.category || '').toLowerCase()
-                              if (osType === 'macos-intel') {
-                                return tOs === 'macos-intel' || t.architecture === 'x86_64' || catStr.includes('intel') || cpuStr.includes('intel')
-                              }
-                              if (osType === 'macos-arm') {
-                                return tOs === 'macos-arm' || t.architecture === 'arm64' || cpuStr.includes('apple m')
-                              }
-                              if (osType === 'windows-10') {
-                                return tOs === 'windows-10' || tOs === 'windows' || tOs.startsWith('windows')
-                              }
-                              if (osType === 'windows-11') {
-                                return tOs === 'windows-11' || tOs === 'windows' || tOs.startsWith('windows')
-                              }
-                              if (osType === 'linux') {
-                                return tOs === 'linux'
-                              }
-                              if (osType === 'ios') {
-                                return tOs === 'ios'
-                              }
-                              if (osType === 'android') {
-                                return tOs === 'android'
-                              }
-                              return true
-                            })
+                        {(() => {
+                          const allTemplates = Object.values(deviceTemplatesGrouped).flat() as any[]
+                          const filtered = allTemplates.filter((t: any) => {
+                            const tOs = t.operatingSystem || ''
+                            if (osType === 'macos-intel') return tOs === 'macos-intel'
+                            if (osType === 'macos-arm') return tOs === 'macos-arm'
+                            if (osType === 'windows-10') return tOs === 'windows-10'
+                            if (osType === 'windows-11') return tOs === 'windows-11'
+                            if (osType === 'linux') return tOs === 'linux'
+                            if (osType === 'ios') return tOs === 'ios'
+                            if (osType === 'android') return tOs === 'android'
+                            return false
+                          })
 
-                            if (filteredTemplates.length === 0) return null
+                          if (filtered.length === 0) {
+                            return <option disabled>No templates available for this OS</option>
+                          }
 
-                            return (
-                              <optgroup key={category} label={category}>
-                                {filteredTemplates.map((t: any) => (
-                                  <option key={t.id || t.deviceId} value={t.id || t.deviceId}>
-                                    {t.model} — {t.cpuModel || t.cpuClass} • {t.gpuModel} • {t.screenWidth}×{t.screenHeight} @{t.devicePixelRatio}x • {t.memoryGB}GB RAM
-                                  </option>
-                                ))}
-                              </optgroup>
-                            )
-                          })}
+                          return filtered.map((t: any) => (
+                            <option key={t.id || t.deviceId} value={t.id || t.deviceId}>
+                              {t.model} — {t.cpuModel || t.cpuClass} • {t.gpuModel} • {t.screenWidth}×{t.screenHeight} @{t.devicePixelRatio}x • {t.memoryGB}GB RAM
+                            </option>
+                          ))
+                        })()}
                       </select>
 
                       {/* Template specs badge */}
