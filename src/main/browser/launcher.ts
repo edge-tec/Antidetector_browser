@@ -559,6 +559,8 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--window-position=100,60',
     '--disable-blink-features=AutomationControlled',
     '--disable-features=ProfilePickerOnStartup',
+    '--use-mock-keychain',
+    '--password-store=basic',
     `--lang=${lang}`
   ]
 
