@@ -701,6 +701,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     btnReg.style.background = 'transparent';
                     btnReg.style.color = 'var(--text-muted)';
                 }
+            }
             if (typeof renderTurnstileWidget === 'function') {
                 if (mode === 'register') renderTurnstileWidget('registerTurnstileContainer');
                 else if (mode === 'forgot') renderTurnstileWidget('forgotPwTurnstileContainer');
