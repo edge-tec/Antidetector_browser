@@ -2,7 +2,7 @@
 // AntiProfiles — IPC Profile Handlers (With Authorization & Central Sync)
 // ──────────────────────────────────────────────
 
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { profileRepo } from '../database/repositories/profile.repo'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { subscriptionRepo } from '../database/repositories/subscription.repo'
@@ -491,6 +491,19 @@ export function registerProfileHandlers(): void {
 
       const linked = getProfileGoogleAccount(profileId)
       return { success: true, data: linked }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:open-gmail', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      await shell.openExternal('https://mail.google.com')
+      return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

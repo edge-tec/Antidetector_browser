@@ -232,7 +232,7 @@ function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onN
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
@@ -242,6 +242,8 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   onClearCookies?: () => void
   onRefreshProxy?: () => void
   onConnectGoogle?: () => void
+  onOpenGmail?: () => void
+  onDisconnectGoogle?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -326,22 +328,44 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
         )}
         {onConnectGoogle && (
           (profile as any).googleAccount ? (
-            <span
-              style={{
-                fontSize: '11px',
-                color: '#10B981',
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
-              }}
-              title={`Google Account: ${(profile as any).googleAccount.email} (Connected via System Browser OAuth)`}
-            >
-              <span>✓ G:</span> {(profile as any).googleAccount.email.split('@')[0]}
-            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: '#10B981',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+                title={`Google Account: ${(profile as any).googleAccount.email} (Connected via System Browser OAuth)`}
+              >
+                <span>✓ G:</span> {(profile as any).googleAccount.email.split('@')[0]}
+              </span>
+              {onOpenGmail && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onOpenGmail}
+                  title="Open Gmail Web in System Browser"
+                  style={{ color: '#EA4335', fontSize: 11, padding: '2px 6px', height: 'auto', fontWeight: 600 }}
+                >
+                  📧 Gmail
+                </button>
+              )}
+              {onDisconnectGoogle && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onDisconnectGoogle}
+                  title="Disconnect Google Account"
+                  style={{ color: '#94A3B8', fontSize: 11, padding: '2px 4px', height: 'auto' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           ) : (
             <button
               className="btn btn-sm btn-ghost"
@@ -393,7 +417,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
@@ -403,6 +427,8 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
   onClearCookies?: () => void
   onRefreshProxy?: () => void
   onConnectGoogle?: () => void
+  onOpenGmail?: () => void
+  onDisconnectGoogle?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -490,22 +516,44 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
         )}
         {onConnectGoogle && (
           (profile as any).googleAccount ? (
-            <span
-              style={{
-                fontSize: '11px',
-                color: '#10B981',
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
-              }}
-              title={`Google Account: ${(profile as any).googleAccount.email} (Connected via System Browser OAuth)`}
-            >
-              <span>✓ G:</span> {(profile as any).googleAccount.email.split('@')[0]}
-            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: '#10B981',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+                title={`Google Account: ${(profile as any).googleAccount.email} (Connected via System Browser OAuth)`}
+              >
+                <span>✓ G:</span> {(profile as any).googleAccount.email.split('@')[0]}
+              </span>
+              {onOpenGmail && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onOpenGmail}
+                  title="Open Gmail Web in System Browser"
+                  style={{ color: '#EA4335', fontSize: 11, padding: '2px 6px', height: 'auto', fontWeight: 600 }}
+                >
+                  📧 Gmail
+                </button>
+              )}
+              {onDisconnectGoogle && (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={onDisconnectGoogle}
+                  title="Disconnect Google Account"
+                  style={{ color: '#94A3B8', fontSize: 11, padding: '2px 4px', height: 'auto' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           ) : (
             <button
               className="btn btn-sm btn-ghost"
@@ -682,6 +730,35 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
     } finally {
       setConnectingGoogleProfileId(null)
     }
+  }
+
+  const handleOpenGmail = async (p: Profile) => {
+    if (!sessionToken) return
+    showToast('info', `Opening Gmail in System Browser for "${p.name}"...`)
+    try {
+      await (window.api as any).openProfileGmail(sessionToken, p.id)
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to open Gmail')
+    }
+  }
+
+  const handleDisconnectGoogle = (p: Profile) => {
+    confirm({
+      title: 'Disconnect Google Account',
+      message: `Are you sure you want to disconnect the Google account from "${p.name}"? This will remove the OAuth token association.`,
+      confirmLabel: 'Disconnect',
+      danger: true,
+      onConfirm: async () => {
+        if (!sessionToken) return
+        const res = await window.api.disconnectProfileGoogle(sessionToken, p.id)
+        if (res?.success) {
+          showToast('success', `Google account disconnected from "${p.name}"`)
+          loadProfiles()
+        } else {
+          showToast('error', res?.error || 'Failed to disconnect')
+        }
+      }
+    })
   }
 
   const handleSaveProfile = async (input: any) => {
@@ -944,6 +1021,8 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               }}
               onRefreshProxy={() => handleRefreshProxy(p)}
               onConnectGoogle={() => handleConnectGoogle(p)}
+              onOpenGmail={() => handleOpenGmail(p)}
+              onDisconnectGoogle={() => handleDisconnectGoogle(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
@@ -1001,6 +1080,8 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               }}
               onRefreshProxy={() => handleRefreshProxy(p)}
               onConnectGoogle={() => handleConnectGoogle(p)}
+              onOpenGmail={() => handleOpenGmail(p)}
+              onDisconnectGoogle={() => handleDisconnectGoogle(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,

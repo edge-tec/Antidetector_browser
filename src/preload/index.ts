@@ -193,6 +193,11 @@ const api = {
     const token = maybeId ? sessionTokenOrId : getSavedToken()
     return ipcRenderer.invoke('profiles:disconnect-google', token, id)
   },
+  openProfileGmail: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:open-gmail', token, id)
+  },
 
   // ── Browser Control ──
   startProfile: (sessionTokenOrId: string, maybeId?: string) => {
