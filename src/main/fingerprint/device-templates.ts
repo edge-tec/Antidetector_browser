@@ -609,6 +609,10 @@ function buildIosTemplate(
 }
 
 const IOS_TEMPLATES: DeviceTemplate[] = [
+  buildIosTemplate('iphone-17-pro-max', 'iPhone 17 Pro Max', '19.0', 'Apple A19 Pro (6 Cores)', 'Apple A19 Pro GPU', 440, 956, 3.0, 6, 12),
+  buildIosTemplate('iphone-17-pro', 'iPhone 17 Pro', '19.0', 'Apple A19 Pro (6 Cores)', 'Apple A19 Pro GPU', 402, 874, 3.0, 6, 12),
+  buildIosTemplate('iphone-17-air', 'iPhone 17 Air (Slim)', '19.0', 'Apple A19 (6 Cores)', 'Apple A19 GPU', 414, 896, 3.0, 6, 8),
+  buildIosTemplate('iphone-17', 'iPhone 17', '19.0', 'Apple A19 (6 Cores)', 'Apple A19 GPU', 393, 852, 3.0, 6, 8),
   buildIosTemplate('iphone-16-pro-max', 'iPhone 16 Pro Max', '18.0', 'Apple A18 Pro (6 Cores)', 'Apple A18 Pro GPU', 440, 956, 3.0, 6, 8),
   buildIosTemplate('iphone-16-pro', 'iPhone 16 Pro', '18.0', 'Apple A18 Pro (6 Cores)', 'Apple A18 Pro GPU', 402, 874, 3.0, 6, 8),
   buildIosTemplate('iphone-16-plus', 'iPhone 16 Plus', '18.0', 'Apple A18 (6 Cores)', 'Apple A18 GPU', 430, 932, 3.0, 6, 8),
@@ -657,6 +661,16 @@ function buildAndroidTemplate(
 }
 
 const ANDROID_TEMPLATES: DeviceTemplate[] = [
+  buildAndroidTemplate('samsung-s26-ultra', 'Samsung', 'Galaxy S26 Ultra', 'SM-S948B', '16', 'Snapdragon 8 Elite Gen 2', 'Qualcomm', 'Adreno (TM) 840', 412, 919, 3.5, 8, 16),
+  buildAndroidTemplate('samsung-s26-plus', 'Samsung', 'Galaxy S26+', 'SM-S946B', '16', 'Snapdragon 8 Elite Gen 2', 'Qualcomm', 'Adreno (TM) 840', 384, 832, 3.0, 8, 12),
+  buildAndroidTemplate('samsung-s26', 'Samsung', 'Galaxy S26', 'SM-S941B', '16', 'Snapdragon 8 Elite Gen 2', 'Qualcomm', 'Adreno (TM) 840', 360, 780, 3.0, 8, 12),
+  buildAndroidTemplate('samsung-s25-ultra', 'Samsung', 'Galaxy S25 Ultra', 'SM-S938B', '15', 'Snapdragon 8 Elite', 'Qualcomm', 'Adreno (TM) 830', 412, 919, 3.5, 8, 16),
+  buildAndroidTemplate('samsung-s25-plus', 'Samsung', 'Galaxy S25+', 'SM-S936B', '15', 'Snapdragon 8 Elite', 'Qualcomm', 'Adreno (TM) 830', 384, 832, 3.0, 8, 12),
+  buildAndroidTemplate('samsung-s25', 'Samsung', 'Galaxy S25', 'SM-S931B', '15', 'Snapdragon 8 Elite', 'Qualcomm', 'Adreno (TM) 830', 360, 780, 3.0, 8, 12),
+  buildAndroidTemplate('samsung-z-fold-7', 'Samsung', 'Galaxy Z Fold 7', 'SM-F966B', '15', 'Snapdragon 8 Elite', 'Qualcomm', 'Adreno (TM) 830', 412, 980, 2.75, 8, 16, 'Foldable Phone'),
+  buildAndroidTemplate('samsung-z-fold-6', 'Samsung', 'Galaxy Z Fold 6', 'SM-F956B', '14', 'Snapdragon 8 Gen 3', 'Qualcomm', 'Adreno (TM) 750', 412, 968, 2.625, 8, 12, 'Foldable Phone'),
+  buildAndroidTemplate('samsung-z-flip-7', 'Samsung', 'Galaxy Z Flip 7', 'SM-F751B', '15', 'Snapdragon 8 Elite', 'Qualcomm', 'Adreno (TM) 830', 412, 1080, 2.625, 8, 12, 'Flip Phone'),
+  buildAndroidTemplate('samsung-z-flip-6', 'Samsung', 'Galaxy Z Flip 6', 'SM-F741B', '14', 'Snapdragon 8 Gen 3', 'Qualcomm', 'Adreno (TM) 750', 412, 1080, 2.625, 8, 12, 'Flip Phone'),
   buildAndroidTemplate('samsung-s24-ultra', 'Samsung', 'Galaxy S24 Ultra', 'SM-S928B', '14', 'Snapdragon 8 Gen 3', 'Qualcomm', 'Adreno (TM) 750', 412, 915, 3.5, 8, 12),
   buildAndroidTemplate('samsung-s24-plus', 'Samsung', 'Galaxy S24+', 'SM-S926B', '14', 'Exynos 2400', 'Samsung Electronics', 'Samsung Xclipse 940', 384, 832, 3.0, 8, 12),
   buildAndroidTemplate('samsung-s24', 'Samsung', 'Galaxy S24', 'SM-S921B', '14', 'Exynos 2400', 'Samsung Electronics', 'Samsung Xclipse 940', 360, 780, 3.0, 8, 8),

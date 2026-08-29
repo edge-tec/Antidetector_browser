@@ -779,6 +779,56 @@ export function getBuiltinTemplates(): ProfileTemplate[] {
       deviceModelId: 'iphone-15-pro'
     },
     {
+      id: 'iphone-17-promax-ios',
+      name: 'iPhone 17 Pro Max (iOS 19 Safari/Chrome)',
+      osType: 'ios',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'mobile',
+      description: 'Apple iPhone 17 Pro Max with Apple A19 Pro GPU, 440x956 @ 3x DPR screen, 12GB RAM, 6 Cores, Touch support.',
+      deviceModelId: 'iphone-17-pro-max'
+    },
+    {
+      id: 'iphone-17-air-ios',
+      name: 'iPhone 17 Air Slim (iOS 19 Safari/Chrome)',
+      osType: 'ios',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'mobile',
+      description: 'Apple iPhone 17 Air (Slim) with Apple A19 GPU, 414x896 @ 3x DPR screen, 8GB RAM, 6 Cores, Touch support.',
+      deviceModelId: 'iphone-17-air'
+    },
+    {
+      id: 'samsung-s26-ultra-android',
+      name: 'Samsung Galaxy S26 Ultra (Android 16 Chrome)',
+      osType: 'android',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'mobile',
+      description: 'Samsung Galaxy S26 Ultra (SM-S948B), Snapdragon 8 Elite Gen 2 (Adreno 840), 412x919 @ 3.5x DPR, 16GB RAM, Touch support.',
+      deviceModelId: 'samsung-s26-ultra'
+    },
+    {
+      id: 'samsung-s25-ultra-android',
+      name: 'Samsung Galaxy S25 Ultra (Android 15 Chrome)',
+      osType: 'android',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'mobile',
+      description: 'Samsung Galaxy S25 Ultra (SM-S938B), Snapdragon 8 Elite (Adreno 830), 412x919 @ 3.5x DPR, 16GB RAM, Touch support.',
+      deviceModelId: 'samsung-s25-ultra'
+    },
+    {
+      id: 'samsung-z-fold-6-android',
+      name: 'Samsung Galaxy Z Fold 6 (Android 14 Chrome)',
+      osType: 'android',
+      browserType: 'chrome',
+      browserVersion: '131.0.6778.86',
+      deviceClass: 'mobile',
+      description: 'Samsung Galaxy Z Fold 6 (SM-F956B), Snapdragon 8 Gen 3 Adreno 750, 412x968 @ 2.625x DPR, 12GB RAM, Foldable screen.',
+      deviceModelId: 'samsung-z-fold-6'
+    },
+    {
       id: 'samsung-s24-ultra-android',
       name: 'Samsung Galaxy S24 Ultra (Android 14 Chrome)',
       osType: 'android',

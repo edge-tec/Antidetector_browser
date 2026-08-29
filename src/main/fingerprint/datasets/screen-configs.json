@@ -26,6 +26,9 @@
     { "width": 6016, "height": 3384, "dpr": 2, "viewport": [3008, 1621], "label": "Pro Display XDR", "weight": 3 }
   ],
   "android": [
+    { "width": 412, "height": 919, "dpr": 3.5, "viewport": [412, 831], "label": "Samsung Galaxy S26 Ultra / S25 Ultra", "weight": 20 },
+    { "width": 412, "height": 968, "dpr": 2.625, "viewport": [412, 880], "label": "Samsung Galaxy Z Fold 6", "weight": 12 },
+    { "width": 412, "height": 1080, "dpr": 2.625, "viewport": [412, 990], "label": "Samsung Galaxy Z Flip 6", "weight": 12 },
     { "width": 412, "height": 915, "dpr": 2.625, "viewport": [412, 823], "label": "Pixel 8", "weight": 15 },
     { "width": 393, "height": 873, "dpr": 2.75, "viewport": [393, 786], "label": "Pixel 7", "weight": 12 },
     { "width": 360, "height": 800, "dpr": 3, "viewport": [360, 712], "label": "Samsung Galaxy S23", "weight": 18 },
@@ -34,10 +37,11 @@
     { "width": 360, "height": 780, "dpr": 3, "viewport": [360, 692], "label": "Samsung Galaxy A54", "weight": 8 }
   ],
   "ios": [
-    { "width": 440, "height": 956, "dpr": 3, "viewport": [440, 896], "label": "iPhone 16 Pro Max", "weight": 20 },
-    { "width": 402, "height": 874, "dpr": 3, "viewport": [402, 814], "label": "iPhone 16 Pro", "weight": 18 },
-    { "width": 430, "height": 932, "dpr": 3, "viewport": [430, 872], "label": "iPhone 15 Pro Max", "weight": 25 },
-    { "width": 393, "height": 852, "dpr": 3, "viewport": [393, 792], "label": "iPhone 15 / 15 Pro", "weight": 25 },
+    { "width": 440, "height": 956, "dpr": 3, "viewport": [440, 896], "label": "iPhone 17 Pro Max / 16 Pro Max", "weight": 25 },
+    { "width": 402, "height": 874, "dpr": 3, "viewport": [402, 814], "label": "iPhone 17 Pro / 16 Pro", "weight": 20 },
+    { "width": 414, "height": 896, "dpr": 3, "viewport": [414, 836], "label": "iPhone 17 Air (Slim)", "weight": 18 },
+    { "width": 430, "height": 932, "dpr": 3, "viewport": [430, 872], "label": "iPhone 15 Pro Max", "weight": 20 },
+    { "width": 393, "height": 852, "dpr": 3, "viewport": [393, 792], "label": "iPhone 17 / 15 / 15 Pro", "weight": 25 },
     { "width": 390, "height": 844, "dpr": 3, "viewport": [390, 784], "label": "iPhone 14 / 13 Pro", "weight": 15 },
     { "width": 375, "height": 667, "dpr": 2, "viewport": [375, 607], "label": "iPhone SE", "weight": 5 }
   ],
