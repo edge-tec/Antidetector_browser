@@ -1247,7 +1247,7 @@ export const ProfileModal: React.FC<Props> = ({
   const [copiedCookieIdx, setCopiedCookieIdx] = useState<number | null>(null)
 
   // Fingerprint state initialized safely with fallback
-  const [fp, setFp] = useState<any>(() => ensureFpStructure(null, 'macos-intel'))
+  const [fp, setFp] = useState<any>(() => ensureFpStructure(null, 'macos-arm', 'chrome', '128.0.6613.120'))
   const [copiedUA, setCopiedUA] = useState(false)
   const [fpToast, setFpToast] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -1312,7 +1312,9 @@ export const ProfileModal: React.FC<Props> = ({
           fp
         )
         if (res?.success && res?.data?.repairedFingerprint) {
-          const repFp = res.data.repairedFingerprint
+          const repBrowser = res.data.repairedMasterProfile?.browserType || browserType
+          const repVer = res.data.repairedMasterProfile?.browserVersion || browserVersion
+          const repFp = ensureFpStructure(res.data.repairedFingerprint, osType, repBrowser, repVer)
           setFp(repFp)
           if (res.data.repairedMasterProfile) {
             if (res.data.repairedMasterProfile.browserVersion) {
@@ -1332,8 +1334,8 @@ export const ProfileModal: React.FC<Props> = ({
             (window as any).api.validateFingerprint(
               repFp,
               osType,
-              res.data.repairedMasterProfile?.browserType || browserType,
-              res.data.repairedMasterProfile?.browserVersion || browserVersion
+              repBrowser,
+              repVer
             ).then((valRes: any) => {
               if (valRes?.success && valRes?.data) {
                 setConsistencyResult(valRes.data)
@@ -1621,7 +1623,7 @@ export const ProfileModal: React.FC<Props> = ({
           deviceModelId: osType === 'ios' ? iosModelId : osType === 'android' ? androidModelId : undefined
         })
         if (res?.success && res?.data) {
-          setFp(res.data)
+          setFp(ensureFpStructure(res.data, osType, newBrowser, defaultVer))
           return
         }
       }
@@ -1875,10 +1877,15 @@ export const ProfileModal: React.FC<Props> = ({
           setCookies([])
         }
       } else {
+        const defaultOs = 'macos-arm'
+        const defaultBrowser: 'chrome' | 'firefox' = 'chrome'
+        const defaultVer = CHROME_VERSIONS_CATALOG[0]?.version || '128.0.6613.120'
         setName(nextName)
         setFolder('')
-        setOsType('macos-arm')
-        setBrowserType('chrome')
+        setOsType(defaultOs)
+        setBrowserType(defaultBrowser)
+        setBrowserVersion(defaultVer)
+        setDeviceTemplateId('')
         setGroupId('')
         setNotes('')
         setTagsStr('')
@@ -1890,7 +1897,7 @@ export const ProfileModal: React.FC<Props> = ({
         setExtensions([])
         setBookmarks([])
         setCookies([])
-        handleGenerateNew('macos-arm')
+        handleGenerateNew(defaultOs, defaultBrowser, defaultVer)
       }
 
       if ((window as any).api?.getLaunchUrlConfig) {
@@ -1908,14 +1915,19 @@ export const ProfileModal: React.FC<Props> = ({
     }
   }, [isOpen, initialProfile, existingProfiles])
 
-  const handleGenerateNew = async (targetOs: string) => {
+  const handleGenerateNew = async (
+    targetOs: string = osType,
+    bType: 'chrome' | 'firefox' = browserType,
+    bVer?: string
+  ) => {
+    const activeVer = bVer || (bType === 'firefox' ? '129.0' : (CHROME_VERSIONS_CATALOG[0]?.version || '128.0.6613.120'))
     if (targetOs === 'android') {
       const brandDevices = getDevicesByBrand(androidBrand)
       const dev = (brandDevices.length > 1 ? brandDevices[Math.floor(Math.random() * brandDevices.length)] : null) || ANDROID_DEVICES[Math.floor(Math.random() * ANDROID_DEVICES.length)]
       if (dev) {
         setAndroidBrand(dev.brand)
         setAndroidModelId(dev.id)
-        applyAndroidDeviceToFp(dev, browserType, browserVersion)
+        applyAndroidDeviceToFp(dev, bType, activeVer)
         setFpToast(true)
         setTimeout(() => setFpToast(false), 2200)
         return
@@ -1924,7 +1936,7 @@ export const ProfileModal: React.FC<Props> = ({
       const dev = IOS_DEVICES[Math.floor(Math.random() * IOS_DEVICES.length)]
       if (dev) {
         setIosModelId(dev.id)
-        applyIosDeviceToFp(dev, browserType, browserVersion, targetOs)
+        applyIosDeviceToFp(dev, bType, activeVer, targetOs)
         setFpToast(true)
         setTimeout(() => setFpToast(false), 2200)
         return
@@ -1933,9 +1945,9 @@ export const ProfileModal: React.FC<Props> = ({
     try {
       const randomSeed = Math.random().toString(36).substring(2) + Date.now().toString(36)
       if ((window as any).api?.generateFingerprint) {
-        const res = await (window as any).api.generateFingerprint({ osType: targetOs, browserType, browserVersion, seed: randomSeed })
+        const res = await (window as any).api.generateFingerprint({ osType: targetOs, browserType: bType, browserVersion: activeVer, seed: randomSeed })
         if (res?.success && res?.data) {
-          setFp(ensureFpStructure(res.data, targetOs, browserType, browserVersion))
+          setFp(ensureFpStructure(res.data, targetOs, bType, activeVer))
           setFpToast(true)
           setTimeout(() => setFpToast(false), 2200)
           return
@@ -1945,7 +1957,7 @@ export const ProfileModal: React.FC<Props> = ({
       console.error('Failed to generate fingerprint:', err)
     }
     // Fallback if API fails
-    setFp(ensureFpStructure(null, targetOs, browserType, browserVersion))
+    setFp(ensureFpStructure(null, targetOs, bType, activeVer))
     setFpToast(true)
     setTimeout(() => setFpToast(false), 2200)
   }
@@ -1979,14 +1991,14 @@ export const ProfileModal: React.FC<Props> = ({
             processorGen: newProc
           })
           if (res?.success && res?.data) {
-            setFp(res.data)
+            setFp(ensureFpStructure(res.data, newOs, browserType, browserVersion))
             setFpToast(true)
             setTimeout(() => setFpToast(false), 2200)
             return
           }
         }
       } catch {}
-      handleGenerateNew(newOs)
+      handleGenerateNew(newOs, browserType, browserVersion)
     }
   }
 
