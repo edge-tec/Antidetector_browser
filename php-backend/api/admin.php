@@ -2469,6 +2469,56 @@ switch ($action) {
             $syncStmt = $db->prepare("INSERT INTO desktop_app_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
             $syncStmt->execute([$cfgVerKey, $version]);
             $syncStmt->execute([$cfgUrlKey, $directUrl]);
+
+            // Upsert into software_versions for enterprise auto-updater API
+            try {
+                $verId = 'ver_' . preg_replace('/[^a-zA-Z0-9]/', '_', $version);
+                $winCol = $platform === 'windows-x64' ? $directUrl : null;
+                $macArmCol = $platform === 'macos-arm64' ? $directUrl : null;
+                $macIntelCol = $platform === 'macos-x64' ? $directUrl : null;
+                $linuxCol = $platform === 'linux-x64' ? $directUrl : null;
+
+                $svStmt = $db->prepare("
+                    INSERT INTO software_versions (
+                        id, version, build, channel, release_title, release_notes, status, published_at, created_by,
+                        win_download_url, mac_arm_download_url, mac_intel_download_url, linux_download_url
+                    ) VALUES (
+                        ?, ?, '1', 'stable', ?, ?, 'published', CURRENT_TIMESTAMP, ?,
+                        ?, ?, ?, ?
+                    ) ON DUPLICATE KEY UPDATE
+                        release_title = VALUES(release_title),
+                        release_notes = VALUES(release_notes),
+                        status = 'published',
+                        published_at = CURRENT_TIMESTAMP,
+                        win_download_url = COALESCE(VALUES(win_download_url), win_download_url),
+                        mac_arm_download_url = COALESCE(VALUES(mac_arm_download_url), mac_arm_download_url),
+                        mac_intel_download_url = COALESCE(VALUES(mac_intel_download_url), mac_intel_download_url),
+                        linux_download_url = COALESCE(VALUES(linux_download_url), linux_download_url)
+                ");
+                $svStmt->execute([
+                    $verId, $version, $releaseName, $releaseNotes, $adminUser['email'],
+                    $winCol, $macArmCol, $macIntelCol, $linuxCol
+                ]);
+            } catch (Throwable $e) {}
+
+            // Broadcast real-time update event across all connected desktop software clients
+            try {
+                $evStmt = $db->prepare("
+                    INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                    VALUES (?, 'software.release.published', NULL, ?)
+                ");
+                $evStmt->execute([
+                    'evt_' . uniqid(),
+                    json_encode([
+                        'version' => $version,
+                        'platform' => $platform,
+                        'release_title' => $releaseName,
+                        'release_notes' => $releaseNotes,
+                        'download_url' => $directUrl,
+                        'timestamp' => time()
+                    ])
+                ]);
+            } catch (Throwable $e) {}
         }
 
         $insStmt = $db->prepare("
@@ -2484,7 +2534,7 @@ switch ($action) {
 
         respondJson([
             'success' => true,
-            'message' => "Application release v{$version} for {$platform} published successfully!",
+            'message' => "Application release v{$version} for {$platform} published and broadcast to all devices successfully!",
             'releaseId' => $releaseId
         ]);
         break;

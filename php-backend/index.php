@@ -3438,7 +3438,11 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         <p id="adminUserInfo">Logged in as System Admin</p>
                     </div>
                 </div>
-                <div class="admin-top-right">
+                <div class="admin-top-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <a href="/" target="_blank" class="btn btn-outline" style="font-size: 12px; padding: 7px 14px; text-decoration: none; border-color: rgba(255,255,255,0.15); color: #FFF; display: inline-flex; align-items: center; gap: 6px;">🌐 Landing</a>
+                    <button type="button" class="btn btn-outline admin-only-section" onclick="switchAdminTab('releases')" style="font-size: 12px; padding: 7px 14px; border-color: rgba(45,212,191,0.5); color: #2DD4BF; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; background: rgba(45,212,191,0.1); cursor: pointer;" title="Manage software version releases and broadcast real-time update alerts to all devices">
+                        🚀 Software Update & Releases
+                    </button>
                     <button class="btn btn-outline admin-btn-logout" onclick="handleLogout()">🚪 <span class="btn-text-logout">Logout</span></button>
                     <button class="close-modal admin-btn-close" onclick="closeAdminDashboard()">✕ <span class="btn-text-close">Close</span></button>
                 </div>

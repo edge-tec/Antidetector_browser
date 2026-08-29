@@ -2655,6 +2655,7 @@ function AppContent() {
       } catch {}
     }
     checkAppUpdate()
+    const updateInterval = setInterval(checkAppUpdate, 5 * 60 * 1000)
 
     let unsubUpdate: (() => void) | undefined
     if ((window as any).api?.onSoftwareUpdateAvailable) {
@@ -2668,6 +2669,7 @@ function AppContent() {
     }
 
     return () => {
+      clearInterval(updateInterval)
       if (unsubUpdate) unsubUpdate()
     }
   }, [showToast, appVersion])
