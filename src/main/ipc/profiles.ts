@@ -12,6 +12,11 @@ import { authorizeUser, normalizeUserRole } from '../security/session'
 import { centralApi } from '../services/api-client.service'
 import { proxySyncService } from '../services/proxy-sync.service'
 import { logger } from '../logging/logger'
+import {
+  startGoogleSystemBrowserOAuth,
+  getProfileGoogleAccount,
+  disconnectProfileGoogleAccount
+} from '../security/google-oauth-loopback'
 
 function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string; locked?: boolean; expired?: boolean } {
   const normalized = normalizeUserRole(role)
@@ -86,7 +91,6 @@ export function registerProfileHandlers(): void {
       const filterUserId = isAdmin ? undefined : auth.user.id
 
       // 1. Get local profiles
-      const { getProfileGoogleAccount } = require('../security/google-oauth-loopback')
       const localProfiles = profileRepo.getAll(filterUserId, search, groupId, status).map((p: any) => {
         const ga = getProfileGoogleAccount(p.id)
         return {
@@ -155,7 +159,6 @@ export function registerProfileHandlers(): void {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
-      const { getProfileGoogleAccount } = require('../security/google-oauth-loopback')
       const ga = getProfileGoogleAccount(id)
 
       return {
@@ -464,7 +467,6 @@ export function registerProfileHandlers(): void {
         return { success: false, error: 'Access denied. You do not own this profile.' }
       }
 
-      const { startGoogleSystemBrowserOAuth } = require('../security/google-oauth-loopback')
       const oauthRes = await startGoogleSystemBrowserOAuth({ profileId })
 
       if (!oauthRes.success) {
@@ -487,7 +489,6 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
       validateId(profileId)
 
-      const { getProfileGoogleAccount } = require('../security/google-oauth-loopback')
       const linked = getProfileGoogleAccount(profileId)
       return { success: true, data: linked }
     } catch (err: any) {
@@ -501,7 +502,6 @@ export function registerProfileHandlers(): void {
       if (auth.error || !auth.user) return { success: false, error: auth.error }
       validateId(profileId)
 
-      const { disconnectProfileGoogleAccount } = require('../security/google-oauth-loopback')
       const disconnected = disconnectProfileGoogleAccount(profileId)
       return { success: true, disconnected }
     } catch (err: any) {
