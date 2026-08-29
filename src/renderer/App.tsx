@@ -232,7 +232,7 @@ function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onN
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
