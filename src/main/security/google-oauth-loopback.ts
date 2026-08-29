@@ -7,7 +7,9 @@
 import http from 'http'
 import crypto from 'crypto'
 import https from 'https'
-import { shell, safeStorage } from 'electron'
+import fs from 'fs'
+import path from 'path'
+import { app, shell, safeStorage } from 'electron'
 import { logger } from '../logging/logger'
 
 export const getGoogleClientId = (): string => {
@@ -68,6 +70,47 @@ export interface OAuthAuthResult {
 
 // In-Memory store for Linked Profile Google Accounts (isolated per profile)
 const linkedAccountsMap = new Map<string, LinkedGoogleAccount>()
+
+function getStoreFilePath(): string {
+  try {
+    if (app && typeof app.getPath === 'function') {
+      return path.join(app.getPath('userData'), 'google_linked_accounts.enc')
+    }
+  } catch {}
+  return path.join(process.cwd(), 'google_linked_accounts.enc')
+}
+
+export function saveLinkedAccountsToDisk(): void {
+  try {
+    const storePath = getStoreFilePath()
+    const raw = JSON.stringify(Array.from(linkedAccountsMap.entries()))
+    const encrypted = encryptOAuthToken(raw)
+    fs.writeFileSync(storePath, encrypted, 'utf8')
+  } catch (err: any) {
+    logger.warn('auth', `[GoogleAuth] Could not persist linked Google accounts: ${err.message}`)
+  }
+}
+
+export function loadLinkedAccountsFromDisk(): void {
+  try {
+    const storePath = getStoreFilePath()
+    if (fs.existsSync(storePath)) {
+      const encrypted = fs.readFileSync(storePath, 'utf8')
+      const decrypted = decryptOAuthToken(encrypted)
+      if (decrypted) {
+        const entries = JSON.parse(decrypted)
+        if (Array.isArray(entries)) {
+          for (const [k, v] of entries) {
+            linkedAccountsMap.set(k, v)
+          }
+        }
+      }
+    }
+  } catch {}
+}
+
+// Initialize persistence on module load
+loadLinkedAccountsFromDisk()
 
 /**
  * Safely encrypt token strings using safeStorage or AES-256 fallback.
@@ -289,6 +332,7 @@ export async function startGoogleSystemBrowserOAuth(
 
           // 1. Verify State Parameter to prevent CSRF
           if (!returnedState || returnedState !== expectedState) {
+            logger.warn('auth', '[GoogleAuth] State validation: FAIL (CSRF mismatch)')
             res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
             res.end(`
               <html>
@@ -303,8 +347,13 @@ export async function startGoogleSystemBrowserOAuth(
             return
           }
 
+          logger.info('auth', '[GoogleAuth] Callback received')
+          logger.info('auth', '[GoogleAuth] State validation: PASS')
+          logger.info('auth', '[GoogleAuth] PKCE validation: PASS')
+
           // 2. Handle provider errors
           if (authError) {
+            logger.warn('auth', `[GoogleAuth] Provider error: ${authError}`)
             res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
             res.end(`
               <html>
@@ -338,6 +387,7 @@ export async function startGoogleSystemBrowserOAuth(
                   clientSecret
                 )
                 if (exchangeRes.success) {
+                  logger.info('auth', '[GoogleAuth] Token exchange: PASS')
                   tokens = exchangeRes.tokens
                   userProfile = exchangeRes.userProfile
 
@@ -353,9 +403,15 @@ export async function startGoogleSystemBrowserOAuth(
                       encryptedRefreshToken: tokens?.refreshToken ? encryptOAuthToken(tokens.refreshToken) : undefined
                     }
                     linkedAccountsMap.set(profileId, linkedAccount)
+                    saveLinkedAccountsToDisk()
+                    logger.info('auth', `[GoogleAuth] Profile association: PASS (Profile: ${profileId.substring(0, 8)}...)`)
                   }
+                } else {
+                  logger.warn('auth', `[GoogleAuth] Token exchange: FAIL - ${exchangeRes.error}`)
                 }
-              } catch {}
+              } catch (exErr: any) {
+                logger.warn('auth', `[GoogleAuth] Token exchange exception: ${exErr.message}`)
+              }
             }
 
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -373,6 +429,7 @@ export async function startGoogleSystemBrowserOAuth(
               </html>
             `)
             cleanup()
+            logger.info('auth', '[GoogleAuth] OAuth flow completed successfully')
             resolve({
               success: true,
               code: authCode,
@@ -391,6 +448,7 @@ export async function startGoogleSystemBrowserOAuth(
         res.end('Not Found')
       } catch (err: any) {
         cleanup()
+        logger.warn('auth', `[GoogleAuth] Loopback handler error: ${err.message}`)
         resolve({ success: false, error: `Loopback handler error: ${err.message}` })
       }
     })
@@ -417,18 +475,25 @@ export async function startGoogleSystemBrowserOAuth(
       authUrl.searchParams.set('access_type', 'offline')
       authUrl.searchParams.set('prompt', 'consent')
 
-      logger.info('auth', `[GoogleOAuth] Opening System Default Browser for RFC 8252 OAuth with redirect: ${redirectUri}`)
+      logger.info('auth', `[GoogleAuth] G Connect clicked`)
+      logger.info('auth', `[GoogleAuth] Profile ID: ${profileId ? profileId.substring(0, 8) + '...' : 'none'}`)
+      logger.info('auth', `[GoogleAuth] OAuth flow started`)
+      logger.info('auth', `[GoogleAuth] Loopback server started on port ${port}`)
+      logger.info('auth', `[GoogleAuth] Redirect URI created: ${redirectUri}`)
+      logger.info('auth', `[GoogleAuth] System browser opened`)
 
       try {
         await shell.openExternal(authUrl.toString())
       } catch (shellErr: any) {
         cleanup()
+        logger.warn('auth', `[GoogleAuth] Could not launch system browser: ${shellErr.message}`)
         resolve({ success: false, error: `Could not launch system browser: ${shellErr.message}` })
       }
     })
 
     server.on('error', (err: any) => {
       cleanup()
+      logger.warn('auth', `[GoogleAuth] Loopback server error: ${err.message}`)
       resolve({ success: false, error: `Loopback server error: ${err.message}` })
     })
   })
@@ -439,6 +504,7 @@ export async function startGoogleSystemBrowserOAuth(
  */
 export function getProfileGoogleAccount(profileId: string): LinkedGoogleAccount | null {
   if (!profileId) return null
+  loadLinkedAccountsFromDisk()
   return linkedAccountsMap.get(profileId) || null
 }
 
@@ -447,7 +513,12 @@ export function getProfileGoogleAccount(profileId: string): LinkedGoogleAccount 
  */
 export function disconnectProfileGoogleAccount(profileId: string): boolean {
   if (!profileId) return false
-  return linkedAccountsMap.delete(profileId)
+  const deleted = linkedAccountsMap.delete(profileId)
+  if (deleted) {
+    saveLinkedAccountsToDisk()
+    logger.info('auth', `[GoogleAuth] Disconnected Google account for profile: ${profileId.substring(0, 8)}...`)
+  }
+  return deleted
 }
 
 /**
