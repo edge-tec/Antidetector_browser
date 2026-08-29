@@ -25,6 +25,8 @@ const api = {
   forgotPassword: (email: string) => ipcRenderer.invoke('auth:forgot-password', email),
   resetPassword: (token: string, newPassword: string) => ipcRenderer.invoke('auth:reset-password', { token, newPassword }),
   getCurrentUser: (token: string) => ipcRenderer.invoke('auth:get-current-user', token),
+  updateProfile: (token: string, data: any) => ipcRenderer.invoke('auth:update-profile', { token, ...data }),
+  changePassword: (token: string, data: any) => ipcRenderer.invoke('auth:change-password', { token, ...data }),
   logoutUser: (token: string) => ipcRenderer.invoke('auth:logout', token),
 
   // ── Admin Management ──

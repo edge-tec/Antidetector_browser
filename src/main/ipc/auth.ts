@@ -679,6 +679,56 @@ export function setupAuthIPC(): void {
     return { success: true }
   })
 
+  // ── Update Profile Handler ──
+  ipcMain.handle('auth:update-profile', async (_event, { token, name, avatarUrl }: { token: string; name?: string; avatarUrl?: string }) => {
+    try {
+      const { user, error } = authorizeUser(token, { allowUnverified: true })
+      if (error || !user) {
+        return { success: false, error: error || 'Unauthorized' }
+      }
+      const db = getDatabase()
+      if (name && name.trim()) {
+        db.prepare('UPDATE users SET name = ?, updated_at = datetime(\'now\') WHERE id = ?').run(name.trim(), user.id)
+      }
+      try {
+        await centralApi.updateProfile({ name, avatarUrl })
+      } catch {}
+      const updated = db.prepare('SELECT id, name, email, role, email_verified, created_at, updated_at FROM users WHERE id = ?').get(user.id) as any
+      return { success: true, data: updated }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update profile.' }
+    }
+  })
+
+  // ── Change Password Handler ──
+  ipcMain.handle('auth:change-password', async (_event, { token, oldPassword, newPassword }: { token: string; oldPassword?: string; newPassword?: string }) => {
+    try {
+      const { user, error } = authorizeUser(token, { allowUnverified: true })
+      if (error || !user) {
+        return { success: false, error: error || 'Unauthorized' }
+      }
+      if (!newPassword || newPassword.length < 6) {
+        return { success: false, error: 'New password must be at least 6 characters.' }
+      }
+      const db = getDatabase()
+      const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as { password_hash: string } | undefined
+      if (row && row.password_hash) {
+        const bcrypt = require('bcryptjs')
+        if (oldPassword && !bcrypt.compareSync(oldPassword, row.password_hash)) {
+          return { success: false, error: 'Current password is incorrect.' }
+        }
+        const newHash = bcrypt.hashSync(newPassword, 10)
+        db.prepare('UPDATE users SET password_hash = ?, updated_at = datetime(\'now\') WHERE id = ?').run(newHash, user.id)
+      }
+      try {
+        await centralApi.changePassword({ oldPassword, newPassword })
+      } catch {}
+      return { success: true, message: 'Password updated successfully.' }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to change password.' }
+    }
+  })
+
   // ── Real-Time Synchronization & RBAC IPC Handlers ──
   ipcMain.handle('sync:get-status', async () => {
     return syncService.getStatus()

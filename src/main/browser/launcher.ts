@@ -552,6 +552,7 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
   }
 
   const args: string[] = [
+    '--test-type',
     '--no-first-run',
     '--no-default-browser-check',
     '--profile-directory=Default',

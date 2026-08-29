@@ -27,6 +27,9 @@ interface AuthContextType {
   resetPassword: (token: string, newPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>
   impersonateUser: (targetUser: UserDisplay) => Promise<{ success: boolean; error?: string }>
   exitImpersonation: () => void
+  updateProfile: (name: string, avatarUrl?: string) => Promise<{ success: boolean; error?: string; data?: UserDisplay }>
+  changePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>
+  refreshProfile: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -43,6 +46,8 @@ const callIpc = async (channel: string, ...args: any[]) => {
       'auth:forgot-password': 'forgotPassword',
       'auth:reset-password': 'resetPassword',
       'auth:get-current-user': 'getCurrentUser',
+      'auth:update-profile': 'updateProfile',
+      'auth:change-password': 'changePassword',
       'auth:logout': 'logoutUser',
       'admin:impersonate-user': 'adminImpersonateUser'
     }
@@ -260,6 +265,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  const refreshProfile = async () => {
+    if (!sessionToken) return
+    try {
+      const res = await callIpc('auth:get-current-user', sessionToken)
+      if (res?.success && res.data) {
+        setCurrentUser(res.data)
+      }
+    } catch {}
+  }
+
+  const updateProfile = async (name: string, avatarUrl?: string) => {
+    if (!sessionToken) return { success: false, error: 'Session expired.' }
+    const res = await callIpc('auth:update-profile', { token: sessionToken, name, avatarUrl })
+    if (res?.success && res.data) {
+      setCurrentUser(prev => prev ? { ...prev, ...res.data } : res.data)
+    }
+    return res
+  }
+
+  const changePassword = async (oldPassword: string, newPassword: string) => {
+    if (!sessionToken) return { success: false, error: 'Session expired.' }
+    return await callIpc('auth:change-password', { token: sessionToken, oldPassword, newPassword })
+  }
+
   const logout = async () => {
     if (sessionToken) {
       await callIpc('auth:logout', sessionToken).catch(() => {})
@@ -294,6 +323,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetPassword,
         impersonateUser,
         exitImpersonation,
+        updateProfile,
+        changePassword,
+        refreshProfile,
         logout
       }}
     >

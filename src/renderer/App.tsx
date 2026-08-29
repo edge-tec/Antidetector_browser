@@ -1669,7 +1669,7 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
   onNavigateAdmin?: (tab: string) => void
   onOpenChangelog?: () => void
 }) {
-  const { currentUser, isAdmin } = useAuth()
+  const { currentUser, isAdmin, updateProfile, changePassword, refreshProfile } = useAuth()
   const [chromiumPath, setChromiumPath] = useState<string | null>(null)
   const [engineType, setEngineType] = useState<string>('Google Chrome')
   const [version, setVersion] = useState('')
@@ -1680,10 +1680,71 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
   const [discoveredBrowsers, setDiscoveredBrowsers] = useState<any[]>([])
   const [clearingCache, setClearingCache] = useState(false)
 
+  // Profile and Password Management State
+  const [showEditProfile, setShowEditProfile] = useState(false)
+  const [editName, setEditName] = useState(currentUser?.name || '')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+
   // Enterprise Auto-Update Settings State
   const [updateSettings, setUpdateSettings] = useState<any>(null)
   const [updatePlatform, setUpdatePlatform] = useState<any>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editName.trim()) {
+      showToast('warning', 'Please enter your name.')
+      return
+    }
+    setSavingProfile(true)
+    try {
+      const res = await updateProfile(editName.trim())
+      if (res?.success) {
+        showToast('success', '✓ Profile name updated successfully!')
+        setShowEditProfile(false)
+      } else {
+        showToast('error', res?.error || 'Failed to update profile.')
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to update profile.')
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newPassword || newPassword.length < 6) {
+      showToast('warning', 'New password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('warning', 'New passwords do not match.')
+      return
+    }
+    setSavingPassword(true)
+    try {
+      const res = await changePassword(oldPassword, newPassword)
+      if (res?.success) {
+        showToast('success', '✓ Password changed successfully!')
+        setOldPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setShowChangePassword(false)
+      } else {
+        showToast('error', res?.error || 'Failed to change password.')
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to change password.')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
 
   const loadUpdateSettings = useCallback(async () => {
     try {
@@ -1910,8 +1971,40 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ textAlign: 'right', marginRight: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setEditName(currentUser?.name || '')
+                  setShowEditProfile(!showEditProfile)
+                  setShowChangePassword(false)
+                }}
+                style={{ padding: '6px 12px', fontSize: 12 }}
+              >
+                ✏️ Edit Name
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setShowChangePassword(!showChangePassword)
+                  setShowEditProfile(false)
+                }}
+                style={{ padding: '6px 12px', fontSize: 12 }}
+              >
+                🔑 Change Password
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={async () => {
+                  await refreshProfile()
+                  showToast('success', '✓ Profile information refreshed.')
+                }}
+                title="Refresh Profile"
+                style={{ padding: '6px 10px', fontSize: 12 }}
+              >
+                🔄 Refresh
+              </button>
+              <div style={{ textAlign: 'right', marginLeft: 6, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: 12 }}>
                 <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Plan</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#2DD4BF' }}>{planName}</div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
@@ -1925,6 +2018,78 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
               )}
             </div>
           </div>
+
+          {/* Inline Profile Name Edit Form */}
+          {showEditProfile && (
+            <form onSubmit={handleSaveProfile} style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter your full name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  style={{ width: '100%', fontSize: 13 }}
+                  autoFocus
+                />
+              </div>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={savingProfile}>
+                {savingProfile ? 'Saving...' : 'Save Name'}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowEditProfile(false)}>
+                Cancel
+              </button>
+            </form>
+          )}
+
+          {/* Inline Change Password Form */}
+          {showChangePassword && (
+            <form onSubmit={handleChangePassword} style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>CURRENT PASSWORD</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Current password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    style={{ width: '100%', fontSize: 13 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>NEW PASSWORD</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Min 6 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    style={{ width: '100%', fontSize: 13 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>CONFIRM NEW PASSWORD</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Repeat new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    style={{ width: '100%', fontSize: 13 }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowChangePassword(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary btn-sm" disabled={savingPassword}>
+                  {savingPassword ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 
