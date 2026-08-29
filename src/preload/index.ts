@@ -427,6 +427,10 @@ const api = {
     ipcRenderer.invoke('affiliate:simulateTestClick', affiliateId, offerId, subId1),
   affiliateRecordConversion: (input: any) =>
     ipcRenderer.invoke('affiliate:recordConversion', input),
+  getOrCreateReferralCode: (userId: string) =>
+    ipcRenderer.invoke('affiliate:getOrCreateReferralCode', userId),
+  getAffiliateSettings: () =>
+    ipcRenderer.invoke('affiliate:getSettings'),
   affiliateGetPostbackConfig: (userId: string) =>
     ipcRenderer.invoke('affiliate:getPostbackConfig', userId),
   affiliateSavePostbackConfig: (userId: string, postbackUrl: string, method?: 'GET' | 'POST') =>

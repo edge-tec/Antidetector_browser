@@ -43,7 +43,20 @@ export const ReferralPage: React.FC<{ showToast?: (type: 'success' | 'error' | '
             setReferralData(prev => ({
               ...prev,
               referralCode: res.referralCode,
-              referralLink: res.referralLink || `${domain}/register?ref=${res.referralCode}`
+              referralLink: res.referralLink || `${domain}/register?ref=${res.referralCode}`,
+              activeBonusRate: res.activeBonusRate || `${res.bonusRatePercent || 10}% Bonus Credits`
+            }))
+          }
+        }
+        if (typeof window !== 'undefined' && (window as any).api?.affiliateGetUserSummary) {
+          const sumRes = await (window as any).api.affiliateGetUserSummary(currentUser.id)
+          if (sumRes?.success && sumRes?.data && isMounted) {
+            const sum = sumRes.data
+            setReferralData(prev => ({
+              ...prev,
+              totalReferrals: sum.totalConversions || sum.totalClicks || 0,
+              rewardsEarned: sum.totalEarned > 0 ? `$${Number(sum.totalEarned).toFixed(2)} Earned` : `${sum.totalConversions || 0} Bonus Days`,
+              activeBonusRate: `${sum.commissionRate || 10}% Bonus Credits`
             }))
           }
         }

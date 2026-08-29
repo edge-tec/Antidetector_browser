@@ -1608,8 +1608,8 @@ export const AdminAffiliateManager: React.FC = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '6px' }}>
-                DEFAULT COMMISSION RATE (%)
+              <label style={{ display: 'block', fontSize: '12px', color: '#CBD5E1', marginBottom: '6px', fontWeight: 600 }}>
+                🎁 REFERRAL BONUS RATE & DEFAULT COMMISSION (%)
               </label>
               <input
                 type="number"
@@ -1617,9 +1617,12 @@ export const AdminAffiliateManager: React.FC = () => {
                 min="1"
                 max="100"
                 value={settingsForm.commission_rate_percent}
-                onChange={e => setSettingsForm({ ...settingsForm, commission_rate_percent: parseFloat(e.target.value) })}
+                onChange={e => setSettingsForm({ ...settingsForm, commission_rate_percent: parseFloat(e.target.value) || 0 })}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', background: '#0B0F19', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
               />
+              <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px', display: 'block' }}>
+                Sets the global referral bonus credit percentage shown on the Refer a Friend page (e.g. 10%, 20%, 30%) and the default payout commission on referred subscription purchases.
+              </span>
             </div>
 
             <div>

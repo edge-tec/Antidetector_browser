@@ -73,6 +73,33 @@ export function registerAffiliateHandlers(): void {
     }
   })
 
+  // ── 3b. User: Get Or Create Referral Code & Active Bonus Rate ──
+  ipcMain.handle('affiliate:getOrCreateReferralCode', async (_event, userId: string) => {
+    try {
+      const data = affiliateService.getOrCreateReferralCode(userId)
+      const settings = affiliateService.getSettings()
+      const bonusRate = settings.commission_rate_percent || settings.default_commission_rate || 10
+      return {
+        success: true,
+        ...data,
+        bonusRatePercent: bonusRate,
+        activeBonusRate: `${bonusRate}% Bonus Credits`
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 3c. Public/User: Get Global Affiliate Settings ──
+  ipcMain.handle('affiliate:getSettings', async () => {
+    try {
+      const settings = affiliateService.getSettings()
+      return { success: true, data: settings }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
   // ── 4. CPA Offers (Public & User) ──
   ipcMain.handle('affiliate:getOffers', async (_event, onlyActive?: boolean) => {
     try {
