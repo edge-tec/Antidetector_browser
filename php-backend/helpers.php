@@ -5521,38 +5521,75 @@ function autoGenerateLandingPageForOffer(PDO $db, array $offer): array {
     $metaDesc = "Unlock AntiProfiles {$packageName}. {$heroSubtitle}";
 
     try {
-        $st = $db->prepare("
-            INSERT INTO `affiliate_landing_pages` (
-                `id`, `slug`, `offer_id`, `package_id`, `package_name`, `hero_title`, `hero_subtitle`,
-                `price_monthly`, `price_yearly`, `original_price`, `discount_percent`, `badge_text`,
-                `trial_enabled`, `features_json`, `faq_json`, `reviews_json`, `cta_text`, `theme_color`, `is_active`,
-                `seo_title`, `meta_desc`
-            ) VALUES (
-                :id, :slug, :offer_id, :package_id, :package_name, :hero_title, :hero_subtitle,
-                :price_monthly, :price_yearly, :original_price, :discount_percent, :badge_text,
-                :trial_enabled, :features_json, :faq_json, :reviews_json, :cta_text, :theme_color, 1,
-                :seo_title, :meta_desc
-            ) ON DUPLICATE KEY UPDATE
-                `offer_id` = VALUES(`offer_id`),
-                `package_id` = VALUES(`package_id`),
-                `package_name` = VALUES(`package_name`),
-                `hero_title` = VALUES(`hero_title`),
-                `hero_subtitle` = VALUES(`hero_subtitle`),
-                `price_monthly` = VALUES(`price_monthly`),
-                `price_yearly` = VALUES(`price_yearly`),
-                `original_price` = VALUES(`original_price`),
-                `discount_percent` = VALUES(`discount_percent`),
-                `badge_text` = VALUES(`badge_text`),
-                `trial_enabled` = VALUES(`trial_enabled`),
-                `features_json` = VALUES(`features_json`),
-                `faq_json` = VALUES(`faq_json`),
-                `reviews_json` = VALUES(`reviews_json`),
-                `cta_text` = VALUES(`cta_text`),
-                `theme_color` = VALUES(`theme_color`),
-                `seo_title` = VALUES(`seo_title`),
-                `meta_desc` = VALUES(`meta_desc`),
-                `is_active` = 1
-        ");
+        $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            $st = $db->prepare("
+                INSERT INTO `affiliate_landing_pages` (
+                    `id`, `slug`, `offer_id`, `package_id`, `package_name`, `hero_title`, `hero_subtitle`,
+                    `price_monthly`, `price_yearly`, `original_price`, `discount_percent`, `badge_text`,
+                    `trial_enabled`, `features_json`, `faq_json`, `reviews_json`, `cta_text`, `theme_color`, `is_active`,
+                    `seo_title`, `meta_desc`, `created_at`, `updated_at`
+                ) VALUES (
+                    :id, :slug, :offer_id, :package_id, :package_name, :hero_title, :hero_subtitle,
+                    :price_monthly, :price_yearly, :original_price, :discount_percent, :badge_text,
+                    :trial_enabled, :features_json, :faq_json, :reviews_json, :cta_text, :theme_color, 1,
+                    :seo_title, :meta_desc, datetime('now'), datetime('now')
+                ) ON CONFLICT(slug) DO UPDATE SET
+                    `offer_id` = excluded.`offer_id`,
+                    `package_id` = excluded.`package_id`,
+                    `package_name` = excluded.`package_name`,
+                    `hero_title` = excluded.`hero_title`,
+                    `hero_subtitle` = excluded.`hero_subtitle`,
+                    `price_monthly` = excluded.`price_monthly`,
+                    `price_yearly` = excluded.`price_yearly`,
+                    `original_price` = excluded.`original_price`,
+                    `discount_percent` = excluded.`discount_percent`,
+                    `badge_text` = excluded.`badge_text`,
+                    `trial_enabled` = excluded.`trial_enabled`,
+                    `features_json` = excluded.`features_json`,
+                    `faq_json` = excluded.`faq_json`,
+                    `reviews_json` = excluded.`reviews_json`,
+                    `cta_text` = excluded.`cta_text`,
+                    `theme_color` = excluded.`theme_color`,
+                    `seo_title` = excluded.`seo_title`,
+                    `meta_desc` = excluded.`meta_desc`,
+                    `is_active` = 1,
+                    `updated_at` = datetime('now')
+            ");
+        } else {
+            $st = $db->prepare("
+                INSERT INTO `affiliate_landing_pages` (
+                    `id`, `slug`, `offer_id`, `package_id`, `package_name`, `hero_title`, `hero_subtitle`,
+                    `price_monthly`, `price_yearly`, `original_price`, `discount_percent`, `badge_text`,
+                    `trial_enabled`, `features_json`, `faq_json`, `reviews_json`, `cta_text`, `theme_color`, `is_active`,
+                    `seo_title`, `meta_desc`
+                ) VALUES (
+                    :id, :slug, :offer_id, :package_id, :package_name, :hero_title, :hero_subtitle,
+                    :price_monthly, :price_yearly, :original_price, :discount_percent, :badge_text,
+                    :trial_enabled, :features_json, :faq_json, :reviews_json, :cta_text, :theme_color, 1,
+                    :seo_title, :meta_desc
+                ) ON DUPLICATE KEY UPDATE
+                    `offer_id` = VALUES(`offer_id`),
+                    `package_id` = VALUES(`package_id`),
+                    `package_name` = VALUES(`package_name`),
+                    `hero_title` = VALUES(`hero_title`),
+                    `hero_subtitle` = VALUES(`hero_subtitle`),
+                    `price_monthly` = VALUES(`price_monthly`),
+                    `price_yearly` = VALUES(`price_yearly`),
+                    `original_price` = VALUES(`original_price`),
+                    `discount_percent` = VALUES(`discount_percent`),
+                    `badge_text` = VALUES(`badge_text`),
+                    `trial_enabled` = VALUES(`trial_enabled`),
+                    `features_json` = VALUES(`features_json`),
+                    `faq_json` = VALUES(`faq_json`),
+                    `reviews_json` = VALUES(`reviews_json`),
+                    `cta_text` = VALUES(`cta_text`),
+                    `theme_color` = VALUES(`theme_color`),
+                    `seo_title` = VALUES(`seo_title`),
+                    `meta_desc` = VALUES(`meta_desc`),
+                    `is_active` = 1
+            ");
+        }
         $st->execute([
             ':id' => $lpId,
             ':slug' => $slug,

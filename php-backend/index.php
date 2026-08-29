@@ -218,7 +218,8 @@ if (strpos($requestUri, '/api/') === 0 || strpos($requestUri, 'api/') === 0) {
 
     // CPA Affiliate APIs (/api/affiliate, /api/affiliate/*)
     if (strpos($requestUri, '/api/affiliate') === 0) {
-        $action = str_replace('/api/affiliate/', '', $requestUri);
+        $cleanPath = explode('?', $requestUri)[0];
+        $action = str_replace('/api/affiliate/', '', $cleanPath);
         $action = str_replace('/api/affiliate', '', $action);
         $action = trim($action, '/');
         if (!empty($action)) {
@@ -12457,17 +12458,17 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
                     body: JSON.stringify(payload)
                 });
-                const d = await res.json();
-                if (d.success) {
-                    alert('✓ ' + d.message);
+                const d = await res.json().catch(() => null);
+                if (d && d.success) {
+                    alert('✓ ' + (d.message || 'Offer saved successfully.'));
                     closeAdminCpaOfferModal();
                     loadAdminAffOffersTable();
                     if (typeof loadAdminAffiliateControl === 'function') loadAdminAffiliateControl();
                 } else {
-                    alert('⚠️ ' + (d.error || 'Failed to save offer'));
+                    alert('⚠️ ' + ((d && d.error) ? d.error : `Server Error (HTTP ${res.status}): Failed to save offer.`));
                 }
             } catch(err) {
-                alert('Network error saving offer.');
+                alert('Network error saving offer: ' + (err.message || 'Please check server connection.'));
             }
             return false;
         }
@@ -12485,16 +12486,16 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token },
                     body: JSON.stringify({ id: offerId, slug, permanent: true })
                 });
-                const d = await res.json();
-                if (d.success) {
-                    alert('🗑️ ' + d.message);
+                const d = await res.json().catch(() => null);
+                if (d && d.success) {
+                    alert('🗑️ ' + (d.message || 'Offer deleted successfully.'));
                     loadAdminAffOffersTable();
                     if (typeof loadAdminAffiliateControl === 'function') loadAdminAffiliateControl();
                 } else {
-                    alert('⚠️ ' + (d.error || 'Failed to delete offer'));
+                    alert('⚠️ ' + ((d && d.error) ? d.error : `Server Error (HTTP ${res.status}): Failed to delete offer.`));
                 }
             } catch(err) {
-                alert('Network error deleting offer.');
+                alert('Network error deleting offer: ' + (err.message || 'Please check server connection.'));
             }
         }
 
