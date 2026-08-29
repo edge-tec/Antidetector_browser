@@ -172,6 +172,28 @@ switch ($action) {
             $fetchStmt->execute([$id]);
             $saved = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
+            // Broadcast real-time proxy sync event across all connected desktop software instances
+            try {
+                $evStmt = $db->prepare("
+                    INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                    VALUES (?, 'proxy.location.updated', ?, ?)
+                ");
+                $evStmt->execute([
+                    'evt_' . uniqid(),
+                    $userId,
+                    json_encode([
+                        'proxy_id' => $id,
+                        'city' => $saved['city'] ?? '',
+                        'region' => $saved['region'] ?? '',
+                        'country' => $saved['country'] ?? '',
+                        'timezone' => $saved['timezone'] ?? '',
+                        'latitude' => $saved['latitude'] ?? null,
+                        'longitude' => $saved['longitude'] ?? null,
+                        'timestamp' => time()
+                    ])
+                ]);
+            } catch (Throwable $e) {}
+
             respondJson([
                 'success' => true,
                 'message' => 'Proxy saved successfully.',
@@ -230,6 +252,28 @@ switch ($action) {
             $fetchStmt = $db->prepare("SELECT id, user_id, name, type, host, port, username, country, region, city, isp, asn, timezone, latitude, longitude, public_ip, proxy_version, updated_at FROM proxies WHERE id = ?");
             $fetchStmt->execute([$id]);
             $updated = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Broadcast real-time proxy sync event across all connected desktop software instances
+            try {
+                $evStmt = $db->prepare("
+                    INSERT INTO realtime_sync_events (event_id, event_type, target_user_id, payload)
+                    VALUES (?, 'proxy.location.updated', ?, ?)
+                ");
+                $evStmt->execute([
+                    'evt_' . uniqid(),
+                    $userId,
+                    json_encode([
+                        'proxy_id' => $id,
+                        'city' => $updated['city'] ?? '',
+                        'region' => $updated['region'] ?? '',
+                        'country' => $updated['country'] ?? '',
+                        'timezone' => $updated['timezone'] ?? '',
+                        'latitude' => $updated['latitude'] ?? null,
+                        'longitude' => $updated['longitude'] ?? null,
+                        'timestamp' => time()
+                    ])
+                ]);
+            } catch (Throwable $e) {}
 
             respondJson([
                 'success' => true,

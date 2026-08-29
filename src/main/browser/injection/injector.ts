@@ -249,6 +249,17 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
       }
     }
 
+    // Timezone CDP Override (Native V8 ICU / Date / Intl level)
+    if (fingerprint.timezone?.timezone) {
+      try {
+        await client.send('Emulation.setTimezoneOverride', {
+          timezoneId: fingerprint.timezone.timezone
+        })
+      } catch (err: any) {
+        logger.warn('browser', `Could not set CDP Timezone override: ${err.message}`)
+      }
+    }
+
     // ── Universal User-Agent & Client Hints Override for ALL Platforms ──
     const osType: OSType = (fingerprint as any).osType || (fingerprint.navigator as any)?.osType || (isAndroid ? 'android' : isIOS ? 'ios' : 'windows-10')
     const browserType: 'chrome' | 'firefox' = isFirefox ? 'firefox' : 'chrome'

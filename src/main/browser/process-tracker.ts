@@ -121,6 +121,21 @@ class ProcessTracker {
   }
 
   /**
+   * Get the running Puppeteer browser instance for live CDP sync.
+   */
+  getBrowser(profileId: string): Browser | null {
+    const tracked = this.processes.get(profileId)
+    return (tracked && tracked.browser.connected) ? tracked.browser : null
+  }
+
+  /**
+   * Get tracked process details.
+   */
+  getTracked(profileId: string): TrackedProcess | null {
+    return this.processes.get(profileId) || null
+  }
+
+  /**
    * Get info about a tracked process.
    */
   getInfo(profileId: string): {

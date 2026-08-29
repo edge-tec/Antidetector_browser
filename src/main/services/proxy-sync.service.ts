@@ -4,15 +4,87 @@
 // Synchronized Across Every Browser Profile in Real Time
 // ──────────────────────────────────────────────────────────────────
 
+import { BrowserWindow } from 'electron'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { profileRepo } from '../database/repositories/profile.repo'
 import { centralApi } from './api-client.service'
 import { resolveLocationGeo, invalidateGeoCache, lookupGeoIP } from '../network/geo-lookup'
+import { processTracker } from '../browser/process-tracker'
 import { Proxy, Profile } from '../database/models'
 import { logger } from '../logging/logger'
 
 export class ProxySyncService {
   private syncInProgress = new Map<string, Promise<any>>()
+
+  /**
+   * Live-sync updated GeoLocation, Timezone, and cache clearing to an active running browser profile via CDP.
+   * Modifies running browser state instantly without requiring a restart or manual reload.
+   */
+  public async liveSyncRunningBrowser(
+    profileId: string,
+    geo: {
+      latitude: number
+      longitude: number
+      timezone: string
+      city?: string
+      region?: string
+      country?: string
+      publicIp?: string
+    }
+  ): Promise<boolean> {
+    try {
+      const browser = processTracker.getBrowser(profileId)
+      if (!browser || !browser.connected) return false
+
+      logger.info('proxy', `[ProxySync] ⚡ Live CDP syncing running browser for profile ${profileId} to City: ${geo.city || 'N/A'}, TZ: ${geo.timezone}, Coords: [${geo.latitude}, ${geo.longitude}]`)
+
+      const pages = await browser.pages().catch(() => [])
+      for (const page of pages) {
+        try {
+          if (page.isClosed()) continue
+
+          // 1. Create or obtain CDP Session
+          const client = await page.target().createCDPSession()
+
+          // 2. Override Geolocation at DevTools Protocol level
+          await client.send('Emulation.setGeolocationOverride', {
+            latitude: geo.latitude,
+            longitude: geo.longitude,
+            accuracy: 50
+          }).catch(() => {})
+
+          // 3. Override Timezone at native V8 / ICU level
+          if (geo.timezone) {
+            await client.send('Emulation.setTimezoneOverride', {
+              timezoneId: geo.timezone
+            }).catch(() => {})
+          }
+
+          // 4. Clear HTTP & DNS browser caches to remove old location-bound cached resources
+          await client.send('Network.clearBrowserCache').catch(() => {})
+
+          // 5. Live update in-page JavaScript APIs (Intl, Date, navigator.geolocation)
+          await page.evaluate((lat, lon, tz) => {
+            try {
+              if (typeof (window as any).__antiprofiles_set_geo === 'function') {
+                (window as any).__antiprofiles_set_geo(lat, lon, 50)
+              }
+              if (typeof (window as any).__antiprofiles_set_tz === 'function' && tz) {
+                (window as any).__antiprofiles_set_tz(tz)
+              }
+            } catch {}
+          }, geo.latitude, geo.longitude, geo.timezone).catch(() => {})
+        } catch (pageErr: any) {
+          logger.warn('proxy', `[ProxySync] Page live sync warning for profile ${profileId}: ${pageErr.message}`)
+        }
+      }
+
+      return true
+    } catch (err: any) {
+      logger.warn('proxy', `[ProxySync] Live sync failed for profile ${profileId}: ${err.message}`)
+      return false
+    }
+  }
 
   /**
    * Synchronize a specific proxy configuration from Central API or local database,
@@ -63,6 +135,9 @@ export class ProxySyncService {
         // 2. Invalidate stale cached IP geo data immediately
         if (localProxy.host) {
           invalidateGeoCache(localProxy.host)
+        }
+        if (localProxy.publicIp) {
+          invalidateGeoCache(localProxy.publicIp)
         }
 
         // 3. Resolve authoritative City, State/Region, Country, Timezone, and Coordinates
@@ -157,10 +232,46 @@ export class ProxySyncService {
               updatedCount++
               logger.info('proxy', `[ProxySync] ✓ Auto-updated profile "${prof.name}" (${prof.id}) to location: ${localProxy.city || 'N/A'}, ${localProxy.region || 'N/A'}, ${localProxy.country || 'N/A'} (Timezone: ${effectiveTimezone}, Lat: ${effectiveLat}, Lon: ${effectiveLon})`)
             }
+
+            // 5. Live-Sync to running browser instance if currently open!
+            if (processTracker.isRunning(prof.id)) {
+              await this.liveSyncRunningBrowser(prof.id, {
+                latitude: effectiveLat,
+                longitude: effectiveLon,
+                timezone: effectiveTimezone,
+                city: localProxy.city,
+                region: localProxy.region,
+                country: localProxy.country,
+                publicIp: targetIp
+              })
+            }
           } catch (err: any) {
             logger.warn('proxy', `[ProxySync] Could not update linked profile ${prof.id}: ${err.message}`)
           }
         }
+
+        // 6. Broadcast real-time location update event to all UI windows
+        try {
+          const windows = BrowserWindow.getAllWindows()
+          windows.forEach(win => {
+            if (!win.isDestroyed()) {
+              win.webContents.send('proxies:location-updated', {
+                proxyId,
+                proxy: localProxy,
+                timezone: effectiveTimezone,
+                latitude: effectiveLat,
+                longitude: effectiveLon,
+                city: localProxy.city,
+                region: localProxy.region,
+                country: localProxy.country
+              })
+              win.webContents.send('profiles:status-changed', {
+                proxyId,
+                updatedCount
+              })
+            }
+          })
+        } catch {}
 
         return {
           success: true,

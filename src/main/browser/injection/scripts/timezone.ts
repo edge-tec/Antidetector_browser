@@ -12,7 +12,7 @@ export function buildTimezoneScript(tzFp?: TimezoneFingerprint | { timezone: str
 // ═══ Timezone & Clock Integrity Override (Target: ${targetTz}) ═══
 (function() {
   'use strict';
-  const TARGET_TZ = ${JSON.stringify(targetTz)};
+  let TARGET_TZ = ${JSON.stringify(targetTz)};
 
   try {
     const OrigDateTimeFormat = Intl.DateTimeFormat;
@@ -63,7 +63,7 @@ export function buildTimezoneScript(tzFp?: TimezoneFingerprint | { timezone: str
     } catch(e) {}
 
     // Formatter used to compute exact target date/time components for any Date instance
-    const formatter = new OrigDateTimeFormat('en-US', {
+    let formatter = new OrigDateTimeFormat('en-US', {
       timeZone: TARGET_TZ,
       year: 'numeric',
       month: 'numeric',
@@ -79,13 +79,44 @@ export function buildTimezoneScript(tzFp?: TimezoneFingerprint | { timezone: str
 
     let tzShortName = '';
     let tzLongName = '';
+    function refreshTzNames() {
+      try {
+        const tzParts = new OrigDateTimeFormat('en-US', { timeZone: TARGET_TZ, timeZoneName: 'short' }).formatToParts(new Date());
+        const longParts = new OrigDateTimeFormat('en-US', { timeZone: TARGET_TZ, timeZoneName: 'long' }).formatToParts(new Date());
+        for (let i = 0; i < tzParts.length; i++) { if (tzParts[i].type === 'timeZoneName') tzShortName = tzParts[i].value; }
+        for (let i = 0; i < longParts.length; i++) { if (longParts[i].type === 'timeZoneName') tzLongName = longParts[i].value; }
+      } catch(e) {}
+      if (!tzLongName) tzLongName = TARGET_TZ;
+    }
+    refreshTzNames();
+
+    function updateTargetTz(newTz) {
+      if (!newTz || typeof newTz !== 'string') return;
+      try {
+        new OrigDateTimeFormat('en-US', { timeZone: newTz });
+        TARGET_TZ = newTz;
+        formatter = new OrigDateTimeFormat('en-US', {
+          timeZone: TARGET_TZ,
+          year: 'numeric',
+          month: 'numeric',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          second: 'numeric',
+          hour12: false
+        });
+        refreshTzNames();
+      } catch(err) {}
+    }
+
     try {
-      const tzParts = new OrigDateTimeFormat('en-US', { timeZone: TARGET_TZ, timeZoneName: 'short' }).formatToParts(new Date());
-      const longParts = new OrigDateTimeFormat('en-US', { timeZone: TARGET_TZ, timeZoneName: 'long' }).formatToParts(new Date());
-      for (let i = 0; i < tzParts.length; i++) { if (tzParts[i].type === 'timeZoneName') tzShortName = tzParts[i].value; }
-      for (let i = 0; i < longParts.length; i++) { if (longParts[i].type === 'timeZoneName') tzLongName = longParts[i].value; }
+      Object.defineProperty(window, '__antiprofiles_set_tz', {
+        value: updateTargetTz,
+        enumerable: false,
+        configurable: true,
+        writable: true
+      });
     } catch(e) {}
-    if (!tzLongName) tzLongName = TARGET_TZ;
 
     function getTargetDateParts(date) {
       if (isNaN(date.getTime())) return null;

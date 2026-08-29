@@ -390,6 +390,31 @@ class RealtimeSyncService {
         }
         break;
 
+      case 'proxy.created':
+      case 'proxy.updated':
+      case 'proxy.location.updated':
+      case 'proxy.config.updated':
+      case 'proxy.city.updated':
+      case 'proxy.deleted':
+      case 'proxy.sync':
+        logger.info('sync', `[SyncEvent] 🌐 Proxy City/Location event received (${eventType}) for Proxy ID: ${parsedPayload.proxy_id || parsedPayload.id || 'all'}`)
+        try {
+          const { proxySyncService } = require('./proxy-sync.service')
+          const targetProxyId = parsedPayload.proxy_id || parsedPayload.id
+          if (targetProxyId) {
+            proxySyncService.syncProxy(targetProxyId, true).then(() => {
+              this.broadcastToAllWindows('proxies:synced', parsedPayload)
+            }).catch(() => {})
+          } else {
+            proxySyncService.syncAllProxies().then(() => {
+              this.broadcastToAllWindows('proxies:synced', parsedPayload)
+            }).catch(() => {})
+          }
+        } catch (err: any) {
+          logger.warn('sync', `[SyncEvent] Proxy sync processing error: ${err.message}`)
+        }
+        break
+
       case 'profile.created':
       case 'profile.updated':
       case 'profile.deleted':
