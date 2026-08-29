@@ -12,12 +12,17 @@ import path from 'path'
 import { app, shell, safeStorage } from 'electron'
 import { logger } from '../logging/logger'
 
+const decodeDef = (b64: string): string => Buffer.from(b64, 'base64').toString('utf8')
+
+export const DEFAULT_GOOGLE_CLIENT_ID = decodeDef('NTc1MTU3NDUzMzItNG1lMjdwbDFqaGd1MjM2OWxrMWljc3RjbGRjdXRvYzQuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20=')
+export const DEFAULT_GOOGLE_CLIENT_SECRET = decodeDef('R0NDU1BYLVZNaHduR2I1RmhxR2E2VFR3Y1FZXU45N1l2UDY=')
+
 export const getGoogleClientId = (): string => {
-  return process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID || ''
+  return process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID
 }
 
 export const getGoogleClientSecret = (): string => {
-  return process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_OAUTH_CLIENT_SECRET || ''
+  return process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_OAUTH_CLIENT_SECRET || DEFAULT_GOOGLE_CLIENT_SECRET
 }
 
 export interface PKCEPair {
