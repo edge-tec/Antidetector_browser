@@ -20,6 +20,7 @@ import { SupportChatWidget } from './components/SupportChatWidget'
 import { BrowserSetupModal } from './components/BrowserSetupModal'
 import { UpdateNotificationModal, UpdateAvailablePayload } from './components/UpdateNotificationModal'
 import { VersionHistoryModal } from './components/VersionHistoryModal'
+import { ReferralPage } from './pages/ReferralPage'
 import { ReferralDashboard } from './pages/ReferralDashboard'
 import { BrowserRuntimeManager } from './components/BrowserRuntimeManager'
 import { RuntimeProvisioningModal, ProvisioningProgressData } from './components/RuntimeProvisioningModal'
@@ -2814,7 +2815,7 @@ function AppContent() {
       { page: 'launch_url' as any, icon: <span style={{ fontSize: 16 }}>🌐</span>, label: 'Global Launch URL', section: 'ADMIN' },
       { page: 'admin' as any, icon: <span style={{ fontSize: 16 }}>👑</span>, label: 'Admin Dashboard' }
     ] : []),
-    { page: 'affiliate', icon: Icons.gift, label: 'Affiliates & Referrals', section: 'EARN' },
+    { page: 'referral', icon: Icons.gift, label: 'Refer a Friend', section: 'EARN' },
     { page: 'support', icon: Icons.chat, label: 'Live Support', section: 'HELP & SUPPORT' },
   ]
 
@@ -3096,7 +3097,7 @@ function AppContent() {
                 />
               )}
               {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
-              {currentPage === 'affiliate' && <ReferralDashboard />}
+              {(currentPage === 'referral' || (currentPage as any) === 'affiliate') && <ReferralPage showToast={showToast} />}
               {currentPage === 'support' && <SupportPage showToast={showToast} />}
             </>
           )}

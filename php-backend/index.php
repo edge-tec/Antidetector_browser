@@ -3652,6 +3652,18 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                             </div>
                         </div>
 
+                        <!-- Quick Referral Link Bar -->
+                        <div style="background: rgba(45,212,191,0.06); border: 1px solid rgba(45,212,191,0.2); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 18px;">🔗</span>
+                                <div>
+                                    <div style="font-size: 11px; font-weight: 700; color: #2DD4BF; text-transform: uppercase;">Your Personal Referral Invite Link</div>
+                                    <div style="font-size: 13px; color: #FFF; font-family: monospace; font-weight: 600;" id="userMainRefLinkDisplay">https://antiprofiles.com/register?ref=REF_...</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="copyMainReferralLink()" style="padding: 6px 16px; font-size: 12px; font-weight: 700;">📋 Copy Referral Link</button>
+                        </div>
+
                         <!-- KPI Metrics Grid -->
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
                             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;">
@@ -11419,6 +11431,9 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 // 1. Identity
                 if (d.affiliateId) document.getElementById('userAffIdDisplay').innerText = d.affiliateId;
                 if (d.referralCode) document.getElementById('userRefCodeDisplay').innerText = d.referralCode;
+                const mainRefLink = window.location.origin + '/register?ref=' + (d.referralCode || 'REF_PARTNER');
+                const mainRefEl = document.getElementById('userMainRefLinkDisplay');
+                if (mainRefEl) mainRefEl.innerText = mainRefLink;
                 const statusBadge = document.getElementById('userAffStatusBadge');
                 if (statusBadge) {
                     statusBadge.innerText = (d.status || 'active').toUpperCase();
@@ -11635,6 +11650,16 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 sel.style.borderColor = '#2DD4BF';
                 setTimeout(() => sel.style.borderColor = 'var(--border)', 1500);
             }
+        }
+
+        function copyMainReferralLink() {
+            const el = document.getElementById('userMainRefLinkDisplay');
+            const url = el ? el.innerText.trim() : (window.location.origin + '/register');
+            navigator.clipboard.writeText(url).then(() => {
+                alert('✓ Personal Referral Invite Link copied to clipboard!\n\n' + url);
+            }).catch(() => {
+                prompt('Copy your referral link:', url);
+            });
         }
 
         function copyDirectOfferLink(url) {
