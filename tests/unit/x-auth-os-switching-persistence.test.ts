@@ -112,4 +112,30 @@ describe('X (Twitter) Login Compatibility & OS Switching Storage Preservation', 
       expect(hasCredentialInterception).toBe(false)
     })
   })
+
+  // 5. Safe Diagnostics Logger (Zero Secrets Guarantee)
+  describe('5. Safe Auth Telemetry & Diagnostics Logger', () => {
+    it('records sanitized diagnostic event and strips sensitive URL query params or tokens', async () => {
+      const { SafeAuthDiagnostics } = await import('../../src/main/browser/x-auth-diagnostics')
+      SafeAuthDiagnostics.clear()
+
+      const logged = SafeAuthDiagnostics.logSafeEvent({
+        profileId: 'test-profile-123',
+        hostname: 'https://x.com/i/flow/login?session_token=SECRET_123&pass=SECRET_PASS',
+        statusCategory: '4xx_CLIENT_RESTRICTION',
+        processState: 'RUNNING',
+        userVisibleState: 'RATE_LIMITED',
+        notes: 'User observed server-side restriction dialog'
+      })
+
+      expect(logged.hostname).toBe('x.com')
+      expect(logged.hostname).not.toContain('SECRET_123')
+      expect(logged.hostname).not.toContain('SECRET_PASS')
+      expect(logged.statusCategory).toBe('4xx_CLIENT_RESTRICTION')
+      expect(logged.userVisibleState).toBe('RATE_LIMITED')
+
+      const events = SafeAuthDiagnostics.getRecentEvents('test-profile-123')
+      expect(events.length).toBe(1)
+    })
+  })
 })
