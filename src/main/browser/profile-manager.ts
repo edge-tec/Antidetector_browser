@@ -15,8 +15,9 @@ import { resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { ProfileHealthChecker } from './profile-health-checker'
 import { ProfileLockSystem } from './profile-lock-system'
 import { CrashRecoveryManager } from './crash-recovery-manager'
-
 import { BackupIntegrityService } from '../storage/backup-integrity'
+import { logger } from '../logging/logger'
+import { getDatabase } from '../database/connection'
 
 class ProfileManager {
   private chromiumPath: string | null = null
