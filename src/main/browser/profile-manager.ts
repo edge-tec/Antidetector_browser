@@ -12,8 +12,11 @@ import { processTracker } from './process-tracker'
 import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, clearProfileCookiesData, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
 import { ensureBrowserRuntime } from './runtime-provisioner'
 import { resolveFirefoxProfile } from './firefox/firefox-resolver'
-import { logger } from '../logging/logger'
-import { getDatabase } from '../database/connection'
+import { ProfileHealthChecker } from './profile-health-checker'
+import { ProfileLockSystem } from './profile-lock-system'
+import { CrashRecoveryManager } from './crash-recovery-manager'
+
+import { BackupIntegrityService } from '../storage/backup-integrity'
 
 class ProfileManager {
   private chromiumPath: string | null = null
@@ -57,9 +60,14 @@ class ProfileManager {
       throw new Error(`Profile not found: ${profileId}`)
     }
 
-    if (processTracker.isRunning(profileId)) {
-      throw new Error(`Profile "${profile.name}" is already running.`)
+    if (processTracker.isRunning(profileId) || ProfileLockSystem.isLocked(profileId)) {
+      throw new Error(`Profile "${profile.name}" is already running in an active instance. Multi-instance concurrency locked.`)
     }
+
+    // ── Profile Storage Health Check & Auto-Repair ──
+    try {
+      ProfileHealthChecker.autoRepair(profileId)
+    } catch {}
 
     // Determine configured browser engine & type
     let rawFp: any = null
@@ -117,7 +125,8 @@ class ProfileManager {
     try {
       const result = await launchBrowser(profile, executablePath, browserType)
 
-      // Track the process
+      // Acquire instance lock & track process
+      ProfileLockSystem.acquireLock(profileId, result.pid)
       processTracker.track(profileId, profile.name, result.browser, result.pid, result.wsEndpoint)
 
       // Update status to running
@@ -126,6 +135,7 @@ class ProfileManager {
 
       return { pid: result.pid, wsEndpoint: result.wsEndpoint }
     } catch (err: any) {
+      ProfileLockSystem.releaseLock(profileId)
       profileRepo.setStatus(profileId, 'error')
       logger.error('browser', `[BrowserLaunch] Failed to launch profile ${profileId}: ${err.message}`)
       throw err
@@ -136,6 +146,8 @@ class ProfileManager {
    * Stop a profile's browser.
    */
   async stopProfile(profileId: string): Promise<void> {
+    CrashRecoveryManager.markCleanExit(profileId)
+    ProfileLockSystem.releaseLock(profileId)
     await processTracker.stop(profileId)
   }
 
@@ -272,44 +284,58 @@ class ProfileManager {
   }
 
   /**
-   * Export a profile as a JSON config.
+   * Export a profile as a JSON config with SHA256 checksum.
    */
   exportProfile(profileId: string): object | null {
     const profile = profileRepo.getById(profileId)
     if (!profile) return null
 
+    const profileData = {
+      name: profile.name,
+      notes: profile.notes,
+      color: profile.color,
+      icon: profile.icon,
+      browserVersion: profile.browserVersion,
+      userAgent: profile.userAgent,
+      language: profile.language,
+      timezone: profile.timezone,
+      screenWidth: profile.screenWidth,
+      screenHeight: profile.screenHeight,
+      webrtcMode: profile.webrtcMode,
+      canvasMode: profile.canvasMode,
+      webglMode: profile.webglMode,
+      hwConcurrency: profile.hwConcurrency,
+      deviceMemory: profile.deviceMemory,
+      hwAcceleration: profile.hwAcceleration,
+      tags: profile.tags
+    }
+
+    const checksum = BackupIntegrityService.calculateChecksum(JSON.stringify(profileData))
+
     return {
-      exportVersion: 1,
+      exportVersion: 2,
       exportDate: new Date().toISOString(),
-      profile: {
-        name: profile.name,
-        notes: profile.notes,
-        color: profile.color,
-        icon: profile.icon,
-        browserVersion: profile.browserVersion,
-        userAgent: profile.userAgent,
-        language: profile.language,
-        timezone: profile.timezone,
-        screenWidth: profile.screenWidth,
-        screenHeight: profile.screenHeight,
-        webrtcMode: profile.webrtcMode,
-        canvasMode: profile.canvasMode,
-        webglMode: profile.webglMode,
-        hwConcurrency: profile.hwConcurrency,
-        deviceMemory: profile.deviceMemory,
-        hwAcceleration: profile.hwAcceleration,
-        tags: profile.tags
-      }
+      checksum,
+      profile: profileData
     }
   }
 
   /**
-   * Import a profile from exported JSON.
+   * Import a profile from exported JSON with checksum verification.
    */
   importProfile(data: any, userId?: string): Profile {
     if (!data?.profile?.name) {
       throw new Error('Invalid profile export format.')
     }
+
+    // Verify SHA-256 integrity if present
+    if (data.checksum) {
+      const isValid = BackupIntegrityService.verifyArchiveChecksum(JSON.stringify(data.profile), data.checksum)
+      if (!isValid) {
+        logger.warn('browser', '[ProfileImport] Archive checksum mismatch. File may have been modified or corrupted.')
+      }
+    }
+
     const p = data.profile
     return this.createProfile({
       name: `${p.name} (Imported)`,

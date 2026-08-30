@@ -13,6 +13,7 @@ import { centralApi } from '../services/api-client.service'
 import { proxySyncService } from '../services/proxy-sync.service'
 import { logger } from '../logging/logger'
 import { processTracker } from '../browser/process-tracker'
+import { ProfileHealthChecker } from '../browser/profile-health-checker'
 import {
   startGoogleSystemBrowserOAuth,
   getProfileGoogleAccount,
@@ -568,6 +569,33 @@ export function registerProfileHandlers(): void {
 
       const disconnected = disconnectProfileGoogleAccount(profileId)
       return { success: true, disconnected }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Profile Health & Storage Corruption Diagnostics ──
+  ipcMain.handle('profiles:checkHealth', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const report = ProfileHealthChecker.checkHealth(profileId)
+      return { success: true, data: report }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:repairHealth', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const res = ProfileHealthChecker.autoRepair(profileId)
+      return { success: true, data: res }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
