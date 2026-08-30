@@ -107,17 +107,30 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     // so Botguard hardware challenges pass with genuine device metrics.
     function isProtectedAuthDomain() {
       try {
-        var loc = window.location || {};
-        var host = (loc.hostname || loc.host || '').toLowerCase();
+        var loc = (typeof window !== 'undefined' ? window.location : null) || {};
+        var rawHost = (loc.hostname || loc.host || '').toLowerCase();
+        var host = rawHost.split(':')[0];
+        var isTrustedAuthHost = (
+          host === 'x.com' || host.endsWith('.x.com') ||
+          host === 'twitter.com' || host.endsWith('.twitter.com') ||
+          host === 'google.com' || host.endsWith('.google.com') ||
+          host === 'facebook.com' || host.endsWith('.facebook.com') ||
+          host === 'instagram.com' || host.endsWith('.instagram.com') ||
+          host === 'linkedin.com' || host.endsWith('.linkedin.com') ||
+          host === 'github.com' || host.endsWith('.github.com') ||
+          host === 'apple.com' || host.endsWith('.apple.com')
+        );
+
+        if (!isTrustedAuthHost) {
+          return false;
+        }
+
+        var path = (loc.pathname || '').toLowerCase();
         var href = (loc.href || '').toLowerCase();
-        var docUrl = (typeof document !== 'undefined' && document.URL ? document.URL : '').toLowerCase();
-        var docLoc = (typeof document !== 'undefined' && document.location && document.location.href ? document.location.href : '').toLowerCase();
 
         return (
           host === 'accounts.google.com' ||
-          host.endsWith('.accounts.google.com') ||
           host === 'myaccount.google.com' ||
-          host === 'accounts.youtube.com' ||
           host === 'oauth2.googleapis.com' ||
           host === 'mail.google.com' ||
           host === 'x.com' ||
@@ -132,16 +145,15 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
           host.endsWith('.linkedin.com') ||
           host === 'github.com' ||
           host.endsWith('.github.com') ||
-          href.indexOf('accounts.google.') !== -1 ||
-          docUrl.indexOf('accounts.google.') !== -1 ||
-          docLoc.indexOf('accounts.google.') !== -1 ||
+          path.indexOf('/login') !== -1 ||
+          path.indexOf('/signin') !== -1 ||
+          path.indexOf('/oauth') !== -1 ||
+          path.indexOf('/i/flow/login') !== -1 ||
+          path.indexOf('/i/flow/') !== -1 ||
           href.indexOf('/v3/signin') !== -1 ||
           href.indexOf('/servicelogin') !== -1 ||
-          href.indexOf('/i/flow/login') !== -1 ||
-          href.indexOf('/login') !== -1 ||
-          href.indexOf('/signin') !== -1 ||
-          href.indexOf('/oauth') !== -1 ||
-          (host.indexOf('google.') !== -1 && (href.indexOf('/signin') !== -1 || href.indexOf('/oauth') !== -1 || href.indexOf('/identifier') !== -1 || href.indexOf('/challenge') !== -1))
+          href.indexOf('/identifier') !== -1 ||
+          href.indexOf('/challenge') !== -1
         );
       } catch(e) {
         return false;

@@ -137,5 +137,37 @@ describe('X (Twitter) Login Compatibility & OS Switching Storage Preservation', 
       const events = SafeAuthDiagnostics.getRecentEvents('test-profile-123')
       expect(events.length).toBe(1)
     })
+
+    it('proves fake passwords, OTPs, and auth_tokens cannot enter diagnostic event logs', async () => {
+      const { SafeAuthDiagnostics } = await import('../../src/main/browser/x-auth-diagnostics')
+      SafeAuthDiagnostics.clear()
+
+      const fakeSecretDump = 'https://x.com/oauth?auth_token=SUPER_SECRET_COOKIE_123&otp=849201&user_pass=MySecretPassword999'
+      const event = SafeAuthDiagnostics.logSafeEvent({
+        profileId: 'audit-profile',
+        hostname: fakeSecretDump,
+        statusCategory: '2xx_SUCCESS',
+        processState: 'RUNNING',
+        notes: 'Clean authentication session'
+      })
+
+      const rawJson = JSON.stringify(event)
+      expect(rawJson).not.toContain('SUPER_SECRET_COOKIE_123')
+      expect(rawJson).not.toContain('849201')
+      expect(rawJson).not.toContain('MySecretPassword999')
+      expect(event.hostname).toBe('x.com')
+    })
+  })
+
+  // 6. Look-alike & Phishing Domain Protection
+  describe('6. Phishing & Look-Alike Domain Protection', () => {
+    it('ensures look-alike attacker domains are not treated as genuine auth domains in injection script', () => {
+      const fp = generateFingerprint({ osType: 'windows-11' })
+      const script = buildInjectionScript(fp, 'chrome')
+
+      expect(script).toContain('isTrustedAuthHost')
+      expect(script).toContain('host === \'x.com\' || host.endsWith(\'.x.com\')')
+      expect(script).toContain('host === \'twitter.com\' || host.endsWith(\'.twitter.com\')')
+    })
   })
 })

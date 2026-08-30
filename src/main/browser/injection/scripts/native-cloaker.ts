@@ -11,36 +11,25 @@ export function buildNativeCloakerScript(): string {
 (function() {
   'use strict';
 
-  try {
-    var loc = window.location || {};
-    var h = (loc.hostname || '').toLowerCase();
-    var href = (loc.href || '').toLowerCase();
-    if (
-      h.indexOf('accounts.google.') !== -1 ||
-      h.indexOf('myaccount.google.') !== -1 ||
-      h === 'x.com' ||
-      h.endsWith('.x.com') ||
-      h === 'twitter.com' ||
-      h.endsWith('.twitter.com') ||
-      h === 'facebook.com' ||
-      h.endsWith('.facebook.com') ||
-      h === 'instagram.com' ||
-      h.endsWith('.instagram.com') ||
-      h === 'linkedin.com' ||
-      h.endsWith('.linkedin.com') ||
-      h === 'github.com' ||
-      h.endsWith('.github.com') ||
-      href.indexOf('/signin') !== -1 ||
-      href.indexOf('/v3/signin') !== -1 ||
-      href.indexOf('/i/flow/login') !== -1 ||
-      href.indexOf('/login') !== -1 ||
-      href.indexOf('/oauth') !== -1
-    ) {
+    var loc = (typeof window !== 'undefined' ? window.location : null) || {};
+    var rawH = (loc.hostname || '').toLowerCase();
+    var h = rawH.split(':')[0];
+    var isTrustedAuthHost = (
+      h === 'x.com' || h.endsWith('.x.com') ||
+      h === 'twitter.com' || h.endsWith('.twitter.com') ||
+      h === 'google.com' || h.endsWith('.google.com') ||
+      h === 'facebook.com' || h.endsWith('.facebook.com') ||
+      h === 'instagram.com' || h.endsWith('.instagram.com') ||
+      h === 'linkedin.com' || h.endsWith('.linkedin.com') ||
+      h === 'github.com' || h.endsWith('.github.com') ||
+      h === 'apple.com' || h.endsWith('.apple.com')
+    );
+
+    if (isTrustedAuthHost) {
       window.__cloakFunction = function(f) { return f; };
       window.__cloakGetter = function(f) { return f; };
       return;
     }
-  } catch(e) {}
 
   if (window.__antiprofiles_cloaker_installed) return;
   window.__antiprofiles_cloaker_installed = true;
