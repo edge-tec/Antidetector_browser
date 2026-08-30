@@ -558,7 +558,6 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--window-size=1280,800',
     '--window-position=100,60',
     '--disable-features=ProfilePickerOnStartup',
-    '--password-store=basic',
     `--lang=${lang}`
   ]
 
