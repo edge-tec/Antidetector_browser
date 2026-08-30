@@ -59,9 +59,52 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
   return `(function() {
   'use strict';
   try {
+    // ── Universal Automation Shield (Orbita / GoLogin Rule) ──
+    // Eliminates navigator.webdriver across ALL domains (including Google Accounts & Gmail)
+    // to strictly comply with Google Rule #3: "Controlled through software automation".
+    try {
+      var proto = Object.getPrototypeOf(navigator) || Navigator.prototype;
+      delete proto.webdriver;
+      Object.defineProperty(proto, 'webdriver', {
+        get: function() { return false; },
+        set: undefined,
+        enumerable: true,
+        configurable: true
+      });
+      if ('webdriver' in navigator) {
+        try {
+          Object.defineProperty(navigator, 'webdriver', {
+            get: function() { return false; },
+            configurable: true
+          });
+        } catch(e) {}
+      }
+    } catch(e) {}
+
+    // Ensure desktop window.chrome standard runtime is present
+    try {
+      if (typeof window !== 'undefined' && !window.chrome) {
+        window.chrome = {
+          app: {
+            isInstalled: false,
+            InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+            RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
+          },
+          runtime: {
+            OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+            OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+            PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+            PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+            PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+            RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
+          }
+        };
+      }
+    } catch(e) {}
+
     // ── Safe Domain Policy (Orbita / GoLogin Standard) ──
-    // Preserve 100% pristine native browser prototypes on Google Identity, Gmail, & Auth domains
-    // to prevent botguard detection and ensure legitimate login flows.
+    // Preserve 100% pristine native Canvas/WebGL/Audio/Font prototypes on Google Identity, Gmail, & Auth domains
+    // so Botguard hardware challenges pass with genuine device metrics.
     function isProtectedAuthDomain() {
       try {
         var loc = window.location || {};
