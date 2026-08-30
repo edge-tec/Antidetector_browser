@@ -120,11 +120,16 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
           host === 'accounts.youtube.com' ||
           host === 'oauth2.googleapis.com' ||
           host === 'mail.google.com' ||
+          host === 'x.com' ||
+          host.endsWith('.x.com') ||
+          host === 'twitter.com' ||
+          host.endsWith('.twitter.com') ||
           href.indexOf('accounts.google.') !== -1 ||
           docUrl.indexOf('accounts.google.') !== -1 ||
           docLoc.indexOf('accounts.google.') !== -1 ||
           href.indexOf('/v3/signin') !== -1 ||
           href.indexOf('/servicelogin') !== -1 ||
+          href.indexOf('/i/flow/login') !== -1 ||
           (host.indexOf('google.') !== -1 && (href.indexOf('/signin') !== -1 || href.indexOf('/oauth') !== -1 || href.indexOf('/identifier') !== -1 || href.indexOf('/challenge') !== -1))
         );
       } catch(e) {

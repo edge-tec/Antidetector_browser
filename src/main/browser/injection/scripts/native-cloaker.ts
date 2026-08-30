@@ -15,7 +15,17 @@ export function buildNativeCloakerScript(): string {
     var loc = window.location || {};
     var h = (loc.hostname || '').toLowerCase();
     var href = (loc.href || '').toLowerCase();
-    if (h.indexOf('accounts.google.') !== -1 || h.indexOf('myaccount.google.') !== -1 || href.indexOf('/signin') !== -1 || href.indexOf('/v3/signin') !== -1) {
+    if (
+      h.indexOf('accounts.google.') !== -1 ||
+      h.indexOf('myaccount.google.') !== -1 ||
+      h === 'x.com' ||
+      h.endsWith('.x.com') ||
+      h === 'twitter.com' ||
+      h.endsWith('.twitter.com') ||
+      href.indexOf('/signin') !== -1 ||
+      href.indexOf('/v3/signin') !== -1 ||
+      href.indexOf('/i/flow/login') !== -1
+    ) {
       window.__cloakFunction = function(f) { return f; };
       window.__cloakGetter = function(f) { return f; };
       return;

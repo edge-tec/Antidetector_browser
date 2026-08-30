@@ -87,4 +87,16 @@ describe('X (Twitter) & Standards-Compliant Browser Compatibility Tests', () => 
       expect(script).toContain('NetworkInformation')
     })
   })
+
+  describe('5. X (Twitter) Protected Auth Domain Policy', () => {
+    it('protects x.com, twitter.com, and /i/flow/login from prototype tampering', () => {
+      const fp = generateFingerprint({ osType: 'windows-10' })
+      const script = buildInjectionScript(fp)
+
+      expect(script).toContain('x.com')
+      expect(script).toContain('twitter.com')
+      expect(script).toContain('/i/flow/login')
+      expect(script).toContain('isProtectedAuthDomain')
+    })
+  })
 })
