@@ -128,7 +128,7 @@ class ProfileManager {
 
       // Acquire instance lock & track process
       ProfileLockSystem.acquireLock(profileId, result.pid)
-      processTracker.track(profileId, profile.name, result.browser, result.pid, result.wsEndpoint)
+      processTracker.track(profileId, profile.name, result.browser, result.pid, result.wsEndpoint, (result as any).childProcess)
 
       // Update status to running
       profileRepo.setStatus(profileId, 'running', result.pid)

@@ -1040,189 +1040,46 @@ export async function launchBrowser(
       }
     }
 
-    let browser: Browser
-    try {
-      browser = await puppeteer.launch({
-        executablePath: executablePath,
-        userDataDir,
-        headless: false,
-        defaultViewport: null,
-        args,
-        ignoreDefaultArgs: true,
-        timeout: 60000,
-        handleSIGINT: false,
-        handleSIGTERM: false,
-        handleSIGHUP: false,
-        env: {
-          ...process.env,
-          TZ: effectiveTz
-        }
-      })
-    } catch (launchErr: any) {
-      logger.warn('browser', `[BrowserLaunch] Initial launch failed with "${executablePath}": ${launchErr.message}. Attempting fallback to system browser...`)
-      const { findChromiumPath } = await import('./chromium-resolver')
-      const systemCandidate = await findChromiumPath()
+    // ── Native Google-Compliant Desktop Chromium Launch ──
+    const finalArgs: string[] = [
+      `--user-data-dir=${userDataDir}`,
+      '--profile-directory=Default',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--window-size=1280,800',
+      '--window-position=100,60',
+      '--disable-features=ProfilePickerOnStartup',
+      ...args.filter(a => !a.startsWith('--user-data-dir=') && !a.startsWith('--profile-directory='))
+    ]
 
-      if (systemCandidate && systemCandidate !== executablePath && fs.existsSync(systemCandidate)) {
-        logger.info('browser', `[BrowserLaunch] Retrying launch with system Chromium binary: ${systemCandidate}`)
-        if (process.platform === 'darwin' || process.platform === 'linux') {
-          try { fs.chmodSync(systemCandidate, 0o755) } catch {}
-        }
-        browser = await puppeteer.launch({
-          executablePath: systemCandidate,
-          userDataDir,
-          headless: false,
-          defaultViewport: null,
-          args,
-          ignoreDefaultArgs: true,
-          timeout: 60000,
-          handleSIGINT: false,
-          handleSIGTERM: false,
-          handleSIGHUP: false,
-          env: {
-            ...process.env,
-            TZ: effectiveTz
-          }
-        })
-      } else {
-        throw launchErr
-      }
-    }
-
-    const wsEndpoint = browser.wsEndpoint()
-    const browserProcess = browser.process()
-    const pid = browserProcess?.pid || 0
-
-    // Inject full fingerprint via CDP
-    await setupBrowserInjection(browser, fingerprint)
-
-    // Set standard normal centered Chromium window bounds via CDP
-    // Ensure all device profiles (Windows, macOS, Linux, Android, iOS) launch in a standard, clean, comfortable desktop window
-    try {
-      const pages = await browser.pages()
-      if (pages.length > 0) {
-        const client = await pages[0].target().createCDPSession()
-        const { windowId } = await client.send('Browser.getWindowForTarget')
-        await client.send('Browser.setWindowBounds', {
-          windowId,
-          bounds: { windowState: 'normal', width: 1280, height: 800, left: 100, top: 60 }
-        })
-      }
-    } catch (err: any) {
-      logger.warn('browser', `Could not set CDP window bounds: ${err.message}`)
-    }
-
-    // Set timezone via CDP
-    const tz = fingerprint?.timezone?.timezone || profile.timezone || 'America/New_York'
-    if (tz) {
-      try {
-        const pages = await browser.pages()
-        for (const page of pages) {
-          await page.emulateTimezone(tz)
-        }
-        browser.on('targetcreated', async (target) => {
-          try {
-            const page = await target.page()
-            if (page && tz) {
-              await page.emulateTimezone(tz)
-            }
-          } catch { /* Ignore */ }
-        })
-      } catch (err) {
-        logger.warn('browser', `Could not set timezone: ${err}`)
-      }
-    }
-
-    // Handle proxy authentication for HTTP/HTTPS proxies
-    if (effectiveProxy && effectiveProxy.username && (effectiveProxy.type === 'http' || effectiveProxy.type === 'https')) {
-      try {
-        let password = ''
-        if ((effectiveProxy as any).password) {
-          password = (effectiveProxy as any).password
-        } else if (effectiveProxy.encryptedPassword) {
-          try {
-            password = decryptPassword(effectiveProxy.encryptedPassword)
-          } catch {
-            if (typeof effectiveProxy.encryptedPassword === 'string') {
-              password = effectiveProxy.encryptedPassword
-            } else if (Buffer.isBuffer(effectiveProxy.encryptedPassword)) {
-              password = effectiveProxy.encryptedPassword.toString('utf8')
-            }
-          }
-        }
-        const auth = { username: effectiveProxy.username, password }
-        const pages = await browser.pages()
-        for (const page of pages) {
-          try {
-            await page.authenticate(auth)
-          } catch { /* Ignore */ }
-        }
-        browser.on('targetcreated', async (target) => {
-          try {
-            const page = await target.page()
-            if (page) {
-              await page.authenticate(auth)
-            }
-          } catch { /* Ignore */ }
-        })
-      } catch (err) {
-        logger.warn('browser', `Proxy authentication error: ${err}`)
-      }
-    }
-
-    // Inject Profile Cookies via CDP Network Domain
-    const cookiesToInject = fingerprint?.browser?.cookies || (profile as any).cookies
-    if (Array.isArray(cookiesToInject) && cookiesToInject.length > 0) {
-      try {
-        const pages = await browser.pages()
-        if (pages.length > 0) {
-          const client = await pages[0].target().createCDPSession()
-          const cdpCookies = cookiesToInject.map((c: any) => {
-            let domain = c.domain || 'localhost'
-            if (domain.startsWith('http://') || domain.startsWith('https://')) {
-              try { domain = new URL(domain).hostname } catch {}
-            }
-            const exp = c.expires || c.expirationDate
-            return {
-              name: String(c.name || ''),
-              value: String(c.value !== undefined ? c.value : ''),
-              domain,
-              path: c.path || '/',
-              expires: typeof exp === 'number' && exp > 0 ? exp : undefined,
-              httpOnly: Boolean(c.httpOnly),
-              secure: Boolean(c.secure),
-              sameSite: ['Strict', 'Lax', 'None'].includes(c.sameSite) ? c.sameSite : undefined
-            }
-          }).filter((c: any) => c.name)
-
-          if (cdpCookies.length > 0) {
-            await client.send('Network.setCookies', { cookies: cdpCookies })
-            logger.info('browser', `Injected ${cdpCookies.length} cookies into browser session via CDP for "${profile.name}"`)
-          }
-        }
-      } catch (err: any) {
-        logger.warn('browser', `Could not inject cookies via CDP: ${err.message}`)
-      }
-    }
-
-    // Navigate to start URLs
     if (startUrls.length > 0) {
-      try {
-        const pages = await browser.pages()
-        if (pages[0] && startUrls[0]) {
-          await pages[0].goto(startUrls[0], { waitUntil: 'domcontentloaded' })
-        }
-        for (let i = 1; i < startUrls.length; i++) {
-          const newPage = await browser.newPage()
-          await newPage.goto(startUrls[i], { waitUntil: 'domcontentloaded' })
-        }
-      } catch (err) {
-        logger.warn('browser', `Could not navigate to start URLs: ${err}`)
-      }
+      finalArgs.push(...startUrls)
     }
 
-    logger.info('browser', `Browser launched for "${profile.name}" (PID: ${pid}) with fingerprint injection`)
-    return { browser, pid, wsEndpoint }
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ...(effectiveTz ? { TZ: effectiveTz } : {})
+    }
+
+    let child: ChildProcess
+    let pid = 0
+
+    if (process.platform === 'darwin' && executablePath.includes('.app')) {
+      const appPath = executablePath.substring(0, executablePath.indexOf('.app') + 4)
+      const openArgs = ['-n', '-a', appPath, '--args', ...finalArgs]
+      logger.info('browser', `[ChromiumLaunch] Spawning macOS GUI instance via open: ${openArgs.join(' ')}`)
+      child = spawn('open', openArgs, { detached: true, stdio: 'ignore', env })
+      child.unref()
+      pid = child.pid || 0
+    } else {
+      logger.info('browser', `[ChromiumLaunch] Spawning native Chromium process: ${executablePath} with user-data-dir: ${userDataDir}`)
+      child = spawn(executablePath, finalArgs, { detached: true, stdio: 'ignore', env })
+      child.unref()
+      pid = child.pid || 0
+    }
+
+    logger.info('browser', `[ChromiumLaunch] Native Chromium started for "${profile.name}" (PID: ${pid})`)
+    return { browser: null as any, pid, wsEndpoint: '', childProcess: child }
   } catch (err: any) {
     logger.error('browser', `Failed to launch browser for "${profile.name}": ${err.message}`)
     throw new Error(`Browser failed to launch: ${err.message}`)

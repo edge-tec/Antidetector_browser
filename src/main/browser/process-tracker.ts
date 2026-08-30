@@ -39,10 +39,11 @@ export function killProcessTree(pid: number): void {
 interface TrackedProcess {
   profileId: string
   profileName: string
-  browser: Browser
+  browser: Browser | null
   pid: number
   wsEndpoint: string
   startedAt: Date
+  childProcess?: any
 }
 
 class ProcessTracker {
@@ -51,20 +52,27 @@ class ProcessTracker {
   /**
    * Track a running browser process.
    */
-  track(profileId: string, profileName: string, browser: Browser, pid: number, wsEndpoint: string): void {
+  track(profileId: string, profileName: string, browser: Browser | null, pid: number, wsEndpoint: string, childProcess?: any): void {
     this.processes.set(profileId, {
       profileId,
       profileName,
       browser,
       pid,
       wsEndpoint,
-      startedAt: new Date()
+      startedAt: new Date(),
+      childProcess
     })
 
-    // Listen for unexpected disconnection
-    browser.on('disconnected', () => {
-      this.handleDisconnect(profileId)
-    })
+    if (browser) {
+      // Listen for unexpected disconnection
+      browser.on('disconnected', () => {
+        this.handleDisconnect(profileId)
+      })
+    } else if (childProcess) {
+      childProcess.on('exit', () => {
+        this.handleDisconnect(profileId)
+      })
+    }
 
     logger.info('browser', `Tracking process for "${profileName}" (PID: ${pid})`)
   }
@@ -80,12 +88,13 @@ class ProcessTracker {
     }
 
     try {
-      if (tracked.browser.connected) {
+      if (tracked.browser && tracked.browser.connected) {
         await tracked.browser.close()
+      } else {
+        killProcessTree(tracked.pid)
       }
     } catch (err) {
       logger.warn('browser', `Error closing browser for "${tracked.profileName}": ${err}`)
-      // Fallback: kill the process tree directly to prevent orphaned child processes
       killProcessTree(tracked.pid)
     }
 
@@ -117,7 +126,18 @@ class ProcessTracker {
    */
   isRunning(profileId: string): boolean {
     const tracked = this.processes.get(profileId)
-    return tracked !== undefined && tracked.browser.connected
+    if (!tracked) return false
+    if (tracked.browser) return tracked.browser.connected
+    if (tracked.pid) {
+      try {
+        process.kill(tracked.pid, 0)
+        return true
+      } catch {
+        this.processes.delete(profileId)
+        return false
+      }
+    }
+    return false
   }
 
   /**
