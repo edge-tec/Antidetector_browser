@@ -40,7 +40,7 @@ describe('GoLogin / Orbita Production Features Suite', () => {
 
     const report = ProfileHealthChecker.checkHealth(testProfileId)
     expect(report.issues.length).toBeGreaterThanOrEqual(2)
-    expect(report.status).toBe('warning')
+    expect(report.status).toBe('WARNING')
 
     const repairRes = ProfileHealthChecker.autoRepair(testProfileId)
     expect(repairRes.success).toBe(true)

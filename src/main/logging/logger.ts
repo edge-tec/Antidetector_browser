@@ -14,13 +14,18 @@ const SENSITIVE_PATTERNS = [
   /authorization["\s]*[:=]["\s]*[^\s,}]*/gi,
   /cookie["\s]*[:=]["\s]*[^\s,}]*/gi,
   /secret["\s]*[:=]["\s]*[^\s,}]*/gi,
-  /pvault_[a-f0-9]{64}/gi
+  /pvault_[a-f0-9]{64}/gi,
+  /(:\/\/[^:]+:)[^@]+(@)/gi
 ]
 
 function redactSensitive(text: string): string {
   let result = text
   for (const pattern of SENSITIVE_PATTERNS) {
-    result = result.replace(pattern, '[REDACTED]')
+    if (pattern.source.includes('$') || pattern.source.includes('://')) {
+      result = result.replace(pattern, '$1[REDACTED]$2')
+    } else {
+      result = result.replace(pattern, '[REDACTED]')
+    }
   }
   return result
 }

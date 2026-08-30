@@ -17,7 +17,7 @@ export interface StorageHealthIssue {
 
 export interface ProfileHealthReport {
   profileId: string
-  status: 'healthy' | 'warning' | 'corrupted'
+  status: 'HEALTHY' | 'WARNING' | 'CORRUPTED' | 'RECOVERABLE'
   issues: StorageHealthIssue[]
   checkedAt: number
   totalFiles: number
@@ -38,7 +38,7 @@ export class ProfileHealthChecker {
     if (!fs.existsSync(profileDir)) {
       return {
         profileId,
-        status: 'healthy',
+        status: 'HEALTHY',
         issues: [],
         checkedAt: Date.now(),
         totalFiles: 0,
@@ -143,7 +143,12 @@ export class ProfileHealthChecker {
     }
 
     const hasCritical = issues.some(i => i.severity === 'critical')
-    const status = hasCritical ? 'corrupted' : (issues.length > 0 ? 'warning' : 'healthy')
+    let status: ProfileHealthReport['status'] = 'HEALTHY'
+    if (hasCritical) {
+      status = 'RECOVERABLE'
+    } else if (issues.length > 0) {
+      status = 'WARNING'
+    }
 
     return {
       profileId,
