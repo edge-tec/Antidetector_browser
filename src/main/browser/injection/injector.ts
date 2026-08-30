@@ -124,12 +124,23 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
           host.endsWith('.x.com') ||
           host === 'twitter.com' ||
           host.endsWith('.twitter.com') ||
+          host === 'facebook.com' ||
+          host.endsWith('.facebook.com') ||
+          host === 'instagram.com' ||
+          host.endsWith('.instagram.com') ||
+          host === 'linkedin.com' ||
+          host.endsWith('.linkedin.com') ||
+          host === 'github.com' ||
+          host.endsWith('.github.com') ||
           href.indexOf('accounts.google.') !== -1 ||
           docUrl.indexOf('accounts.google.') !== -1 ||
           docLoc.indexOf('accounts.google.') !== -1 ||
           href.indexOf('/v3/signin') !== -1 ||
           href.indexOf('/servicelogin') !== -1 ||
           href.indexOf('/i/flow/login') !== -1 ||
+          href.indexOf('/login') !== -1 ||
+          href.indexOf('/signin') !== -1 ||
+          href.indexOf('/oauth') !== -1 ||
           (host.indexOf('google.') !== -1 && (href.indexOf('/signin') !== -1 || href.indexOf('/oauth') !== -1 || href.indexOf('/identifier') !== -1 || href.indexOf('/challenge') !== -1))
         );
       } catch(e) {

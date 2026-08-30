@@ -22,9 +22,19 @@ export function buildNativeCloakerScript(): string {
       h.endsWith('.x.com') ||
       h === 'twitter.com' ||
       h.endsWith('.twitter.com') ||
+      h === 'facebook.com' ||
+      h.endsWith('.facebook.com') ||
+      h === 'instagram.com' ||
+      h.endsWith('.instagram.com') ||
+      h === 'linkedin.com' ||
+      h.endsWith('.linkedin.com') ||
+      h === 'github.com' ||
+      h.endsWith('.github.com') ||
       href.indexOf('/signin') !== -1 ||
       href.indexOf('/v3/signin') !== -1 ||
-      href.indexOf('/i/flow/login') !== -1
+      href.indexOf('/i/flow/login') !== -1 ||
+      href.indexOf('/login') !== -1 ||
+      href.indexOf('/oauth') !== -1
     ) {
       window.__cloakFunction = function(f) { return f; };
       window.__cloakGetter = function(f) { return f; };
