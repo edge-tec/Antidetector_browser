@@ -244,7 +244,7 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   const script = buildInjectionScript(fingerprint, isFirefox ? 'firefox' : 'chrome')
 
   try {
-    // Run script before any page JS on every frame/navigation
+    // Single consolidated evaluation on every new document/frame
     await page.evaluateOnNewDocument(script)
   } catch (err: any) {
     logger.warn('browser', `Failed to evaluateOnNewDocument: ${err.message}`)
@@ -267,81 +267,19 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   try {
     const client = await page.target().createCDPSession()
 
-    // Remove Puppeteer/ChromeDriver CDP markers and automation artifacts that Google & Cloudflare inspect
-    try {
-      await client.send('Page.addScriptToEvaluateOnNewDocument', {
-        source: `
-          (function() {
-            try {
-              // 1. Remove cdc_ and $cdc_ properties from window and document
-              const cleanCdc = function(obj) {
-                if (!obj) return;
-                try {
-                  for (const prop of Object.getOwnPropertyNames(obj)) {
-                    if (/^\\$?cdc_/i.test(prop) || /^__puppeteer/i.test(prop)) {
-                      try { delete obj[prop]; } catch(e) {}
-                    }
-                  }
-                } catch(e) {}
-              };
-              cleanCdc(window);
-              cleanCdc(document);
-
-              // 2. Remove common automation indicators
-              const botProps = [
-                '__webdriver_evaluate', '__selenium_evaluate', '__webdriver_script_function',
-                '__webdriver_script_func', '__webdriver_script_fn', '__fxdriver_evaluate',
-                '__driver_evaluate', '__webdriver_unwrapped', '__driver_unwrapped',
-                '__selenium_unwrapped', '__fxdriver_unwrapped', '_Selenium_IDE_Recorder',
-                '_phantom', '__nightmare', 'callPhantom', 'domAutomation', 'domAutomationController'
-              ];
-              for (const p of botProps) {
-                try {
-                  if (p in window) {
-                    delete window[p];
-                  }
-                } catch(e) {}
-              }
-
-              // 3. Ensure navigator.webdriver is false
-              try {
-                Object.defineProperty(Navigator.prototype, 'webdriver', {
-                  get: function() { return false; },
-                  configurable: true,
-                  enumerable: true
-                });
-              } catch(e) {}
-            } catch(e) {}
-          })();
-        `
-      })
-    } catch {}
-
-    // ── Fluid Responsive Viewport & Touch Configuration ──
+    // ── Fluid Responsive Viewport Configuration ──
     // Always clear fixed device metrics overrides so the browsing area fluidly fills 100% of the window
-    // without letterboxing or black void offsets. Screen properties (screen.width/height, DPR, orientation)
-    // are faithfully spoofed via JavaScript prototype descriptors in scripts/screen.ts.
     await client.send('Emulation.clearDeviceMetricsOverride')
 
     if (isAndroid || isIOS) {
-      await client.send('Emulation.setTouchEmulationEnabled', {
-        enabled: true,
-        maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
-      })
       try {
+        await client.send('Emulation.setTouchEmulationEnabled', {
+          enabled: true,
+          maxTouchPoints: fingerprint.navigator?.maxTouchPoints || 5
+        })
         await client.send('Emulation.setEmitTouchEventsForMouse', {
           enabled: true,
           configuration: 'mobile'
-        })
-      } catch {}
-    } else {
-      await client.send('Emulation.setTouchEmulationEnabled', {
-        enabled: false,
-        maxTouchPoints: 0
-      })
-      try {
-        await client.send('Emulation.setEmitTouchEventsForMouse', {
-          enabled: false
         })
       } catch {}
     }
@@ -370,7 +308,7 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
       }
     }
 
-    // ── Universal User-Agent & Client Hints Override for ALL Platforms ──
+    // ── Universal User-Agent & Client Hints Override ──
     const osType: OSType = (fingerprint as any).osType || (fingerprint.navigator as any)?.osType || (isAndroid ? 'android' : isIOS ? 'ios' : 'windows-10')
     const browserType: 'chrome' | 'firefox' = isFirefox ? 'firefox' : 'chrome'
     const engine = getEngineForBrowser(osType, browserType)
@@ -380,29 +318,13 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     const acceptLanguage = (fingerprint.locale?.languages || ['en-US', 'en']).join(',')
     const uaString = fingerprint.navigator?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
-    // Also inject the complete anti-detect script directly into CDP Page domain for instant execution
-    try {
-      await client.send('Page.addScriptToEvaluateOnNewDocument', {
-        source: script
-      })
-    } catch {}
-
-    // Override at both Network and Emulation CDP domains
+    // Override at Network CDP domain cleanly
     await client.send('Network.setUserAgentOverride', {
       userAgent: uaString,
       acceptLanguage,
       platform: userAgentMetadata.platform,
       userAgentMetadata: shouldSendClientHints ? userAgentMetadata : undefined
     })
-
-    try {
-      await client.send('Emulation.setUserAgentOverride', {
-        userAgent: uaString,
-        acceptLanguage,
-        platform: userAgentMetadata.platform,
-        userAgentMetadata: shouldSendClientHints ? userAgentMetadata : undefined
-      })
-    } catch {}
   } catch (err: any) {
     logger.warn('browser', `Could not apply CDP page emulation: ${err.message}`)
   }
