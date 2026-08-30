@@ -11,6 +11,17 @@ export function buildNativeCloakerScript(): string {
 (function() {
   'use strict';
 
+  try {
+    var loc = window.location || {};
+    var h = (loc.hostname || '').toLowerCase();
+    var href = (loc.href || '').toLowerCase();
+    if (h.indexOf('accounts.google.') !== -1 || h.indexOf('myaccount.google.') !== -1 || href.indexOf('/signin') !== -1 || href.indexOf('/v3/signin') !== -1) {
+      window.__cloakFunction = function(f) { return f; };
+      window.__cloakGetter = function(f) { return f; };
+      return;
+    }
+  } catch(e) {}
+
   if (window.__antiprofiles_cloaker_installed) return;
   window.__antiprofiles_cloaker_installed = true;
 

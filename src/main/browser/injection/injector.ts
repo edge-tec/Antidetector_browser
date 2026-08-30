@@ -59,17 +59,37 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
   return `(function() {
   'use strict';
   try {
-    // ── Safe Domain Policy ──
-    // Preserve pristine native browser prototypes on Google Identity & Auth domains
-    // to prevent breaking legitimate browser sign-in and security challenges.
-    var h = (window.location && window.location.hostname) ? window.location.hostname.toLowerCase() : '';
-    if (
-      h === 'accounts.google.com' ||
-      h.endsWith('.accounts.google.com') ||
-      h === 'myaccount.google.com' ||
-      h === 'accounts.youtube.com' ||
-      h === 'oauth2.googleapis.com'
-    ) {
+    // ── Safe Domain Policy (Orbita / GoLogin Standard) ──
+    // Preserve 100% pristine native browser prototypes on Google Identity, Gmail, & Auth domains
+    // to prevent botguard detection and ensure legitimate login flows.
+    function isProtectedAuthDomain() {
+      try {
+        var loc = window.location || {};
+        var host = (loc.hostname || loc.host || '').toLowerCase();
+        var href = (loc.href || '').toLowerCase();
+        var docUrl = (typeof document !== 'undefined' && document.URL ? document.URL : '').toLowerCase();
+        var docLoc = (typeof document !== 'undefined' && document.location && document.location.href ? document.location.href : '').toLowerCase();
+
+        return (
+          host === 'accounts.google.com' ||
+          host.endsWith('.accounts.google.com') ||
+          host === 'myaccount.google.com' ||
+          host === 'accounts.youtube.com' ||
+          host === 'oauth2.googleapis.com' ||
+          host === 'mail.google.com' ||
+          href.indexOf('accounts.google.') !== -1 ||
+          docUrl.indexOf('accounts.google.') !== -1 ||
+          docLoc.indexOf('accounts.google.') !== -1 ||
+          href.indexOf('/v3/signin') !== -1 ||
+          href.indexOf('/servicelogin') !== -1 ||
+          (host.indexOf('google.') !== -1 && (href.indexOf('/signin') !== -1 || href.indexOf('/oauth') !== -1 || href.indexOf('/identifier') !== -1 || href.indexOf('/challenge') !== -1))
+        );
+      } catch(e) {
+        return false;
+      }
+    }
+
+    if (isProtectedAuthDomain()) {
       return;
     }
 
