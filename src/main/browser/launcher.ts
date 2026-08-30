@@ -429,33 +429,13 @@ export async function launchFirefox(
 
   logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) [OS: ${resolvedProfile.osType}, Ver: ${resolvedProfile.browserVersion}] with -profile ${userDataDir} at: ${firefoxPath}`)
 
-  let child: ChildProcess
-  let pid = 0
-
-  if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
-    const appPath = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
-    const openArgs = ['-n', '-a', appPath, '--args', ...args]
-    if (startUrls.length > 0) {
-      openArgs.push(...startUrls)
-    }
-
-    logger.info('browser', `[FirefoxLaunch] Spawning macOS GUI instance via open: ${openArgs.join(' ')}`)
-    child = spawn('open', openArgs, {
-      detached: true,
-      stdio: 'ignore',
-      env
-    })
-    child.unref()
-    pid = child.pid || 0
-  } else {
-    child = spawn(firefoxPath, args, {
-      detached: true,
-      stdio: 'ignore',
-      env
-    })
-    child.unref()
-    pid = child.pid || 0
-  }
+  logger.info('browser', `[FirefoxLaunch] Spawning native Firefox process: ${firefoxPath}`)
+  const child = spawn(firefoxPath, args, {
+    detached: process.platform !== 'win32',
+    stdio: 'ignore',
+    env
+  })
+  const pid = child.pid || 0
 
   const mockBrowser: any = {
     connected: true,
@@ -1061,22 +1041,13 @@ export async function launchBrowser(
       ...(effectiveTz ? { TZ: effectiveTz } : {})
     }
 
-    let child: ChildProcess
-    let pid = 0
-
-    if (process.platform === 'darwin' && executablePath.includes('.app')) {
-      const appPath = executablePath.substring(0, executablePath.indexOf('.app') + 4)
-      const openArgs = ['-n', '-a', appPath, '--args', ...finalArgs]
-      logger.info('browser', `[ChromiumLaunch] Spawning macOS GUI instance via open: ${openArgs.join(' ')}`)
-      child = spawn('open', openArgs, { detached: true, stdio: 'ignore', env })
-      child.unref()
-      pid = child.pid || 0
-    } else {
-      logger.info('browser', `[ChromiumLaunch] Spawning native Chromium process: ${executablePath} with user-data-dir: ${userDataDir}`)
-      child = spawn(executablePath, finalArgs, { detached: true, stdio: 'ignore', env })
-      child.unref()
-      pid = child.pid || 0
-    }
+    logger.info('browser', `[ChromiumLaunch] Spawning native Chromium process: ${executablePath} with user-data-dir: ${userDataDir}`)
+    const child = spawn(executablePath, finalArgs, {
+      detached: process.platform !== 'win32',
+      stdio: 'ignore',
+      env
+    })
+    const pid = child.pid || 0
 
     logger.info('browser', `[ChromiumLaunch] Native Chromium started for "${profile.name}" (PID: ${pid})`)
     return { browser: null as any, pid, wsEndpoint: '', childProcess: child }

@@ -82,26 +82,41 @@ class ProcessTracker {
    */
   async stop(profileId: string): Promise<void> {
     const tracked = this.processes.get(profileId)
-    if (!tracked) {
-      logger.warn('browser', `No tracked process for profile ${profileId}`)
-      return
+    const profileName = tracked?.profileName || profileId
+    const pid = tracked?.pid || 0
+
+    if (tracked) {
+      try {
+        if (tracked.browser && tracked.browser.connected) {
+          await tracked.browser.close()
+        }
+      } catch (err) {
+        logger.warn('browser', `Error closing browser instance for "${profileName}": ${err}`)
+      }
+
+      if (tracked.childProcess) {
+        try { tracked.childProcess.kill('SIGTERM') } catch {}
+        try { tracked.childProcess.kill('SIGKILL') } catch {}
+      }
+
+      if (pid > 0) {
+        killProcessTree(pid)
+      }
     }
 
+    // Comprehensive cleanup: kill any lingering renderer/GPU helper processes matching profileId user-data-dir
     try {
-      if (tracked.browser && tracked.browser.connected) {
-        await tracked.browser.close()
+      if (process.platform === 'win32') {
+        execSync(`wmic process where "commandline like '%${profileId}%'" call terminate`, { stdio: 'ignore', timeout: 3000, windowsHide: true })
       } else {
-        killProcessTree(tracked.pid)
+        execSync(`pkill -9 -f "${profileId}" 2>/dev/null || true`, { stdio: 'ignore', timeout: 3000 })
       }
-    } catch (err) {
-      logger.warn('browser', `Error closing browser for "${tracked.profileName}": ${err}`)
-      killProcessTree(tracked.pid)
-    }
+    } catch {}
 
     this.processes.delete(profileId)
     stopProxyBridge(profileId)
     profileRepo.setStatus(profileId, 'stopped', null)
-    logger.info('browser', `Stopped browser for "${tracked.profileName}"`)
+    logger.info('browser', `Stopped browser window and all processes for "${profileName}"`)
   }
 
   /**
