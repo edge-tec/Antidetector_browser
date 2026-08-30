@@ -537,7 +537,8 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     '--profile-directory=Default',
     '--window-size=1280,800',
     '--window-position=100,60',
-    '--disable-features=ProfilePickerOnStartup',
+    '--disable-features=ProfilePickerOnStartup,AppBoundEncryptionProvider,AppBoundEncryption',
+    '--disable-infobars',
     '--use-mock-keychain',
     '--password-store=basic',
     `--lang=${lang}`
