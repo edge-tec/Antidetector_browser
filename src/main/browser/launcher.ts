@@ -13,7 +13,7 @@ import { Profile, Proxy } from '../database/models'
 import { Fingerprint, OSType, createDefaultFingerprint } from '../fingerprint/types'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { decryptPassword } from '../security/encryption'
-import { ensureProfileDataDir, ensureFirefoxProfileDataDir, repairGlobalFirefoxProfilesIni } from './chromium-resolver'
+import { ensureProfileDataDir, ensureFirefoxProfileDataDir, repairGlobalFirefoxProfilesIni, getFirefoxBinaryVersion } from './chromium-resolver'
 import { setupBrowserInjection } from './injection/injector'
 import { startProxyBridge } from '../network/proxy-bridge'
 import { lookupGeoIP } from '../network/geo-lookup'
@@ -72,7 +72,8 @@ function setupFirefoxProfilePrefs(
   userDataDir: string,
   profile: Profile,
   resolvedProfile: ResolvedFirefoxProfile,
-  proxy: Proxy | null
+  proxy: Proxy | null,
+  firefoxPath?: string
 ): void {
   const resolvedDir = path.resolve(userDataDir)
   try {
@@ -115,14 +116,14 @@ function setupFirefoxProfilePrefs(
     } catch {}
   }
 
-  // Pre-seed compatibility.ini to prevent "Profile Missing or Inaccessible" alerts
+  // Pre-seed compatibility.ini with exact running binary version to prevent "Profile Missing or Inaccessible" downgrade locks
   const compatIniPath = path.join(resolvedDir, 'compatibility.ini')
   try {
     const osAbi = process.platform === 'darwin'
       ? (process.arch === 'arm64' ? 'Darwin_aarch64-gcc3' : 'Darwin_x86_64-gcc3')
       : (process.platform === 'win32' ? 'WINNT_x86_64-msvc' : 'Linux_x86_64-gcc3')
-    const ffVer = resolvedProfile.browserVersion || '131.0'
-    const compatContent = `[Compatibility]\nLastPlatformToken=${ffVer}\nLastVersion=${ffVer}\nLastOSABI=${osAbi}\n`
+    const actualVer = getFirefoxBinaryVersion(firefoxPath)
+    const compatContent = `[Compatibility]\nLastPlatformToken=${actualVer}\nLastVersion=${actualVer}\nLastOSABI=${osAbi}\n`
     fs.writeFileSync(compatIniPath, compatContent, 'utf8')
   } catch {}
 
@@ -428,14 +429,15 @@ export async function launchFirefox(
       ? (fingerprintOrResolved as ResolvedFirefoxProfile)
       : resolveFirefoxProfile(profile)
 
-  const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id))
-  setupFirefoxProfilePrefs(userDataDir, profile, resolvedProfile, launchProxy)
+  const userDataDir = path.resolve(ensureFirefoxProfileDataDir(profile.id, firefoxPath))
+  setupFirefoxProfilePrefs(userDataDir, profile, resolvedProfile, launchProxy, firefoxPath)
   BrowserIconManager.patchFirefoxRuntimeBranding(firefoxPath)
   BrowserIconManager.setupFirefoxBranding(userDataDir, profile)
 
-  // Use standard -no-remote, -profile, and responsive clean desktop dimensions
+  // Use standard -no-remote, -allow-downgrade, -profile, and responsive clean desktop dimensions
   const args: string[] = [
     '-no-remote',
+    '-allow-downgrade',
     '-profile',
     userDataDir,
     '-width',
@@ -452,6 +454,8 @@ export async function launchFirefox(
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     MOZ_NO_REMOTE: '1',
+    MOZ_LEGACY_PROFILES: '1',
+    MOZ_ALLOW_DOWNGRADE: '1',
     ...(tz ? { TZ: tz } : {})
   }
 

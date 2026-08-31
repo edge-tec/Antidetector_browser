@@ -709,9 +709,31 @@ export function repairGlobalFirefoxProfilesIni(): void {
 }
 
 /**
+ * Query actual Firefox binary version from executable or Info.plist bundle.
+ */
+export function getFirefoxBinaryVersion(firefoxPath?: string): string {
+  if (!firefoxPath) return '131.0'
+  try {
+    if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
+      const appDir = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
+      const plistPath = path.join(appDir, 'Contents', 'Info.plist')
+      if (fs.existsSync(plistPath)) {
+        const content = fs.readFileSync(plistPath, 'utf8')
+        const match = content.match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)
+        if (match && match[1]) return match[1].trim()
+      }
+    }
+    const out = execSync(`"${firefoxPath}" --version`, { encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] })
+    const match = out.match(/Mozilla Firefox ([\d.]+)/i)
+    if (match && match[1]) return match[1].trim()
+  } catch {}
+  return '131.0'
+}
+
+/**
  * Create the dedicated Firefox profile data directory if it doesn't exist.
  */
-export function ensureFirefoxProfileDataDir(profileId: string): string {
+export function ensureFirefoxProfileDataDir(profileId: string, firefoxPath?: string): string {
   const dir = getFirefoxProfileDataDir(profileId)
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true, mode: 0o755 })
@@ -738,15 +760,14 @@ export function ensureFirefoxProfileDataDir(profileId: string): string {
   }
 
   const compatIniPath = path.join(dir, 'compatibility.ini')
-  if (!fs.existsSync(compatIniPath)) {
-    try {
-      const osAbi = process.platform === 'darwin'
-        ? (process.arch === 'arm64' ? 'Darwin_aarch64-gcc3' : 'Darwin_x86_64-gcc3')
-        : (process.platform === 'win32' ? 'WINNT_x86_64-msvc' : 'Linux_x86_64-gcc3')
-      const compatContent = `[Compatibility]\nLastPlatformToken=131.0\nLastVersion=131.0\nLastOSABI=${osAbi}\n`
-      fs.writeFileSync(compatIniPath, compatContent, 'utf8')
-    } catch {}
-  }
+  try {
+    const osAbi = process.platform === 'darwin'
+      ? (process.arch === 'arm64' ? 'Darwin_aarch64-gcc3' : 'Darwin_x86_64-gcc3')
+      : (process.platform === 'win32' ? 'WINNT_x86_64-msvc' : 'Linux_x86_64-gcc3')
+    const actualVer = getFirefoxBinaryVersion(firefoxPath)
+    const compatContent = `[Compatibility]\nLastPlatformToken=${actualVer}\nLastVersion=${actualVer}\nLastOSABI=${osAbi}\n`
+    fs.writeFileSync(compatIniPath, compatContent, 'utf8')
+  } catch {}
 
   const profileIniPath = path.join(dir, 'profiles.ini')
   if (!fs.existsSync(profileIniPath)) {
