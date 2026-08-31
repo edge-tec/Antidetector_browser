@@ -225,6 +225,7 @@ export type AuthFlowState =
   | 'AUTH_PROVIDER_INCOMPATIBLE'
   | 'REAUTH_REQUIRED'
   | 'NETWORK_ERROR'
+  | 'CANCELLED'
 
 export interface AuthSessionState {
   profileId: string

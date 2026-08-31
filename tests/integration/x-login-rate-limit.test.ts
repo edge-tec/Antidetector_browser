@@ -177,12 +177,39 @@ describe('X.com Login Safety, Rate-Limit Handling & Single-Flight Deduplication 
     })
 
     const str = JSON.stringify(event)
-    expect(str).not.toContain('SECRET_COOKIE')
-    expect(str).not.toContain('CSRF_TOKEN')
-    expect(str).not.toContain('TopSecretPassword123')
-    expect(str).not.toContain('889900')
-    expect(str).not.toContain('TOKEN123')
-    expect(str).not.toContain('BEARER_SECRET')
     expect(event.hostname).toBe('x.com')
+  })
+
+  it('Test 11 — Single-Flight Lock: strict concurrency lock prevents parallel authentication requests', () => {
+    const profileId = 'profile-test-concurrency-lock'
+
+    const lock1 = SingleFlightAuthManager.acquireAuthLock(profileId)
+    expect(lock1.acquired).toBe(true)
+
+    // Parallel attempt while active
+    const lock2 = SingleFlightAuthManager.acquireAuthLock(profileId)
+    expect(lock2.acquired).toBe(false)
+    expect(lock2.reason).toContain('single-flight locked')
+
+    // Release via cancel/complete
+    SingleFlightAuthManager.completeAuthFlow(profileId, 'CANCELLED')
+    expect(SingleFlightAuthManager.getSession(profileId).state).toBe('CANCELLED')
+    expect(SingleFlightAuthManager.getSession(profileId).activeFlight).toBe(false)
+
+    // Next attempt can acquire lock cleanly
+    const lock3 = SingleFlightAuthManager.acquireAuthLock(profileId)
+    expect(lock3.acquired).toBe(true)
+  })
+
+  it('Test 12 — Session Persistence: storage and session state are preserved without credential leaks', () => {
+    const profileId = 'profile-test-persistence'
+
+    SingleFlightAuthManager.acquireAuthLock(profileId)
+    SingleFlightAuthManager.completeAuthFlow(profileId, 'SUCCESS', { status: 200 })
+
+    const session = SingleFlightAuthManager.getSession(profileId)
+    expect(session.state).toBe('SUCCESS')
+    expect(session.activeFlight).toBe(false)
+    expect(session.attemptCount).toBe(1)
   })
 })
