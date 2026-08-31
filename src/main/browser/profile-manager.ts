@@ -111,7 +111,7 @@ class ProfileManager {
     // Ensure profile data directory is accessible and created
     try {
       if (browserType === 'firefox') {
-        ensureFirefoxProfileDataDir(profileId)
+        ensureFirefoxProfileDataDir(profileId, executablePath)
       } else {
         ensureProfileDataDir(profileId)
       }
