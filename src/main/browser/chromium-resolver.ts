@@ -703,6 +703,27 @@ export function repairGlobalFirefoxProfilesIni(): void {
       const safeIni = `[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default-release\nIsRelative=1\nPath=Profiles/antiprofiles-default\nDefault=1\n`
       fs.writeFileSync(profilesIniPath, safeIni, 'utf8')
     }
+
+    // Also ensure global installs.ini has valid references
+    const installsIniPath = path.join(ffGlobalDir, 'installs.ini')
+    let needsInstallsWrite = !fs.existsSync(installsIniPath)
+    if (fs.existsSync(installsIniPath)) {
+      const content = fs.readFileSync(installsIniPath, 'utf8')
+      const defaultMatches = content.match(/Default=([^\r\n]+)/g) || []
+      for (const match of defaultMatches) {
+        const relOrAbs = match.replace('Default=', '').trim()
+        const full = path.isAbsolute(relOrAbs) ? relOrAbs : path.join(ffGlobalDir, relOrAbs)
+        if (!fs.existsSync(full)) {
+          needsInstallsWrite = true
+          break
+        }
+      }
+    }
+
+    if (needsInstallsWrite) {
+      const safeInstallsIni = `[General]\nStartWithLastProfile=1\nVersion=2\n\n[Installation]\nDefault=Profiles/antiprofiles-default\nLocked=1\n`
+      fs.writeFileSync(installsIniPath, safeInstallsIni, 'utf8')
+    }
   } catch (err: any) {
     logger.warn('browser', `[FirefoxProfile] Could not initialize global Firefox profiles.ini: ${err.message}`)
   }
@@ -751,6 +772,18 @@ export function ensureFirefoxProfileDataDir(profileId: string, firefoxPath?: str
     } catch {}
   }
 
+  // Clean startup cache
+  const cacheDir = path.join(dir, 'startupCache')
+  try {
+    fs.rmSync(cacheDir, { recursive: true, force: true })
+  } catch {}
+
+  // Ensure individual profile directory does NOT contain a conflicting local profiles.ini
+  const errantProfileIni = path.join(dir, 'profiles.ini')
+  if (fs.existsSync(errantProfileIni)) {
+    try { fs.rmSync(errantProfileIni, { force: true }) } catch {}
+  }
+
   // Pre-seed times.json & compatibility.ini so Firefox recognizes profile as valid & initialized
   const timesJsonPath = path.join(dir, 'times.json')
   if (!fs.existsSync(timesJsonPath)) {
@@ -769,11 +802,18 @@ export function ensureFirefoxProfileDataDir(profileId: string, firefoxPath?: str
     fs.writeFileSync(compatIniPath, compatContent, 'utf8')
   } catch {}
 
-  const profileIniPath = path.join(dir, 'profiles.ini')
-  if (!fs.existsSync(profileIniPath)) {
+  // Pre-seed handlers.json and containers.json
+  const handlersPath = path.join(dir, 'handlers.json')
+  if (!fs.existsSync(handlersPath)) {
     try {
-      const profileIniContent = `[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=.\nDefault=1\n`
-      fs.writeFileSync(profileIniPath, profileIniContent, 'utf8')
+      fs.writeFileSync(handlersPath, JSON.stringify({ defaultHandlersVersion: {}, mimeTypes: {}, schemes: {} }, null, 2), 'utf8')
+    } catch {}
+  }
+
+  const containersPath = path.join(dir, 'containers.json')
+  if (!fs.existsSync(containersPath)) {
+    try {
+      fs.writeFileSync(containersPath, JSON.stringify({ version: 4, lastContainerId: 0, identities: [] }, null, 2), 'utf8')
     } catch {}
   }
 

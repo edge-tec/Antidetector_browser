@@ -127,13 +127,10 @@ function setupFirefoxProfilePrefs(
     fs.writeFileSync(compatIniPath, compatContent, 'utf8')
   } catch {}
 
-  // Pre-seed local profiles.ini
+  // Ensure individual profile directory does NOT contain a conflicting local profiles.ini
   const localProfileIniPath = path.join(resolvedDir, 'profiles.ini')
-  if (!fs.existsSync(localProfileIniPath)) {
-    try {
-      const profileIniContent = `[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=.\nDefault=1\n`
-      fs.writeFileSync(localProfileIniPath, profileIniContent, 'utf8')
-    } catch {}
+  if (fs.existsSync(localProfileIniPath)) {
+    try { fs.rmSync(localProfileIniPath, { force: true }) } catch {}
   }
 
   // Pre-seed handlers.json and containers.json
