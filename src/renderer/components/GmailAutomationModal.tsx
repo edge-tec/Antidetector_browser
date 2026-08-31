@@ -58,6 +58,8 @@ export const GmailAutomationModal: React.FC<Props> = ({
   onClose,
   showToast
 }) => {
+  const [currentAccount, setCurrentAccount] = useState<{ email: string; name?: string } | undefined>(googleAccount)
+  const [connecting, setConnecting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<'rules' | 'followups' | 'limits' | 'queue'>('rules')
@@ -80,10 +82,33 @@ export const GmailAutomationModal: React.FC<Props> = ({
 
   const [jobs, setJobs] = useState<ScheduledJob[]>([])
 
+  const handleConnectGoogleDirect = async () => {
+    setConnecting(true)
+    showToast('info', 'Opening System Browser for Google OAuth (RFC 8252)...')
+    try {
+      const res = await (window.api as any).connectProfileGoogle(profileId)
+      if (res?.success && res.data) {
+        showToast('success', `✓ Gmail connected: ${res.data.email || 'Success'}!`)
+        setCurrentAccount(res.data)
+      } else {
+        showToast('error', res?.error || 'Failed to connect Gmail')
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Google OAuth failed')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
   useEffect(() => {
     const loadConfig = async () => {
       setLoading(true)
       try {
+        const accRes = await (window.api as any).getProfileGoogleAccount(profileId)
+        if (accRes?.success && accRes.data) {
+          setCurrentAccount(accRes.data)
+        }
+
         const res = await (window.api as any).getGmailAutomationConfig(profileId)
         if (res?.success && res.data) {
           const cfg = res.data
@@ -223,9 +248,37 @@ export const GmailAutomationModal: React.FC<Props> = ({
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#f5f5f7' }}>
                 Gmail Auto-Reply & Follow-up Settings
               </h3>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#a6adc8' }}>
-                Profile: <strong style={{ color: '#89b4fa' }}>{profileName}</strong> • {googleAccount?.email || 'No Gmail Linked'}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <span style={{ fontSize: 12, color: '#a6adc8' }}>
+                  Profile: <strong style={{ color: '#89b4fa' }}>{profileName}</strong>
+                </span>
+                {currentAccount?.email ? (
+                  <span style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(166, 227, 161, 0.15)', color: '#a6e3a1', borderRadius: 6, fontWeight: 600 }}>
+                    ✓ {currentAccount.email}
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleConnectGoogleDirect}
+                    disabled={connecting}
+                    style={{
+                      padding: '3px 10px',
+                      backgroundColor: '#EA4335',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: connecting ? 'wait' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <span>🔗</span>
+                    <span>{connecting ? 'Connecting...' : 'Connect Gmail Account'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <button
