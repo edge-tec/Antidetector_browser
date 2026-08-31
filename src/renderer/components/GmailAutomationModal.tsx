@@ -32,6 +32,8 @@ interface Props {
   profileId: string
   profileName: string
   googleAccount?: { email: string; name?: string }
+  sessionToken?: string | null
+  onAccountUpdated?: () => void
   onClose: () => void
   showToast: (type: 'success' | 'error' | 'info' | 'warn', msg: string) => void
 }
@@ -55,6 +57,8 @@ export const GmailAutomationModal: React.FC<Props> = ({
   profileId,
   profileName,
   googleAccount,
+  sessionToken,
+  onAccountUpdated,
   onClose,
   showToast
 }) => {
@@ -82,14 +86,23 @@ export const GmailAutomationModal: React.FC<Props> = ({
 
   const [jobs, setJobs] = useState<ScheduledJob[]>([])
 
+  const getToken = () => sessionToken || (localStorage.getItem('auth_session_token') || '')
+
   const handleConnectGoogleDirect = async () => {
     setConnecting(true)
     showToast('info', 'Opening System Browser for Google OAuth (RFC 8252)...')
     try {
-      const res = await (window.api as any).connectProfileGoogle(profileId)
-      if (res?.success && res.data) {
-        showToast('success', `✓ Gmail connected: ${res.data.email || 'Success'}!`)
-        setCurrentAccount(res.data)
+      const token = getToken()
+      const res = await (window.api as any).connectProfileGoogle(token, profileId)
+      if (res?.success) {
+        showToast('success', `✓ Google Account successfully connected to "${profileName}"!`)
+        if (res.data) {
+          setCurrentAccount(res.data)
+        } else {
+          const accRes = await (window.api as any).getProfileGoogleAccount(token, profileId)
+          if (accRes?.success && accRes.data) setCurrentAccount(accRes.data)
+        }
+        if (onAccountUpdated) onAccountUpdated()
       } else {
         showToast('error', res?.error || 'Failed to connect Gmail')
       }
@@ -100,16 +113,28 @@ export const GmailAutomationModal: React.FC<Props> = ({
     }
   }
 
+  const handleOpenGmailDirect = async () => {
+    const token = getToken()
+    showToast('info', `Opening Gmail Web in secure System Browser for "${profileName}"...`)
+    try {
+      const res = await (window.api as any).openProfileGmail(token, profileId, true)
+      if (!res?.success) showToast('error', res?.error || 'Failed to open Gmail')
+    } catch (e: any) {
+      showToast('error', e.message || 'Failed to open Gmail')
+    }
+  }
+
   useEffect(() => {
     const loadConfig = async () => {
       setLoading(true)
       try {
-        const accRes = await (window.api as any).getProfileGoogleAccount(profileId)
+        const token = getToken()
+        const accRes = await (window.api as any).getProfileGoogleAccount(token, profileId)
         if (accRes?.success && accRes.data) {
           setCurrentAccount(accRes.data)
         }
 
-        const res = await (window.api as any).getGmailAutomationConfig(profileId)
+        const res = await (window.api as any).getGmailAutomationConfig(token, profileId)
         if (res?.success && res.data) {
           const cfg = res.data
           setEnabled(cfg.enabled ?? true)
@@ -124,7 +149,7 @@ export const GmailAutomationModal: React.FC<Props> = ({
           setTimezone(cfg.timezone || 'Asia/Dhaka')
         }
 
-        const jobRes = await (window.api as any).getGmailJobs(profileId)
+        const jobRes = await (window.api as any).getGmailJobs(token, profileId)
         if (jobRes?.success && jobRes.data) {
           setJobs(jobRes.data)
         }
@@ -156,7 +181,8 @@ export const GmailAutomationModal: React.FC<Props> = ({
         timezone
       }
 
-      const res = await (window.api as any).saveGmailAutomationConfig(payload)
+      const token = getToken()
+      const res = await (window.api as any).saveGmailAutomationConfig(token, payload)
       if (res?.success) {
         showToast('success', '✓ Gmail automation settings saved successfully!')
         onClose()
@@ -188,10 +214,11 @@ export const GmailAutomationModal: React.FC<Props> = ({
 
   const handleCancelJob = async (threadId: string) => {
     try {
-      const res = await (window.api as any).cancelGmailFollowUps(profileId, threadId, 'Manually cancelled by user')
+      const token = getToken()
+      const res = await (window.api as any).cancelGmailFollowUps(token, profileId, threadId, 'Manually cancelled by user')
       if (res?.success) {
         showToast('success', `Cancelled follow-ups for thread: ${threadId.substring(0, 8)}...`)
-        const jobRes = await (window.api as any).getGmailJobs(profileId)
+        const jobRes = await (window.api as any).getGmailJobs(token, profileId)
         if (jobRes?.success && jobRes.data) setJobs(jobRes.data)
       }
     } catch (err: any) {
@@ -253,9 +280,26 @@ export const GmailAutomationModal: React.FC<Props> = ({
                   Profile: <strong style={{ color: '#89b4fa' }}>{profileName}</strong>
                 </span>
                 {currentAccount?.email ? (
-                  <span style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(166, 227, 161, 0.15)', color: '#a6e3a1', borderRadius: 6, fontWeight: 600 }}>
-                    ✓ {currentAccount.email}
-                  </span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(166, 227, 161, 0.15)', color: '#a6e3a1', borderRadius: 6, fontWeight: 600 }}>
+                      ✓ {currentAccount.email}
+                    </span>
+                    <button
+                      onClick={handleOpenGmailDirect}
+                      style={{
+                        padding: '2px 8px',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        borderRadius: 6,
+                        color: '#38BDF8',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Open Inbox
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={handleConnectGoogleDirect}
@@ -271,11 +315,12 @@ export const GmailAutomationModal: React.FC<Props> = ({
                       cursor: connecting ? 'wait' : 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 4
+                      gap: 4,
+                      boxShadow: '0 2px 8px rgba(234, 67, 53, 0.3)'
                     }}
                   >
                     <span>🔗</span>
-                    <span>{connecting ? 'Connecting...' : 'Connect Gmail Account'}</span>
+                    <span>{connecting ? 'Opening Browser...' : 'Connect Gmail Account'}</span>
                   </button>
                 )}
               </div>

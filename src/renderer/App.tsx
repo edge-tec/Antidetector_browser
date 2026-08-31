@@ -1204,6 +1204,8 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
           profileId={automationModalProfile.id}
           profileName={automationModalProfile.name}
           googleAccount={(automationModalProfile as any).googleAccount}
+          sessionToken={sessionToken}
+          onAccountUpdated={() => loadProfiles()}
           onClose={() => setAutomationModalProfile(null)}
           showToast={showToast}
         />
