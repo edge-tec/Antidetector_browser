@@ -31,8 +31,8 @@ export function buildNavigatorScript(
 
   // 1. Prototype Property Traps
   const protoOverrides = {
-    platform: ${JSON.stringify(nav.platform || (isWin ? 'Win32' : isMac ? 'MacIntel' : 'Linux x86_64'))},
-    vendor: ${JSON.stringify(nav.vendor || (isFirefox ? '' : 'Google Inc.'))},
+    platform: ${JSON.stringify(nav.platform || (isIos ? 'iPhone' : isWin ? 'Win32' : isMac ? 'MacIntel' : 'Linux x86_64'))},
+    vendor: ${JSON.stringify(nav.vendor || (isIos ? 'Apple Computer, Inc.' : isFirefox ? '' : 'Google Inc.'))},
     vendorSub: ${JSON.stringify(nav.vendorSub || '')},
     product: ${JSON.stringify(nav.product || 'Gecko')},
     productSub: ${JSON.stringify(nav.productSub || (isFirefox ? '20100101' : '20030107'))},
@@ -91,14 +91,17 @@ export function buildNavigatorScript(
     });
   } catch(e) {}
 
-  ${isFirefox ? `
-  // ── Firefox Integrity: Ensure window.chrome & Client Hints are NOT Present ──
+  ${(isFirefox || isIos) ? `
+  // ── Firefox & iOS Safari Integrity: Ensure window.chrome & Client Hints are NOT Present ──
   try {
     if (typeof window !== 'undefined' && 'chrome' in window) {
       delete window.chrome;
     }
     if ('userAgentData' in Navigator.prototype) {
       delete (Navigator.prototype as any).userAgentData;
+    }
+    if (typeof navigator !== 'undefined' && 'userAgentData' in navigator) {
+      try { delete (navigator as any).userAgentData; } catch(e) {}
     }
   } catch(e) {}
   ` : `

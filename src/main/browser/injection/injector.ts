@@ -36,7 +36,9 @@ import { setupGoogleRedirectInterceptor } from './google-redirect-interceptor'
  */
 export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'chrome' | 'firefox'): string {
   const bType = browserType || fingerprint.browser?.type || (fingerprint.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
-  const isMobile = !!fingerprint.navigator?.touchSupport || (fingerprint.navigator?.platform && fingerprint.navigator.platform.includes('arm')) || (fingerprint.navigator?.platform && fingerprint.navigator.platform.includes('Android')) || (fingerprint.navigator?.userAgent && fingerprint.navigator.userAgent.includes('Android'))
+  const isFirefox = bType === 'firefox' || !!(fingerprint.navigator?.userAgent && fingerprint.navigator.userAgent.includes('Firefox'))
+  const isIos = fingerprint.navigator?.platform === 'iPhone' || fingerprint.navigator?.platform === 'iPad' || !!(fingerprint.navigator?.userAgent && (fingerprint.navigator.userAgent.includes('iPhone') || fingerprint.navigator.userAgent.includes('iPad') || fingerprint.navigator.userAgent.includes('CriOS') || fingerprint.navigator.userAgent.includes('FxiOS')))
+  const isMobile = isIos || !!fingerprint.navigator?.touchSupport || (fingerprint.navigator?.platform && fingerprint.navigator.platform.includes('arm')) || (fingerprint.navigator?.platform && fingerprint.navigator.platform.includes('Android')) || (fingerprint.navigator?.userAgent && fingerprint.navigator.userAgent.includes('Android'))
   
   // 1. Core environment integrity scripts — ALWAYS run on 100% of domains (including x.com, twitter.com, google.com)
   const coreScripts = [
@@ -88,9 +90,9 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
       }
     } catch(e) {}
 
-    // Ensure desktop window.chrome standard runtime is present
+    // Ensure desktop window.chrome standard runtime is present (ONLY on Desktop Chrome, NOT on Firefox or iOS Safari)
     try {
-      if (typeof window !== 'undefined' && !window.chrome) {
+      if (typeof window !== 'undefined' && !${(isFirefox || isIos) ? 'true' : 'false'} && !window.chrome) {
         window.chrome = {
           ...(!${isMobile ? 'true' : 'false'} ? {
             app: {
