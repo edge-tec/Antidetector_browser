@@ -162,7 +162,7 @@ export function buildNavigatorScript(
   ` : ''}
 
   // ── Chromium Client Hints (navigator.userAgentData) ──
-  ${!isIos ? `
+  ${(!isIos && !isFirefox) ? `
   try {
     const brandsList = [
       { brand: 'Chromium', version: ${JSON.stringify(brandVersion)} },

@@ -155,4 +155,16 @@ describe('X.com Final Production Runtime Verification & Validation — 14 Requir
     expect(raw).not.toContain('auth_token')
     expect(raw).not.toContain('password')
   })
+
+  // 15. Profile Switching Invalidation
+  it('15. Profile Switching Invalidation: Switching profile safely clears in-flight state and unlocks profile', () => {
+    const init = XAuthFlowEngine.initiateLogin({ profileId })
+    expect(XAuthFlowEngine.getTransactionState(init.loginAttemptId!)?.inProgress).toBe(true)
+    XAuthFlowEngine.invalidateProfile(profileId)
+    expect(XAuthFlowEngine.getTransactionState(init.loginAttemptId!)).toBeUndefined()
+    // Should immediately allow fresh login attempt without lock failure
+    const freshInit = XAuthFlowEngine.initiateLogin({ profileId })
+    expect(freshInit.success).toBe(true)
+  })
 })
+

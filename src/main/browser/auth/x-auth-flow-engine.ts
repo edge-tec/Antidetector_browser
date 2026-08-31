@@ -465,6 +465,20 @@ export class XAuthFlowEngine {
   }
 
   /**
+   * Invalidate all active transactions and locks for a profile (e.g. on profile switch or deletion)
+   */
+  public static invalidateProfile(profileId: string): void {
+    this.releaseLock(profileId)
+    for (const [attemptId, tx] of this.activeTransactions.entries()) {
+      if (tx.profileId === profileId) {
+        tx.inProgress = false
+        tx.authorizationState = 'terminated'
+        this.activeTransactions.delete(attemptId)
+      }
+    }
+  }
+
+  /**
    * Release Profile Lock
    */
   public static releaseLock(profileId: string): void {
