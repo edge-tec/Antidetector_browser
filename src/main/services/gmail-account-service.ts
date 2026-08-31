@@ -289,6 +289,53 @@ export class GmailAccountService {
   }
 
   /**
+   * Retrieves the authenticated user's Gmail profile to verify live API access and identity.
+   */
+  public static async getProfile(profileId: string): Promise<{
+    success: boolean
+    data?: { emailAddress: string; messagesTotal: number; threadsTotal: number; historyId: string }
+    error?: string
+  }> {
+    const token = await this.getValidAccessToken(profileId)
+    if (!token) {
+      return { success: false, error: 'Unauthorized: No active Google account linked.' }
+    }
+
+    return new Promise((resolve) => {
+      const req = https.request(
+        {
+          hostname: 'gmail.googleapis.com',
+          path: '/gmail/v1/users/me/profile',
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+          }
+        },
+        (res) => {
+          let data = ''
+          res.on('data', (c) => (data += c))
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data)
+              if (res.statusCode && res.statusCode < 300 && parsed.emailAddress) {
+                resolve({ success: true, data: parsed })
+              } else {
+                resolve({ success: false, error: parsed.error?.message || 'Failed to verify Gmail API profile.' })
+              }
+            } catch (err: any) {
+              resolve({ success: false, error: err.message })
+            }
+          })
+        }
+      )
+
+      req.on('error', (err) => resolve({ success: false, error: err.message }))
+      req.end()
+    })
+  }
+
+  /**
    * Disconnects / Unlinks a Gmail account for a profile.
    */
   public static disconnectAccount(profileId: string): boolean {
