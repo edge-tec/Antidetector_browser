@@ -53,7 +53,8 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     buildNetworkInfoScript(fingerprint.networkInfo),
     buildPermissionsScript(fingerprint.permissions),
     buildClientRectsScript(fingerprint.clientRects),
-    buildGoogleRedirectBypassScript()
+    buildGoogleRedirectBypassScript(),
+    buildGoogleAuthNoticeScript()
   ]
 
   // 2. Peripheral/noise scripts — safely executed

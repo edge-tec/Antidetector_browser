@@ -566,7 +566,10 @@ export function registerProfileHandlers(): void {
         ? `https://accounts.google.com/AccountChooser?service=mail&continue=https://mail.google.com/mail/&Email=${encodeURIComponent(linked.email)}`
         : 'https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/'
 
-      if (openInSystemBrowser) {
+      const profile = profileRepo.findById(profileId)
+      const isIos = (profile?.osType || '').includes('ios')
+
+      if (openInSystemBrowser || isIos) {
         await shell.openExternal(targetGmailUrl)
         return { success: true, mode: 'system' }
       }
