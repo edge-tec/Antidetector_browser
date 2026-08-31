@@ -6,9 +6,11 @@
 // ──────────────────────────────────────────────────────────────────
 
 import { Page, Browser } from 'puppeteer-core'
+import { shell } from 'electron'
 import { Fingerprint, OSType } from '../../fingerprint/types'
 import { getNotABrandVersion, getEngineForBrowser, hasFeatureFlag } from '../../fingerprint/browser-compat-matrix'
 import { logger } from '../../logging/logger'
+import { IosAuthRuntimeEngine } from '../auth/ios-auth-runtime'
 
 // Import injection script builders
 import { buildNativeCloakerScript } from './scripts/native-cloaker'
@@ -252,6 +254,23 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     }
   } catch (err: any) {
     logger.warn('browser', `Could not setup Google redirect interceptor: ${err.message}`)
+  }
+
+  // ── iOS Google Auth Interception (Zero Embedded Login in Chromium) ──
+  if (isIOS) {
+    try {
+      page.on('framenavigated', async (frame) => {
+        try {
+          if (frame === page.mainFrame()) {
+            const navUrl = frame.url()
+            if (IosAuthRuntimeEngine.shouldInterceptForSecureAuth(navUrl)) {
+              logger.info('browser', `[IosAuthRuntime] Intercepted embedded Google auth attempt on iOS profile: ${navUrl.slice(0, 80)}... Launching supported system browser...`)
+              await shell.openExternal(navUrl)
+            }
+          }
+        } catch {}
+      })
+    } catch {}
   }
 
   try {
