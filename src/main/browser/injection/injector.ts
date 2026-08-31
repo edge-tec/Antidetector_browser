@@ -36,6 +36,7 @@ import { setupGoogleRedirectInterceptor } from './google-redirect-interceptor'
  */
 export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'chrome' | 'firefox'): string {
   const bType = browserType || fingerprint.browser?.type || (fingerprint.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+  const isMobile = !!fingerprint.navigator?.touchSupport || (fingerprint.navigator?.platform && fingerprint.navigator.platform.includes('arm')) || (fingerprint.navigator?.platform && fingerprint.navigator.platform.includes('Android')) || (fingerprint.navigator?.userAgent && fingerprint.navigator.userAgent.includes('Android'))
   
   // 1. Core environment integrity scripts — ALWAYS run on 100% of domains (including x.com, twitter.com, google.com)
   const coreScripts = [
@@ -91,11 +92,13 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     try {
       if (typeof window !== 'undefined' && !window.chrome) {
         window.chrome = {
-          app: {
-            isInstalled: false,
-            InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
-            RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
-          },
+          ...(!${isMobile ? 'true' : 'false'} ? {
+            app: {
+              isInstalled: false,
+              InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+              RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
+            }
+          } : {}),
           runtime: {
             OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
             OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },

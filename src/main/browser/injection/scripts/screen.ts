@@ -73,5 +73,43 @@ export function buildScreenScript(screen: ScreenFingerprint): string {
     });
   } catch(e) {}
 
+  // Mobile pointer & hover media query consistency
+  try {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const isMobileScreen = ${safe.orientation === 'portrait-primary' || safe.width < 768 ? 'true' : 'false'};
+      const origMatchMedia = window.matchMedia;
+      window.matchMedia = function(query) {
+        const q = String(query).toLowerCase().replace(/\\s+/g, '');
+        if (isMobileScreen) {
+          if (q === '(pointer:coarse)' || q === '(any-pointer:coarse)' || q === '(hover:none)' || q === '(any-hover:none)') {
+            return {
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: function() {},
+              removeListener: function() {},
+              addEventListener: function() {},
+              removeEventListener: function() {},
+              dispatchEvent: function() { return true; }
+            };
+          }
+          if (q === '(pointer:fine)' || q === '(any-pointer:fine)' || q === '(hover:hover)' || q === '(any-hover:hover)') {
+            return {
+              matches: false,
+              media: query,
+              onchange: null,
+              addListener: function() {},
+              removeListener: function() {},
+              addEventListener: function() {},
+              removeEventListener: function() {},
+              dispatchEvent: function() { return true; }
+            };
+          }
+        }
+        return origMatchMedia.call(window, query);
+      };
+    }
+  } catch(e) {}
+
 })();`
 }
