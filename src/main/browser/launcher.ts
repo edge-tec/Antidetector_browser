@@ -13,7 +13,7 @@ import { Profile, Proxy } from '../database/models'
 import { Fingerprint, OSType, createDefaultFingerprint } from '../fingerprint/types'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { decryptPassword } from '../security/encryption'
-import { ensureProfileDataDir, ensureFirefoxProfileDataDir } from './chromium-resolver'
+import { ensureProfileDataDir, ensureFirefoxProfileDataDir, repairGlobalFirefoxProfilesIni } from './chromium-resolver'
 import { setupBrowserInjection } from './injection/injector'
 import { startProxyBridge } from '../network/proxy-bridge'
 import { lookupGeoIP } from '../network/geo-lookup'
@@ -114,6 +114,43 @@ function setupFirefoxProfilePrefs(
       fs.writeFileSync(timesJsonPath, JSON.stringify({ created: Date.now(), firstUse: Date.now() }, null, 2), 'utf8')
     } catch {}
   }
+
+  // Pre-seed compatibility.ini to prevent "Profile Missing or Inaccessible" alerts
+  const compatIniPath = path.join(resolvedDir, 'compatibility.ini')
+  try {
+    const osAbi = process.platform === 'darwin'
+      ? (process.arch === 'arm64' ? 'Darwin_aarch64-gcc3' : 'Darwin_x86_64-gcc3')
+      : (process.platform === 'win32' ? 'WINNT_x86_64-msvc' : 'Linux_x86_64-gcc3')
+    const ffVer = resolvedProfile.browserVersion || '131.0'
+    const compatContent = `[Compatibility]\nLastPlatformToken=${ffVer}\nLastVersion=${ffVer}\nLastOSABI=${osAbi}\n`
+    fs.writeFileSync(compatIniPath, compatContent, 'utf8')
+  } catch {}
+
+  // Pre-seed local profiles.ini
+  const localProfileIniPath = path.join(resolvedDir, 'profiles.ini')
+  if (!fs.existsSync(localProfileIniPath)) {
+    try {
+      const profileIniContent = `[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=.\nDefault=1\n`
+      fs.writeFileSync(localProfileIniPath, profileIniContent, 'utf8')
+    } catch {}
+  }
+
+  // Pre-seed handlers.json and containers.json
+  const handlersPath = path.join(resolvedDir, 'handlers.json')
+  if (!fs.existsSync(handlersPath)) {
+    try {
+      fs.writeFileSync(handlersPath, JSON.stringify({ defaultHandlersVersion: {}, mimeTypes: {}, schemes: {} }, null, 2), 'utf8')
+    } catch {}
+  }
+
+  const containersPath = path.join(resolvedDir, 'containers.json')
+  if (!fs.existsSync(containersPath)) {
+    try {
+      fs.writeFileSync(containersPath, JSON.stringify({ version: 4, lastContainerId: 0, identities: [] }, null, 2), 'utf8')
+    } catch {}
+  }
+
+  repairGlobalFirefoxProfilesIni()
 
   const fp = resolvedProfile.fingerprint
 

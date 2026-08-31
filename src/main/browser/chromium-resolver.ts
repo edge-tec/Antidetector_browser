@@ -661,13 +661,102 @@ export function ensureProfileDataDir(profileId: string): string {
 }
 
 /**
+ * Ensure global Firefox profiles.ini exists and has no broken references that cause "Profile Missing" alerts.
+ */
+export function repairGlobalFirefoxProfilesIni(): void {
+  let ffGlobalDir = ''
+  if (process.platform === 'darwin') {
+    ffGlobalDir = path.join(process.env.HOME || '', 'Library', 'Application Support', 'Firefox')
+  } else if (process.platform === 'win32') {
+    ffGlobalDir = path.join(process.env.APPDATA || '', 'Mozilla', 'Firefox')
+  } else {
+    ffGlobalDir = path.join(process.env.HOME || '', '.mozilla', 'firefox')
+  }
+
+  try {
+    if (!fs.existsSync(ffGlobalDir)) {
+      fs.mkdirSync(ffGlobalDir, { recursive: true, mode: 0o755 })
+    }
+
+    const profilesIniPath = path.join(ffGlobalDir, 'profiles.ini')
+    const defaultProfileDir = path.join(ffGlobalDir, 'Profiles', 'antiprofiles-default')
+    if (!fs.existsSync(defaultProfileDir)) {
+      fs.mkdirSync(defaultProfileDir, { recursive: true, mode: 0o755 })
+    }
+
+    let needsWrite = !fs.existsSync(profilesIniPath)
+    if (fs.existsSync(profilesIniPath)) {
+      const content = fs.readFileSync(profilesIniPath, 'utf8')
+      const pathMatches = content.match(/Path=([^\r\n]+)/g) || []
+      for (const match of pathMatches) {
+        const relOrAbs = match.replace('Path=', '').trim()
+        const full = path.isAbsolute(relOrAbs) ? relOrAbs : path.join(ffGlobalDir, relOrAbs)
+        if (!fs.existsSync(full)) {
+          needsWrite = true
+          break
+        }
+      }
+    }
+
+    if (needsWrite) {
+      logger.info('browser', `[FirefoxProfile] Ensuring healthy global Firefox profiles.ini at: ${profilesIniPath}`)
+      const safeIni = `[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default-release\nIsRelative=1\nPath=Profiles/antiprofiles-default\nDefault=1\n`
+      fs.writeFileSync(profilesIniPath, safeIni, 'utf8')
+    }
+  } catch (err: any) {
+    logger.warn('browser', `[FirefoxProfile] Could not initialize global Firefox profiles.ini: ${err.message}`)
+  }
+}
+
+/**
  * Create the dedicated Firefox profile data directory if it doesn't exist.
  */
 export function ensureFirefoxProfileDataDir(profileId: string): string {
   const dir = getFirefoxProfileDataDir(profileId)
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
+    fs.mkdirSync(dir, { recursive: true, mode: 0o755 })
   }
+
+  // Clear stale Firefox lock files
+  const lockFiles = ['.parentlock', 'parent.lock', 'lock', '.parentlock.link', 'parent.lock.link', 'lock.link']
+  for (const f of lockFiles) {
+    try {
+      const lockPath = path.join(dir, f)
+      if (fs.existsSync(lockPath)) {
+        fs.rmSync(lockPath, { force: true, recursive: true })
+        try { fs.unlinkSync(lockPath) } catch {}
+      }
+    } catch {}
+  }
+
+  // Pre-seed times.json & compatibility.ini so Firefox recognizes profile as valid & initialized
+  const timesJsonPath = path.join(dir, 'times.json')
+  if (!fs.existsSync(timesJsonPath)) {
+    try {
+      fs.writeFileSync(timesJsonPath, JSON.stringify({ created: Date.now(), firstUse: Date.now() }, null, 2), 'utf8')
+    } catch {}
+  }
+
+  const compatIniPath = path.join(dir, 'compatibility.ini')
+  if (!fs.existsSync(compatIniPath)) {
+    try {
+      const osAbi = process.platform === 'darwin'
+        ? (process.arch === 'arm64' ? 'Darwin_aarch64-gcc3' : 'Darwin_x86_64-gcc3')
+        : (process.platform === 'win32' ? 'WINNT_x86_64-msvc' : 'Linux_x86_64-gcc3')
+      const compatContent = `[Compatibility]\nLastPlatformToken=131.0\nLastVersion=131.0\nLastOSABI=${osAbi}\n`
+      fs.writeFileSync(compatIniPath, compatContent, 'utf8')
+    } catch {}
+  }
+
+  const profileIniPath = path.join(dir, 'profiles.ini')
+  if (!fs.existsSync(profileIniPath)) {
+    try {
+      const profileIniContent = `[General]\nStartWithLastProfile=1\nVersion=2\n\n[Profile0]\nName=default\nIsRelative=1\nPath=.\nDefault=1\n`
+      fs.writeFileSync(profileIniPath, profileIniContent, 'utf8')
+    } catch {}
+  }
+
+  repairGlobalFirefoxProfilesIni()
   return dir
 }
 
