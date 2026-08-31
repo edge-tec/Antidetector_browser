@@ -132,7 +132,7 @@ describe('X.com Login Flow — End-to-End Production Diagnostic & Fix Tests', ()
 
     expect(evalRes.outcome).toBe('TEMPORARY_LOGIN_RESTRICTION')
     expect(evalRes.errorCode).toBe('X_TEMPORARY_RESTRICTION')
-    expect(evalRes.guidance).toContain('temporarily limited')
+    expect(evalRes.guidance).toContain('temporarily restricted')
   })
 
   // ── Test 8: Network failure → safe error handling ──

@@ -46,6 +46,10 @@ export interface XAuthDiagnosticEvent {
   profileId: string
   authenticationProvider: 'X_COM'
   currentStep: XAuthStep
+  requestSequence?: number
+  httpMethod?: string
+  hostname?: string
+  path?: string
   statusCode?: number
   responseTimeMs?: number
   redirectHostname?: string
@@ -69,6 +73,7 @@ export interface XAuthTransactionState {
   callbackReceived: boolean
   codeExchanged: boolean
   sessionCreated: boolean
+  requestSequence: number
   outcome?: XAuthOutcome
   errorCode?: XAuthErrorCode
 }
@@ -162,7 +167,8 @@ export class XAuthFlowEngine {
       inProgress: true,
       callbackReceived: false,
       codeExchanged: false,
-      sessionCreated: false
+      sessionCreated: false,
+      requestSequence: 1
     }
     this.activeTransactions.set(loginAttemptId, tx)
 
@@ -170,6 +176,7 @@ export class XAuthFlowEngine {
       loginAttemptId,
       profileId,
       currentStep: 'AUTHORIZATION_REQUEST_CREATED',
+      requestSequence: 1,
       notes: 'Authorization parameters created: state=[REDACTED], code_challenge=[REDACTED]'
     })
 
@@ -186,6 +193,10 @@ export class XAuthFlowEngine {
       loginAttemptId,
       profileId,
       currentStep: 'AUTHORIZATION_REQUEST_SENT',
+      requestSequence: 1,
+      httpMethod: 'GET',
+      hostname: authUrl.hostname,
+      path: authUrl.pathname,
       redirectHostname: authUrl.hostname,
       redirectPath: authUrl.pathname,
       notes: 'Authorization URL dispatched to browser.'
@@ -214,10 +225,14 @@ export class XAuthFlowEngine {
     let errorCode: XAuthErrorCode | undefined = undefined
     let guidance: string | undefined = undefined
 
+    if (tx) {
+      tx.requestSequence = (tx.requestSequence || 1) + 1
+    }
+
     if (params.statusCode === 429 || body.includes('temporarily limited') || body.includes('try again later')) {
       outcome = 'TEMPORARY_LOGIN_RESTRICTION'
       errorCode = 'X_TEMPORARY_RESTRICTION'
-      guidance = "X.com has temporarily limited login submissions. Automatic retries are disabled. Continue with Google/Apple SSO or wait for the provider cooldown."
+      guidance = "X.com temporarily restricted this login attempt. No automatic retry was performed. Please try again later or use an officially supported authentication method."
     } else if (body.includes('challenge') || body.includes('verify') || body.includes('account/access')) {
       outcome = 'CHALLENGE_REQUIRED'
       guidance = "Official verification challenge detected. Displaying challenge screen."
@@ -238,6 +253,7 @@ export class XAuthFlowEngine {
       loginAttemptId: params.loginAttemptId,
       profileId,
       currentStep: 'X_RESPONSE_RECEIVED',
+      requestSequence: tx?.requestSequence || 2,
       statusCode: params.statusCode,
       errorCategory: errorCode,
       challengeDetected: outcome === 'CHALLENGE_REQUIRED',
