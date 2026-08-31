@@ -23,6 +23,7 @@ export type XAuthOutcome =
   | 'REDIRECT_ERROR'
   | 'RATE_LIMITED'
   | 'TEMPORARY_LOGIN_RESTRICTION'
+  | 'PROVIDER_TEMPORARY_LOGIN_RESTRICTION'
   | 'CHALLENGE_REQUIRED'
   | 'NETWORK_ERROR'
   | 'UNKNOWN'
@@ -31,6 +32,7 @@ export type XAuthErrorCode =
   | 'LOGIN_INIT_FAILED'
   | 'AUTHORIZATION_REQUEST_FAILED'
   | 'X_TEMPORARY_RESTRICTION'
+  | 'PROVIDER_TEMPORARY_LOGIN_RESTRICTION'
   | 'X_OAUTH_ERROR'
   | 'CALLBACK_NOT_RECEIVED'
   | 'STATE_VALIDATION_FAILED'
@@ -52,8 +54,12 @@ export interface XAuthDiagnosticEvent {
   path?: string
   statusCode?: number
   responseTimeMs?: number
+  requestCount?: number
+  retryCount?: number
   redirectHostname?: string
   redirectPath?: string
+  redirectReceived?: boolean
+  callbackReceived?: boolean
   errorCategory?: XAuthErrorCode
   challengeDetected?: boolean
   notes?: string
@@ -74,6 +80,12 @@ export interface XAuthTransactionState {
   codeExchanged: boolean
   sessionCreated: boolean
   requestSequence: number
+  retryCount: number
+  automaticRetry: boolean
+  authorizationState: 'idle' | 'in_flight' | 'terminated' | 'completed'
+  pendingCallback: 'none' | 'expected' | 'received' | 'rejected'
+  pendingCodeExchange: 'none' | 'pending' | 'exchanged' | 'blocked'
+  sessionCreation: 'blocked' | 'pending' | 'created'
   outcome?: XAuthOutcome
   errorCode?: XAuthErrorCode
 }
@@ -168,7 +180,13 @@ export class XAuthFlowEngine {
       callbackReceived: false,
       codeExchanged: false,
       sessionCreated: false,
-      requestSequence: 1
+      requestSequence: 1,
+      retryCount: 0,
+      automaticRetry: false,
+      authorizationState: 'in_flight',
+      pendingCallback: 'expected',
+      pendingCodeExchange: 'pending',
+      sessionCreation: 'pending'
     }
     this.activeTransactions.set(loginAttemptId, tx)
 
@@ -177,6 +195,8 @@ export class XAuthFlowEngine {
       profileId,
       currentStep: 'AUTHORIZATION_REQUEST_CREATED',
       requestSequence: 1,
+      requestCount: 1,
+      retryCount: 0,
       notes: 'Authorization parameters created: state=[REDACTED], code_challenge=[REDACTED]'
     })
 
@@ -194,6 +214,8 @@ export class XAuthFlowEngine {
       profileId,
       currentStep: 'AUTHORIZATION_REQUEST_SENT',
       requestSequence: 1,
+      requestCount: 1,
+      retryCount: 0,
       httpMethod: 'GET',
       hostname: authUrl.hostname,
       path: authUrl.pathname,
@@ -230,9 +252,17 @@ export class XAuthFlowEngine {
     }
 
     if (params.statusCode === 429 || body.includes('temporarily limited') || body.includes('try again later')) {
-      outcome = 'TEMPORARY_LOGIN_RESTRICTION'
-      errorCode = 'X_TEMPORARY_RESTRICTION'
+      outcome = 'PROVIDER_TEMPORARY_LOGIN_RESTRICTION'
+      errorCode = 'PROVIDER_TEMPORARY_LOGIN_RESTRICTION'
       guidance = "X.com temporarily restricted this login attempt. No automatic retry was performed. Please try again later or use an officially supported authentication method."
+      if (tx) {
+        tx.authorizationState = 'terminated'
+        tx.pendingCallback = 'none'
+        tx.pendingCodeExchange = 'none'
+        tx.sessionCreation = 'blocked'
+        tx.automaticRetry = false
+        tx.inProgress = false
+      }
     } else if (body.includes('challenge') || body.includes('verify') || body.includes('account/access')) {
       outcome = 'CHALLENGE_REQUIRED'
       guidance = "Official verification challenge detected. Displaying challenge screen."
@@ -254,9 +284,13 @@ export class XAuthFlowEngine {
       profileId,
       currentStep: 'X_RESPONSE_RECEIVED',
       requestSequence: tx?.requestSequence || 2,
+      requestCount: tx?.requestSequence || 2,
+      retryCount: 0,
       statusCode: params.statusCode,
       errorCategory: errorCode,
       challengeDetected: outcome === 'CHALLENGE_REQUIRED',
+      redirectReceived: false,
+      callbackReceived: false,
       notes: `Evaluated X response: outcome=${outcome}`
     })
 
@@ -266,6 +300,10 @@ export class XAuthFlowEngine {
     }
 
     return { outcome, errorCode, guidance }
+  }
+
+  public static getTransactionState(loginAttemptId: string): XAuthTransactionState | undefined {
+    return this.activeTransactions.get(loginAttemptId)
   }
 
   /**

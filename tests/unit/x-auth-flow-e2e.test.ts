@@ -122,7 +122,7 @@ describe('X.com Login Flow — End-to-End Production Diagnostic & Fix Tests', ()
   })
 
   // ── Test 7: X temporary login restriction → correctly classified and no automatic retry ──
-  it('Test 7: X temporary login restriction is classified as TEMPORARY_LOGIN_RESTRICTION with retries blocked', () => {
+  it('Test 7: X temporary login restriction is classified as PROVIDER_TEMPORARY_LOGIN_RESTRICTION with retries blocked and clean state', () => {
     const init = XAuthFlowEngine.initiateLogin({ profileId })
     const evalRes = XAuthFlowEngine.evaluateXResponse({
       loginAttemptId: init.loginAttemptId!,
@@ -130,9 +130,16 @@ describe('X.com Login Flow — End-to-End Production Diagnostic & Fix Tests', ()
       responseBody: "We've temporarily limited your login. Please try again later."
     })
 
-    expect(evalRes.outcome).toBe('TEMPORARY_LOGIN_RESTRICTION')
-    expect(evalRes.errorCode).toBe('X_TEMPORARY_RESTRICTION')
+    expect(evalRes.outcome).toBe('PROVIDER_TEMPORARY_LOGIN_RESTRICTION')
+    expect(evalRes.errorCode).toBe('PROVIDER_TEMPORARY_LOGIN_RESTRICTION')
     expect(evalRes.guidance).toContain('temporarily restricted')
+
+    const tx = XAuthFlowEngine.getTransactionState(init.loginAttemptId!)
+    expect(tx?.authorizationState).toBe('terminated')
+    expect(tx?.pendingCallback).toBe('none')
+    expect(tx?.pendingCodeExchange).toBe('none')
+    expect(tx?.sessionCreation).toBe('blocked')
+    expect(tx?.automaticRetry).toBe(false)
   })
 
   // ── Test 8: Network failure → safe error handling ──
