@@ -50,10 +50,14 @@ export function initDatabase(): any {
     const Database = require('better-sqlite3')
     db = new Database(dbPath)
 
-    // Enable WAL mode for performance
+    // Enable WAL mode for performance & auto-checkpointing
     db.pragma('journal_mode = WAL')
     db.pragma('busy_timeout = 5000')
     db.pragma('foreign_keys = ON')
+    db.pragma('wal_autocheckpoint = 500')
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)')
+    } catch {}
 
     try {
       fs.chmodSync(dbPath, 0o600)
