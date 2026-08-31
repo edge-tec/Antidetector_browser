@@ -72,37 +72,34 @@ export function installChromiumRuntimeExtension(
 })();
 `
 
-    // 3. Icons provisioning
+    // 3. Icons provisioning (optional)
     const iconsDir = path.join(extensionDir, 'icons')
-    if (!fs.existsSync(iconsDir)) {
-      fs.mkdirSync(iconsDir, { recursive: true })
-    }
+    let hasIcons = false
     if (profileInfo) {
-      const resolvedIcon = BrowserIconManager.resolveIcon('chromium', {
-        id: profileInfo.id,
-        name: profileInfo.name,
-        browserVersion: profileInfo.browserVersion
-      } as any)
-      if (resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
-        try {
+      try {
+        const resolvedIcon = BrowserIconManager.resolveIcon('chromium', {
+          id: profileInfo.id,
+          name: profileInfo.name,
+          browserVersion: profileInfo.browserVersion
+        } as any)
+        if (resolvedIcon.pngPath && fs.existsSync(resolvedIcon.pngPath)) {
+          if (!fs.existsSync(iconsDir)) {
+            fs.mkdirSync(iconsDir, { recursive: true })
+          }
           fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-16.png'))
           fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-48.png'))
           fs.copyFileSync(resolvedIcon.pngPath, path.join(iconsDir, 'icon-128.png'))
-        } catch {}
-      }
+          hasIcons = true
+        }
+      } catch {}
     }
 
     // 4. Manifest V3 unpacked extension
-    const manifest = {
+    const manifest: any = {
       manifest_version: 3,
       name: 'AntiProfiles Runtime Isolation Guard',
       version: '1.0.0',
       description: 'Applies resolved profile fingerprint parameters to web pages at runtime',
-      icons: {
-        '16': 'icons/icon-16.png',
-        '48': 'icons/icon-48.png',
-        '128': 'icons/icon-128.png'
-      },
       content_scripts: [
         {
           matches: ['<all_urls>'],
@@ -113,6 +110,14 @@ export function installChromiumRuntimeExtension(
           world: 'MAIN'
         }
       ]
+    }
+
+    if (hasIcons) {
+      manifest.icons = {
+        '16': 'icons/icon-16.png',
+        '48': 'icons/icon-48.png',
+        '128': 'icons/icon-128.png'
+      }
     }
 
     fs.writeFileSync(path.join(extensionDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8')
