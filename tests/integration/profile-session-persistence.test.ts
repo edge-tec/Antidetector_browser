@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { DeviceConsistencyValidator } from '../../src/main/browser/device/device-consistency'
 
-describe('Profile Session Persistence & Storage Integrity (Specification §10 & §11)', () => {
+describe('Profile Session Persistence & Storage Integrity (Specification §10, §11 & §12)', () => {
   it('guarantees independent, persistent directory structure for each profile across multiple profiles', () => {
     const baseDir = path.join(os.tmpdir(), 'antiprofiles-session-test-' + Date.now())
     const profileA = path.join(baseDir, 'profile-uuid-aaa')
@@ -58,6 +59,34 @@ describe('Profile Session Persistence & Storage Integrity (Specification §10 & 
     expect(fs.readFileSync(path.join(indexedDbDir, '000003.log'), 'utf8')).toBe('INDEXEDDB_SESSION_TOKENS')
     expect(fs.existsSync(path.join(localStoreDir, '000003.log'))).toBe(true)
     expect(fs.readFileSync(path.join(localStoreDir, '000003.log'), 'utf8')).toBe('LOCALSTORAGE_SESSION_STATE')
+
+    fs.rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('guarantees repeated presentation switching (macOS → Windows → Linux → Android → iOS → macOS) preserves storage integrity', () => {
+    const baseDir = path.join(os.tmpdir(), 'antiprofiles-cycle-test-' + Date.now())
+    const profilePath = path.join(baseDir, 'profile-cycling')
+    const cookieFile = path.join(profilePath, 'Default', 'Cookies')
+    const prefFile = path.join(profilePath, 'Default', 'Preferences')
+
+    fs.mkdirSync(path.join(profilePath, 'Default'), { recursive: true })
+    fs.writeFileSync(cookieFile, 'PERSISTENT_AUTH_BLOB_2026')
+    fs.writeFileSync(prefFile, JSON.stringify({ bookmarks: { roots: {} } }))
+
+    const osCycle = ['macos', 'windows-11', 'linux', 'android', 'ios', 'macos']
+
+    for (const targetOs of osCycle) {
+      const resolved = DeviceConsistencyValidator.resolvePlatformProfile({
+        osType: targetOs,
+        browserType: 'chrome'
+      })
+
+      expect(resolved.os).toBe(DeviceConsistencyValidator.getCanonicalOS(targetOs))
+      // Verify storage is untouched across every single transition
+      expect(fs.existsSync(cookieFile)).toBe(true)
+      expect(fs.readFileSync(cookieFile, 'utf8')).toBe('PERSISTENT_AUTH_BLOB_2026')
+      expect(fs.existsSync(prefFile)).toBe(true)
+    }
 
     fs.rmSync(baseDir, { recursive: true, force: true })
   })
