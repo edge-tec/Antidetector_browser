@@ -235,6 +235,7 @@ export interface AuthSessionState {
   lastAttemptTimestamp: number
   rateLimitReason?: string
   guidanceMessage?: string
+  cooldownExpiresAt?: number
   lastProviderStatus?: number | string
 }
 
@@ -243,8 +244,9 @@ export interface AuthSessionState {
  * Guarantees:
  * 1. Single-flight authentication (deduplication of rapid/duplicate login submissions)
  * 2. Strict no-automatic-retry policy on provider rate limits or rejections
- * 3. Deterministic state transitions (IDLE -> AUTHENTICATING -> SUCCESS | RATE_LIMITED | INCOMPATIBLE | REJECTED)
- * 4. Zero credential/token harvesting
+ * 3. Smart cooldown management and countdown calculation
+ * 4. Deterministic state transitions (IDLE -> AUTHENTICATING -> SUCCESS | RATE_LIMITED | INCOMPATIBLE | REJECTED)
+ * 5. Zero credential/token harvesting
  */
 export class SingleFlightAuthManager {
   private static sessions: Map<string, AuthSessionState> = new Map()
@@ -268,7 +270,33 @@ export class SingleFlightAuthManager {
         lastAttemptTimestamp: 0
       })
     }
-    return this.sessions.get(profileId)!
+    const session = this.sessions.get(profileId)!
+    // Auto-clear cooldown if expiration timestamp has passed
+    if (session.state === 'AUTH_RATE_LIMITED' && session.cooldownExpiresAt && Date.now() >= session.cooldownExpiresAt) {
+      session.state = 'IDLE'
+      session.cooldownExpiresAt = undefined
+      session.rateLimitReason = undefined
+    }
+    return session
+  }
+
+  public static isCooldownActive(profileId: string): boolean {
+    const session = this.getSession(profileId)
+    return session.state === 'AUTH_RATE_LIMITED' && !!session.cooldownExpiresAt && Date.now() < session.cooldownExpiresAt
+  }
+
+  public static getRemainingCooldownSeconds(profileId: string): number {
+    const session = this.getSession(profileId)
+    if (!session.cooldownExpiresAt || Date.now() >= session.cooldownExpiresAt) return 0
+    return Math.max(0, Math.ceil((session.cooldownExpiresAt - Date.now()) / 1000))
+  }
+
+  public static getRecommendedAuthMethod(profileId: string): 'GOOGLE_SSO' | 'EMAIL' | 'PHONE' | 'USERNAME' {
+    const session = this.getSession(profileId)
+    if (session.state === 'AUTH_RATE_LIMITED') {
+      return 'GOOGLE_SSO' // Switch priority to SSO or alternate credential
+    }
+    return 'USERNAME'
   }
 
   /**
@@ -287,10 +315,14 @@ export class SingleFlightAuthManager {
     }
 
     if (session.state === 'AUTH_RATE_LIMITED') {
+      const remaining = this.getRemainingCooldownSeconds(profileId)
+      const min = Math.floor(remaining / 60)
+      const sec = remaining % 60
+      const timeStr = remaining > 0 ? ` (Remaining Cooldown: ${min}m ${sec}s)` : ''
       return {
         acquired: false,
         state: 'AUTH_RATE_LIMITED',
-        reason: 'Authentication is temporarily limited by provider. Automated retries are prohibited.'
+        reason: `Authentication is temporarily limited by provider.${timeStr} Automated retries are prohibited.`
       }
     }
 
@@ -320,7 +352,7 @@ export class SingleFlightAuthManager {
   public static completeAuthFlow(
     profileId: string,
     resultState: AuthFlowState,
-    details?: { status?: number | string; reason?: string; guidance?: string }
+    details?: { status?: number | string; reason?: string; guidance?: string; cooldownDurationMs?: number }
   ): AuthSessionState {
     const session = this.getSession(profileId)
     session.activeFlight = false
@@ -328,6 +360,12 @@ export class SingleFlightAuthManager {
     if (details?.status !== undefined) session.lastProviderStatus = details.status
     if (details?.reason !== undefined) session.rateLimitReason = details.reason
     if (details?.guidance !== undefined) session.guidanceMessage = details.guidance
+    if (resultState === 'AUTH_RATE_LIMITED') {
+      const duration = details?.cooldownDurationMs || 15 * 60 * 1000 // Default 15-minute cooldown
+      session.cooldownExpiresAt = Date.now() + duration
+    } else {
+      session.cooldownExpiresAt = undefined
+    }
     return session
   }
 

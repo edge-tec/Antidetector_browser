@@ -92,10 +92,13 @@ describe('X.com Login Safety, Rate-Limit Handling & Single-Flight Deduplication 
     expect(session.activeFlight).toBe(false)
     expect(session.rateLimitReason).toContain('temporarily limited')
 
-    // Prohibit automated retry
+    // Prohibit automated retry & verify cooldown tracking
     const nextFlight = SingleFlightAuthManager.acquireAuthLock(profileId)
     expect(nextFlight.acquired).toBe(false)
     expect(nextFlight.state).toBe('AUTH_RATE_LIMITED')
+    expect(SingleFlightAuthManager.isCooldownActive(profileId)).toBe(true)
+    expect(SingleFlightAuthManager.getRemainingCooldownSeconds(profileId)).toBeGreaterThan(0)
+    expect(SingleFlightAuthManager.getRecommendedAuthMethod(profileId)).toBe('GOOGLE_SSO')
   })
 
   it('Test 6 — Callback Duplication: send the same OAuth callback twice, first processed, second safely ignored', () => {
