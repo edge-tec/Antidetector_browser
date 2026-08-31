@@ -317,44 +317,6 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
         </div>
       )}
 
-      {(profile as any).googleAccount && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '4px 8px',
-          background: 'rgba(234, 67, 53, 0.08)',
-          border: '1px solid rgba(234, 67, 53, 0.25)',
-          borderRadius: 6,
-          margin: '4px 0',
-          fontSize: 11
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 13 }}>📧</span>
-            <span style={{ color: '#F87171', fontWeight: 600, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {(profile as any).googleAccount.email}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {onOpenGmail && (
-              <button className="btn btn-xs btn-ghost" onClick={onOpenGmail} title="Open Gmail in Secure System Browser" style={{ padding: '1px 5px', fontSize: 10, color: '#38BDF8' }}>
-                Open
-              </button>
-            )}
-            {onTestGmailApi && (
-              <button className="btn btn-xs btn-ghost" onClick={onTestGmailApi} title="Verify Live Gmail API" style={{ padding: '1px 5px', fontSize: 10, color: '#10B981' }}>
-                API
-              </button>
-            )}
-            {onDisconnectGoogle && (
-              <button className="btn btn-xs btn-ghost" onClick={onDisconnectGoogle} title="Disconnect Google Account" style={{ padding: '1px 5px', fontSize: 10, color: '#EF4444' }}>
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="profile-card-actions">
         {isRunning ? (
           <button className="btn btn-sm btn-danger" onClick={onStop} disabled={isLaunching}>
@@ -363,27 +325,6 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
         ) : (
           <button className="btn btn-sm btn-success" onClick={onStart} disabled={isLaunching}>
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
-          </button>
-        )}
-
-        {onConnectGoogle && !(profile as any).googleAccount && (
-          <button
-            className="btn btn-sm btn-ghost"
-            onClick={onConnectGoogle}
-            title="Connect Google / Gmail (RFC 8252 OAuth PKCE)"
-            style={{
-              color: '#EA4335',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '3px 8px',
-              border: '1px solid rgba(234, 67, 53, 0.25)',
-              borderRadius: 6,
-              background: 'rgba(234, 67, 53, 0.06)'
-            }}
-          >
-            <span>📧</span>
-            <span style={{ fontSize: 11, fontWeight: 600 }}>Connect Gmail</span>
           </button>
         )}
 
@@ -524,37 +465,6 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
           <button className="btn btn-sm btn-success" onClick={onStart} disabled={isLaunching}>
             <span style={{ width: 12, height: 12, display: 'flex' }}>{Icons.play}</span> Start
           </button>
-        )}
-
-        {onConnectGoogle && (
-          (profile as any).googleAccount ? (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.25)', borderRadius: 6, padding: '2px 6px' }}>
-              <span style={{ fontSize: 12 }}>📧</span>
-              <span style={{ fontSize: 11, color: '#F87171', fontWeight: 600, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {(profile as any).googleAccount.email}
-              </span>
-              {onOpenGmail && (
-                <button className="btn btn-xs btn-ghost" onClick={onOpenGmail} title="Open Gmail in Secure System Browser" style={{ padding: '0 3px', fontSize: 10, color: '#38BDF8' }}>
-                  Open
-                </button>
-              )}
-              {onDisconnectGoogle && (
-                <button className="btn btn-xs btn-ghost" onClick={onDisconnectGoogle} title="Disconnect Google" style={{ padding: '0 3px', fontSize: 10, color: '#EF4444' }}>
-                  ✕
-                </button>
-              )}
-            </div>
-          ) : (
-            <button
-              className="btn btn-sm btn-ghost"
-              onClick={onConnectGoogle}
-              title="Connect Google / Gmail (RFC 8252 OAuth PKCE)"
-              style={{ color: '#EA4335', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', border: '1px solid rgba(234, 67, 53, 0.25)', borderRadius: 6, background: 'rgba(234, 67, 53, 0.06)' }}
-            >
-              <span>📧</span>
-              <span style={{ fontSize: 11, fontWeight: 600 }}>Gmail</span>
-            </button>
-          )
         )}
 
         {profile.proxyId && onRefreshProxy && (

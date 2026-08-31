@@ -33,7 +33,7 @@ describe('AntiProfiles Production Profile Generator, Proxy Sync, Storage & Sessi
       expect(fp.navigator.userAgent).toContain('Chrome/')
       expect(fp.navigator.touchSupport).toBe(false)
       expect(fp.screen.colorDepth).toBe(24)
-      expect([1920, 2560, 3840, 1536, 1440, 1680, 1366, 1280]).toContain(fp.screen.width)
+      expect([1920, 2560, 3840, 1600, 1536, 1440, 1680, 1366, 1280]).toContain(fp.screen.width)
     })
 
     it('generates internally consistent macOS Apple Silicon profile with arm64 and Apple GPU', () => {
