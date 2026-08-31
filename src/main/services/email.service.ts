@@ -84,7 +84,7 @@ export class EmailService {
           pass: config.password
         },
         timeout: 10000
-      })
+      } as any)
 
       await transporter.verify()
       return { success: true, message: `Successfully connected to SMTP server ${config.host}:${config.port}` }

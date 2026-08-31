@@ -36,23 +36,29 @@ import { setupGoogleRedirectInterceptor } from './google-redirect-interceptor'
  */
 export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'chrome' | 'firefox'): string {
   const bType = browserType || fingerprint.browser?.type || (fingerprint.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
-  const scripts = [
+  
+  // 1. Core environment integrity scripts — ALWAYS run on 100% of domains (including x.com, twitter.com, google.com)
+  const coreScripts = [
     buildNativeCloakerScript(),
     buildNavigatorScript(fingerprint.navigator, bType),
     buildScreenScript(fingerprint.screen),
     buildWebGLScript(fingerprint.webgl),
-    buildCanvasScript(fingerprint.canvas),
-    buildAudioScript(fingerprint.audio),
-    buildClientRectsScript(fingerprint.clientRects),
-    buildMediaDevicesScript(fingerprint.mediaDevices),
-    buildBatteryScript(fingerprint.battery),
-    buildNetworkInfoScript(fingerprint.networkInfo),
-    buildPermissionsScript(fingerprint.permissions),
     buildFontsScript(fingerprint.fonts),
     buildGeolocationScript(fingerprint.geolocation),
     buildTimezoneScript(fingerprint.timezone),
     buildWebRTCScript(fingerprint.webrtc),
+    buildNetworkInfoScript(fingerprint.networkInfo),
+    buildPermissionsScript(fingerprint.permissions),
+    buildClientRectsScript(fingerprint.clientRects),
     buildGoogleRedirectBypassScript()
+  ]
+
+  // 2. Peripheral/noise scripts — safely executed
+  const noiseScripts = [
+    buildCanvasScript(fingerprint.canvas),
+    buildAudioScript(fingerprint.audio),
+    buildMediaDevicesScript(fingerprint.mediaDevices),
+    buildBatteryScript(fingerprint.battery)
   ]
 
   // Wrap all scripts in a single IIFE with Safe Domain Policy & error isolation
@@ -102,9 +108,14 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
       }
     } catch(e) {}
 
+    // ── 1. Execute Core Environment Overrides (Navigator, Screen, Timezone, Client Hints, WebRTC) ──
+    // Crucial: Must execute across ALL domains so navigator.platform, userAgentData, and HTTP headers match 100%.
+    ${coreScripts.join('\n\n    ')}
+
     // ── Safe Domain Policy (Orbita / GoLogin Standard) ──
-    // Preserve 100% pristine native Canvas/WebGL/Audio/Font prototypes on Google Identity, Gmail, & Auth domains
-    // so Botguard hardware challenges pass with genuine device metrics.
+    // Core environment consistency is maintained across all origins (including Google, X, Facebook, LinkedIn, GitHub).
+    // Peripheral noise modifications (Canvas, Audio, MediaDevices, Battery) are selectively bypassed on BotGuard/Auth challenge pages
+    // so hardware cryptographic attestation challenges pass natively with genuine device metrics.
     function isProtectedAuthDomain() {
       try {
         var loc = (typeof window !== 'undefined' ? window.location : null) || {};
@@ -133,107 +144,52 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
           host === 'myaccount.google.com' ||
           host === 'oauth2.googleapis.com' ||
           host === 'mail.google.com' ||
-          host === 'x.com' ||
-          host.endsWith('.x.com') ||
-          host === 'twitter.com' ||
-          host.endsWith('.twitter.com') ||
-          host === 'facebook.com' ||
-          host.endsWith('.facebook.com') ||
-          host === 'instagram.com' ||
-          host.endsWith('.instagram.com') ||
-          host === 'linkedin.com' ||
-          host.endsWith('.linkedin.com') ||
-          host === 'github.com' ||
-          host.endsWith('.github.com') ||
-          path.indexOf('/login') !== -1 ||
+          path.indexOf('/challenge') !== -1 ||
           path.indexOf('/signin') !== -1 ||
-          path.indexOf('/oauth') !== -1 ||
+          path.indexOf('/servicelogin') !== -1 ||
           path.indexOf('/i/flow/login') !== -1 ||
           path.indexOf('/i/flow/') !== -1 ||
           href.indexOf('/v3/signin') !== -1 ||
-          href.indexOf('/servicelogin') !== -1 ||
-          href.indexOf('/identifier') !== -1 ||
-          href.indexOf('/challenge') !== -1
+          href.indexOf('/identifier') !== -1
         );
       } catch(e) {
         return false;
       }
     }
 
-    if (isProtectedAuthDomain()) {
-      return;
+    if (!isProtectedAuthDomain()) {
+      ${noiseScripts.join('\n\n      ')}
     }
-
-    ${scripts.join('\n\n    ')}
   } catch(e) {
     // Silent failure — don't let injection errors break the page
   }
 })();`
 }
 
+import { DeviceConsistencyValidator } from '../device/device-consistency'
+
 /**
  * Build Client Hints userAgentMetadata aligned with OS platform and browser version.
+ * Derived directly from the centralized DeviceConsistencyValidator.
  */
 export function buildUserAgentMetadata(fingerprint: Fingerprint): any {
   const nav = fingerprint.navigator || ({} as any)
   const fullVersion = nav.browserVersion || '131.0.0.0'
   const brandVersion = fullVersion.split('.')[0] || '131'
   const osType = (fingerprint as any).osType || ''
-  const platformStr = nav.platform || ''
-  const ua = nav.userAgent || ''
 
-  const isAndroid = ua.includes('Android') || platformStr.includes('Android') || osType === 'android'
-  const isIOS = ua.includes('iPhone') || ua.includes('iPad') || platformStr === 'iPhone' || osType === 'ios'
-  const isMac = !isAndroid && !isIOS && (platformStr.includes('Mac') || ua.includes('Macintosh') || osType.includes('macos'))
-  const isLinux = !isAndroid && !isIOS && !isMac && (platformStr.includes('Linux') || ua.includes('Linux') || osType === 'linux')
+  const resolved = DeviceConsistencyValidator.resolvePlatformProfile({
+    osType,
+    userAgent: nav.userAgent,
+    platform: nav.platform,
+    browserVersion: fullVersion,
+    hardwareConcurrency: nav.hardwareConcurrency,
+    deviceMemory: nav.deviceMemory,
+    touchSupport: nav.touchSupport,
+    maxTouchPoints: nav.maxTouchPoints,
+    deviceModel: (nav as any).deviceModelCode || (nav as any).deviceModel
+  })
 
-  let platform = 'Windows'
-  let platformVersion = '15.0.0'
-  let architecture = 'x86'
-  let bitness = '64'
-  let model = ''
-  let mobile = false
-
-  if (isAndroid) {
-    platform = 'Android'
-    platformVersion = '14.0.0'
-    architecture = 'arm'
-    bitness = '64'
-    mobile = true
-    const uaMatch = ua.match(/Android[^;]+;\s*([^)]+)\)/i)
-    model = (nav as any).deviceModelCode || (nav as any).deviceModel || (uaMatch && uaMatch[1] ? uaMatch[1].trim() : 'SM-S928B')
-  } else if (isIOS) {
-    platform = 'iOS'
-    platformVersion = '18.0.0'
-    architecture = 'arm'
-    bitness = '64'
-    mobile = true
-    model = 'iPhone'
-  } else if (isMac) {
-    platform = 'macOS'
-    platformVersion = '14.5.0'
-    architecture = osType === 'macos-arm' || nav.cpuArchitecture === 'arm64' ? 'arm' : 'x86'
-    bitness = '64'
-    model = ''
-    mobile = false
-  } else if (isLinux) {
-    platform = 'Linux'
-    platformVersion = '6.5.0'
-    architecture = 'x86'
-    bitness = '64'
-    model = ''
-    mobile = false
-  } else {
-    // Windows
-    platform = 'Windows'
-    platformVersion = osType === 'windows-11' ? '15.0.0' : '10.0.0'
-    architecture = 'x86'
-    bitness = '64'
-    model = ''
-    mobile = false
-  }
-
-  // v3: Use browser-compat-matrix for correct Not-A-Brand version
   const notABrandVer = getNotABrandVersion(fullVersion)
 
   return {
@@ -248,12 +204,12 @@ export function buildUserAgentMetadata(fingerprint: Fingerprint): any {
       { brand: 'Not_A Brand', version: `${notABrandVer}.0.0.0` }
     ],
     fullVersion,
-    platform,
-    platformVersion,
-    architecture,
-    model,
-    mobile,
-    bitness
+    platform: resolved.clientHintsPlatform,
+    platformVersion: resolved.clientHintsPlatformVersion,
+    architecture: resolved.architecture === 'arm64' ? 'arm' : 'x86',
+    model: resolved.model,
+    mobile: resolved.mobile,
+    bitness: resolved.bitness
   }
 }
 

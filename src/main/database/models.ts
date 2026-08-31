@@ -9,7 +9,25 @@ export type WebRTCMode = 'default' | 'disabled' | 'public_only'
 export type CanvasMode = 'default' | 'noise'
 export type WebGLMode = 'default' | 'noise'
 export type LogLevel = 'info' | 'warn' | 'error'
-export type LogCategory = 'profile' | 'browser' | 'proxy' | 'api' | 'database' | 'system' | 'fingerprint' | 'auth' | 'admin'
+export type LogCategory =
+  | 'profile'
+  | 'browser'
+  | 'proxy'
+  | 'api'
+  | 'database'
+  | 'system'
+  | 'fingerprint'
+  | 'auth'
+  | 'admin'
+  | 'sync'
+  | 'updater'
+  | 'network'
+  | 'storage'
+  | 'recovery'
+  | 'affiliate'
+  | 'payment'
+  | 'support'
+  | 'central-api'
 
 export type UserRole = 'admin' | 'user'
 export type AccountStatus = 'pending' | 'active' | 'suspended'
@@ -542,7 +560,11 @@ export interface AffiliateOffer {
   discount_value?: number
   discounted_price?: number
   trial_days?: number
-  billing_interval?: string
+  landing_page_slug?: string
+  trial_enabled?: boolean | number
+  cta_text?: string
+  badge_text?: string | null
+  banner_url?: string | null
   status: OfferStatus
   total_clicks?: number
   total_conversions?: number

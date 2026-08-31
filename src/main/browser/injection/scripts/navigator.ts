@@ -12,11 +12,14 @@ export function buildNavigatorScript(
   const isMobile = !!nav.touchSupport || nav.platform === 'iPhone' || (nav.platform && nav.platform.includes('Android')) || (nav.platform && nav.platform.includes('arm'))
   const isFirefox = browserType === 'firefox' || (nav.userAgent && nav.userAgent.includes('Firefox')) || (nav.userAgent && nav.userAgent.includes('FxiOS'))
   const isIos = nav.platform === 'iPhone' || (nav.userAgent && nav.userAgent.includes('iPhone'))
+  const isWin = nav.platform === 'Win32' || nav.platform === 'Win64' || (nav.userAgent && nav.userAgent.includes('Windows'))
+  const isMac = !isWin && (nav.platform.includes('Mac') || (nav.userAgent && nav.userAgent.includes('Macintosh')))
+  const isLinux = !isWin && !isMac && !isMobile && (nav.platform.includes('Linux') || (nav.userAgent && nav.userAgent.includes('Linux')))
 
   const brandVersion = nav.browserVersion ? nav.browserVersion.split('.')[0] : '131'
   const clientPlatform = isMobile
     ? (isIos ? 'iOS' : 'Android')
-    : (nav.platform === 'Win32' ? 'Windows' : nav.platform.includes('Mac') ? 'macOS' : 'Linux')
+    : (isWin ? 'Windows' : isMac ? 'macOS' : 'Linux')
 
   return `
 // ═══ Navigator Override & Environment Integrity ═══
@@ -28,7 +31,7 @@ export function buildNavigatorScript(
 
   // 1. Prototype Property Traps
   const protoOverrides = {
-    platform: ${JSON.stringify(nav.platform || 'Win32')},
+    platform: ${JSON.stringify(nav.platform || (isWin ? 'Win32' : isMac ? 'MacIntel' : 'Linux x86_64'))},
     vendor: ${JSON.stringify(nav.vendor || (isFirefox ? '' : 'Google Inc.'))},
     vendorSub: ${JSON.stringify(nav.vendorSub || '')},
     product: ${JSON.stringify(nav.product || 'Gecko')},
@@ -50,9 +53,6 @@ export function buildNavigatorScript(
     if (value === undefined) continue;
     try {
       const getter = cloakGetter(function() {
-        if (this !== navigator && !(this instanceof Navigator)) {
-          throw new TypeError('Illegal invocation');
-        }
         return value;
       }, key);
 
@@ -61,6 +61,15 @@ export function buildNavigatorScript(
         configurable: true,
         enumerable: true
       });
+      if (typeof navigator !== 'undefined' && key in navigator) {
+        try {
+          Object.defineProperty(navigator, key, {
+            get: getter,
+            configurable: true,
+            enumerable: true
+          });
+        } catch(e) {}
+      }
     } catch(e) {}
   }
 

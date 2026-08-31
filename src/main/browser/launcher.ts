@@ -24,6 +24,7 @@ import { getGlobalLaunchUrlConfig } from './launch-url-manager'
 
 import { ResolvedFirefoxProfile, resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { installFirefoxRuntimeExtension } from './firefox/firefox-extension-builder'
+import { installChromiumRuntimeExtension } from './chromium/chromium-extension-builder'
 import { BrowserIconManager } from './branding/browser-icon-manager'
 
 export interface LaunchResult {
@@ -1023,6 +1024,13 @@ export async function launchBrowser(
       }
     }
 
+    // ── Install AntiProfiles Runtime Isolation Extension ──
+    const extDir = installChromiumRuntimeExtension(userDataDir, fingerprint, {
+      id: profile.id,
+      name: profile.name,
+      browserVersion: effectiveBrowserVer
+    })
+
     // ── Native Google-Compliant Desktop Chromium Launch ──
     const finalArgs: string[] = [
       `--user-data-dir=${userDataDir}`,
@@ -1034,6 +1042,11 @@ export async function launchBrowser(
       '--disable-features=ProfilePickerOnStartup',
       ...args.filter(a => !a.startsWith('--user-data-dir=') && !a.startsWith('--profile-directory='))
     ]
+
+    if (extDir && fs.existsSync(extDir)) {
+      finalArgs.push(`--load-extension=${extDir}`)
+      finalArgs.push(`--disable-extensions-except=${extDir}`)
+    }
 
     if (startUrls.length > 0) {
       finalArgs.push(...startUrls)

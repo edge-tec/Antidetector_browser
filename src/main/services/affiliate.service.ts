@@ -102,6 +102,7 @@ export interface AffiliateUserSummary {
 
 export class AffiliateService {
   private static instance: AffiliateService
+  private serverSummaryCache = new Map<string, any>()
 
   private constructor() {
     this.ensureSchemaExists()
@@ -473,8 +474,9 @@ export class AffiliateService {
             updated_at = datetime('now')
         `)
 
-        const tx = db.transaction(() => {
-          for (const off of res.data) {
+        if (res?.data && Array.isArray(res.data)) {
+          const tx = db.transaction(() => {
+            for (const off of res.data) {
             if (['offer_starter_bounty', 'offer_business_custom', 'offer_enterprise_trial', 'offer_pro_team', 'offer_free'].includes(off.id)) {
               continue
             }
@@ -500,8 +502,9 @@ export class AffiliateService {
             )
           }
         })
-        tx()
-        logger.info('affiliate', `[AffiliateService] Successfully synced ${res.data.length} CPA offers from central server.`)
+          tx()
+          logger.info('affiliate', `[AffiliateService] Successfully synced ${res.data.length} CPA offers from central server.`)
+        }
       }
     } catch (err: any) {
       logger.warn('affiliate', `[AffiliateService] Remote CPA offers sync skipped/failed: ${err.message}`)
@@ -602,7 +605,7 @@ export class AffiliateService {
     ]
 
     for (const dof of defaultOffersToSeed) {
-      if (deletedOfferIds.includes(dof[0])) continue
+      if (deletedOfferIds.includes(String(dof[0]))) continue
       try {
         db.prepare(`
           INSERT INTO affiliate_offers (
@@ -645,6 +648,7 @@ export class AffiliateService {
     const offerId = offer.id || `offer_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
     const title = offer.title || 'Untitled CPA Offer'
     const desc = offer.description || ''
+    const packageId = offer.package_id || 'plan_pro'
     let landingPageSlug = (offer.landing_page_slug || '').replace(/^\/?(offer\/)?/, '')
     if (!landingPageSlug) {
       if (offer.target_url && offer.target_url.includes('/offer/')) {
@@ -661,7 +665,6 @@ export class AffiliateService {
     const payoutType = offer.payout_type || 'percentage'
     const commRate = offer.commission_rate !== undefined ? offer.commission_rate : 10.0
     const fixedPayout = offer.fixed_payout_usd !== undefined ? offer.fixed_payout_usd : 0.0
-    const packageId = offer.package_id || 'plan_pro'
     const packageName = offer.package_name || 'Professional'
     const price = offer.price !== undefined ? offer.price : 49.0
     const originalPrice = offer.original_price !== undefined ? offer.original_price : price
@@ -1760,6 +1763,7 @@ export class AffiliateService {
     clicks: AffiliateClick[]
     conversions: AffiliateConversion[]
     postbacks: AffiliatePostbackLog[]
+    postbackConfigs?: any[]
     withdrawals: AffiliateWithdrawalRecord[]
     auditLogs: AffiliateAuditLog[]
   } {
