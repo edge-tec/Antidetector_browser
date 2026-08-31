@@ -465,7 +465,7 @@ export async function startGoogleSystemBrowserOAuth(
       }
     })
 
-    server.listen(0, '127.0.0.1', async () => {
+    const onBound = async () => {
       const address = server?.address()
       if (!address || typeof address === 'string') {
         cleanup()
@@ -502,13 +502,20 @@ export async function startGoogleSystemBrowserOAuth(
         logger.warn('auth', `[GoogleAuth] Could not launch system browser: ${shellErr.message}`)
         resolve({ success: false, error: `Could not launch system browser: ${shellErr.message}` })
       }
+    }
+
+    server.once('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        logger.info('auth', '[GoogleAuth] Port 8080 in use, falling back to dynamic port')
+        server.listen(0, '127.0.0.1', onBound)
+      } else {
+        cleanup()
+        logger.warn('auth', `[GoogleAuth] Loopback server error: ${err.message}`)
+        resolve({ success: false, error: `Loopback server error: ${err.message}` })
+      }
     })
 
-    server.on('error', (err: any) => {
-      cleanup()
-      logger.warn('auth', `[GoogleAuth] Loopback server error: ${err.message}`)
-      resolve({ success: false, error: `Loopback server error: ${err.message}` })
-    })
+    server.listen(8080, '127.0.0.1', onBound)
   })
 }
 
