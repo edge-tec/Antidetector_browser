@@ -10,7 +10,7 @@ import { shell } from 'electron'
 import { Fingerprint, OSType } from '../../fingerprint/types'
 import { getNotABrandVersion, getEngineForBrowser, hasFeatureFlag } from '../../fingerprint/browser-compat-matrix'
 import { logger } from '../../logging/logger'
-import { IosAuthRuntimeEngine } from '../auth/ios-auth-runtime'
+import { IosAuthRuntimeEngine, setupIosGoogleAuthInterception } from '../auth/ios-auth-runtime'
 
 // Import injection script builders
 import { buildNativeCloakerScript } from './scripts/native-cloaker'
@@ -258,6 +258,9 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
 
   // ── iOS Google Auth Interception (Zero Embedded Login in Chromium) ──
   if (isIOS) {
+    const profileId = (fingerprint as any).profileId || (fingerprint as any).id || 'ios-profile'
+    setupIosGoogleAuthInterception(page, profileId)
+
     try {
       page.on('framenavigated', async (frame) => {
         try {

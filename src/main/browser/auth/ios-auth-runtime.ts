@@ -707,3 +707,66 @@ export class IosAuthRuntimeEngine {
     }
   }
 }
+
+/**
+ * Attaches real-time CDP Fetch interception to intercept Google authentication requests
+ * BEFORE they load into the emulated Chromium engine on an iOS profile.
+ */
+export async function setupIosGoogleAuthInterception(page: any, profileId: string): Promise<void> {
+  try {
+    const client = await page.target().createCDPSession()
+    let isAuthActive = false
+
+    await client.send('Fetch.enable', {
+      patterns: [
+        { urlPattern: '*://accounts.google.*/*', requestStage: 'Request' },
+        { urlPattern: '*://oauth.google.*/*', requestStage: 'Request' },
+        { urlPattern: '*://myaccount.google.*/*', requestStage: 'Request' },
+        { urlPattern: '*://*.google.*/signin/*', requestStage: 'Request' },
+        { urlPattern: '*://*.google.*/v3/signin/*', requestStage: 'Request' },
+        { urlPattern: '*://*.google.*/servicelogin/*', requestStage: 'Request' },
+        { urlPattern: '*://*.google.*/oauth/*', requestStage: 'Request' }
+      ]
+    })
+
+    client.on('Fetch.requestPaused', async (event: any) => {
+      const { requestId, request } = event
+      const url = request?.url || ''
+
+      try {
+        if (IosAuthRuntimeEngine.shouldInterceptForSecureAuth(url)) {
+          logger.info('browser', `[IosAuthRuntime] Intercepted Google Auth request before rendering in Chromium: ${url.slice(0, 80)}...`)
+          // 1. Abort the embedded request immediately so Chromium never presents the credential form
+          await client.send('Fetch.failRequest', { requestId, errorReason: 'Aborted' })
+
+          // 2. Single-flight lock: launch supported system browser OAuth session once
+          if (!isAuthActive) {
+            isAuthActive = true
+            try {
+              IosAuthRuntimeEngine.startSecureAuthenticationSession({
+                profileId,
+                preferredCallback: 'loopback'
+              }).finally(() => {
+                isAuthActive = false
+              })
+            } catch {
+              isAuthActive = false
+            }
+          }
+          return
+        }
+
+        await client.send('Fetch.continueRequest', { requestId })
+      } catch {
+        try {
+          await client.send('Fetch.continueRequest', { requestId })
+        } catch {}
+      }
+    })
+
+    logger.info('browser', `[IosAuthRuntime] Active pre-flight Google Auth interception enabled for iOS profile: ${profileId.substring(0, 8)}...`)
+  } catch (err: any) {
+    logger.warn('browser', `[IosAuthRuntime] Could not attach CDP Fetch interception: ${err.message}`)
+  }
+}
+
