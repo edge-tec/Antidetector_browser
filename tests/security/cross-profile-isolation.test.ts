@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import path from 'path'
 
-describe('Security Audit: Cross-Profile Storage Isolation & Anti-Collision', () => {
-  it('guarantees 100 independent profiles receive distinct, isolated root paths', () => {
+describe('Security Audit: Cross-Profile Storage Isolation & Anti-Collision (§11)', () => {
+  it('guarantees 100 independent profiles (profile-uuid-0 ... profile-uuid-99) receive distinct, isolated root paths', () => {
     const profilePaths = new Set<string>()
     const baseDir = '/Users/test/antiprofiles/profiles'
 
