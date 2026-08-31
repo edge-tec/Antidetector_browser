@@ -213,6 +213,31 @@ const api = {
     const token = maybeId ? sessionTokenOrId : getSavedToken()
     return ipcRenderer.invoke('profiles:start-ios-google-auth', token, id, preferredCallback)
   },
+  getGmailAutomationConfig: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:get-gmail-automation-config', token, id)
+  },
+  saveGmailAutomationConfig: (sessionTokenOrConfig: any, maybeConfig?: any) => {
+    const config = maybeConfig || sessionTokenOrConfig
+    const token = maybeConfig ? sessionTokenOrConfig : getSavedToken()
+    return ipcRenderer.invoke('profiles:save-gmail-automation-config', token, config)
+  },
+  getGmailJobs: (sessionTokenOrId: string, maybeId?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:get-gmail-jobs', token, id)
+  },
+  cancelGmailFollowUps: (sessionTokenOrId: string, maybeIdOrThreadId: string, maybeThreadId?: string, reason?: string) => {
+    const token = maybeThreadId ? sessionTokenOrId : getSavedToken()
+    const profileId = maybeThreadId ? maybeIdOrThreadId : sessionTokenOrId
+    const threadId = maybeThreadId || maybeIdOrThreadId
+    return ipcRenderer.invoke('profiles:cancel-gmail-followups', token, profileId, threadId, reason)
+  },
+  processDueGmailJobs: (sessionToken?: string) => {
+    const token = sessionToken || getSavedToken()
+    return ipcRenderer.invoke('profiles:process-due-gmail-jobs', token)
+  },
 
   // ── Browser Control ──
   startProfile: (sessionTokenOrId: string, maybeId?: string) => {
