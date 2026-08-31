@@ -212,3 +212,151 @@ export class AuthCompatibilityEngine {
     }
   }
 }
+
+/**
+ * Deterministic Authentication State Machine
+ */
+export type AuthFlowState =
+  | 'IDLE'
+  | 'AUTHENTICATING'
+  | 'SUCCESS'
+  | 'PROVIDER_REJECTED'
+  | 'AUTH_RATE_LIMITED'
+  | 'REAUTH_REQUIRED'
+  | 'NETWORK_ERROR'
+
+export interface AuthSessionState {
+  profileId: string
+  state: AuthFlowState
+  activeFlight: boolean
+  attemptCount: number
+  lastAttemptTimestamp: number
+  rateLimitReason?: string
+  lastProviderStatus?: number | string
+}
+
+/**
+ * Single-Flight Authentication Manager
+ * Guarantees:
+ * 1. Single-flight authentication (deduplication of rapid/duplicate login submissions)
+ * 2. Strict no-automatic-retry policy on provider rate limits or rejections
+ * 3. Deterministic state transitions (IDLE -> AUTHENTICATING -> SUCCESS | RATE_LIMITED | REJECTED)
+ * 4. Zero credential/token harvesting
+ */
+export class SingleFlightAuthManager {
+  private static sessions: Map<string, AuthSessionState> = new Map()
+
+  public static getSession(profileId: string): AuthSessionState {
+    if (!this.sessions.has(profileId)) {
+      this.sessions.set(profileId, {
+        profileId,
+        state: 'IDLE',
+        activeFlight: false,
+        attemptCount: 0,
+        lastAttemptTimestamp: 0
+      })
+    }
+    return this.sessions.get(profileId)!
+  }
+
+  /**
+   * Attempts to acquire an exclusive single-flight lock for authentication.
+   * Returns true if lock acquired, false if a flight is already in progress or if rate-limited.
+   */
+  public static acquireAuthLock(profileId: string): { acquired: boolean; state: AuthFlowState; reason?: string } {
+    const session = this.getSession(profileId)
+
+    if (session.activeFlight) {
+      return {
+        acquired: false,
+        state: session.state,
+        reason: 'Authentication flow already active (single-flight locked).'
+      }
+    }
+
+    if (session.state === 'AUTH_RATE_LIMITED') {
+      return {
+        acquired: false,
+        state: 'AUTH_RATE_LIMITED',
+        reason: 'Authentication is temporarily limited by provider. Automated retries are prohibited.'
+      }
+    }
+
+    session.activeFlight = true
+    session.state = 'AUTHENTICATING'
+    session.attemptCount += 1
+    session.lastAttemptTimestamp = Date.now()
+
+    return {
+      acquired: true,
+      state: 'AUTHENTICATING'
+    }
+  }
+
+  /**
+   * Releases the active authentication lock and transitions to the final state.
+   * Prohibits automatic retry triggering.
+   */
+  public static completeAuthFlow(
+    profileId: string,
+    resultState: 'SUCCESS' | 'PROVIDER_REJECTED' | 'AUTH_RATE_LIMITED' | 'REAUTH_REQUIRED' | 'NETWORK_ERROR',
+    details?: { status?: number | string; reason?: string }
+  ): AuthSessionState {
+    const session = this.getSession(profileId)
+    session.activeFlight = false
+    session.state = resultState
+    if (details?.status !== undefined) session.lastProviderStatus = details.status
+    if (details?.reason !== undefined) session.rateLimitReason = details.reason
+    return session
+  }
+
+  /**
+   * Evaluates server-side response body/status and maps to standard state without retrying.
+   */
+  public static evaluateProviderResponse(
+    profileId: string,
+    response: { statusCode?: number; responseBody?: string }
+  ): AuthFlowState {
+    const body = (response.responseBody || '').toLowerCase()
+    const status = response.statusCode || 200
+
+    if (
+      status === 429 ||
+      body.includes('temporarily limited') ||
+      body.includes('try again later') ||
+      body.includes('rate limit') ||
+      body.includes('too many requests')
+    ) {
+      this.completeAuthFlow(profileId, 'AUTH_RATE_LIMITED', {
+        status,
+        reason: "X.com / Provider has temporarily limited login attempts. AntiProfiles will not auto-retry."
+      })
+      return 'AUTH_RATE_LIMITED'
+    }
+
+    if (status === 401 || status === 403 || body.includes('incorrect password') || body.includes('invalid credentials')) {
+      this.completeAuthFlow(profileId, 'PROVIDER_REJECTED', { status })
+      return 'PROVIDER_REJECTED'
+    }
+
+    if (status >= 200 && status < 300) {
+      this.completeAuthFlow(profileId, 'SUCCESS', { status })
+      return 'SUCCESS'
+    }
+
+    this.completeAuthFlow(profileId, 'REAUTH_REQUIRED', { status })
+    return 'REAUTH_REQUIRED'
+  }
+
+  /**
+   * Resets session state upon manual user action or explicit navigation away.
+   */
+  public static reset(profileId?: string): void {
+    if (profileId) {
+      this.sessions.delete(profileId)
+    } else {
+      this.sessions.clear()
+    }
+  }
+}
+
