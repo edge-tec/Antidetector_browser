@@ -222,6 +222,7 @@ export type AuthFlowState =
   | 'SUCCESS'
   | 'PROVIDER_REJECTED'
   | 'AUTH_RATE_LIMITED'
+  | 'AUTH_PROVIDER_INCOMPATIBLE'
   | 'REAUTH_REQUIRED'
   | 'NETWORK_ERROR'
 
@@ -232,6 +233,7 @@ export interface AuthSessionState {
   attemptCount: number
   lastAttemptTimestamp: number
   rateLimitReason?: string
+  guidanceMessage?: string
   lastProviderStatus?: number | string
 }
 
@@ -240,7 +242,7 @@ export interface AuthSessionState {
  * Guarantees:
  * 1. Single-flight authentication (deduplication of rapid/duplicate login submissions)
  * 2. Strict no-automatic-retry policy on provider rate limits or rejections
- * 3. Deterministic state transitions (IDLE -> AUTHENTICATING -> SUCCESS | RATE_LIMITED | REJECTED)
+ * 3. Deterministic state transitions (IDLE -> AUTHENTICATING -> SUCCESS | RATE_LIMITED | INCOMPATIBLE | REJECTED)
  * 4. Zero credential/token harvesting
  */
 export class SingleFlightAuthManager {
@@ -291,6 +293,14 @@ export class SingleFlightAuthManager {
       }
     }
 
+    if (session.state === 'AUTH_PROVIDER_INCOMPATIBLE') {
+      return {
+        acquired: false,
+        state: 'AUTH_PROVIDER_INCOMPATIBLE',
+        reason: session.guidanceMessage || 'Provider presentation is incompatible in current desktop runtime.'
+      }
+    }
+
     session.activeFlight = true
     session.state = 'AUTHENTICATING'
     session.attemptCount += 1
@@ -308,14 +318,15 @@ export class SingleFlightAuthManager {
    */
   public static completeAuthFlow(
     profileId: string,
-    resultState: 'SUCCESS' | 'PROVIDER_REJECTED' | 'AUTH_RATE_LIMITED' | 'REAUTH_REQUIRED' | 'NETWORK_ERROR',
-    details?: { status?: number | string; reason?: string }
+    resultState: AuthFlowState,
+    details?: { status?: number | string; reason?: string; guidance?: string }
   ): AuthSessionState {
     const session = this.getSession(profileId)
     session.activeFlight = false
     session.state = resultState
     if (details?.status !== undefined) session.lastProviderStatus = details.status
     if (details?.reason !== undefined) session.rateLimitReason = details.reason
+    if (details?.guidance !== undefined) session.guidanceMessage = details.guidance
     return session
   }
 
@@ -324,11 +335,28 @@ export class SingleFlightAuthManager {
    */
   public static evaluateProviderResponse(
     profileId: string,
-    response: { statusCode?: number; responseBody?: string }
+    response: { statusCode?: number; responseBody?: string; url?: string }
   ): AuthFlowState {
     const body = (response.responseBody || '').toLowerCase()
+    const url = (response.url || '').toLowerCase()
     const status = response.statusCode || 200
 
+    // 1. Google "This browser or app may not be secure" (support.google.com/accounts/answer/7675428)
+    if (
+      url.includes('signin/rejected') ||
+      body.includes('may not be secure') ||
+      body.includes("couldn't sign you in") ||
+      (body.includes('different browser') && body.includes('supported browser'))
+    ) {
+      this.completeAuthFlow(profileId, 'AUTH_PROVIDER_INCOMPATIBLE', {
+        status,
+        reason: "Google rejected authentication for mobile presentation on desktop Chromium engine (Google Support: 7675428).",
+        guidance: "Google Sign-In is unavailable for Android mobile presentation in this desktop runtime. Use a supported desktop presentation (Windows, macOS, or Linux)."
+      })
+      return 'AUTH_PROVIDER_INCOMPATIBLE'
+    }
+
+    // 2. X.com "We've temporarily limited your login" / 429 Rate Limit
     if (
       status === 429 ||
       body.includes('temporarily limited') ||
@@ -338,7 +366,8 @@ export class SingleFlightAuthManager {
     ) {
       this.completeAuthFlow(profileId, 'AUTH_RATE_LIMITED', {
         status,
-        reason: "X.com / Provider has temporarily limited login attempts. AntiProfiles will not auto-retry."
+        reason: "X.com has temporarily limited this login attempt (provider-side security cooldown).",
+        guidance: "X.com temporarily restricted this login attempt. AntiProfiles has stopped automated retries. Please wait until the provider cooldown expires."
       })
       return 'AUTH_RATE_LIMITED'
     }
