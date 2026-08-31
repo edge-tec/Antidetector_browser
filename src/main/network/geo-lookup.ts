@@ -451,6 +451,74 @@ function fetchFromIpWhoIs(ip: string): Promise<GeoLocationResult | null> {
 }
 
 /**
+ * Map country code to accurate Accept-Language header value.
+ */
+export function getCountryAcceptLanguage(countryCode: string | undefined | null): string {
+  const code = (countryCode || 'US').toUpperCase()
+  switch (code) {
+    case 'US':
+      return 'en-US,en;q=0.9'
+    case 'GB':
+    case 'UK':
+      return 'en-GB,en;q=0.9'
+    case 'DE':
+      return 'de-DE,de;q=0.9,en;q=0.8'
+    case 'FR':
+      return 'fr-FR,fr;q=0.9,en;q=0.8'
+    case 'IT':
+      return 'it-IT,it;q=0.9,en;q=0.8'
+    case 'ES':
+      return 'es-ES,es;q=0.9,en;q=0.8'
+    case 'NL':
+      return 'nl-NL,nl;q=0.9,en;q=0.8'
+    case 'JP':
+      return 'ja-JP,ja;q=0.9,en;q=0.8'
+    case 'BD':
+      return 'bn-BD,bn;q=0.9,en-US;q=0.8,en;q=0.7'
+    case 'CA':
+      return 'en-CA,en;q=0.9,fr-CA;q=0.8'
+    case 'AU':
+      return 'en-AU,en;q=0.9'
+    default:
+      return 'en-US,en;q=0.9'
+  }
+}
+
+/**
+ * Map country code to navigator language and languages array.
+ */
+export function getCountryLocale(countryCode: string | undefined | null): { language: string; languages: string[] } {
+  const code = (countryCode || 'US').toUpperCase()
+  switch (code) {
+    case 'US':
+      return { language: 'en-US', languages: ['en-US', 'en'] }
+    case 'GB':
+    case 'UK':
+      return { language: 'en-GB', languages: ['en-GB', 'en-US', 'en'] }
+    case 'DE':
+      return { language: 'de-DE', languages: ['de-DE', 'de', 'en-US', 'en'] }
+    case 'FR':
+      return { language: 'fr-FR', languages: ['fr-FR', 'fr', 'en-US', 'en'] }
+    case 'IT':
+      return { language: 'it-IT', languages: ['it-IT', 'it', 'en-US', 'en'] }
+    case 'ES':
+      return { language: 'es-ES', languages: ['es-ES', 'es', 'en-US', 'en'] }
+    case 'NL':
+      return { language: 'nl-NL', languages: ['nl-NL', 'nl', 'en-US', 'en'] }
+    case 'JP':
+      return { language: 'ja-JP', languages: ['ja-JP', 'ja', 'en-US', 'en'] }
+    case 'BD':
+      return { language: 'bn-BD', languages: ['bn-BD', 'bn', 'en-US', 'en'] }
+    case 'CA':
+      return { language: 'en-CA', languages: ['en-CA', 'en', 'fr-CA', 'fr'] }
+    case 'AU':
+      return { language: 'en-AU', languages: ['en-AU', 'en'] }
+    default:
+      return { language: 'en-US', languages: ['en-US', 'en'] }
+  }
+}
+
+/**
  * Clear the geo-lookup cache.
  */
 export function clearGeoCache(): void {

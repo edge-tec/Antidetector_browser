@@ -88,6 +88,8 @@ export class AuthCompatibilityEngine {
 
       // Standard identity / auth paths on trusted host categories
       const isTrustedHost = (
+        host === 'x.com' || host.endsWith('.x.com') ||
+        host === 'twitter.com' || host.endsWith('.twitter.com') ||
         host === 'google.com' || host.endsWith('.google.com') ||
         host === 'apple.com' || host.endsWith('.apple.com') ||
         host === 'microsoft.com' || host.endsWith('.microsoft.com')
@@ -99,6 +101,9 @@ export class AuthCompatibilityEngine {
           path.includes('/signin') ||
           path.includes('/oauth') ||
           path.includes('/i/flow/') ||
+          path.includes('/i/flow/login') ||
+          path.includes('/i/flow/signup') ||
+          path.includes('/account/access') ||
           path.includes('/v3/signin') ||
           path.includes('/servicelogin') ||
           path.includes('/challenge') ||
@@ -389,8 +394,8 @@ export class SingleFlightAuthManager {
     ) {
       this.completeAuthFlow(profileId, 'AUTH_PROVIDER_INCOMPATIBLE', {
         status,
-        reason: "Google rejected authentication for mobile presentation on desktop Chromium engine (Google Support: 7675428).",
-        guidance: "Google Sign-In is unavailable for Android mobile presentation in this desktop runtime. Use a supported desktop presentation (Windows, macOS, or Linux)."
+        reason: "Google rejected embedded browser authentication (Google Security Policy: Sign in with a supported browser).",
+        guidance: "Continue securely with Safari authentication."
       })
       return 'AUTH_PROVIDER_INCOMPATIBLE'
     }

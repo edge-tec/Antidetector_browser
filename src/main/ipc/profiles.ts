@@ -21,6 +21,7 @@ import {
   callGmailApi,
   getGoogleProfileRuntimeStatus
 } from '../security/google-oauth-loopback'
+import { IosAuthRuntimeEngine } from '../browser/auth/ios-auth-runtime'
 
 function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string; locked?: boolean; expired?: boolean } {
   const normalized = normalizeUserRole(role)
@@ -460,7 +461,7 @@ export function registerProfileHandlers(): void {
     }
   })
 
-  // ── Profile Google Account Association (RFC 8252 System Browser OAuth) ──
+  // ── Profile Google Account Association (RFC 8252 & Apple ASWebAuthenticationSession) ──
   ipcMain.handle('profiles:connect-google', async (_event, sessionToken: string, profileId: string) => {
     try {
       const auth = authorizeUser(sessionToken)
@@ -469,6 +470,27 @@ export function registerProfileHandlers(): void {
 
       if (!profileRepo.verifyOwnership(profileId, auth.user.id, auth.user.role === 'admin')) {
         return { success: false, error: 'Access denied. You do not own this profile.' }
+      }
+
+      const profile = profileRepo.getById(profileId)
+      const isIosProfile = (profile?.osType || '').toLowerCase().includes('ios')
+
+      if (isIosProfile) {
+        // iOS Profiles: Strictly invoke Apple Secure Authentication Session (ASWebAuthenticationSession)
+        const iosAuthRes = await IosAuthRuntimeEngine.startSecureAuthenticationSession({
+          profileId,
+          preferredCallback: 'universal_link'
+        })
+
+        if (!iosAuthRes.success) {
+          return { success: false, error: iosAuthRes.error || 'Failed to connect Google account via Apple Authentication Session.' }
+        }
+
+        return {
+          success: true,
+          data: iosAuthRes.linkedAccount || iosAuthRes.userProfile,
+          message: 'Google Account successfully connected to iOS profile via Apple ASWebAuthenticationSession.'
+        }
       }
 
       const oauthRes = await startGoogleSystemBrowserOAuth({ profileId })
@@ -481,6 +503,39 @@ export function registerProfileHandlers(): void {
         success: true,
         data: oauthRes.linkedAccount || oauthRes.userProfile,
         message: 'Google Account successfully connected to profile via System Browser.'
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Dedicated Apple ASWebAuthenticationSession Handler for iOS Profiles ──
+  ipcMain.handle('profiles:start-ios-google-auth', async (_event, sessionToken: string, profileId: string, preferredCallback?: 'universal_link' | 'custom_scheme' | 'loopback') => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      if (!profileRepo.verifyOwnership(profileId, auth.user.id, auth.user.role === 'admin')) {
+        return { success: false, error: 'Access denied. You do not own this profile.' }
+      }
+
+      const iosAuthRes = await IosAuthRuntimeEngine.startSecureAuthenticationSession({
+        profileId,
+        preferredCallback: preferredCallback || 'universal_link'
+      })
+
+      if (!iosAuthRes.success) {
+        return { success: false, error: iosAuthRes.error || 'Apple Authentication Session failed.' }
+      }
+
+      return {
+        success: true,
+        data: iosAuthRes.linkedAccount || iosAuthRes.userProfile,
+        tokens: iosAuthRes.tokens,
+        sessionType: iosAuthRes.sessionType,
+        tlsVersion: iosAuthRes.tlsVersion,
+        message: 'Google Account authenticated successfully via Apple ASWebAuthenticationSession.'
       }
     } catch (err: any) {
       return { success: false, error: err.message }

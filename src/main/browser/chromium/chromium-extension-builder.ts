@@ -37,6 +37,26 @@ export function installChromiumRuntimeExtension(
 (function() {
   'use strict';
   try {
+    var loc = (typeof window !== 'undefined' ? window.location : null) || {};
+    var host = (loc.hostname || loc.host || '').toLowerCase();
+    var path = (loc.pathname || '').toLowerCase();
+    var href = (loc.href || '').toLowerCase();
+    if (
+      host === 'accounts.google.com' ||
+      host.endsWith('.accounts.google.com') ||
+      host === 'myaccount.google.com' ||
+      host === 'oauth2.googleapis.com' ||
+      host === 'apis.google.com' ||
+      path.indexOf('/signin') !== -1 ||
+      path.indexOf('/servicelogin') !== -1 ||
+      path.indexOf('/v3/signin') !== -1 ||
+      href.indexOf('accounts.google.') !== -1
+    ) {
+      return; // Strict zero-tampering on Google Auth domains
+    }
+  } catch(e) {}
+
+  try {
     ${rawInjectionPayload}
   } catch (err) {}
 
@@ -103,6 +123,16 @@ export function installChromiumRuntimeExtension(
       content_scripts: [
         {
           matches: ['<all_urls>'],
+          exclude_matches: [
+            '*://accounts.google.com/*',
+            '*://myaccount.google.com/*',
+            '*://oauth2.googleapis.com/*',
+            '*://apis.google.com/*',
+            '*://*.google.com/signin/*',
+            '*://*.google.com/servicelogin/*',
+            '*://*.google.com/ServiceLogin*',
+            '*://*.google.com/AccountChooser*'
+          ],
           js: ['content-bridge.js'],
           run_at: 'document_start',
           all_frames: true,

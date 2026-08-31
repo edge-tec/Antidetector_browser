@@ -164,10 +164,10 @@ export function decryptOAuthToken(encryptedToken: string): string {
 
 /**
  * Generate a cryptographically secure PKCE Code Verifier and Code Challenge (S256).
- * Conforms to RFC 7636.
+ * Uses 64 random bytes for high entropy, conforming to RFC 7636 and Google OAuth 2.0 PKCE specs.
  */
 export function generatePKCE(): PKCEPair {
-  const verifier = crypto.randomBytes(32).toString('base64url')
+  const verifier = crypto.randomBytes(64).toString('base64url')
   const hash = crypto.createHash('sha256').update(verifier).digest()
   const challenge = hash.toString('base64url')
   return { verifier, challenge }
@@ -177,7 +177,14 @@ export function generatePKCE(): PKCEPair {
  * Generate a cryptographically random state parameter for CSRF mitigation.
  */
 export function generateOAuthState(): string {
-  return crypto.randomBytes(24).toString('hex')
+  return crypto.randomBytes(32).toString('hex')
+}
+
+/**
+ * Generate a cryptographically random nonce parameter for OpenID Connect validation.
+ */
+export function generateOAuthNonce(): string {
+  return crypto.randomBytes(32).toString('hex')
 }
 
 /**
@@ -475,10 +482,11 @@ export async function startGoogleSystemBrowserOAuth(
       authUrl.searchParams.set('response_type', 'code')
       authUrl.searchParams.set('scope', scopes.join(' '))
       authUrl.searchParams.set('code_challenge', pkce.challenge)
-      authUrl.searchParams.set('code_challenge_method', 'S256')
+      const expectedNonce = generateOAuthNonce()
       authUrl.searchParams.set('state', expectedState)
+      authUrl.searchParams.set('nonce', expectedNonce)
       authUrl.searchParams.set('access_type', 'offline')
-      authUrl.searchParams.set('prompt', 'consent')
+      authUrl.searchParams.set('prompt', 'select_account')
 
       logger.info('auth', `[GoogleAuth] G Connect clicked`)
       logger.info('auth', `[GoogleAuth] Profile ID: ${profileId ? profileId.substring(0, 8) + '...' : 'none'}`)

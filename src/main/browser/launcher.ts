@@ -532,13 +532,20 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     lang = fingerprint.locale.displayLanguage
   }
 
+  const disabledFeatures = [
+    'ProfilePickerOnStartup',
+    'AppBoundEncryptionProvider',
+    'AppBoundEncryption',
+    'UserAgentClientHint'
+  ].join(',')
+
   const args: string[] = [
     '--no-first-run',
     '--no-default-browser-check',
     '--profile-directory=Default',
     '--window-size=1280,800',
     '--window-position=100,60',
-    '--disable-features=ProfilePickerOnStartup,AppBoundEncryptionProvider,AppBoundEncryption',
+    `--disable-features=${disabledFeatures}`,
     '--disable-infobars',
     '--use-mock-keychain',
     '--password-store=basic',

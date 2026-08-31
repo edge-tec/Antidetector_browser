@@ -208,6 +208,11 @@ const api = {
     const token = maybeId ? sessionTokenOrId : getSavedToken()
     return ipcRenderer.invoke('profiles:get-google-status', token, id)
   },
+  startIosGoogleAuth: (sessionTokenOrId: string, maybeId?: string, preferredCallback?: string) => {
+    const id = maybeId || sessionTokenOrId
+    const token = maybeId ? sessionTokenOrId : getSavedToken()
+    return ipcRenderer.invoke('profiles:start-ios-google-auth', token, id, preferredCallback)
+  },
 
   // ── Browser Control ──
   startProfile: (sessionTokenOrId: string, maybeId?: string) => {

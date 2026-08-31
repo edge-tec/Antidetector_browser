@@ -54,10 +54,10 @@ export function buildGoogleAuthNoticeScript(): string {
       '  <button id="antiprofiles-google-close-btn" style="background:none;border:none;color:#94A3B8;cursor:pointer;font-size:16px;line-height:1;padding:0;">✕</button>',
       '</div>',
       '<p style="margin:0 0 10px;color:#CBD5E1;font-size:12px;">',
-      '  For security and compatibility, Google account authentication must be completed through your system default browser using RFC 8252 OAuth 2.0.',
+      '  For security and compatibility, Google account authentication must be completed securely via Apple Safari Authentication Session / System Browser OAuth 2.0.',
       '</p>',
       '<p style="margin:0;color:#94A3B8;font-size:11px;">',
-      '  Please use the <strong>"G Connect"</strong> button on your profile card in AntiProfiles.',
+      '  Continue securely with Safari authentication using the <strong>"G Connect"</strong> button on your profile card.',
       '</p>'
     ].join('');
 

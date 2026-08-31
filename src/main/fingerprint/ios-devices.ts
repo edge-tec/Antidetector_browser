@@ -270,11 +270,20 @@ export function getIosDeviceById(idOrModelCode: string): IosDeviceSpec | null {
   )
 }
 
+export function generateGenuineIosSafariUserAgent(device: IosDeviceSpec): string {
+  const osVerFormatted = (device.iosVersion || '18.0').replace(/\./g, '_')
+  const ver = device.iosVersion || '18.0'
+  return `Mozilla/5.0 (iPhone; CPU iPhone OS ${osVerFormatted} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${ver} Mobile/15E148 Safari/604.1`
+}
+
 export function generateIosUserAgent(
   device: IosDeviceSpec,
-  browserType: 'chrome' | 'firefox' = 'chrome',
+  browserType: 'chrome' | 'firefox' | 'safari' = 'chrome',
   browserVersion = '128.0.6613.120'
 ): string {
+  if (browserType === 'safari') {
+    return generateGenuineIosSafariUserAgent(device)
+  }
   const osVerFormatted = (device.iosVersion || '18.0').replace(/\./g, '_')
   if (browserType === 'firefox') {
     const ffVer = browserVersion.includes('.') ? browserVersion : `${browserVersion}.0`

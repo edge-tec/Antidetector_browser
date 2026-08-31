@@ -8,7 +8,7 @@ import { BrowserWindow } from 'electron'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { profileRepo } from '../database/repositories/profile.repo'
 import { centralApi } from './api-client.service'
-import { resolveLocationGeo, invalidateGeoCache, lookupGeoIP } from '../network/geo-lookup'
+import { resolveLocationGeo, invalidateGeoCache, lookupGeoIP, getCountryLocale } from '../network/geo-lookup'
 import { testProxyConnection } from '../network/proxy-tester'
 import { processTracker } from '../browser/process-tracker'
 import { Proxy, Profile } from '../database/models'
@@ -239,9 +239,22 @@ export class ProxySyncService {
               changed = true
             }
 
+            // Synchronize Locale & Language if country is resolved
+            if (localProxy.country) {
+              const countryLocale = getCountryLocale(localProxy.country)
+              if (!fp.locale || fp.locale.language !== countryLocale.language) {
+                fp.locale = {
+                  language: countryLocale.language,
+                  languages: countryLocale.languages
+                }
+                changed = true
+              }
+            }
+
             if (changed || prof.timezone !== effectiveTimezone) {
               profileRepo.update(prof.id, {
                 timezone: effectiveTimezone,
+                language: fp.locale?.language || prof.language,
                 fingerprint: fp
               })
               updatedCount++
