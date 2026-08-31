@@ -24,7 +24,6 @@ import { ReferralPage } from './pages/ReferralPage'
 import { ReferralDashboard } from './pages/ReferralDashboard'
 import { BrowserRuntimeManager } from './components/BrowserRuntimeManager'
 import { RuntimeProvisioningModal, ProvisioningProgressData } from './components/RuntimeProvisioningModal'
-import { GmailAutomationModal } from './components/GmailAutomationModal'
 import { ProxyInfoCard } from './components/ProxyInfoCard'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
@@ -233,7 +232,7 @@ function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onN
 // Profile Card Component
 // ═══════════════════════════════════════════
 
-function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onTestGmailApi, onDisconnectGoogle, onOpenAutomation, onEdit, onDuplicate, onDelete }: {
+function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onTestGmailApi, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
@@ -246,7 +245,6 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   onOpenGmail?: () => void
   onTestGmailApi?: () => void
   onDisconnectGoogle?: () => void
-  onOpenAutomation?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -338,11 +336,6 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
             </span>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
-            {onOpenAutomation && (
-              <button className="btn btn-xs btn-ghost" onClick={onOpenAutomation} title="Configure Auto-Reply & Follow-up Rules" style={{ padding: '1px 6px', fontSize: 10, color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 4 }}>
-                ⚙️ Auto-Reply
-              </button>
-            )}
             {onOpenGmail && (
               <button className="btn btn-xs btn-ghost" onClick={onOpenGmail} title="Open Gmail in Secure System Browser" style={{ padding: '1px 5px', fontSize: 10, color: '#38BDF8' }}>
                 Open
@@ -373,24 +366,24 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
           </button>
         )}
 
-        {onOpenAutomation && !(profile as any).googleAccount && (
+        {onConnectGoogle && !(profile as any).googleAccount && (
           <button
             className="btn btn-sm btn-ghost"
-            onClick={onOpenAutomation}
-            title="Configure Auto-Reply Rules"
+            onClick={onConnectGoogle}
+            title="Connect Google / Gmail (RFC 8252 OAuth PKCE)"
             style={{
-              color: '#F59E0B',
+              color: '#EA4335',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
               padding: '3px 8px',
-              border: '1px solid rgba(245, 158, 11, 0.25)',
+              border: '1px solid rgba(234, 67, 53, 0.25)',
               borderRadius: 6,
-              background: 'rgba(245, 158, 11, 0.06)'
+              background: 'rgba(234, 67, 53, 0.06)'
             }}
           >
-            <span>⚙️</span>
-            <span style={{ fontSize: 11, fontWeight: 600 }}>Auto-Reply</span>
+            <span>📧</span>
+            <span style={{ fontSize: 11, fontWeight: 600 }}>Connect Gmail</span>
           </button>
         )}
 
@@ -434,7 +427,7 @@ function ProfileCardComponent({ profile, proxies, brandingConfig, isSyncingProxy
   )
 }
 
-function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onTestGmailApi, onDisconnectGoogle, onOpenAutomation, onEdit, onDuplicate, onDelete }: {
+function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingProxy, onStart, onStop, onClearCookies, onRefreshProxy, onConnectGoogle, onOpenGmail, onTestGmailApi, onDisconnectGoogle, onEdit, onDuplicate, onDelete }: {
   profile: Profile
   proxies?: ProxyDisplay[]
   brandingConfig?: any
@@ -447,7 +440,6 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
   onOpenGmail?: () => void
   onTestGmailApi?: () => void
   onDisconnectGoogle?: () => void
-  onOpenAutomation?: () => void
   onEdit?: () => void
   onDuplicate?: () => void
   onDelete?: () => void
@@ -534,15 +526,35 @@ function ProfileListRowComponent({ profile, proxies, brandingConfig, isSyncingPr
           </button>
         )}
 
-        {onOpenAutomation && (
-          <button
-            className="btn btn-sm btn-ghost"
-            onClick={onOpenAutomation}
-            title="Configure Auto-Reply & Follow-up Rules"
-            style={{ color: '#F59E0B', fontSize: 11, fontWeight: 600, border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: '3px 8px', background: 'rgba(245, 158, 11, 0.06)' }}
-          >
-            ⚙️ Auto-Reply
-          </button>
+        {onConnectGoogle && (
+          (profile as any).googleAccount ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.25)', borderRadius: 6, padding: '2px 6px' }}>
+              <span style={{ fontSize: 12 }}>📧</span>
+              <span style={{ fontSize: 11, color: '#F87171', fontWeight: 600, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {(profile as any).googleAccount.email}
+              </span>
+              {onOpenGmail && (
+                <button className="btn btn-xs btn-ghost" onClick={onOpenGmail} title="Open Gmail in Secure System Browser" style={{ padding: '0 3px', fontSize: 10, color: '#38BDF8' }}>
+                  Open
+                </button>
+              )}
+              {onDisconnectGoogle && (
+                <button className="btn btn-xs btn-ghost" onClick={onDisconnectGoogle} title="Disconnect Google" style={{ padding: '0 3px', fontSize: 10, color: '#EF4444' }}>
+                  ✕
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={onConnectGoogle}
+              title="Connect Google / Gmail (RFC 8252 OAuth PKCE)"
+              style={{ color: '#EA4335', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', border: '1px solid rgba(234, 67, 53, 0.25)', borderRadius: 6, background: 'rgba(234, 67, 53, 0.06)' }}
+            >
+              <span>📧</span>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>Gmail</span>
+            </button>
+          )
         )}
 
         {profile.proxyId && onRefreshProxy && (
@@ -609,7 +621,6 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
   const [editId, setEditId] = useState<string | null>(null)
   const [editProfile, setEditProfile] = useState<Profile | null>(null)
   const [syncingProfileId, setSyncingProfileId] = useState<string | null>(null)
-  const [automationModalProfile, setAutomationModalProfile] = useState<Profile | null>(null)
 
   const handleRefreshProxy = async (p: Profile) => {
     if (!p.proxyId) {
@@ -1048,7 +1059,6 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               onOpenGmail={() => handleOpenGmail(p)}
               onTestGmailApi={() => handleTestGmailApi(p)}
               onDisconnectGoogle={() => handleDisconnectGoogle(p)}
-              onOpenAutomation={() => setAutomationModalProfile(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
@@ -1109,7 +1119,6 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
               onOpenGmail={() => handleOpenGmail(p)}
               onTestGmailApi={() => handleTestGmailApi(p)}
               onDisconnectGoogle={() => handleDisconnectGoogle(p)}
-              onOpenAutomation={() => setAutomationModalProfile(p)}
               onClearCookies={() => confirm({
                 title: 'Clear Cookies & Cache',
                 message: `Are you sure you want to clear all cookies, active login sessions, and web cache for "${p.name}"? Your profile fingerprint and settings will be preserved.`,
@@ -1198,18 +1207,6 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
           showToast={showToast}
         />
       </ErrorBoundary>
-
-      {automationModalProfile && (
-        <GmailAutomationModal
-          profileId={automationModalProfile.id}
-          profileName={automationModalProfile.name}
-          googleAccount={(automationModalProfile as any).googleAccount}
-          sessionToken={sessionToken}
-          onAccountUpdated={() => loadProfiles()}
-          onClose={() => setAutomationModalProfile(null)}
-          showToast={showToast}
-        />
-      )}
 
       <RuntimeProvisioningModal
         data={provisioningProgress}
