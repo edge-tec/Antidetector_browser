@@ -245,6 +245,15 @@ export interface AuthSessionState {
  */
 export class SingleFlightAuthManager {
   private static sessions: Map<string, AuthSessionState> = new Map()
+  private static processedOAuthCallbacks: Set<string> = new Set()
+
+  public static processOAuthCallback(callbackId: string): boolean {
+    if (this.processedOAuthCallbacks.has(callbackId)) {
+      return false // Duplicate callback safely ignored
+    }
+    this.processedOAuthCallbacks.add(callbackId)
+    return true
+  }
 
   public static getSession(profileId: string): AuthSessionState {
     if (!this.sessions.has(profileId)) {
