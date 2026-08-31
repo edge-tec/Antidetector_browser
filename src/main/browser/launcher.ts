@@ -468,12 +468,27 @@ export async function launchFirefox(
 
   logger.info('browser', `[FirefoxLaunch] Launching Firefox for profile "${profile.name}" (${profile.id}) [OS: ${resolvedProfile.osType}, Ver: ${resolvedProfile.browserVersion}] with -profile ${userDataDir} at: ${firefoxPath}`)
 
-  logger.info('browser', `[FirefoxLaunch] Spawning native Firefox process: ${firefoxPath}`)
-  const child = spawn(firefoxPath, args, {
-    detached: process.platform !== 'win32',
-    stdio: 'ignore',
-    env
-  })
+  let child: any
+  let appBundlePath = ''
+  if (process.platform === 'darwin' && firefoxPath.includes('.app')) {
+    appBundlePath = firefoxPath.substring(0, firefoxPath.indexOf('.app') + 4)
+  }
+
+  if (process.platform === 'darwin' && appBundlePath && fs.existsSync(appBundlePath)) {
+    logger.info('browser', `[FirefoxLaunch] Spawning macOS isolated instance via open -W -n -a "${appBundlePath}"`)
+    child = spawn('open', ['-W', '-n', '-a', appBundlePath, '--args', ...args], {
+      detached: false,
+      stdio: 'ignore',
+      env
+    })
+  } else {
+    logger.info('browser', `[FirefoxLaunch] Spawning native Firefox process: ${firefoxPath}`)
+    child = spawn(firefoxPath, args, {
+      detached: process.platform !== 'win32',
+      stdio: 'ignore',
+      env
+    })
+  }
   const pid = child.pid || 0
 
   const mockBrowser: any = {
@@ -484,6 +499,11 @@ export async function launchFirefox(
     close: async () => {
       try {
         if (child.pid) killProcessTree(child.pid)
+      } catch {}
+      try {
+        if (process.platform !== 'win32') {
+          execSync(`pkill -f "${userDataDir}"`, { stdio: 'ignore' })
+        }
       } catch {}
     },
     on: (event: string, cb: any) => {
