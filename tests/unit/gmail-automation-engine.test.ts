@@ -7,6 +7,7 @@ describe('GmailAutomationEngine — Auto-Reply, Follow-up & Quota System', () =>
 
   beforeEach(() => {
     vi.restoreAllMocks()
+    GmailAutomationEngine.clearAllState()
     GmailAutomationEngine.setConfig({
       profileId,
       enabled: true,
@@ -50,16 +51,32 @@ describe('GmailAutomationEngine — Auto-Reply, Follow-up & Quota System', () =>
   })
 
   it('enforces idempotency and rejects duplicate processing of the same message ID', async () => {
-    const res = await GmailAutomationEngine.handleIncomingMessage({
+    vi.spyOn(GmailAccountService, 'sendMessage').mockResolvedValue({
+      success: true,
+      messageId: 'msg_reply_idemp_1'
+    })
+
+    // First call processes successfully
+    const res1 = await GmailAutomationEngine.handleIncomingMessage({
       profileId,
-      messageId: 'incoming_msg_001',
-      threadId: 'thread_001',
+      messageId: 'incoming_msg_idemp',
+      threadId: 'thread_idemp',
+      from: 'client@example.com',
+      subject: 'Inquiry about pricing'
+    })
+    expect(res1.handled).toBe(true)
+
+    // Second call with same message ID is rejected by idempotency check
+    const res2 = await GmailAutomationEngine.handleIncomingMessage({
+      profileId,
+      messageId: 'incoming_msg_idemp',
+      threadId: 'thread_idemp',
       from: 'client@example.com',
       subject: 'Inquiry about pricing'
     })
 
-    expect(res.handled).toBe(false)
-    expect(res.reason).toContain('already processed')
+    expect(res2.handled).toBe(false)
+    expect(res2.reason).toContain('already processed')
   })
 
   it('cancels all future follow-ups when recipient replies to a thread', async () => {
@@ -137,4 +154,65 @@ describe('GmailAutomationEngine — Auto-Reply, Follow-up & Quota System', () =>
     expect(res2.handled).toBe(false)
     expect(res2.reason).toContain('quota reached')
   })
+
+  it('prevents self-email reply loops when message is sent by own connected Gmail account', async () => {
+    vi.spyOn(GmailAccountService, 'getAccount').mockReturnValue({
+      profileId,
+      email: 'myaccount@gmail.com',
+      encryptedAccessToken: 'enc_token',
+      encryptedRefreshToken: 'enc_refresh',
+      expiresAt: Date.now() + 3600000,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })
+
+    const res = await GmailAutomationEngine.handleIncomingMessage({
+      profileId,
+      messageId: 'self_sent_001',
+      threadId: 'self_thread_001',
+      from: 'My Account <myaccount@gmail.com>',
+      subject: 'Sent copy'
+    })
+
+    expect(res.handled).toBe(false)
+    expect(res.reason).toContain('loop prevention')
+  })
+
+  it('does not send replies or execute follow-ups when automation is disabled', async () => {
+    GmailAutomationEngine.setConfig({
+      profileId: 'disabled-profile',
+      enabled: false,
+      autoReplyTemplate: 'Will not send',
+      followUpTemplates: [],
+      followUpDelaysMinutes: [],
+      maxRepliesPerThread: 2,
+      maxFollowUpsPerThread: 2,
+      dailyRepliesLimit: 10,
+      dailyFollowUpsLimit: 10,
+      dailyTotalLimit: 20,
+      timezone: 'UTC'
+    })
+
+    const res = await GmailAutomationEngine.handleIncomingMessage({
+      profileId: 'disabled-profile',
+      messageId: 'msg_disabled_1',
+      threadId: 'thread_disabled_1',
+      from: 'client@example.com',
+      subject: 'Hello'
+    })
+
+    expect(res.handled).toBe(false)
+    expect(res.reason).toContain('disabled')
+  })
+
+  it('persists state to disk and loads correctly across app restarts', () => {
+    GmailAutomationEngine.saveStateToDisk()
+    // Trigger fresh load
+    GmailAutomationEngine.loadStateFromDisk()
+    const config = GmailAutomationEngine.getConfig(profileId)
+    expect(config).toBeDefined()
+    expect(config?.profileId).toBe(profileId)
+    expect(config?.autoReplyTemplate).toContain('Thank you for reaching out')
+  })
 })
+

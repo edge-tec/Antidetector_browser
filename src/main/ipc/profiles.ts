@@ -22,6 +22,8 @@ import {
   getGoogleProfileRuntimeStatus
 } from '../security/google-oauth-loopback'
 import { IosAuthRuntimeEngine } from '../browser/auth/ios-auth-runtime'
+import { GmailAccountService } from '../services/gmail-account-service'
+import { GmailAutomationEngine } from '../services/gmail-automation-engine'
 
 function checkUserQuota(userId: string, role: string): { allowed: boolean; current: number; max: number; error?: string; locked?: boolean; expired?: boolean } {
   const normalized = normalizeUserRole(role)
@@ -654,6 +656,85 @@ export function registerProfileHandlers(): void {
 
       const res = ProfileHealthChecker.autoRepair(profileId)
       return { success: true, data: res }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Gmail Live Profile & Identity Verification ──
+  ipcMain.handle('profiles:get-gmail-profile', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      return await GmailAccountService.getProfile(profileId)
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Gmail Automation & Rules IPC ──
+  ipcMain.handle('profiles:get-gmail-automation-config', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const config = GmailAutomationEngine.getConfig(profileId)
+      return { success: true, data: config }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:save-gmail-automation-config', async (_event, sessionToken: string, config: any) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      if (!config || !config.profileId) return { success: false, error: 'Invalid config payload' }
+      validateId(config.profileId)
+
+      GmailAutomationEngine.setConfig(config)
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:get-gmail-jobs', async (_event, sessionToken: string, profileId: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const jobs = GmailAutomationEngine.getJobs(profileId)
+      return { success: true, data: jobs }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:cancel-gmail-followups', async (_event, sessionToken: string, profileId: string, threadId: string, reason?: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+      validateId(profileId)
+
+      const cancelled = GmailAutomationEngine.cancelThreadFollowUps(threadId, reason || 'User requested cancellation.')
+      return { success: true, cancelled }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('profiles:process-due-gmail-jobs', async (_event, sessionToken: string) => {
+    try {
+      const auth = authorizeUser(sessionToken)
+      if (auth.error || !auth.user) return { success: false, error: auth.error }
+
+      const result = await GmailAutomationEngine.processDueJobs()
+      return { success: true, data: result }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
