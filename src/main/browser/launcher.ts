@@ -554,6 +554,12 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     args.push(`--user-agent=${fingerprint.navigator.userAgent}`)
   }
 
+  // Mobile / Touch Presentation flags
+  const isMobileProfile = (profile.osType || '').includes('android') || (profile.osType || '').includes('ios') || !!fingerprint?.navigator?.touchSupport
+  if (isMobileProfile) {
+    args.push('--touch-events=enabled', '--enable-touch-drag-drop')
+  }
+
   // WebRTC configuration - STRICT PRIVACY FOR PROXIES & LEAK SHIELD
   if (fingerprint?.webrtc?.mode === 'disabled' || profile.webrtcMode === 'disabled' || (profile.webrtcMode as string) === 'off') {
     args.push('--disable-webrtc')

@@ -109,16 +109,20 @@ export function buildNavigatorScript(
         window.chrome = {};
       }
 
-      // Chrome App Object
-      if (!window.chrome.app) {
-        window.chrome.app = {
-          isInstalled: false,
-          InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
-          RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
-          getDetails: cloak(function() { return null; }, 'getDetails'),
-          getIsInstalled: cloak(function() { return false; }, 'getIsInstalled'),
-          runningState: cloak(function() { return 'cannot_run'; }, 'runningState')
-        };
+      // Chrome App Object (ONLY ON DESKTOP CHROME, NOT ON ANDROID CHROME)
+      if (!${isMobile ? 'true' : 'false'}) {
+        if (!window.chrome.app) {
+          window.chrome.app = {
+            isInstalled: false,
+            InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+            RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+            getDetails: cloak(function() { return null; }, 'getDetails'),
+            getIsInstalled: cloak(function() { return false; }, 'getIsInstalled'),
+            runningState: cloak(function() { return 'cannot_run'; }, 'runningState')
+          };
+        }
+      } else if (window.chrome && window.chrome.app) {
+        try { delete (window.chrome as any).app; } catch(e) {}
       }
 
       // Chrome Runtime Object
@@ -145,6 +149,15 @@ export function buildNavigatorScript(
     }
   } catch(e) {}
 
+  ${isMobile ? `
+  // ── Native Mobile Touch Capability Support ──
+  try {
+    if (typeof window !== 'undefined' && !('ontouchstart' in window)) {
+      window.ontouchstart = null;
+    }
+  } catch(e) {}
+  ` : ''}
+
   // ── Chromium Client Hints (navigator.userAgentData) ──
   ${!isIos ? `
   try {
@@ -168,10 +181,10 @@ export function buildNavigatorScript(
           brands: brandsList,
           mobile: ${isMobile ? 'true' : 'false'},
           platform: ${JSON.stringify(clientPlatform)},
-          architecture: ${JSON.stringify(nav.cpuArchitecture || 'x86')},
+          architecture: ${JSON.stringify(clientPlatform === 'Android' ? 'arm' : (nav.cpuArchitecture || 'x86'))},
           bitness: '64',
-          model: ${JSON.stringify(isMobile ? ((nav as any).deviceModelCode || (nav as any).deviceModel || '') : '')},
-          platformVersion: ${JSON.stringify(clientPlatform === 'Windows' ? '15.0.0' : clientPlatform === 'macOS' ? '14.5.0' : '6.5.0')},
+          model: ${JSON.stringify(isMobile ? ((nav as any).deviceModelCode || (nav as any).deviceModel || 'SM-S928B') : '')},
+          platformVersion: ${JSON.stringify(clientPlatform === 'Windows' ? '15.0.0' : clientPlatform === 'macOS' ? '14.5.0' : clientPlatform === 'Android' ? '14.0.0' : '6.5.0')},
           fullVersionList: fullVersionList,
           uaFullVersion: ${JSON.stringify(nav.browserVersion || '131.0.0.0')}
         });
