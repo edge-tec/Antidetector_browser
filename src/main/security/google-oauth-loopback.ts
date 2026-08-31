@@ -74,7 +74,7 @@ export interface OAuthAuthResult {
 }
 
 // In-Memory store for Linked Profile Google Accounts (isolated per profile)
-const linkedAccountsMap = new Map<string, LinkedGoogleAccount>()
+export const linkedAccountsMap = new Map<string, LinkedGoogleAccount>()
 
 function getStoreFilePath(): string {
   try {

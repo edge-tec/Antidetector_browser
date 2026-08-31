@@ -13,7 +13,16 @@ import https from 'https'
 import http from 'http'
 import { shell, safeStorage } from 'electron'
 import { logger } from '../../logging/logger'
-import { getGoogleClientId, getGoogleClientSecret, encryptOAuthToken, decryptOAuthToken, LinkedGoogleAccount, saveLinkedAccountsToDisk } from '../../security/google-oauth-loopback'
+import {
+  getGoogleClientId,
+  getGoogleClientSecret,
+  encryptOAuthToken,
+  decryptOAuthToken,
+  LinkedGoogleAccount,
+  linkedAccountsMap,
+  loadLinkedAccountsFromDisk,
+  saveLinkedAccountsToDisk
+} from '../../security/google-oauth-loopback'
 import { Fingerprint } from '../../fingerprint/types'
 
 export const IOS_OAUTH_CONFIG = {
@@ -385,7 +394,8 @@ export class IosAuthRuntimeEngine {
               const exchangeResult = await this.exchangeIosCodeForTokens(
                 authCode,
                 pkce.codeVerifier,
-                activeCtx.redirectUri
+                activeCtx.redirectUri,
+                profileId
               )
 
               if (!exchangeResult.success) {
@@ -505,6 +515,7 @@ export class IosAuthRuntimeEngine {
     code: string,
     codeVerifier: string,
     redirectUri: string,
+    profileId?: string,
     clientId: string = getGoogleClientId(),
     clientSecret: string = getGoogleClientSecret()
   ): Promise<{
@@ -563,10 +574,29 @@ export class IosAuthRuntimeEngine {
                 } catch {}
               }
 
+              let linkedAccount: LinkedGoogleAccount | undefined = undefined
+              if (profileId && userProfile?.email) {
+                linkedAccount = {
+                  profileId,
+                  googleId: userProfile.id || userProfile.sub || '',
+                  email: userProfile.email,
+                  name: userProfile.name || '',
+                  picture: userProfile.picture || '',
+                  connectedAt: new Date().toISOString(),
+                  encryptedAccessToken: tokens.accessToken ? encryptOAuthToken(tokens.accessToken) : undefined,
+                  encryptedRefreshToken: tokens.refreshToken ? encryptOAuthToken(tokens.refreshToken) : undefined
+                }
+                loadLinkedAccountsFromDisk()
+                linkedAccountsMap.set(profileId, linkedAccount)
+                saveLinkedAccountsToDisk()
+                logger.info('auth', `[IosAuthRuntime] Associated Google account ${userProfile.email} with profile: ${profileId.substring(0, 8)}...`)
+              }
+
               resolve({
                 success: true,
                 tokens,
-                userProfile
+                userProfile,
+                linkedAccount
               })
             } catch (e: any) {
               resolve({
