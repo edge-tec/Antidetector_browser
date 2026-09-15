@@ -1013,6 +1013,8 @@ const ANDROID_TEMPLATES: DeviceTemplate[] = [
   buildAndroidTemplate('samsung-s23-ultra', 'Samsung', 'Galaxy S23 Ultra', 'SM-S918B', '14', 'Snapdragon 8 Gen 2', 'Qualcomm', 'Adreno (TM) 740', 412, 915, 3.0, 8, 12),
   buildAndroidTemplate('samsung-s23', 'Samsung', 'Galaxy S23', 'SM-S911B', '14', 'Snapdragon 8 Gen 2', 'Qualcomm', 'Adreno (TM) 740', 360, 780, 3.0, 8, 8),
   buildAndroidTemplate('samsung-a54', 'Samsung', 'Galaxy A54', 'SM-A546B', '14', 'Exynos 1380', 'ARM', 'Mali-G68 MC4', 360, 780, 2.625, 8, 6, 'Mid-Range Phone'),
+  buildAndroidTemplate('samsung-a16', 'Samsung', 'Galaxy A16', 'SM-A165F', '15', 'Exynos 1330', 'ARM', 'Mali-G68 MP2', 412, 892, 2.625, 8, 6, 'Mid-Range Phone'),
+  buildAndroidTemplate('samsung-a33-5g', 'Samsung', 'Galaxy A33 5G', 'SM-A336E', '15', 'Exynos 1280', 'ARM', 'Mali-G68', 412, 915, 2.625, 8, 8, '5G Mid-Range Phone'),
   buildAndroidTemplate('pixel-9-pro-xl', 'Google', 'Pixel 9 Pro XL', 'Pixel 9 Pro XL', '15', 'Google Tensor G4', 'ARM', 'Mali-G715 Immortalis MC12', 412, 924, 3.0, 8, 16),
   buildAndroidTemplate('pixel-9-pro', 'Google', 'Pixel 9 Pro', 'Pixel 9 Pro', '15', 'Google Tensor G4', 'ARM', 'Mali-G715 Immortalis MC12', 412, 915, 3.0, 8, 16),
   buildAndroidTemplate('pixel-9', 'Google', 'Pixel 9', 'Pixel 9', '15', 'Google Tensor G4', 'ARM', 'Mali-G715 Immortalis MC12', 412, 915, 2.625, 8, 12),

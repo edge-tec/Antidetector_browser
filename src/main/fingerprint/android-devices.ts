@@ -322,6 +322,36 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
     memory: 8
   },
   {
+    id: 'samsung-a16',
+    brand: 'Samsung',
+    modelName: 'Galaxy A16 (SM-A165F)',
+    modelCode: 'SM-A165F',
+    androidVersion: '15',
+    cpu: 'Exynos 1330 (Mali-G68 MP2)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G68 MP2',
+    screenWidth: 412,
+    screenHeight: 892,
+    dpr: 2.625,
+    cores: 8,
+    memory: 6
+  },
+  {
+    id: 'samsung-a33-5g',
+    brand: 'Samsung',
+    modelName: 'Galaxy A33 5G (SM-A336E)',
+    modelCode: 'SM-A336E',
+    androidVersion: '15',
+    cpu: 'Exynos 1280 (Mali-G68)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G68',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 2.625,
+    cores: 8,
+    memory: 8
+  },
+  {
     id: 'samsung-tab-s9-ultra',
     brand: 'Samsung',
     modelName: 'Galaxy Tab S9 Ultra (SM-X910)',
