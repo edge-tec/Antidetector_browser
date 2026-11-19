@@ -1,11 +1,12 @@
 <?php
 // ──────────────────────────────────────────────
 // ProfileVault — Central Production Payment Gateway & Webhook API
-// Supports: Stripe + Cryptocurrency (NOWPayments / Cryptomus)
+// Supports: Stripe + In-House Direct-to-TrustWallet Multi-Crypto Gateway
 // ──────────────────────────────────────────────
 
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/license.php';
+require_once __DIR__ . '/../crypto/InHouseCryptoGateway.php';
 
 $db = Database::getConnection();
 
@@ -425,6 +426,194 @@ function processSuccessfulPayment(
     }
 }
 
+/**
+ * Verify an In-House Direct-to-TrustWallet invoice on-chain and immediately
+ * activate the user's subscription package upon confirmation.
+ */
+function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $submittedTxHash = ''): array {
+    if (in_array(strtolower((string)$inv['status']), ['paid', 'completed'], true)) {
+        return [
+            'success' => true,
+            'status' => 'paid',
+            'confirmed' => true,
+            'packageActivated' => true,
+            'invoiceNumber' => $inv['invoice_number'],
+            'txHash' => $inv['transaction_id'] ?? '',
+            'message' => 'Payment already confirmed and package active.'
+        ];
+    }
+
+    $meta = json_decode((string)($inv['metadata'] ?? '{}'), true) ?: [];
+    $cryptoMeta = $meta['inhouse_crypto'] ?? null;
+    if (!$cryptoMeta || empty($cryptoMeta['wallet']) || empty($cryptoMeta['networkId'])) {
+        return ['success' => false, 'status' => 'pending', 'confirmed' => false, 'error' => 'Invoice is not an In-House Direct-to-TrustWallet crypto invoice.'];
+    }
+
+    $gw = getPaymentGatewayConfig($db, 'crypto');
+    $gwConfig = $gw['config'] ?? [];
+    $net = InHouseCryptoGateway::resolveNetwork($gwConfig, (string)$cryptoMeta['networkId']);
+    if (!$net) {
+        return ['success' => false, 'status' => 'failed', 'confirmed' => false, 'error' => 'Unsupported crypto network in invoice metadata.'];
+    }
+
+    $wallet = (string)$cryptoMeta['wallet'];
+    $expectedAmount = (float)($cryptoMeta['expectedCryptoAmount'] ?? 0);
+    $txHash = trim($submittedTxHash ?: ($cryptoMeta['txHash'] ?? ''));
+
+    // Auto-detect incoming transfer directly into Trust Wallet if no TxHash provided yet
+    if ($txHash === '') {
+        $createdTs = strtotime((string)($inv['created_at'] ?? 'now')) ?: time();
+        $detected = InHouseCryptoGateway::autoDetectIncomingTx($net, $wallet, $expectedAmount, $createdTs);
+        if ($detected) {
+            $txHash = $detected;
+        }
+    }
+
+    if ($txHash === '') {
+        return [
+            'success' => true,
+            'status' => 'pending',
+            'confirmed' => false,
+            'packageActivated' => false,
+            'confirmations' => 0,
+            'requiredConfirmations' => (int)$net['confirmations'],
+            'invoiceNumber' => $inv['invoice_number'],
+            'payAddress' => $wallet,
+            'payAmount' => $cryptoMeta['expectedCryptoAmount'],
+            'message' => 'Waiting for incoming payment to Trust Wallet...'
+        ];
+    }
+
+    // Replay protection: ensure this TxHash was never used to pay a different invoice
+    $dupStmt = $db->prepare("SELECT invoice_id FROM payments WHERE transaction_id = ? LIMIT 1");
+    $dupStmt->execute([$txHash]);
+    $existingPay = $dupStmt->fetch(PDO::FETCH_ASSOC);
+    if ($existingPay && ($existingPay['invoice_id'] ?? '') !== $inv['id']) {
+        return [
+            'success' => false,
+            'status' => 'failed',
+            'confirmed' => false,
+            'error' => 'Transaction hash has already been claimed by another invoice.'
+        ];
+    }
+
+    // Persist detected/submitted txHash into invoice metadata for background cron continuation
+    if (($cryptoMeta['txHash'] ?? '') !== $txHash) {
+        $meta['inhouse_crypto']['txHash'] = $txHash;
+        $db->prepare("UPDATE invoices SET metadata = ? WHERE id = ?")->execute([json_encode($meta), $inv['id']]);
+    }
+
+    $verify = InHouseCryptoGateway::verifyTxHash($net, $txHash, $wallet, $expectedAmount);
+
+    if (!empty($verify['confirmed'])) {
+        $eventId = 'inhouse_' . $net['network'] . '_' . strtolower($txHash);
+        $activation = processSuccessfulPayment(
+            $db,
+            'inhouse_crypto',
+            $eventId,
+            'crypto.inhouse.confirmed',
+            (string)$inv['id'],
+            $txHash,
+            $txHash,
+            (float)$inv['amount'],
+            (string)($inv['currency'] ?: 'USD'),
+            [
+                'provider' => 'inhouse_trustwallet',
+                'networkId' => $net['id'],
+                'network' => $net['network'],
+                'symbol' => $net['symbol'],
+                'trustWallet' => $wallet,
+                'expectedCryptoAmount' => $expectedAmount,
+                'receivedCryptoAmount' => $verify['received'] ?? $expectedAmount,
+                'confirmations' => $verify['confirmations'] ?? (int)$net['confirmations'],
+                'txHash' => $txHash
+            ]
+        );
+
+        if (!empty($activation['success'])) {
+            return [
+                'success' => true,
+                'status' => 'paid',
+                'confirmed' => true,
+                'packageActivated' => true,
+                'invoiceNumber' => $inv['invoice_number'],
+                'txHash' => $txHash,
+                'confirmations' => $verify['confirmations'] ?? (int)$net['confirmations'],
+                'requiredConfirmations' => (int)$net['confirmations'],
+                'plan' => $activation['plan'] ?? null,
+                'expiresAt' => $activation['expiresAt'] ?? null,
+                'message' => 'Payment confirmed directly in Trust Wallet and subscription package activated immediately!'
+            ];
+        }
+
+        return [
+            'success' => false,
+            'status' => 'confirming',
+            'confirmed' => false,
+            'error' => $activation['error'] ?? 'Failed to activate subscription after confirmation.'
+        ];
+    }
+
+    return [
+        'success' => true,
+        'status' => $verify['status'] ?? 'confirming',
+        'confirmed' => false,
+        'packageActivated' => false,
+        'invoiceNumber' => $inv['invoice_number'],
+        'txHash' => $txHash,
+        'confirmations' => (int)($verify['confirmations'] ?? 0),
+        'requiredConfirmations' => (int)$net['confirmations'],
+        'receivedCrypto' => $verify['received'] ?? 0,
+        'expectedCrypto' => $expectedAmount,
+        'reason' => $verify['reason'] ?? 'Awaiting blockchain confirmations'
+    ];
+}
+
+/**
+ * Background Cron Sweep: Scans all pending In-House Crypto invoices (last 24h),
+ * auto-detects incoming payments to Trust Wallet, verifies confirmations on-chain,
+ * and activates user packages automatically.
+ */
+function runInHouseCryptoAutoConfirmCron(PDO $db): array {
+    $summary = ['checked' => 0, 'activated' => 0, 'confirming' => 0, 'errors' => []];
+    try {
+        $stmt = $db->prepare("
+            SELECT * FROM invoices
+            WHERE gateway = 'crypto'
+              AND status = 'pending'
+              AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            ORDER BY created_at DESC
+            LIMIT 50
+        ");
+        $stmt->execute();
+        $pending = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($pending as $inv) {
+            $meta = json_decode((string)($inv['metadata'] ?? '{}'), true) ?: [];
+            if (empty($meta['inhouse_crypto'])) {
+                continue;
+            }
+            $summary['checked']++;
+            $res = verifyAndActivateInHouseCryptoInvoice($db, $inv);
+            if (!empty($res['packageActivated'])) {
+                $summary['activated']++;
+            } elseif (($res['status'] ?? '') === 'confirming' || ($res['status'] ?? '') === 'detected') {
+                $summary['confirming']++;
+            } elseif (empty($res['success']) && !empty($res['error'])) {
+                $summary['errors'][] = $inv['invoice_number'] . ': ' . $res['error'];
+            }
+        }
+    } catch (Throwable $e) {
+        $summary['errors'][] = $e->getMessage();
+    }
+    return $summary;
+}
+
+// Allow cron.php or internal scripts to load payment helpers without running HTTP router
+if (defined('PAYMENTS_LIB_ONLY') && PAYMENTS_LIB_ONLY) {
+    return;
+}
+
 // ──────────────────────────────────────────────
 // API REQUEST DISPATCHER
 // ──────────────────────────────────────────────
@@ -626,11 +815,12 @@ switch ($action) {
             ]);
         } elseif ($gatewayKey === 'crypto') {
             $cryptoApiKey = trim($gw['secret_key'] ?? '');
-            $provider = $gw['config']['provider'] ?? 'nowpayments';
-            $coin = $input['coin'] ?? 'USDT';
+            $provider = strtolower(trim((string)($gw['config']['provider'] ?? 'inhouse')));
+            $networkInput = trim((string)($input['network'] ?? $input['network_id'] ?? $input['coin'] ?? 'usdt-tron'));
 
-            // NOWPayments or Cryptomus provider flow
+            // Optional legacy NOWPayments mode ONLY if explicitly configured with provider='nowpayments' + API key
             if ($cryptoApiKey && $provider === 'nowpayments') {
+                $coin = $input['coin'] ?? 'USDT';
                 $ch = curl_init('https://api.nowpayments.io/v1/payment');
                 $payload = json_encode([
                     'price_amount' => $amount,
@@ -656,6 +846,7 @@ switch ($action) {
                     respondJson([
                         'success' => true,
                         'gateway' => 'crypto',
+                        'provider' => 'nowpayments',
                         'invoiceNumber' => $invNumber,
                         'payAddress' => $json['pay_address'],
                         'payAmount' => $json['pay_amount'] ?? $amount,
@@ -667,17 +858,63 @@ switch ($action) {
                 }
             }
 
-            // Clean fallback direct crypto payment invoice
-            $depositAddress = $gw['config']['wallet_address'] ?? 'TYsB... (Configured in Admin Gateway Manager)';
+            // Default: In-House Direct-to-TrustWallet Multi-Crypto Gateway (Zero 3rd-party fees, auto-confirm + instant package activation)
+            $net = InHouseCryptoGateway::resolveNetwork($gw['config'], $networkInput);
+            if (!$net) {
+                respondJson(['success' => false, 'error' => "Unsupported crypto network: {$networkInput}"], 400);
+            }
+
+            $trustWallet = trim((string)$net['wallet']);
+            if ($trustWallet === '') {
+                respondJson([
+                    'success' => false,
+                    'error' => "Trust Wallet address is not configured for {$net['label']}. Please configure it in Admin → Payment Gateways → Crypto."
+                ], 400);
+            }
+
+            $rateUsd = InHouseCryptoGateway::getUsdPrice($net['symbol']);
+            $expectedCryptoAmount = InHouseCryptoGateway::computeUniqueCryptoAmount($amount, $rateUsd, (int)$net['decimals'], $invNumber);
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+2 hours'));
+
+            $inhouseMeta = [
+                'inhouse_crypto' => [
+                    'provider' => 'inhouse_trustwallet',
+                    'networkId' => $net['id'],
+                    'network' => $net['network'],
+                    'label' => $net['label'],
+                    'symbol' => $net['symbol'],
+                    'standard' => $net['standard'],
+                    'contract' => $net['contract'],
+                    'wallet' => $trustWallet,
+                    'expectedCryptoAmount' => $expectedCryptoAmount,
+                    'rateUsd' => $rateUsd,
+                    'confirmationsRequired' => (int)$net['confirmations'],
+                    'expiresAt' => $expiresAt
+                ]
+            ];
+
+            $db->prepare("UPDATE invoices SET metadata = ? WHERE id = ?")->execute([json_encode($inhouseMeta), $invId]);
+
             respondJson([
                 'success' => true,
                 'gateway' => 'crypto',
+                'provider' => 'inhouse_trustwallet',
                 'invoiceNumber' => $invNumber,
-                'payAddress' => $depositAddress,
-                'payAmount' => $amount,
-                'payCoin' => strtoupper($coin),
-                'qrUrl' => "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($depositAddress),
-                'instructions' => 'Send exact amount to the address above. Subscription will activate immediately upon network confirmation.'
+                'payAddress' => $trustWallet,
+                'payAmount' => $expectedCryptoAmount,
+                'payCoin' => $net['symbol'],
+                'networkId' => $net['id'],
+                'network' => $net['network'],
+                'networkLabel' => $net['label'],
+                'standard' => $net['standard'],
+                'contract' => $net['contract'],
+                'rateUsd' => $rateUsd,
+                'amountUsd' => $amount,
+                'requiredConfirmations' => (int)$net['confirmations'],
+                'qrUrl' => "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($trustWallet),
+                'expiresAt' => $expiresAt,
+                'verifyEndpoint' => '/api/payments.php?action=crypto/verify',
+                'instructions' => "Send exact {$expectedCryptoAmount} {$net['symbol']} ({$net['label']}) to the Trust Wallet address above. Payment confirms automatically on-chain and activates your package immediately."
             ]);
         } else {
             respondJson(['success' => false, 'error' => "Unsupported gateway: {$gatewayKey}"], 400);
@@ -826,6 +1063,49 @@ switch ($action) {
         } else {
             respondJson(['success' => true, 'status' => 'pending_confirmation']);
         }
+        break;
+
+    // ── 6. List Supported In-House Direct-to-TrustWallet Networks ──
+    case 'crypto/networks':
+    case 'crypto-networks':
+        $gw = getPaymentGatewayConfig($db, 'crypto');
+        $networks = InHouseCryptoGateway::getNetworks($gw['config'] ?? []);
+        $list = [];
+        foreach ($networks as $id => $net) {
+            $list[] = [
+                'id' => $net['id'],
+                'symbol' => $net['symbol'],
+                'network' => $net['network'],
+                'label' => $net['label'],
+                'standard' => $net['standard'],
+                'confirmations' => (int)$net['confirmations'],
+                'configured' => trim((string)$net['wallet']) !== ''
+            ];
+        }
+        respondJson(['success' => true, 'provider' => 'inhouse_trustwallet', 'networks' => $list]);
+        break;
+
+    // ── 7. Verify & Auto-Confirm In-House Crypto Payment (Activates Package Immediately) ──
+    case 'crypto/verify':
+    case 'crypto-verify':
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+        $invRef = trim((string)($input['invoice'] ?? $input['invoice_number'] ?? $input['invoiceNumber'] ?? $_GET['invoice'] ?? ''));
+        $txHash = trim((string)($input['tx_hash'] ?? $input['txHash'] ?? $_GET['tx_hash'] ?? ''));
+
+        if ($invRef === '') {
+            respondJson(['success' => false, 'error' => 'Invoice number is required.'], 400);
+        }
+
+        $stmt = $db->prepare("SELECT * FROM invoices WHERE invoice_number = ? OR id = ? LIMIT 1");
+        $stmt->execute([$invRef, $invRef]);
+        $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$inv) {
+            respondJson(['success' => false, 'error' => 'Invoice not found.'], 404);
+        }
+
+        $result = verifyAndActivateInHouseCryptoInvoice($db, $inv, $txHash);
+        respondJson($result, !empty($result['success']) ? 200 : 400);
         break;
 
     default:
