@@ -1,0 +1,15 @@
+{
+  "name": "antiprofiles-hd-signer",
+  "version": "1.0.0",
+  "description": "Isolated localhost-only HD Wallet Derivation & Auto-Sweep Signer Service for AntiProfiles",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "tronweb": "^6.0.0"
+  }
+}

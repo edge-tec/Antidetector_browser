@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/license.php';
 require_once __DIR__ . '/../crypto/InHouseCryptoGateway.php';
+require_once __DIR__ . '/../crypto/HdWalletSweepService.php';
 
 $db = Database::getConnection();
 
@@ -456,16 +457,28 @@ function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $subm
         return ['success' => false, 'status' => 'failed', 'confirmed' => false, 'error' => 'Unsupported crypto network in invoice metadata.'];
     }
 
-    $wallet = (string)$cryptoMeta['wallet'];
+    $isHdMode = (($cryptoMeta['mode'] ?? '') === 'hd_sweep');
+    $wallet = (string)($cryptoMeta['depositAddress'] ?? $cryptoMeta['wallet']);
+    $treasuryWallet = (string)($cryptoMeta['treasuryWallet'] ?? $cryptoMeta['wallet']);
     $expectedAmount = (float)($cryptoMeta['expectedCryptoAmount'] ?? 0);
     $txHash = trim($submittedTxHash ?: ($cryptoMeta['txHash'] ?? ''));
 
-    // Auto-detect incoming transfer directly into Trust Wallet if no TxHash provided yet
+    // Auto-detect incoming transfer without requiring user to paste TxHash
+    $hdBalanceFunded = null;
     if ($txHash === '') {
         $createdTs = strtotime((string)($inv['created_at'] ?? 'now')) ?: time();
         $detected = InHouseCryptoGateway::autoDetectIncomingTx($net, $wallet, $expectedAmount, $createdTs);
         if ($detected) {
             $txHash = $detected;
+        } elseif ($isHdMode) {
+            // Dedicated per-order HD address: check exact on-chain balance directly via RPC
+            $balCheck = HdWalletSweepService::checkDedicatedHdAddressBalance($net, $wallet, $expectedAmount);
+            if (!empty($balCheck['txHash'])) {
+                $txHash = (string)$balCheck['txHash'];
+            } elseif (!empty($balCheck['funded'])) {
+                $hdBalanceFunded = $balCheck;
+                $txHash = (string)($balCheck['syntheticRef'] ?? ('hd_' . $inv['invoice_number']));
+            }
         }
     }
 
@@ -475,12 +488,15 @@ function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $subm
             'status' => 'pending',
             'confirmed' => false,
             'packageActivated' => false,
+            'mode' => $isHdMode ? 'hd_sweep' : 'direct',
             'confirmations' => 0,
             'requiredConfirmations' => (int)$net['confirmations'],
             'invoiceNumber' => $inv['invoice_number'],
             'payAddress' => $wallet,
             'payAmount' => $cryptoMeta['expectedCryptoAmount'],
-            'message' => 'Waiting for incoming payment to Trust Wallet...'
+            'message' => $isHdMode
+                ? 'Waiting for incoming payment to dedicated HD deposit address...'
+                : 'Waiting for incoming payment to Trust Wallet...'
         ];
     }
 
@@ -503,7 +519,18 @@ function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $subm
         $db->prepare("UPDATE invoices SET metadata = ? WHERE id = ?")->execute([json_encode($meta), $inv['id']]);
     }
 
-    $verify = InHouseCryptoGateway::verifyTxHash($net, $txHash, $wallet, $expectedAmount);
+    if ($hdBalanceFunded !== null) {
+        $verify = [
+            'confirmed' => true,
+            'status' => 'confirmed',
+            'confirmations' => (int)$net['confirmations'],
+            'received' => (float)$hdBalanceFunded['balance'],
+            'txHash' => $txHash,
+            'reason' => 'Confirmed on dedicated HD deposit address via RPC balance check'
+        ];
+    } else {
+        $verify = InHouseCryptoGateway::verifyTxHash($net, $txHash, $wallet, $expectedAmount);
+    }
 
     if (!empty($verify['confirmed'])) {
         $eventId = 'inhouse_' . $net['network'] . '_' . strtolower($txHash);
@@ -518,11 +545,12 @@ function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $subm
             (float)$inv['amount'],
             (string)($inv['currency'] ?: 'USD'),
             [
-                'provider' => 'inhouse_trustwallet',
+                'provider' => $isHdMode ? 'inhouse_hd_sweep' : 'inhouse_trustwallet',
                 'networkId' => $net['id'],
                 'network' => $net['network'],
                 'symbol' => $net['symbol'],
-                'trustWallet' => $wallet,
+                'depositAddress' => $wallet,
+                'trustWallet' => $treasuryWallet,
                 'expectedCryptoAmount' => $expectedAmount,
                 'receivedCryptoAmount' => $verify['received'] ?? $expectedAmount,
                 'confirmations' => $verify['confirmations'] ?? (int)$net['confirmations'],
@@ -531,18 +559,34 @@ function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $subm
         );
 
         if (!empty($activation['success'])) {
+            $sweepResult = null;
+            if ($isHdMode) {
+                $sweepResult = HdWalletSweepService::markConfirmedAndAutoSweep(
+                    $db,
+                    $gwConfig,
+                    $net,
+                    (string)$inv['invoice_number'],
+                    $txHash,
+                    (float)($verify['received'] ?? $expectedAmount)
+                );
+            }
+
             return [
                 'success' => true,
                 'status' => 'paid',
                 'confirmed' => true,
                 'packageActivated' => true,
+                'mode' => $isHdMode ? 'hd_sweep' : 'direct',
                 'invoiceNumber' => $inv['invoice_number'],
                 'txHash' => $txHash,
                 'confirmations' => $verify['confirmations'] ?? (int)$net['confirmations'],
                 'requiredConfirmations' => (int)$net['confirmations'],
                 'plan' => $activation['plan'] ?? null,
                 'expiresAt' => $activation['expiresAt'] ?? null,
-                'message' => 'Payment confirmed directly in Trust Wallet and subscription package activated immediately!'
+                'sweep' => $sweepResult,
+                'message' => $isHdMode
+                    ? 'Payment confirmed, package activated immediately, and auto-sweep to Trust Wallet triggered!'
+                    : 'Payment confirmed directly in Trust Wallet and subscription package activated immediately!'
             ];
         }
 
@@ -559,6 +603,7 @@ function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $subm
         'status' => $verify['status'] ?? 'confirming',
         'confirmed' => false,
         'packageActivated' => false,
+        'mode' => $isHdMode ? 'hd_sweep' : 'direct',
         'invoiceNumber' => $inv['invoice_number'],
         'txHash' => $txHash,
         'confirmations' => (int)($verify['confirmations'] ?? 0),
@@ -571,11 +616,11 @@ function verifyAndActivateInHouseCryptoInvoice(PDO $db, array $inv, string $subm
 
 /**
  * Background Cron Sweep: Scans all pending In-House Crypto invoices (last 24h),
- * auto-detects incoming payments to Trust Wallet, verifies confirmations on-chain,
- * and activates user packages automatically.
+ * auto-detects incoming payments, activates user packages immediately, and
+ * retries any pending HD auto-sweeps to Trust Wallet.
  */
 function runInHouseCryptoAutoConfirmCron(PDO $db): array {
-    $summary = ['checked' => 0, 'activated' => 0, 'confirming' => 0, 'errors' => []];
+    $summary = ['checked' => 0, 'activated' => 0, 'confirming' => 0, 'sweeps' => ['attempted' => 0, 'swept' => 0, 'failed' => 0, 'errors' => []], 'errors' => []];
     try {
         $stmt = $db->prepare("
             SELECT * FROM invoices
@@ -602,6 +647,12 @@ function runInHouseCryptoAutoConfirmCron(PDO $db): array {
             } elseif (empty($res['success']) && !empty($res['error'])) {
                 $summary['errors'][] = $inv['invoice_number'] . ': ' . $res['error'];
             }
+        }
+
+        // Retry any confirmed/failed HD sweeps to Trust Wallet
+        $gw = getPaymentGatewayConfig($db, 'crypto');
+        if ($gw && !empty($gw['config'])) {
+            $summary['sweeps'] = HdWalletSweepService::retryPendingSweeps($db, $gw['config']);
         }
     } catch (Throwable $e) {
         $summary['errors'][] = $e->getMessage();
@@ -873,11 +924,82 @@ switch ($action) {
             }
 
             $rateUsd = InHouseCryptoGateway::getUsdPrice($net['symbol']);
-            $expectedCryptoAmount = InHouseCryptoGateway::computeUniqueCryptoAmount($amount, $rateUsd, (int)$net['decimals'], $invNumber);
             $expiresAt = date('Y-m-d H:i:s', strtotime('+2 hours'));
+            $useHdMode = HdWalletSweepService::isHdModeEnabled($gw['config'], $net);
+
+            if ($useHdMode) {
+                // Dedicated per-order HD deposit address -> exact amount (no micro-tag needed)
+                $displayDecimals = min((int)$net['decimals'], 6);
+                $expectedCryptoAmount = number_format($amount / max(0.00000001, $rateUsd), $displayDecimals, '.', '');
+                try {
+                    $hdAlloc = HdWalletSweepService::allocateDepositAddress(
+                        $db,
+                        $gw['config'],
+                        $net,
+                        $invId,
+                        $invNumber,
+                        (string)$user['id'],
+                        $expectedCryptoAmount
+                    );
+                } catch (Throwable $hdErr) {
+                    respondJson(['success' => false, 'error' => 'HD Deposit Address allocation failed: ' . $hdErr->getMessage()], 500);
+                }
+
+                $payAddress = $hdAlloc['depositAddress'];
+                $inhouseMeta = [
+                    'inhouse_crypto' => [
+                        'mode' => 'hd_sweep',
+                        'provider' => 'inhouse_hd_sweep',
+                        'networkId' => $net['id'],
+                        'network' => $net['network'],
+                        'label' => $net['label'],
+                        'symbol' => $net['symbol'],
+                        'standard' => $net['standard'],
+                        'contract' => $net['contract'],
+                        'wallet' => $payAddress,
+                        'depositAddress' => $payAddress,
+                        'treasuryWallet' => $trustWallet,
+                        'derivationIndex' => $hdAlloc['derivationIndex'],
+                        'derivationPath' => $hdAlloc['derivationPath'],
+                        'expectedCryptoAmount' => $expectedCryptoAmount,
+                        'rateUsd' => $rateUsd,
+                        'confirmationsRequired' => (int)$net['confirmations'],
+                        'expiresAt' => $expiresAt
+                    ]
+                ];
+
+                $db->prepare("UPDATE invoices SET metadata = ? WHERE id = ?")->execute([json_encode($inhouseMeta), $invId]);
+
+                respondJson([
+                    'success' => true,
+                    'gateway' => 'crypto',
+                    'provider' => 'inhouse_hd_sweep',
+                    'mode' => 'hd_sweep',
+                    'invoiceNumber' => $invNumber,
+                    'payAddress' => $payAddress,
+                    'payAmount' => $expectedCryptoAmount,
+                    'payCoin' => $net['symbol'],
+                    'networkId' => $net['id'],
+                    'network' => $net['network'],
+                    'networkLabel' => $net['label'],
+                    'standard' => $net['standard'],
+                    'contract' => $net['contract'],
+                    'rateUsd' => $rateUsd,
+                    'amountUsd' => $amount,
+                    'requiredConfirmations' => (int)$net['confirmations'],
+                    'qrUrl' => "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($payAddress),
+                    'expiresAt' => $expiresAt,
+                    'verifyEndpoint' => '/api/payments.php?action=crypto/verify',
+                    'instructions' => "Send exact {$expectedCryptoAmount} {$net['symbol']} ({$net['label']}) to your dedicated order deposit address above. Payment confirms automatically, activates your package immediately, and auto-sweeps to treasury."
+                ]);
+            }
+
+            // Fallback: Direct-to-TrustWallet mode (when signer_url is not configured or for BTC/SOL)
+            $expectedCryptoAmount = InHouseCryptoGateway::computeUniqueCryptoAmount($amount, $rateUsd, (int)$net['decimals'], $invNumber);
 
             $inhouseMeta = [
                 'inhouse_crypto' => [
+                    'mode' => 'direct',
                     'provider' => 'inhouse_trustwallet',
                     'networkId' => $net['id'],
                     'network' => $net['network'],
@@ -886,6 +1008,7 @@ switch ($action) {
                     'standard' => $net['standard'],
                     'contract' => $net['contract'],
                     'wallet' => $trustWallet,
+                    'treasuryWallet' => $trustWallet,
                     'expectedCryptoAmount' => $expectedCryptoAmount,
                     'rateUsd' => $rateUsd,
                     'confirmationsRequired' => (int)$net['confirmations'],
@@ -899,6 +1022,7 @@ switch ($action) {
                 'success' => true,
                 'gateway' => 'crypto',
                 'provider' => 'inhouse_trustwallet',
+                'mode' => 'direct',
                 'invoiceNumber' => $invNumber,
                 'payAddress' => $trustWallet,
                 'payAmount' => $expectedCryptoAmount,
@@ -1106,6 +1230,26 @@ switch ($action) {
 
         $result = verifyAndActivateInHouseCryptoInvoice($db, $inv, $txHash);
         respondJson($result, !empty($result['success']) ? 200 : 400);
+        break;
+
+    // ── 8. Admin: Inspect HD Deposit Addresses & Auto-Sweep Status ──
+    case 'crypto/sweep-status':
+    case 'crypto-sweep-status':
+        $user = getAuthenticatedUser();
+        if (!$user || !in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'super_admin'], true)) {
+            respondJson(['success' => false, 'error' => 'Admin access required.'], 403);
+        }
+        HdWalletSweepService::ensureSchema($db);
+        $rows = $db->query("
+            SELECT id, invoice_number, network, symbol, derivation_index, deposit_address,
+                   treasury_wallet, expected_amount, received_amount, status,
+                   deposit_tx_hash, sweep_tx_hash, sweep_amount, sweep_error, sweep_attempts,
+                   created_at, confirmed_at, swept_at
+            FROM crypto_hd_deposits
+            ORDER BY created_at DESC
+            LIMIT 50
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        respondJson(['success' => true, 'deposits' => $rows]);
         break;
 
     default:

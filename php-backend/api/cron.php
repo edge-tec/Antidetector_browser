@@ -36,11 +36,16 @@ if ($isCli) {
     echo " - Crypto Invoices Checked: " . $cryptoResults['checked'] . "\n";
     echo " - Crypto Packages Activated: " . $cryptoResults['activated'] . "\n";
     echo " - Crypto Confirming: " . $cryptoResults['confirming'] . "\n";
+    $sweeps = $cryptoResults['sweeps'] ?? ['attempted' => 0, 'swept' => 0, 'failed' => 0, 'errors' => []];
+    echo " - HD Auto-Sweeps Attempted: " . $sweeps['attempted'] . " | Swept to Trust Wallet: " . $sweeps['swept'] . " | Failed: " . $sweeps['failed'] . "\n";
     if (!empty($results['errors'])) {
         echo " - Errors: " . implode(", ", $results['errors']) . "\n";
     }
     if (!empty($cryptoResults['errors'])) {
         echo " - Crypto Errors: " . implode(", ", $cryptoResults['errors']) . "\n";
+    }
+    if (!empty($sweeps['errors'])) {
+        echo " - Sweep Errors: " . implode(", ", $sweeps['errors']) . "\n";
     }
     exit(0);
 } else {
