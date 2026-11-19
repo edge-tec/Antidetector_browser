@@ -242,9 +242,11 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     logger.warn('browser', `Failed to evaluateOnNewDocument: ${err.message}`)
   }
 
-  try {
-    await page.setViewport(null)
-  } catch {}
+  if (!isAndroid && !isIOS) {
+    try {
+      await page.setViewport(null)
+    } catch {}
+  }
 
   // Setup Google redirect interception (CDP Fetch layer) - skip on accounts/auth pages
   try {
@@ -279,11 +281,30 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
   try {
     const client = await page.target().createCDPSession()
 
-    // ── Fluid Responsive Viewport Configuration ──
-    // Always clear fixed device metrics overrides so the browsing area fluidly fills 100% of the window
-    await client.send('Emulation.clearDeviceMetricsOverride')
-
+    // ── Enterprise Device & Viewport Emulation (Mobile vs Desktop) ──
     if (isAndroid || isIOS) {
+      const mobileWidth = Math.max(320, Math.min(fingerprint.screen?.width || 412, 1024))
+      const mobileHeight = Math.max(568, Math.min(fingerprint.screen?.height || 915, 1400))
+      const mobileDpr = fingerprint.screen?.devicePixelRatio || (isIOS ? 3 : 3)
+      const isLandscape = mobileWidth > mobileHeight
+
+      try {
+        await client.send('Emulation.setDeviceMetricsOverride', {
+          width: mobileWidth,
+          height: mobileHeight,
+          deviceScaleFactor: mobileDpr,
+          mobile: true,
+          screenWidth: mobileWidth,
+          screenHeight: mobileHeight,
+          screenOrientation: {
+            type: isLandscape ? 'landscapePrimary' : 'portraitPrimary',
+            angle: isLandscape ? 90 : 0
+          }
+        })
+      } catch (err: any) {
+        logger.warn('browser', `Could not set mobile CDP device metrics: ${err.message}`)
+      }
+
       try {
         await client.send('Emulation.setTouchEmulationEnabled', {
           enabled: true,
@@ -292,6 +313,27 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
         await client.send('Emulation.setEmitTouchEventsForMouse', {
           enabled: true,
           configuration: 'mobile'
+        })
+      } catch {}
+    } else {
+      // Desktop: keep viewport fluidly resizable while screen/DPR/UA/Client Hints match the selected desktop OS
+      await client.send('Emulation.clearDeviceMetricsOverride')
+    }
+
+    // Hardware Concurrency CDP Override (applies to main thread + Web Workers / ServiceWorkers)
+    if (fingerprint.navigator?.hardwareConcurrency) {
+      try {
+        await client.send('Emulation.setHardwareConcurrencyOverride', {
+          hardwareConcurrency: fingerprint.navigator.hardwareConcurrency
+        })
+      } catch {}
+    }
+
+    // Locale CDP Override (V8 ICU / Intl level)
+    if (fingerprint.locale?.language) {
+      try {
+        await client.send('Emulation.setLocaleOverride', {
+          locale: fingerprint.locale.language.replace('-', '_')
         })
       } catch {}
     }
@@ -326,15 +368,31 @@ async function applyPageEmulation(page: Page, fingerprint: Fingerprint): Promise
     const engine = getEngineForBrowser(osType, browserType)
     const shouldSendClientHints = engine === 'blink' && hasFeatureFlag(osType, browserType, 'client-hints')
 
+    const nav = fingerprint.navigator || ({} as any)
+    const resolvedPlatform = DeviceConsistencyValidator.resolvePlatformProfile({
+      osType,
+      browserType,
+      userAgent: nav.userAgent,
+      platform: nav.platform,
+      browserVersion: nav.browserVersion || '131.0.0.0',
+      hardwareConcurrency: nav.hardwareConcurrency,
+      deviceMemory: nav.deviceMemory,
+      touchSupport: nav.touchSupport,
+      maxTouchPoints: nav.maxTouchPoints,
+      deviceModel: (nav as any).deviceModelCode || (nav as any).deviceModel
+    })
+
     const userAgentMetadata = buildUserAgentMetadata(fingerprint)
     const acceptLanguage = (fingerprint.locale?.languages || ['en-US', 'en']).join(',')
-    const uaString = fingerprint.navigator?.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+    const uaString = nav.userAgent || resolvedPlatform.userAgent
 
-    // Override at Network CDP domain cleanly
+    // Override at Network CDP domain cleanly:
+    // Note: top-level `platform` sets navigator.platform (e.g. 'Win32', 'MacIntel', 'Linux armv8l', 'iPhone'),
+    // while `userAgentMetadata.platform` sets Sec-CH-UA-Platform (e.g. 'Windows', 'macOS', 'Android').
     await client.send('Network.setUserAgentOverride', {
       userAgent: uaString,
       acceptLanguage,
-      platform: userAgentMetadata.platform,
+      platform: nav.platform || resolvedPlatform.platformString,
       userAgentMetadata: shouldSendClientHints ? userAgentMetadata : undefined
     })
   } catch (err: any) {

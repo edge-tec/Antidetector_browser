@@ -6,6 +6,7 @@
 import { spawn, execSync, ChildProcess } from 'child_process'
 import crypto from 'crypto'
 import fs from 'fs'
+import http from 'http'
 import net from 'net'
 import path from 'path'
 import puppeteer, { Browser } from 'puppeteer-core'
@@ -31,6 +32,59 @@ export interface LaunchResult {
   browser: Browser | any
   pid: number
   wsEndpoint: string
+  childProcess?: ChildProcess
+}
+
+/**
+ * Find an available ephemeral TCP port on 127.0.0.1 for Chromium CDP.
+ */
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.unref()
+    server.on('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address()
+      const port = typeof addr === 'object' && addr ? addr.port : 0
+      server.close(() => resolve(port))
+    })
+  })
+}
+
+/**
+ * Poll Chromium's local DevTools HTTP endpoint until it returns a valid webSocketDebuggerUrl.
+ */
+async function waitForDebuggerReady(port: number, timeoutMs = 12000): Promise<string> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const wsUrl = await new Promise<string | null>((resolve) => {
+      const req = http.get(`http://127.0.0.1:${port}/json/version`, (res) => {
+        if (res.statusCode !== 200) {
+          res.resume()
+          return resolve(null)
+        }
+        let data = ''
+        res.setEncoding('utf8')
+        res.on('data', (chunk) => { data += chunk })
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data)
+            resolve(parsed.webSocketDebuggerUrl || null)
+          } catch {
+            resolve(null)
+          }
+        })
+      })
+      req.on('error', () => resolve(null))
+      req.setTimeout(1000, () => {
+        req.destroy()
+        resolve(null)
+      })
+    })
+    if (wsUrl) return wsUrl
+    await new Promise((r) => setTimeout(r, 150))
+  }
+  throw new Error(`Timed out waiting for Chromium DevTools endpoint on port ${port}`)
 }
 
 /**
@@ -391,13 +445,21 @@ function setupFirefoxProfilePrefs(
     fs.writeFileSync(path.join(chromeDir, 'userContent.css'), userContentCss.trim() + '\n', 'utf8')
   } catch {}
 
-  // Pre-seed xulstore.json to ensure Firefox opens in a normal, compact centered window
+  // Pre-seed xulstore.json to ensure Firefox opens with OS-appropriate window dimensions
+  const isMobileFf = resolvedProfile.osType === 'android' || resolvedProfile.osType === 'ios'
+  const ffWinWidth = isMobileFf
+    ? Math.max(412, Math.min((resolvedProfile.screenWidth || 412) + 24, 520))
+    : Math.min(resolvedProfile.screenWidth || 1280, 1440)
+  const ffWinHeight = isMobileFf
+    ? Math.max(760, Math.min((resolvedProfile.screenHeight || 860) + 110, 960))
+    : Math.min(resolvedProfile.screenHeight || 800, 900)
+
   const xulstorePath = path.join(resolvedDir, 'xulstore.json')
   const xulstoreConfig = {
     'chrome://browser/content/browser.xhtml': {
       'main-window': {
-        width: '1200',
-        height: '780',
+        width: String(ffWinWidth),
+        height: String(ffWinHeight),
         sizemode: 'normal',
         screenX: '140',
         screenY: '70'
@@ -431,16 +493,24 @@ export async function launchFirefox(
   BrowserIconManager.patchFirefoxRuntimeBranding(firefoxPath)
   BrowserIconManager.setupFirefoxBranding(userDataDir, profile)
 
-  // Use standard -no-remote, -allow-downgrade, -profile, and responsive clean desktop dimensions
+  // Use standard -no-remote, -allow-downgrade, -profile, and OS/device-appropriate window dimensions
+  const isMobileFfLaunch = resolvedProfile.osType === 'android' || resolvedProfile.osType === 'ios'
+  const launchWinW = isMobileFfLaunch
+    ? Math.max(412, Math.min((resolvedProfile.screenWidth || 412) + 24, 520))
+    : Math.min(resolvedProfile.screenWidth || 1280, 1440)
+  const launchWinH = isMobileFfLaunch
+    ? Math.max(760, Math.min((resolvedProfile.screenHeight || 860) + 110, 960))
+    : Math.min(resolvedProfile.screenHeight || 800, 900)
+
   const args: string[] = [
     '-no-remote',
     '-allow-downgrade',
     '-profile',
     userDataDir,
     '-width',
-    '1280',
+    String(launchWinW),
     '-height',
-    '800'
+    String(launchWinH)
   ]
 
   if (startUrls.length > 0) {
@@ -594,16 +664,28 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     'ProfilePickerOnStartup',
     'AppBoundEncryptionProvider',
     'AppBoundEncryption',
-    'UserAgentClientHint'
+    'AutomationControlled'
   ].join(',')
+
+  // Mobile / Touch Presentation flags & OS-appropriate window dimensions
+  const isMobileProfile = (profile.osType || '').includes('android') || (profile.osType || '').includes('ios') || !!fingerprint?.navigator?.touchSupport
+  const targetScreenW = fingerprint?.screen?.width || profile.screenWidth || (isMobileProfile ? 412 : 1280)
+  const targetScreenH = fingerprint?.screen?.height || profile.screenHeight || (isMobileProfile ? 915 : 800)
+  const winW = isMobileProfile
+    ? Math.max(412, Math.min(targetScreenW + 32, 540))
+    : Math.max(800, Math.min(targetScreenW, 1440))
+  const winH = isMobileProfile
+    ? Math.max(740, Math.min(targetScreenH + 120, 960))
+    : Math.max(600, Math.min(targetScreenH, 900))
 
   const args: string[] = [
     '--no-first-run',
     '--no-default-browser-check',
     '--profile-directory=Default',
-    '--window-size=1280,800',
+    `--window-size=${winW},${winH}`,
     '--window-position=100,60',
     `--disable-features=${disabledFeatures}`,
+    '--disable-blink-features=AutomationControlled',
     '--disable-infobars',
     '--use-mock-keychain',
     '--password-store=basic',
@@ -619,8 +701,6 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     args.push(`--user-agent=${fingerprint.navigator.userAgent}`)
   }
 
-  // Mobile / Touch Presentation flags
-  const isMobileProfile = (profile.osType || '').includes('android') || (profile.osType || '').includes('ios') || !!fingerprint?.navigator?.touchSupport
   if (isMobileProfile) {
     args.push('--touch-events=enabled', '--enable-touch-drag-drop')
   }
@@ -764,11 +844,24 @@ function normalizeFingerprint(
   // 2. Apply Explicit Profile / Fingerprint Overrides on top of Template/Defaults
   if (raw) {
     if (raw.navigator) {
-      if (raw.navigator.hardwareConcurrency) baseFp.navigator.hardwareConcurrency = raw.navigator.hardwareConcurrency
-      if (raw.navigator.deviceMemory) baseFp.navigator.deviceMemory = raw.navigator.deviceMemory
-      if (raw.navigator.userAgent) baseFp.navigator.userAgent = raw.navigator.userAgent
-      if (raw.navigator.platform) baseFp.navigator.platform = raw.navigator.platform
-      if (raw.navigator.cpuArchitecture) baseFp.navigator.cpuArchitecture = raw.navigator.cpuArchitecture
+      const rawNav = raw.navigator as any
+      const baseNav = baseFp.navigator as any
+      if (rawNav.hardwareConcurrency) baseFp.navigator.hardwareConcurrency = rawNav.hardwareConcurrency
+      if (rawNav.deviceMemory) baseFp.navigator.deviceMemory = rawNav.deviceMemory
+      if (rawNav.userAgent) baseFp.navigator.userAgent = rawNav.userAgent
+      if (rawNav.platform) baseFp.navigator.platform = rawNav.platform
+      if (rawNav.cpuArchitecture) baseFp.navigator.cpuArchitecture = rawNav.cpuArchitecture
+      if (rawNav.browserVersion) baseFp.navigator.browserVersion = rawNav.browserVersion
+      if (rawNav.appVersion) baseFp.navigator.appVersion = rawNav.appVersion
+      if (rawNav.vendor !== undefined) baseFp.navigator.vendor = rawNav.vendor
+      if (rawNav.maxTouchPoints !== undefined) baseFp.navigator.maxTouchPoints = rawNav.maxTouchPoints
+      if (rawNav.touchSupport !== undefined) baseFp.navigator.touchSupport = rawNav.touchSupport
+      if (rawNav.deviceModel) baseNav.deviceModel = rawNav.deviceModel
+      if (rawNav.deviceModelCode) baseNav.deviceModelCode = rawNav.deviceModelCode
+      if (rawNav.deviceBrand) baseNav.deviceBrand = rawNav.deviceBrand
+      if (rawNav.androidVersion) baseNav.androidVersion = rawNav.androidVersion
+      if (rawNav.iosVersion) baseNav.iosVersion = rawNav.iosVersion
+      if (rawNav.osVersion) baseNav.osVersion = rawNav.osVersion
     }
     if (raw.screen) {
       if (raw.screen.width) baseFp.screen.width = raw.screen.width
@@ -776,6 +869,7 @@ function normalizeFingerprint(
       if (raw.screen.availWidth) baseFp.screen.availWidth = raw.screen.availWidth
       if (raw.screen.availHeight) baseFp.screen.availHeight = raw.screen.availHeight
       if (raw.screen.devicePixelRatio) baseFp.screen.devicePixelRatio = raw.screen.devicePixelRatio
+      if (raw.screen.orientation) baseFp.screen.orientation = raw.screen.orientation
     }
     if (raw.webgl) {
       if (raw.webgl.unmaskedVendor) baseFp.webgl.unmaskedVendor = raw.webgl.unmaskedVendor
@@ -797,11 +891,31 @@ function normalizeFingerprint(
   if (profile) {
     if (profile.hwConcurrency) baseFp.navigator.hardwareConcurrency = profile.hwConcurrency
     if (profile.deviceMemory) baseFp.navigator.deviceMemory = profile.deviceMemory
-    if (profile.screenWidth) baseFp.screen.width = profile.screenWidth
-    if (profile.screenHeight) baseFp.screen.height = profile.screenHeight
+    if (profile.screenWidth) {
+      baseFp.screen.width = profile.screenWidth
+      if (!raw?.screen?.availWidth) baseFp.screen.availWidth = profile.screenWidth
+    }
+    if (profile.screenHeight) {
+      baseFp.screen.height = profile.screenHeight
+      if (!raw?.screen?.availHeight) baseFp.screen.availHeight = profile.screenHeight
+    }
     if (profile.userAgent) baseFp.navigator.userAgent = profile.userAgent
-    if (profile.language) baseFp.locale.language = profile.language
+    if (profile.language) {
+      baseFp.locale.language = profile.language
+      if (!baseFp.locale.languages || baseFp.locale.languages.length === 0) {
+        const primary = profile.language.split('-')[0]
+        baseFp.locale.languages = primary && primary !== profile.language ? [profile.language, primary] : [profile.language]
+      }
+      baseFp.navigator.languages = baseFp.locale.languages
+    }
     if (profile.timezone) baseFp.timezone.timezone = profile.timezone
+  }
+
+  // Attach authoritative osType & profileId so CDP emulation and JS injection never lose OS identity
+  ;(baseFp as any).osType = targetOs
+  ;(baseFp.navigator as any).osType = targetOs
+  if (profile?.id) {
+    ;(baseFp as any).profileId = profile.id
   }
 
   // 4. Enforce strict device/OS coherence to prevent host hardware leaks
@@ -810,11 +924,13 @@ function normalizeFingerprint(
     baseFp.navigator.platform = 'Linux armv8l'
     baseFp.navigator.maxTouchPoints = 5
     baseFp.navigator.touchSupport = true
+    baseFp.screen.orientation = baseFp.screen.width > baseFp.screen.height ? 'landscape-primary' : 'portrait-primary'
     if (baseFp.navigator.hardwareConcurrency > 8) baseFp.navigator.hardwareConcurrency = 8
   } else if (family === 'ios') {
     baseFp.navigator.platform = 'iPhone'
     baseFp.navigator.maxTouchPoints = 5
     baseFp.navigator.touchSupport = true
+    baseFp.screen.orientation = baseFp.screen.width > baseFp.screen.height ? 'landscape-primary' : 'portrait-primary'
     if (baseFp.navigator.hardwareConcurrency > 8) baseFp.navigator.hardwareConcurrency = 6
     if (baseFp.navigator.deviceMemory > 8) baseFp.navigator.deviceMemory = 8
   }
@@ -1095,40 +1211,40 @@ export async function launchBrowser(
       }
     }
 
-    // ── Install AntiProfiles Runtime Isolation Extension ──
+    // ── Install AntiProfiles Runtime Isolation Extension (Defense-in-Depth Layer) ──
     const extDir = installChromiumRuntimeExtension(userDataDir, fingerprint, {
       id: profile.id,
       name: profile.name,
       browserVersion: effectiveBrowserVer
     })
 
-    // ── Native Google-Compliant Desktop Chromium Launch ──
+    // ── Allocate Dedicated Local CDP Port for Engine-Level OS/Device Emulation ──
+    const debugPort = await getFreePort()
+
+    // ── Enterprise Chromium Launch (No --enable-automation, Full CDP + MV3 Isolation) ──
     const finalArgs: string[] = [
       `--user-data-dir=${userDataDir}`,
       '--profile-directory=Default',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--window-size=1280,800',
-      '--window-position=100,60',
-      '--disable-features=ProfilePickerOnStartup',
+      `--remote-debugging-port=${debugPort}`,
+      '--remote-allow-origins=*',
       ...args.filter(a => !a.startsWith('--user-data-dir=') && !a.startsWith('--profile-directory='))
     ]
 
     if (extDir && fs.existsSync(extDir)) {
+      finalArgs.push('--enable-unsafe-extension-debugging')
       finalArgs.push(`--load-extension=${extDir}`)
       finalArgs.push(`--disable-extensions-except=${extDir}`)
     }
 
-    if (startUrls.length > 0) {
-      finalArgs.push(...startUrls)
-    }
+    // Start on about:blank so CDP OS/Device/Client-Hints emulation attaches BEFORE any website loads
+    finalArgs.push('about:blank')
 
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       ...(effectiveTz ? { TZ: effectiveTz } : {})
     }
 
-    logger.info('browser', `[ChromiumLaunch] Spawning native Chromium process: ${executablePath} with user-data-dir: ${userDataDir}`)
+    logger.info('browser', `[ChromiumLaunch] Spawning enterprise Chromium process: ${executablePath} (CDP port: ${debugPort}, OS: ${profile.osType || 'windows-10'})`)
     const child = spawn(executablePath, finalArgs, {
       detached: process.platform !== 'win32',
       stdio: 'ignore',
@@ -1136,8 +1252,36 @@ export async function launchBrowser(
     })
     const pid = child.pid || 0
 
-    logger.info('browser', `[ChromiumLaunch] Native Chromium started for "${profile.name}" (PID: ${pid})`)
-    return { browser: null as any, pid, wsEndpoint: '', childProcess: child }
+    // Connect Puppeteer via CDP and apply full OS, Device, Mobile Viewport, Client Hints, Hardware & Timezone emulation
+    let browser: Browser | null = null
+    let wsEndpoint = ''
+    try {
+      wsEndpoint = await waitForDebuggerReady(debugPort, 12000)
+      browser = await puppeteer.connect({
+        browserWSEndpoint: wsEndpoint,
+        defaultViewport: null
+      })
+
+      await setupBrowserInjection(browser, fingerprint)
+      logger.info('browser', `[ChromiumLaunch] CDP OS/Device fingerprint emulation active for "${profile.name}" (OS: ${profile.osType}, Platform: ${fingerprint.navigator?.platform}, Screen: ${fingerprint.screen?.width}x${fingerprint.screen?.height})`)
+
+      // Navigate initial tab (and any extra start URLs) AFTER CDP overrides are armed
+      if (startUrls.length > 0) {
+        const existingPages = await browser.pages()
+        const firstPage = existingPages[0] || await browser.newPage()
+        firstPage.goto(startUrls[0], { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+
+        for (let i = 1; i < startUrls.length; i++) {
+          const extraPage = await browser.newPage()
+          extraPage.goto(startUrls[i], { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+        }
+      }
+    } catch (cdpErr: any) {
+      logger.warn('browser', `[ChromiumLaunch] CDP attach warning for "${profile.name}": ${cdpErr.message}. Extension + CLI isolation remains active.`)
+    }
+
+    logger.info('browser', `[ChromiumLaunch] Chromium started for "${profile.name}" (PID: ${pid})`)
+    return { browser: browser as any, pid, wsEndpoint, childProcess: child }
   } catch (err: any) {
     logger.error('browser', `Failed to launch browser for "${profile.name}": ${err.message}`)
     throw new Error(`Browser failed to launch: ${err.message}`)

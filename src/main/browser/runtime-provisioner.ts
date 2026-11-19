@@ -131,8 +131,10 @@ export function getChromiumArtifactInfo(): { downloadUrl: string; fileName: stri
 
   if (p === 'darwin') {
     const bucket = isArm ? 'Mac_Arm' : 'Mac'
+    // Snapshot revisions are bucket-specific; 1681655 only exists in Mac_Arm, not Mac (x64)
+    const fallbackRevision = isArm ? '1681655' : '1747939'
     const fileName = 'chrome-mac.zip'
-    const downloadUrl = `https://commondatastorage.googleapis.com/chromium-browser-snapshots/${bucket}/1681655/${fileName}`
+    const downloadUrl = `https://commondatastorage.googleapis.com/chromium-browser-snapshots/${bucket}/${fallbackRevision}/${fileName}`
     const executableRelativePath = path.join('chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
     return { downloadUrl, fileName, executableRelativePath }
   }
@@ -588,6 +590,49 @@ async function extractPackage(archivePath: string, targetDir: string, isFirefoxD
 }
 
 /**
+ * Resolve the latest available Chromium snapshot URL for the target bucket via LAST_CHANGE,
+ * falling back to the known-good URL if the lookup fails.
+ */
+function resolveLatestChromiumUrl(fallbackUrl: string, fileName: string, signal?: AbortSignal): Promise<string> {
+  const match = fallbackUrl.match(/chromium-browser-snapshots\/([^/]+)\//)
+  if (!match) return Promise.resolve(fallbackUrl)
+
+  const bucket = match[1]
+  const lastChangeUrl = `https://commondatastorage.googleapis.com/chromium-browser-snapshots/${bucket}/LAST_CHANGE`
+
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve(fallbackUrl)
+
+    const req = https.get(lastChangeUrl, {
+      headers: { 'User-Agent': 'AntiProfiles-Runtime-Manager/2.0' }
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume()
+        return resolve(fallbackUrl)
+      }
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', (chunk) => { body += chunk })
+      res.on('end', () => {
+        const rev = body.trim()
+        if (/^\d+$/.test(rev)) {
+          resolve(`https://commondatastorage.googleapis.com/chromium-browser-snapshots/${bucket}/${rev}/${fileName}`)
+        } else {
+          resolve(fallbackUrl)
+        }
+      })
+      res.on('error', () => resolve(fallbackUrl))
+    })
+
+    req.on('error', () => resolve(fallbackUrl))
+    req.setTimeout(10000, () => {
+      req.destroy()
+      resolve(fallbackUrl)
+    })
+  })
+}
+
+/**
  * Main entry point: Automatically provision, download, verify and return the managed runtime executable.
  */
 export async function ensureBrowserRuntime(engine: BrowserEngine, profileId?: string): Promise<string> {
@@ -648,9 +693,12 @@ export async function ensureBrowserRuntime(engine: BrowserEngine, profileId?: st
 
   try {
     // 3. Download Archive with Live Progress
-    logger.info('browser', `[RuntimeProvisioner] Downloading ${engineName} from: ${artifactInfo.downloadUrl}`)
+    const downloadUrl = isChromium
+      ? await resolveLatestChromiumUrl(artifactInfo.downloadUrl, artifactInfo.fileName, abortCtrl.signal)
+      : artifactInfo.downloadUrl
+    logger.info('browser', `[RuntimeProvisioner] Downloading ${engineName} from: ${downloadUrl}`)
     await downloadArchiveWithProgress(
-      artifactInfo.downloadUrl,
+      downloadUrl,
       archivePath,
       (prog) => {
         const speedStr = formatSpeed(prog.speedBytesPerSec)

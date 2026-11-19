@@ -180,19 +180,25 @@ export class DeviceConsistencyValidator {
         defaultAppVersion = isFirefox ? '5.0 (X11)' : `5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVer} Safari/537.36`
         break
 
-      case 'android':
+      case 'android': {
         architecture = 'arm64'
         mobile = true
         touch = true
         platformString = 'Linux armv8l'
         clientHintsPlatform = 'Android'
-        clientHintsPlatformVersion = '14.0.0'
+        const uaAndroidMatch = (params.userAgent || '').match(/Android\s+(\d+(?:\.\d+)?)/i)
+        const androidMajor = uaAndroidMatch ? uaAndroidMatch[1] : '14'
+        const verParts = androidMajor.split('.')
+        clientHintsPlatformVersion = `${verParts[0]}.${verParts[1] || '0'}.${verParts[2] || '0'}`
         maxTouchPoints = 5
-        model = params.deviceModel || 'SM-S928B'
+        const uaModelMatch = (params.userAgent || '').match(/Android\s+[\d.]+;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?\)/i)
+        const extractedModel = uaModelMatch && uaModelMatch[1] && uaModelMatch[1].trim() !== 'K' ? uaModelMatch[1].trim() : ''
+        model = params.deviceModel || extractedModel || 'SM-S928B'
         bitness = '64'
-        defaultUA = `Mozilla/5.0 (Linux; Android 14; ${model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVer} Mobile Safari/537.36`
-        defaultAppVersion = `5.0 (Linux; Android 14; ${model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVer} Mobile Safari/537.36`
+        defaultUA = `Mozilla/5.0 (Linux; Android ${verParts[0]}; ${model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVer} Mobile Safari/537.36`
+        defaultAppVersion = `5.0 (Linux; Android ${verParts[0]}; ${model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVer} Mobile Safari/537.36`
         break
+      }
 
       case 'ios':
         architecture = 'arm64'

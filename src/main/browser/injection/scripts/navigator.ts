@@ -21,6 +21,43 @@ export function buildNavigatorScript(
     ? (isIos ? 'iOS' : 'Android')
     : (isWin ? 'Windows' : isMac ? 'macOS' : 'Linux')
 
+  // Extract accurate device model for mobile Client Hints
+  const uaModelMatch = (nav.userAgent || '').match(/Android\s+[\d.]+;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?\)/i)
+  const resolvedModel = isMobile
+    ? ((nav as any).deviceModelCode || (nav as any).deviceModel || (uaModelMatch && uaModelMatch[1] && uaModelMatch[1] !== 'K' ? uaModelMatch[1].trim() : '') || (isIos ? 'iPhone' : 'SM-S928B'))
+    : ''
+
+  // Extract accurate OS platformVersion for Client Hints
+  const uaAndroidVerMatch = (nav.userAgent || '').match(/Android\s+(\d+(?:\.\d+)?)/i)
+  const rawAndroidVer = (nav as any).androidVersion || (uaAndroidVerMatch ? uaAndroidVerMatch[1] : '')
+  const resolvedPlatformVersion = (() => {
+    if (clientPlatform === 'Android') {
+      if (rawAndroidVer) {
+        const parts = String(rawAndroidVer).split('.')
+        return `${parts[0]}.${parts[1] || '0'}.${parts[2] || '0'}`
+      }
+      return '14.0.0'
+    }
+    if (clientPlatform === 'Windows') {
+      return (nav as any).osType === 'windows-10' ? '10.0.0' : '15.0.0'
+    }
+    if (clientPlatform === 'macOS') return '14.5.0'
+    if (clientPlatform === 'iOS') return '18.0.0'
+    return '6.5.0'
+  })()
+
+  const resolvedChArch = (clientPlatform === 'Android' || (nav.cpuArchitecture || '').toLowerCase().includes('arm') || (nav as any).osType === 'macos-arm')
+    ? 'arm'
+    : 'x86'
+
+  const resolvedOscpu = isWin
+    ? 'Windows NT 10.0; Win64; x64'
+    : isMac
+      ? 'Intel Mac OS X 10.15'
+      : isMobile
+        ? (isIos ? 'iPhone' : 'Linux armv8l')
+        : 'Linux x86_64'
+
   return `
 // ═══ Navigator Override & Environment Integrity ═══
 (function() {
@@ -31,7 +68,7 @@ export function buildNavigatorScript(
 
   // 1. Prototype Property Traps
   const protoOverrides = {
-    platform: ${JSON.stringify(nav.platform || (isIos ? 'iPhone' : isWin ? 'Win32' : isMac ? 'MacIntel' : 'Linux x86_64'))},
+    platform: ${JSON.stringify(nav.platform || (isIos ? 'iPhone' : isWin ? 'Win32' : isMac ? 'MacIntel' : isMobile ? 'Linux armv8l' : 'Linux x86_64'))},
     vendor: ${JSON.stringify(nav.vendor || (isIos ? 'Apple Computer, Inc.' : isFirefox ? '' : 'Google Inc.'))},
     vendorSub: ${JSON.stringify(nav.vendorSub || '')},
     product: ${JSON.stringify(nav.product || 'Gecko')},
@@ -41,7 +78,8 @@ export function buildNavigatorScript(
     appVersion: ${JSON.stringify(nav.appVersion || (isFirefox ? '5.0 (Windows)' : '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'))},
     userAgent: ${JSON.stringify(nav.userAgent || '')},
     hardwareConcurrency: ${nav.hardwareConcurrency || 8},
-    deviceMemory: ${nav.deviceMemory || 8},
+    ${(!isFirefox && !isIos) ? `deviceMemory: ${Math.min(nav.deviceMemory || 8, 8)},` : ''}
+    ${isFirefox ? `oscpu: ${JSON.stringify(resolvedOscpu)},` : ''}
     maxTouchPoints: ${nav.maxTouchPoints ?? (isMobile ? 5 : 0)},
     doNotTrack: ${JSON.stringify(nav.doNotTrack || null)},
     webdriver: false,
@@ -98,10 +136,10 @@ export function buildNavigatorScript(
       delete window.chrome;
     }
     if ('userAgentData' in Navigator.prototype) {
-      delete (Navigator.prototype as any).userAgentData;
+      delete Navigator.prototype.userAgentData;
     }
     if (typeof navigator !== 'undefined' && 'userAgentData' in navigator) {
-      try { delete (navigator as any).userAgentData; } catch(e) {}
+      try { delete navigator.userAgentData; } catch(e) {}
     }
   } catch(e) {}
   ` : `
@@ -125,7 +163,7 @@ export function buildNavigatorScript(
           };
         }
       } else if (window.chrome && window.chrome.app) {
-        try { delete (window.chrome as any).app; } catch(e) {}
+        try { delete window.chrome.app; } catch(e) {}
       }
 
       // Chrome Runtime Object
@@ -184,10 +222,10 @@ export function buildNavigatorScript(
           brands: brandsList,
           mobile: ${isMobile ? 'true' : 'false'},
           platform: ${JSON.stringify(clientPlatform)},
-          architecture: ${JSON.stringify(clientPlatform === 'Android' ? 'arm' : (nav.cpuArchitecture || 'x86'))},
+          architecture: ${JSON.stringify(resolvedChArch)},
           bitness: '64',
-          model: ${JSON.stringify(isMobile ? ((nav as any).deviceModelCode || (nav as any).deviceModel || 'SM-S928B') : '')},
-          platformVersion: ${JSON.stringify(clientPlatform === 'Windows' ? '15.0.0' : clientPlatform === 'macOS' ? '14.5.0' : clientPlatform === 'Android' ? '14.0.0' : '6.5.0')},
+          model: ${JSON.stringify(resolvedModel)},
+          platformVersion: ${JSON.stringify(resolvedPlatformVersion)},
           fullVersionList: fullVersionList,
           uaFullVersion: ${JSON.stringify(nav.browserVersion || '131.0.0.0')}
         });
