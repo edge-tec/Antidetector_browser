@@ -13,6 +13,19 @@ import https from 'https'
 import type { CryptoNetworkKey } from './network-registry'
 
 export const ERC20_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+export const EXPECTED_EVM_MAINNET_CHAIN_IDS: Record<'ethereum' | 'bsc' | 'polygon', number> = {
+  ethereum: 1,
+  bsc: 56,
+  polygon: 137
+}
+
+export function assertExpectedEvmChainId(network: 'ethereum' | 'bsc' | 'polygon', chainIdHex: string): void {
+  const actual = parseInt(chainIdHex, 16)
+  const expected = EXPECTED_EVM_MAINNET_CHAIN_IDS[network]
+  if (!Number.isFinite(actual) || actual !== expected) {
+    throw new Error(`RPC chainId mismatch for ${network}: expected ${expected}, RPC returned ${chainIdHex} (${actual}). Mainnet/testnet cross-chain spoofing blocked.`)
+  }
+}
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
 /**
@@ -177,11 +190,13 @@ export class BlockchainRpcClient {
 
     if (network === 'ethereum' || network === 'bsc' || network === 'polygon') {
       const { result, rpcUrl } = await callWithFallback(primaryRpcUrl, fallbackRpcUrl, async (url) => {
-        const [txRes, rcptRes, tipRes] = await Promise.all([
+        const [chainRes, txRes, rcptRes, tipRes] = await Promise.all([
+          httpJsonRequest(url, 'POST', { jsonrpc: '2.0', id: 0, method: 'eth_chainId', params: [] }),
           httpJsonRequest(url, 'POST', { jsonrpc: '2.0', id: 1, method: 'eth_getTransactionByHash', params: [txHash] }),
           httpJsonRequest(url, 'POST', { jsonrpc: '2.0', id: 2, method: 'eth_getTransactionReceipt', params: [txHash] }),
           httpJsonRequest(url, 'POST', { jsonrpc: '2.0', id: 3, method: 'eth_blockNumber', params: [] })
         ])
+        assertExpectedEvmChainId(network, String(chainRes?.result || '0x0'))
         return { tx: txRes?.result, receipt: rcptRes?.result, tipHex: tipRes?.result }
       })
 

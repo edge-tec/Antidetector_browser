@@ -4,7 +4,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import * as migration014 from '../../src/main/database/migrations/014_inhouse_crypto_gateway'
-import { hex20ToTronBase58, parseTronTrc20TransferData } from '../../src/main/crypto/rpc-client.service'
+import { hex20ToTronBase58, parseTronTrc20TransferData, assertExpectedEvmChainId } from '../../src/main/crypto/rpc-client.service'
 import { PaymentVerificationService, InvoiceForVerification } from '../../src/main/crypto/payment-verification.service'
 import { assertAdminCryptoSession } from '../../src/main/ipc/crypto.ipc'
 
@@ -143,6 +143,16 @@ describe('Phase 2 — Independent Crypto Gateway Security Audit & Attack Simulat
     )
     expect(mempool.shouldCredit).toBe(false)
     expect(mempool.nextStatus).toBe('detected')
+  })
+
+  it('enforces exact EVM eth_chainId to prevent mainnet/testnet cross-chain RPC spoofing', () => {
+    expect(() => assertExpectedEvmChainId('ethereum', '0x1')).not.toThrow()
+    expect(() => assertExpectedEvmChainId('bsc', '0x38')).not.toThrow()
+    expect(() => assertExpectedEvmChainId('polygon', '0x89')).not.toThrow()
+    // Sepolia (0xaa36a7) or BSC (0x38) returned for Ethereum must be rejected
+    expect(() => assertExpectedEvmChainId('ethereum', '0xaa36a7')).toThrow(/chainId mismatch/i)
+    expect(() => assertExpectedEvmChainId('ethereum', '0x38')).toThrow(/chainId mismatch/i)
+    expect(() => assertExpectedEvmChainId('bsc', '0x1')).toThrow(/chainId mismatch/i)
   })
 
   it('blocks unauthorized crypto admin IPC calls without valid admin session token', () => {
