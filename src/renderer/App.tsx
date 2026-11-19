@@ -25,6 +25,14 @@ import { ReferralDashboard } from './pages/ReferralDashboard'
 import { BrowserRuntimeManager } from './components/BrowserRuntimeManager'
 import { RuntimeProvisioningModal, ProvisioningProgressData } from './components/RuntimeProvisioningModal'
 import { ProxyInfoCard } from './components/ProxyInfoCard'
+import { SynchronizerPage } from './pages/enterprise/SynchronizerPage'
+import { ExtensionCenterPage } from './pages/enterprise/ExtensionCenterPage'
+import { RpaBuilderPage } from './pages/enterprise/RpaBuilderPage'
+import { TeamWorkspacePage } from './pages/enterprise/TeamWorkspacePage'
+import { TrashPage } from './pages/enterprise/TrashPage'
+import { CloudSyncPage } from './pages/enterprise/CloudSyncPage'
+import { CookieManagerPage } from './pages/enterprise/CookieManagerPage'
+import { enterpriseService } from './services/enterpriseService'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
 import defaultChromeImg from './assets/antiprofiles-chrome.png'
@@ -135,11 +143,37 @@ function ConfirmDialog({ state, onCancel }: { state: ConfirmState; onCancel: () 
 function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onNavigate: (page: Page) => void; showToast: (type: ToastItem['type'], message: string) => void; brandingConfig?: any; proxies?: ProxyDisplay[] }) {
   const { sessionToken } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [enterpriseStats, setEnterpriseStats] = useState<{
+    installedKernels: number
+    extensionsCount: number
+    workflowsCount: number
+    trashCount: number
+    cloudProvider: string
+    syncActive: boolean
+  }>({ installedKernels: 0, extensionsCount: 0, workflowsCount: 0, trashCount: 0, cloudProvider: 'Local Vault', syncActive: false })
   const [loading, setLoading] = useState(true)
 
   const loadStats = useCallback(async () => {
     const result = await window.api.getDashboardStats()
     if (result.success && result.data) setStats(result.data)
+    try {
+      const [kernels, exts, wfs, trash, cloud, sync] = await Promise.all([
+        enterpriseService.listKernels().catch(() => []),
+        enterpriseService.listExtensions().catch(() => []),
+        enterpriseService.listWorkflows().catch(() => []),
+        enterpriseService.listTrash().catch(() => []),
+        enterpriseService.getCloudSyncStatus().catch(() => ({ provider: 'local-vault', s3Configured: false })),
+        enterpriseService.getSyncStatus().catch(() => ({ active: false }))
+      ])
+      setEnterpriseStats({
+        installedKernels: kernels.filter((k) => k.installed).length,
+        extensionsCount: exts.length,
+        workflowsCount: wfs.length,
+        trashCount: trash.length,
+        cloudProvider: cloud.s3Configured ? 'S3 / R2' : 'Local Vault',
+        syncActive: !!sync.active
+      })
+    } catch {}
     setLoading(false)
   }, [])
 
@@ -186,6 +220,25 @@ function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onN
           <div className="stat-card-icon" style={{ background: 'var(--color-warning-subtle)', color: 'var(--color-warning)' }}>🔒</div>
           <div className="stat-card-value">{stats?.totalProxies ?? 0}</div>
           <div className="stat-card-label">Proxies</div>
+        </div>
+      </div>
+
+      <div className="grid-stats" style={{ marginTop: 14 }}>
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('extensions')}>
+          <div className="stat-card-value">{enterpriseStats.extensionsCount}</div>
+          <div className="stat-card-label">🧩 Managed Extensions</div>
+        </div>
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('rpa')}>
+          <div className="stat-card-value">{enterpriseStats.workflowsCount}</div>
+          <div className="stat-card-label">🤖 RPA Workflows</div>
+        </div>
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('synchronizer')}>
+          <div className="stat-card-value">{enterpriseStats.syncActive ? 'ACTIVE' : 'READY'}</div>
+          <div className="stat-card-label">🪟 Window Synchronizer</div>
+        </div>
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('cloud-sync')}>
+          <div className="stat-card-value">{enterpriseStats.cloudProvider}</div>
+          <div className="stat-card-label">☁️ E2E Cloud Sync • 🗑️ {enterpriseStats.trashCount} in Trash</div>
         </div>
       </div>
 
@@ -3147,8 +3200,15 @@ function AppContent() {
     { page: 'profiles', icon: Icons.profiles, label: 'Profiles', section: 'MANAGE' },
     { page: 'groups', icon: Icons.groups, label: 'Groups' },
     { page: 'proxies', icon: Icons.proxies, label: 'Proxies' },
-    { page: 'automation', icon: Icons.automation, label: 'Automation', section: 'TOOLS' },
-    { page: 'settings', icon: Icons.settings, label: 'Settings' },
+    { page: 'automation', icon: Icons.automation, label: 'API & Automation', section: 'TOOLS' },
+    { page: 'synchronizer', icon: <span style={{ fontSize: 15 }}>🪟</span>, label: 'Synchronizer', section: 'ENTERPRISE' },
+    { page: 'extensions', icon: <span style={{ fontSize: 15 }}>🧩</span>, label: 'Extension Center' },
+    { page: 'rpa', icon: <span style={{ fontSize: 15 }}>🤖</span>, label: 'RPA Builder' },
+    { page: 'cookies', icon: <span style={{ fontSize: 15 }}>🍪</span>, label: 'Cookie Manager' },
+    { page: 'cloud-sync', icon: <span style={{ fontSize: 15 }}>☁️</span>, label: 'Cloud Sync' },
+    { page: 'team', icon: <span style={{ fontSize: 15 }}>👥</span>, label: 'Team Workspace' },
+    { page: 'trash', icon: Icons.trash, label: 'Trash' },
+    { page: 'settings', icon: Icons.settings, label: 'Settings', section: 'SYSTEM' },
     { page: 'logs', icon: Icons.logs, label: 'Logs' },
     ...(isAdmin ? [
       { page: 'launch_url' as any, icon: <span style={{ fontSize: 16 }}>🌐</span>, label: 'Global Launch URL', section: 'ADMIN' },
@@ -3421,6 +3481,13 @@ function AppContent() {
               {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
               {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
+              {currentPage === 'synchronizer' && <SynchronizerPage showToast={showToast} />}
+              {currentPage === 'extensions' && <ExtensionCenterPage showToast={showToast} />}
+              {currentPage === 'rpa' && <RpaBuilderPage showToast={showToast} />}
+              {currentPage === 'cookies' && <CookieManagerPage showToast={showToast} />}
+              {currentPage === 'cloud-sync' && <CloudSyncPage showToast={showToast} />}
+              {currentPage === 'team' && <TeamWorkspacePage showToast={showToast} />}
+              {currentPage === 'trash' && <TrashPage showToast={showToast} />}
               {currentPage === 'settings' && (
                 <SettingsPage
                   theme={theme}

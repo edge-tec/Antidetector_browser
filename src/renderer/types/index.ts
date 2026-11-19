@@ -127,7 +127,24 @@ export interface IpcResult<T = any> {
   error?: string
 }
 
-export type Page = 'dashboard' | 'profiles' | 'groups' | 'proxies' | 'automation' | 'settings' | 'logs' | 'support' | 'referral' | 'affiliate'
+export type Page =
+  | 'dashboard'
+  | 'profiles'
+  | 'groups'
+  | 'proxies'
+  | 'automation'
+  | 'synchronizer'
+  | 'extensions'
+  | 'rpa'
+  | 'cookies'
+  | 'cloud-sync'
+  | 'team'
+  | 'trash'
+  | 'settings'
+  | 'logs'
+  | 'support'
+  | 'referral'
+  | 'affiliate'
 
 export type ConversationStatus = 'open' | 'pending' | 'waiting_user' | 'waiting_support' | 'closed'
 export type ConversationPriority = 'low' | 'normal' | 'high' | 'urgent'
