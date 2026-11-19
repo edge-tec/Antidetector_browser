@@ -26,6 +26,7 @@ import { getGlobalLaunchUrlConfig } from './launch-url-manager'
 import { ResolvedFirefoxProfile, resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { installFirefoxRuntimeExtension } from './firefox/firefox-extension-builder'
 import { installChromiumRuntimeExtension } from './chromium/chromium-extension-builder'
+import { ExtensionManager } from './extension-manager'
 import { BrowserIconManager } from './branding/browser-icon-manager'
 
 export interface LaunchResult {
@@ -1230,10 +1231,19 @@ export async function launchBrowser(
       ...args.filter(a => !a.startsWith('--user-data-dir=') && !a.startsWith('--profile-directory='))
     ]
 
+    const loadedExtensionPaths: string[] = []
     if (extDir && fs.existsSync(extDir)) {
+      loadedExtensionPaths.push(extDir)
+    }
+    const userExtPaths = ExtensionManager.getActiveExtensionPathsForProfile(profile.id, profile.groupId)
+    for (const ep of userExtPaths) {
+      if (!loadedExtensionPaths.includes(ep)) loadedExtensionPaths.push(ep)
+    }
+    if (loadedExtensionPaths.length > 0) {
+      const joinedExtPaths = loadedExtensionPaths.join(',')
       finalArgs.push('--enable-unsafe-extension-debugging')
-      finalArgs.push(`--load-extension=${extDir}`)
-      finalArgs.push(`--disable-extensions-except=${extDir}`)
+      finalArgs.push(`--load-extension=${joinedExtPaths}`)
+      finalArgs.push(`--disable-extensions-except=${joinedExtPaths}`)
     }
 
     // Start on about:blank so CDP OS/Device/Client-Hints emulation attaches BEFORE any website loads

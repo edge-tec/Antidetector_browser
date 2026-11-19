@@ -10,6 +10,12 @@ import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { proxyRepo } from '../database/repositories/proxy.repo'
 import { profileManager } from '../browser/profile-manager'
 import { processTracker } from '../browser/process-tracker'
+import { multiKernelManager } from '../browser/multi-kernel-manager'
+import { RuntimeDiagnosticsService } from '../browser/runtime-diagnostics'
+import { TrashManager } from '../browser/trash-manager'
+import { CookieManager } from '../browser/cookie-manager'
+import { ProxyRotationManager } from '../network/proxy-rotation'
+import { rpaEngine } from './rpa-engine'
 import { logger } from '../logging/logger'
 
 let server: Server | null = null
@@ -268,6 +274,183 @@ export function startApiServer(port: number = 37100): void {
     } catch (err: any) {
       res.status(500).json({ error: err.message })
     }
+  })
+
+  // ── API v2: Trash & Soft-Delete Restore ──
+  app.post('/api/v2/profiles/:id/trash', async (req, res) => {
+    try {
+      const ok = await TrashManager.moveToTrash(req.params.id, 'api')
+      res.json({ success: ok })
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/v2/profiles/:id/restore', (req, res) => {
+    try {
+      const ok = TrashManager.restoreProfile(req.params.id)
+      res.json({ success: ok })
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  // ── API v2: Runtimes & Diagnostics ──
+  app.get('/api/v2/runtimes', (req, res) => {
+    const engine = req.query.engine as 'chromium' | 'firefox' | undefined
+    res.json({ runtimes: multiKernelManager.listRuntimes(engine) })
+  })
+
+  app.get('/api/v2/diagnostics', (_req, res) => {
+    res.json(RuntimeDiagnosticsService.getSystemDiagnostics())
+  })
+
+  app.get('/api/v2/profiles/:id/diagnostics', (req, res) => {
+    try {
+      res.json(RuntimeDiagnosticsService.getProfileDiagnostics(req.params.id))
+    } catch (err: any) {
+      res.status(404).json({ error: err.message })
+    }
+  })
+
+  // ── API v2: Restart Profile & Bulk Start/Stop ──
+  app.post('/api/v2/profiles/:id/restart', async (req, res) => {
+    try {
+      await profileManager.stopProfile(req.params.id)
+      const result = await profileManager.startProfile(req.params.id)
+      res.json({ success: true, ...result })
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/v2/bulk/start', async (req, res) => {
+    const ids: string[] = Array.isArray(req.body?.profileIds) ? req.body.profileIds : []
+    const results: Array<{ profileId: string; success: boolean; error?: string }> = []
+    for (const id of ids) {
+      try {
+        await profileManager.startProfile(id)
+        results.push({ profileId: id, success: true })
+      } catch (err: any) {
+        results.push({ profileId: id, success: false, error: err.message })
+      }
+    }
+    res.json({ results })
+  })
+
+  app.post('/api/v2/bulk/stop', async (req, res) => {
+    const ids: string[] = Array.isArray(req.body?.profileIds) ? req.body.profileIds : []
+    const results: Array<{ profileId: string; success: boolean; error?: string }> = []
+    for (const id of ids) {
+      try {
+        await profileManager.stopProfile(id)
+        results.push({ profileId: id, success: true })
+      } catch (err: any) {
+        results.push({ profileId: id, success: false, error: err.message })
+      }
+    }
+    res.json({ results })
+  })
+
+  // ── API v2: Proxy Rotation & Failover ──
+  app.post('/api/v2/proxies/:id/rotate', async (req, res) => {
+    try {
+      const result = await ProxyRotationManager.rotateProxy(req.params.id)
+      res.json(result)
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.put('/api/v2/proxies/:id/failover', (req, res) => {
+    try {
+      const ok = ProxyRotationManager.configureProxyEnterprise(req.params.id, {
+        rotationUrl: req.body?.rotationUrl,
+        failoverProxyId: req.body?.failoverProxyId,
+        proxyGroup: req.body?.proxyGroup
+      })
+      res.json({ success: ok })
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  // ── API v2: Cookies ──
+  app.get('/api/v2/profiles/:id/cookies', async (req, res) => {
+    try {
+      const cookies = await CookieManager.getCookies(req.params.id, req.query.domain as string | undefined)
+      res.json({ cookies })
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/v2/profiles/:id/cookies/import', async (req, res) => {
+    try {
+      const payload = typeof req.body?.cookies === 'string' ? req.body.cookies : JSON.stringify(req.body?.cookies || [])
+      const result = await CookieManager.importCookies(req.params.id, payload)
+      res.json(result)
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.delete('/api/v2/profiles/:id/cookies', async (req, res) => {
+    try {
+      await CookieManager.clearCookies(req.params.id)
+      res.json({ success: true })
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  // ── API v2: RPA Automation Workflows ──
+  app.get('/api/v2/workflows', (_req, res) => {
+    res.json({ workflows: rpaEngine.listWorkflows() })
+  })
+
+  app.post('/api/v2/workflows', (req, res) => {
+    try {
+      const wf = rpaEngine.createWorkflow(req.body)
+      res.status(201).json(wf)
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/v2/workflows/:id/execute', async (req, res) => {
+    try {
+      const profileId = req.body?.profileId
+      if (!profileId) {
+        res.status(400).json({ error: 'profileId is required' })
+        return
+      }
+      const exec = await rpaEngine.executeWorkflow(req.params.id, profileId)
+      res.json(exec)
+    } catch (err: any) {
+      res.status(400).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/v2/executions/:id/pause', (req, res) => {
+    res.json({ success: rpaEngine.pauseExecution(req.params.id) })
+  })
+
+  app.post('/api/v2/executions/:id/resume', (req, res) => {
+    res.json({ success: rpaEngine.resumeExecution(req.params.id) })
+  })
+
+  app.post('/api/v2/executions/:id/stop', (req, res) => {
+    res.json({ success: rpaEngine.stopExecution(req.params.id) })
+  })
+
+  app.get('/api/v2/executions/:id', (req, res) => {
+    const exec = rpaEngine.getExecution(req.params.id)
+    if (!exec) {
+      res.status(404).json({ error: 'Execution not found' })
+      return
+    }
+    res.json(exec)
   })
 
   // Error handler

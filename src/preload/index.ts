@@ -544,6 +544,77 @@ const api = {
   onAffiliateRealtimeUpdate: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('ui:affiliate-realtime-update', callback)
     return () => ipcRenderer.removeListener('ui:affiliate-realtime-update', callback)
+  },
+
+  // ── Enterprise Platform APIs (P0–P3) ──
+  enterprise: {
+    listKernels: (engine?: 'chromium' | 'firefox') => ipcRenderer.invoke('enterprise:kernels:list', engine),
+    installKernel: (releaseId: string) => ipcRenderer.invoke('enterprise:kernels:install', releaseId),
+    uninstallKernel: (releaseId: string) => ipcRenderer.invoke('enterprise:kernels:uninstall', releaseId),
+    cleanupKernelCache: () => ipcRenderer.invoke('enterprise:kernels:cleanup-cache'),
+    getSystemDiagnostics: () => ipcRenderer.invoke('enterprise:diagnostics:system'),
+    getProfileDiagnostics: (profileId: string) => ipcRenderer.invoke('enterprise:diagnostics:profile', profileId),
+
+    moveToTrash: (profileId: string, deletedBy?: string) => ipcRenderer.invoke('enterprise:trash:move', profileId, deletedBy),
+    listTrash: (userId?: string) => ipcRenderer.invoke('enterprise:trash:list', userId),
+    restoreFromTrash: (profileId: string) => ipcRenderer.invoke('enterprise:trash:restore', profileId),
+    bulkRestoreFromTrash: (profileIds: string[]) => ipcRenderer.invoke('enterprise:trash:bulk-restore', profileIds),
+    permanentDeleteFromTrash: (profileId: string) => ipcRenderer.invoke('enterprise:trash:permanent-delete', profileId),
+    purgeExpiredTrash: () => ipcRenderer.invoke('enterprise:trash:purge-expired'),
+
+    listExtensions: (search?: string) => ipcRenderer.invoke('enterprise:extensions:list', search),
+    uploadExtension: (packagePath: string, uploadedBy?: string) => ipcRenderer.invoke('enterprise:extensions:upload', packagePath, uploadedBy),
+    toggleExtension: (extensionId: string, enabled: boolean) => ipcRenderer.invoke('enterprise:extensions:toggle', extensionId, enabled),
+    removeExtension: (extensionId: string) => ipcRenderer.invoke('enterprise:extensions:remove', extensionId),
+    assignExtensionToProfile: (extensionId: string, profileId: string) => ipcRenderer.invoke('enterprise:extensions:assign-profile', extensionId, profileId),
+    assignExtensionToGroup: (extensionId: string, groupId: string) => ipcRenderer.invoke('enterprise:extensions:assign-group', extensionId, groupId),
+
+    getCookies: (profileId: string, domainFilter?: string) => ipcRenderer.invoke('enterprise:cookies:get', profileId, domainFilter),
+    importCookies: (profileId: string, rawPayload: string) => ipcRenderer.invoke('enterprise:cookies:import', profileId, rawPayload),
+    exportCookies: (profileId: string, domainFilter?: string) => ipcRenderer.invoke('enterprise:cookies:export', profileId, domainFilter),
+    deleteCookie: (profileId: string, name: string, domain: string) => ipcRenderer.invoke('enterprise:cookies:delete', profileId, name, domain),
+    clearCookies: (profileId: string) => ipcRenderer.invoke('enterprise:cookies:clear', profileId),
+
+    getSyncStatus: () => ipcRenderer.invoke('enterprise:sync:status'),
+    startSync: (masterProfileId: string, followerProfileIds: string[]) => ipcRenderer.invoke('enterprise:sync:start', masterProfileId, followerProfileIds),
+    stopSync: () => ipcRenderer.invoke('enterprise:sync:stop'),
+    excludeSyncWindow: (profileId: string, excluded: boolean) => ipcRenderer.invoke('enterprise:sync:exclude', profileId, excluded),
+    broadcastSyncAction: (action: any) => ipcRenderer.invoke('enterprise:sync:broadcast', action),
+    tileSyncWindows: (profileIds: string[], layout: string, screenBounds?: { width: number; height: number }) =>
+      ipcRenderer.invoke('enterprise:sync:tile', profileIds, layout, screenBounds),
+
+    listWorkflows: () => ipcRenderer.invoke('enterprise:rpa:list'),
+    createWorkflow: (input: any) => ipcRenderer.invoke('enterprise:rpa:create', input),
+    deleteWorkflow: (id: string) => ipcRenderer.invoke('enterprise:rpa:delete', id),
+    executeWorkflow: (workflowId: string, profileId: string) => ipcRenderer.invoke('enterprise:rpa:execute', workflowId, profileId),
+    pauseExecution: (executionId: string) => ipcRenderer.invoke('enterprise:rpa:pause', executionId),
+    resumeExecution: (executionId: string) => ipcRenderer.invoke('enterprise:rpa:resume', executionId),
+    stopExecution: (executionId: string) => ipcRenderer.invoke('enterprise:rpa:stop', executionId),
+    getExecution: (executionId: string) => ipcRenderer.invoke('enterprise:rpa:execution', executionId),
+
+    getCloudSyncStatus: () => ipcRenderer.invoke('enterprise:cloud:status'),
+    backupProfileCloud: (profileId: string, passphrase: string, createdBy?: string) =>
+      ipcRenderer.invoke('enterprise:cloud:backup', profileId, passphrase, createdBy),
+    listCloudBackups: (profileId: string) => ipcRenderer.invoke('enterprise:cloud:list', profileId),
+    restoreCloudBackup: (backupId: string, passphrase: string) => ipcRenderer.invoke('enterprise:cloud:restore', backupId, passphrase),
+
+    createTeam: (name: string, ownerId: string, ownerEmail: string) => ipcRenderer.invoke('enterprise:team:create', name, ownerId, ownerEmail),
+    listTeams: (userId: string) => ipcRenderer.invoke('enterprise:team:list', userId),
+    listTeamMembers: (teamId: string) => ipcRenderer.invoke('enterprise:team:members', teamId),
+    inviteTeamMember: (teamId: string, actorId: string, email: string, role: string) =>
+      ipcRenderer.invoke('enterprise:team:invite', teamId, actorId, email, role),
+    acceptTeamInvite: (token: string, userId: string, email: string) => ipcRenderer.invoke('enterprise:team:accept-invite', token, userId, email),
+    updateTeamMemberRole: (teamId: string, actorId: string, targetId: string, role: string) =>
+      ipcRenderer.invoke('enterprise:team:update-role', teamId, actorId, targetId, role),
+    removeTeamMember: (teamId: string, actorId: string, targetId: string) =>
+      ipcRenderer.invoke('enterprise:team:remove-member', teamId, actorId, targetId),
+    shareProfile: (teamId: string, actorId: string, profileId: string, opts: any) =>
+      ipcRenderer.invoke('enterprise:team:share-profile', teamId, actorId, profileId, opts),
+    getRolePermissions: (role: string) => ipcRenderer.invoke('enterprise:team:permissions', role),
+
+    configureProxyEnterprise: (proxyId: string, config: any) => ipcRenderer.invoke('enterprise:proxy:configure', proxyId, config),
+    rotateProxy: (proxyId: string) => ipcRenderer.invoke('enterprise:proxy:rotate', proxyId),
+    getProxyRotationHistory: (proxyId: string, limit?: number) => ipcRenderer.invoke('enterprise:proxy:rotation-history', proxyId, limit)
   }
 }
 

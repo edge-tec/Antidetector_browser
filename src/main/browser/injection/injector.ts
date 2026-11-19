@@ -17,6 +17,9 @@ import { buildNativeCloakerScript } from './scripts/native-cloaker'
 import { buildNavigatorScript } from './scripts/navigator'
 import { buildScreenScript } from './scripts/screen'
 import { buildWebGLScript } from './scripts/webgl'
+import { buildWebGPUScript } from './scripts/webgpu'
+import { buildSpeechSynthesisScript } from './scripts/speech'
+import { buildWorkerConsistencyScript } from './scripts/worker-consistency'
 import { buildCanvasScript } from './scripts/canvas'
 import { buildAudioScript } from './scripts/audio'
 import { buildClientRectsScript } from './scripts/client-rects'
@@ -48,6 +51,9 @@ export function buildInjectionScript(fingerprint: Fingerprint, browserType?: 'ch
     buildNavigatorScript(fingerprint.navigator, bType),
     buildScreenScript(fingerprint.screen),
     buildWebGLScript(fingerprint.webgl),
+    buildWebGPUScript(fingerprint.webgl, fingerprint.navigator, bType),
+    buildSpeechSynthesisScript(fingerprint.navigator, fingerprint.locale),
+    buildWorkerConsistencyScript(fingerprint.navigator, fingerprint.webgl),
     buildFontsScript(fingerprint.fonts),
     buildGeolocationScript(fingerprint.geolocation),
     buildTimezoneScript(fingerprint.timezone),
