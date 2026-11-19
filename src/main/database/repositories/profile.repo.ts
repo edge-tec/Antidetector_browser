@@ -18,7 +18,7 @@ import { validateConsistency } from '../../fingerprint/consistency'
 export class ProfileRepository {
   getAll(userId?: string, search?: string, groupId?: string, status?: string): Profile[] {
     const db = getDatabase()
-    let query = 'SELECT * FROM profiles WHERE 1=1'
+    let query = 'SELECT * FROM profiles WHERE deleted_at IS NULL'
     const params: any[] = []
 
     if (userId) {
@@ -317,14 +317,14 @@ export class ProfileRepository {
 
   getStats(): DashboardStats {
     const db = getDatabase()
-    const total = (db.prepare('SELECT COUNT(*) as count FROM profiles').get() as any).count
-    const running = (db.prepare("SELECT COUNT(*) as count FROM profiles WHERE status = 'running'").get() as any).count
+    const total = (db.prepare('SELECT COUNT(*) as count FROM profiles WHERE deleted_at IS NULL').get() as any).count
+    const running = (db.prepare("SELECT COUNT(*) as count FROM profiles WHERE deleted_at IS NULL AND status = 'running'").get() as any).count
     const stopped = total - running
     const totalProxies = (db.prepare('SELECT COUNT(*) as count FROM proxies').get() as any).count
     const totalGroups = (db.prepare('SELECT COUNT(*) as count FROM groups').get() as any).count
 
     const recentRows = db
-      .prepare('SELECT * FROM profiles ORDER BY last_used_at DESC NULLS LAST LIMIT 5')
+      .prepare('SELECT * FROM profiles WHERE deleted_at IS NULL ORDER BY last_used_at DESC NULLS LAST LIMIT 5')
       .all() as ProfileRow[]
 
     return {

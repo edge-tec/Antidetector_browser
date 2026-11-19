@@ -72,6 +72,24 @@ export function stripCrxHeader(buf: Buffer): Buffer {
 }
 
 /**
+ * Pre-validate ZIP entry paths BEFORE extraction to block Zip-Slip attacks.
+ */
+export function assertSafeZipEntryList(entries: string[]): void {
+  for (const raw of entries) {
+    const entry = raw.trim()
+    if (!entry) continue
+    if (
+      entry.startsWith('/') ||
+      entry.startsWith('\\') ||
+      /^[a-zA-Z]:/.test(entry) ||
+      entry.split(/[\\/]/).includes('..')
+    ) {
+      throw new Error(`Security rejection: unsafe archive entry path "${entry}" (Zip-Slip protection)`)
+    }
+  }
+}
+
+/**
  * Verify that every file inside an extracted directory resolves strictly within rootDir
  * (prevents Zip-Slip / symlink traversal attacks).
  */
@@ -169,6 +187,12 @@ export class ExtensionManager {
     try {
       const zipBuf = packagePath.toLowerCase().endsWith('.crx') ? stripCrxHeader(rawBuf) : rawBuf
       fs.writeFileSync(tempZip, zipBuf)
+
+      // Pre-inspect archive entries BEFORE extracting to block Zip-Slip
+      const listing = process.platform === 'win32'
+        ? execFileSync('tar', ['-tf', tempZip], { encoding: 'utf8', timeout: 30000 })
+        : execFileSync('unzip', ['-Z1', tempZip], { encoding: 'utf8', timeout: 30000 })
+      assertSafeZipEntryList(listing.split(/\r?\n/))
 
       if (process.platform === 'win32') {
         execFileSync('tar', ['-xf', tempZip, '-C', targetDir], { timeout: 60000 })

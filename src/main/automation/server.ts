@@ -111,7 +111,7 @@ export function startApiServer(port: number = 37100): void {
   }
 
   const app = express()
-  app.use(express.json())
+  app.use(express.json({ limit: '5mb' }))
   app.use(authMiddleware)
 
   // ── Health Check ──
@@ -326,6 +326,10 @@ export function startApiServer(port: number = 37100): void {
 
   app.post('/api/v2/bulk/start', async (req, res) => {
     const ids: string[] = Array.isArray(req.body?.profileIds) ? req.body.profileIds : []
+    if (ids.length === 0 || ids.length > 50) {
+      res.status(400).json({ error: 'profileIds must be an array of 1 to 50 profile IDs.' })
+      return
+    }
     const results: Array<{ profileId: string; success: boolean; error?: string }> = []
     for (const id of ids) {
       try {
@@ -340,6 +344,10 @@ export function startApiServer(port: number = 37100): void {
 
   app.post('/api/v2/bulk/stop', async (req, res) => {
     const ids: string[] = Array.isArray(req.body?.profileIds) ? req.body.profileIds : []
+    if (ids.length === 0 || ids.length > 50) {
+      res.status(400).json({ error: 'profileIds must be an array of 1 to 50 profile IDs.' })
+      return
+    }
     const results: Array<{ profileId: string; success: boolean; error?: string }> = []
     for (const id of ids) {
       try {

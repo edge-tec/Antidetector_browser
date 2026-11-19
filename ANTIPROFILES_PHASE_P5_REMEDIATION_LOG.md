@@ -1,0 +1,11 @@
+# AntiProfiles v2.0 — Phase P5 Remediation Log
+
+All defects below were independently discovered during the Phase P5 audit of commit `52a9e41`, remediated with minimal safe fixes, and locked down with automated regression tests in `tests/unit/enterprise-p5-hardening.test.ts`.
+
+| ID | Severity | Defect Discovered | Root Cause | Remediation Applied | Verification |
+| :---: | :---: | :--- | :--- | :--- | :--- |
+| **P5-01** | **HIGH** | Soft-deleted profiles in Trash still appeared in active `profileRepo.getAll()` and `getStats()` | `profile.repo.ts` queried `WHERE 1=1` without `deleted_at IS NULL` | Added `deleted_at IS NULL` filter to `getAll()` and `getStats()` in `src/main/database/repositories/profile.repo.ts` | Verified SQLite DDL & query filtering in `enterprise-p5-hardening.test.ts` |
+| **P5-02** | **HIGH** | SSRF vulnerability in `ProxyRotationManager.rotateProxy()` | Only checked `http://`/`https://` prefix without blocking loopback/private/metadata IPs | Added `assertSafeRotationUrl()` blocking `localhost`, `127.x`, `::1`, `169.254.x`, `10.x`, `172.16-31.x`, `192.168.x` | Verified 8 SSRF test vectors in `enterprise-p5-hardening.test.ts` |
+| **P5-03** | **HIGH** | Missing IPC sender origin validation on 53 `enterprise:*` IPC handlers | Registered via raw `ipcMain.handle` without `event.senderFrame` check | Added `secureHandle()` + `assertTrustedIpcSender()` in `src/main/ipc/enterprise.ipc.ts` | Verified trusted vs untrusted origins in `enterprise-p5-hardening.test.ts` |
+| **P5-04** | **MEDIUM** | Extension ZIP extraction checked Zip-Slip only *after* `unzip`/`tar` ran | No pre-extraction archive entry inspection | Added `assertSafeZipEntryList()` via `unzip -Z1` / `tar -tf` BEFORE extraction in `src/main/browser/extension-manager.ts` | Verified `../../etc/passwd`, `/etc/shadow`, `C:\...` rejection in `enterprise-p5-hardening.test.ts` |
+| **P5-05** | **MEDIUM** | Local API v2 lacked explicit JSON body size limit & bulk endpoint cap | Default `express.json()` and unbounded `profileIds` loop | Enforced `express.json({ limit: '5mb' })` and 1–50 profile cap on `/api/v2/bulk/start` and `/api/v2/bulk/stop` in `src/main/automation/server.ts` | Compiled & verified in `electron-vite build` |

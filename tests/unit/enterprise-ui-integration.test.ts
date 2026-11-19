@@ -38,7 +38,7 @@ describe('Phase P4 — Enterprise React UI & IPC Integration Verification', () =
     expect(invokedChannels.length).toBeGreaterThanOrEqual(40)
 
     for (const channel of invokedChannels) {
-      expect(ipcSrc).toContain(`ipcMain.handle('${channel}'`)
+      expect(ipcSrc).toMatch(new RegExp(`(?:ipcMain\\.handle|secureHandle)\\('${channel}'`))
     }
   })
 

@@ -19,6 +19,37 @@ export interface ProxyRotationResult {
   rotatedAt: string
 }
 
+/**
+ * Validate proxy rotation URL to prevent SSRF against localhost, cloud metadata,
+ * or private RFC1918 networks.
+ */
+export function assertSafeRotationUrl(rawUrl: string): URL {
+  let parsed: URL
+  try {
+    parsed = new URL(rawUrl)
+  } catch {
+    throw new Error('Invalid rotation URL format.')
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Rotation URL must use http:// or https:// protocol.')
+  }
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (
+    host === 'localhost' ||
+    host === '::1' ||
+    host === '0.0.0.0' ||
+    host.endsWith('.local') ||
+    host.startsWith('127.') ||
+    host.startsWith('10.') ||
+    host.startsWith('169.254.') ||
+    host.startsWith('192.168.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+  ) {
+    throw new Error(`Security rejection: rotation URL host "${host}" is a blocked private/loopback address (SSRF protection).`)
+  }
+  return parsed
+}
+
 export class ProxyRotationManager {
   static configureProxyEnterprise(
     proxyId: string,
@@ -60,9 +91,7 @@ export class ProxyRotationManager {
 
     const rotatedAt = new Date().toISOString()
     const urlStr = String(row.rotation_url)
-    if (!urlStr.startsWith('http://') && !urlStr.startsWith('https://')) {
-      throw new Error('Rotation URL must use http:// or https:// protocol.')
-    }
+    assertSafeRotationUrl(urlStr)
 
     try {
       const statusCode = await new Promise<number>((resolve, reject) => {
