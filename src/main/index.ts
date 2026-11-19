@@ -2,7 +2,7 @@
 // AntiProfiles — Main Process Entry Point
 // ──────────────────────────────────────────────
 
-import { app, BrowserWindow, shell, dialog } from 'electron'
+import { app, BrowserWindow, shell, dialog, session } from 'electron'
 import path from 'path'
 import { initDatabase, closeDatabase, getDatabase } from './database/connection'
 import { profileManager } from './browser/profile-manager'
@@ -72,7 +72,9 @@ function createWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webviewTag: false,
+      allowRunningInsecureContent: false
     }
   })
 
@@ -116,6 +118,14 @@ function createWindow(): void {
 // ── 4. App Lifecycle ──
 app.whenReady().then(async () => {
   logger.info('system', 'AntiProfiles starting...')
+
+  // Security: Deny unauthorized renderer permission requests (camera, mic, geo, notifications)
+  try {
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+      const allowed = permission === 'clipboard-read' || permission === 'clipboard-sanitized-write'
+      callback(allowed)
+    })
+  } catch {}
 
   // Initialize database
   try {

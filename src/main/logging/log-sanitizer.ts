@@ -9,8 +9,11 @@ export function sanitizeLogString(input: string): string {
   return input
     // Redact proxy/HTTP URLs containing user:pass@host
     .replace(/((?:https?|socks[45]?):\/\/)([^:\s/@]+):([^@\s/]+)@/gi, '$1***:***@')
-    // Redact Bearer tokens
+    // Redact Bearer tokens & AWS SigV4 signatures
     .replace(/(Bearer\s+)[A-Za-z0-9._\-+/=]{8,}/gi, '$1[REDACTED]')
+    .replace(/(AWS4-HMAC-SHA256\s+Credential=)[^\s,]+(.*?Signature=)[a-f0-9]+/gi, '$1[REDACTED]$2[REDACTED]')
+    // Redact Cookie / Set-Cookie / x-api-key HTTP headers
+    .replace(/((?:Set-)?Cookie|x-api-key)\s*:\s*[^\r\n]+/gi, '$1: [REDACTED]')
     // Redact key=value / JSON secrets (password, passphrase, secret, token, cookie)
     .replace(/("(?:password|passphrase|secret|secretAccessKey|token|apiToken|cookie|authorization)"\s*:\s*)"[^"]*"/gi, '$1"[REDACTED]"')
     .replace(/\b(password|passphrase|secret|token)=([^\s&;,]+)/gi, '$1=[REDACTED]')

@@ -44,7 +44,10 @@ export function signS3Request(params: {
   const payloadHash = sha256Hex(params.payload)
   const host = params.url.host
   const canonicalUri = params.url.pathname || '/'
-  const canonicalQuerystring = params.url.searchParams.toString()
+  // AWS SigV4 requires query parameters sorted alphabetically by key and RFC 3986 encoded
+  const sortedEntries = Array.from(params.url.searchParams.entries()).sort(([a], [b]) => a.localeCompare(b))
+  const rfc3986 = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+  const canonicalQuerystring = sortedEntries.map(([k, v]) => `${rfc3986(k)}=${rfc3986(v)}`).join('&')
 
   const canonicalHeaders =
     `host:${host}\n` +
