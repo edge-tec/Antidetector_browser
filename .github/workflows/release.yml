@@ -1,0 +1,85 @@
+name: AntiProfiles Production Release Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_channel:
+        description: 'Release channel (stable or beta)'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - beta
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: Test & Build Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx vitest run tests/unit/enterprise-p5-hardening.test.ts tests/unit/enterprise-ui-integration.test.ts tests/unit/enterprise-platform.test.ts tests/unit/enterprise-os-device-emulation.test.ts tests/unit/browser-consistency.test.ts tests/unit/runtime-provisioner.test.ts
+      - run: npm run build
+
+  package:
+    name: Package ${{ matrix.name }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS-arm64
+            os: macos-14
+            cmd: npm run package:mac:dmg:arm
+          - name: macOS-x64
+            os: macos-13
+            cmd: npm run package:mac:dmg:intel
+          - name: Windows-x64
+            os: windows-latest
+            cmd: npm run package:win
+          - name: Linux-x64
+            os: ubuntu-latest
+            cmd: npm run package:linux:all
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build & Package Artifact
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: ${{ matrix.cmd }}
+      - name: Generate SHA-256 Checksums
+        run: node scripts/generate-release-checksums.mjs dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/SHA256SUMS.txt
+          if-no-files-found: warn

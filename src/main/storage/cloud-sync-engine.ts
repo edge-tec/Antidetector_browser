@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { getDatabase } from '../database/connection'
 import { getProfileDataDir } from '../browser/chromium-resolver'
 import { getBaseUserDataDir } from '../browser/runtime-provisioner'
+import { createS3ProviderFromEnv } from './s3-r2-provider'
 import { logger } from '../logging/logger'
 
 export interface CloudStorageProvider {
@@ -178,7 +179,7 @@ function restoreProfileSnapshot(profileId: string, compressed: Buffer): number {
 }
 
 class CloudSyncEngine {
-  private provider: CloudStorageProvider = new LocalVaultStorageProvider()
+  private provider: CloudStorageProvider = createS3ProviderFromEnv() || new LocalVaultStorageProvider()
 
   setProvider(provider: CloudStorageProvider): void {
     this.provider = provider

@@ -6,6 +6,7 @@ import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import type { LogLevel, LogCategory } from '../database/models'
+import { sanitizeLogString } from './log-sanitizer'
 
 // Patterns to redact from log output
 const SENSITIVE_PATTERNS = [
@@ -19,7 +20,7 @@ const SENSITIVE_PATTERNS = [
 ]
 
 function redactSensitive(text: string): string {
-  let result = text
+  let result = sanitizeLogString(text)
   for (const pattern of SENSITIVE_PATTERNS) {
     if (pattern.source.includes('$') || pattern.source.includes('://')) {
       result = result.replace(pattern, '$1[REDACTED]$2')

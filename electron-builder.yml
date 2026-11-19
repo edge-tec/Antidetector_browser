@@ -66,6 +66,9 @@ win:
     - target: nsis
       arch:
         - x64
+    - target: portable
+      arch:
+        - x64
   artifactName: 'AntiProfiles-Windows-x64.${ext}'
   requestedExecutionLevel: asInvoker
 
@@ -102,4 +105,4 @@ linux:
 
 publish:
   provider: generic
-  url: https://releases.profilevault.local/updates
+  url: https://releases.antiprofiles.com/updates
