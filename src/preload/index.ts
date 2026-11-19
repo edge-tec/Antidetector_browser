@@ -615,6 +615,24 @@ const api = {
     configureProxyEnterprise: (proxyId: string, config: any) => ipcRenderer.invoke('enterprise:proxy:configure', proxyId, config),
     rotateProxy: (proxyId: string) => ipcRenderer.invoke('enterprise:proxy:rotate', proxyId),
     getProxyRotationHistory: (proxyId: string, limit?: number) => ipcRenderer.invoke('enterprise:proxy:rotation-history', proxyId, limit)
+  },
+
+  // ── In-House Multi-Crypto Payment Gateway APIs ──
+  crypto: {
+    listNetworks: (onlyEnabled?: boolean) => ipcRenderer.invoke('crypto:networks:list', onlyEnabled),
+    getExchangeRate: (symbol: string) => ipcRenderer.invoke('crypto:rate:get', symbol),
+    createInvoice: (userId: string, networkId: string, usdAmount: number) =>
+      ipcRenderer.invoke('crypto:invoice:create', userId, networkId, usdAmount),
+    getInvoice: (invoiceId: string) => ipcRenderer.invoke('crypto:invoice:get', invoiceId),
+    listInvoices: (filter?: any) => ipcRenderer.invoke('crypto:invoice:list', filter),
+    verifyTransaction: (invoiceId: string, txHash: string) =>
+      ipcRenderer.invoke('crypto:tx:verify', invoiceId, txHash),
+    getWalletBalance: (userId: string) => ipcRenderer.invoke('crypto:wallet:balance', userId),
+    getWalletLedger: (userId: string, limit?: number) => ipcRenderer.invoke('crypto:wallet:ledger', userId, limit),
+    getAdminOverview: () => ipcRenderer.invoke('crypto:admin:overview'),
+    updateNetworkConfig: (networkId: string, patch: any) => ipcRenderer.invoke('crypto:admin:update-network', networkId, patch),
+    runReconciliation: () => ipcRenderer.invoke('crypto:admin:reconcile'),
+    runMonitorSweep: () => ipcRenderer.invoke('crypto:admin:monitor-sweep')
   }
 }
 

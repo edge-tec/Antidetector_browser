@@ -32,6 +32,8 @@ import { TeamWorkspacePage } from './pages/enterprise/TeamWorkspacePage'
 import { TrashPage } from './pages/enterprise/TrashPage'
 import { CloudSyncPage } from './pages/enterprise/CloudSyncPage'
 import { CookieManagerPage } from './pages/enterprise/CookieManagerPage'
+import { CryptoDepositPage } from './pages/enterprise/CryptoDepositPage'
+import { AdminCryptoPage } from './pages/enterprise/AdminCryptoPage'
 import { enterpriseService } from './services/enterpriseService'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
@@ -3207,6 +3209,8 @@ function AppContent() {
     { page: 'cookies', icon: <span style={{ fontSize: 15 }}>🍪</span>, label: 'Cookie Manager' },
     { page: 'cloud-sync', icon: <span style={{ fontSize: 15 }}>☁️</span>, label: 'Cloud Sync' },
     { page: 'team', icon: <span style={{ fontSize: 15 }}>👥</span>, label: 'Team Workspace' },
+    { page: 'crypto-deposit', icon: <span style={{ fontSize: 15 }}>₿</span>, label: 'Crypto Deposit' },
+    ...(isAdmin ? [{ page: 'crypto-admin' as Page, icon: <span style={{ fontSize: 15 }}>🏦</span>, label: 'Crypto Gateway Admin' }] : []),
     { page: 'trash', icon: Icons.trash, label: 'Trash' },
     { page: 'settings', icon: Icons.settings, label: 'Settings', section: 'SYSTEM' },
     { page: 'logs', icon: Icons.logs, label: 'Logs' },
@@ -3487,6 +3491,8 @@ function AppContent() {
               {currentPage === 'cookies' && <CookieManagerPage showToast={showToast} />}
               {currentPage === 'cloud-sync' && <CloudSyncPage showToast={showToast} />}
               {currentPage === 'team' && <TeamWorkspacePage showToast={showToast} />}
+              {currentPage === 'crypto-deposit' && <CryptoDepositPage showToast={showToast} />}
+              {currentPage === 'crypto-admin' && isAdmin && <AdminCryptoPage showToast={showToast} />}
               {currentPage === 'trash' && <TrashPage showToast={showToast} />}
               {currentPage === 'settings' && (
                 <SettingsPage

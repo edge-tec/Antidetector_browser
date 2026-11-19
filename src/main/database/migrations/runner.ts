@@ -16,6 +16,7 @@ import * as migration010 from './010_cpa_affiliate_system'
 import * as migration011 from './011_enterprise_auto_updater'
 import * as migration012 from './012_payments_and_gateways'
 import * as migration013 from './013_enterprise_platform'
+import * as migration014 from './014_inhouse_crypto_gateway'
 
 interface Migration {
   id: number
@@ -36,7 +37,8 @@ const migrations: Migration[] = [
   { id: migration010.id, name: migration010.name, up: migration010.up },
   { id: migration011.id, name: migration011.name, up: migration011.up },
   { id: migration012.id, name: migration012.name, up: migration012.up },
-  { id: migration013.id, name: migration013.name, up: migration013.up }
+  { id: migration013.id, name: migration013.name, up: migration013.up },
+  { id: migration014.id, name: migration014.name, up: migration014.up }
 ]
 
 export function runMigrations(db: Database.Database): void {

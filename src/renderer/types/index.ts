@@ -140,6 +140,8 @@ export type Page =
   | 'cloud-sync'
   | 'team'
   | 'trash'
+  | 'crypto-deposit'
+  | 'crypto-admin'
   | 'settings'
   | 'logs'
   | 'support'
