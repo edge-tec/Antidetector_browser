@@ -629,10 +629,10 @@ const api = {
       ipcRenderer.invoke('crypto:tx:verify', invoiceId, txHash),
     getWalletBalance: (userId: string) => ipcRenderer.invoke('crypto:wallet:balance', userId),
     getWalletLedger: (userId: string, limit?: number) => ipcRenderer.invoke('crypto:wallet:ledger', userId, limit),
-    getAdminOverview: () => ipcRenderer.invoke('crypto:admin:overview'),
-    updateNetworkConfig: (networkId: string, patch: any) => ipcRenderer.invoke('crypto:admin:update-network', networkId, patch),
-    runReconciliation: () => ipcRenderer.invoke('crypto:admin:reconcile'),
-    runMonitorSweep: () => ipcRenderer.invoke('crypto:admin:monitor-sweep')
+    getAdminOverview: () => ipcRenderer.invoke('crypto:admin:overview', getSavedToken()),
+    updateNetworkConfig: (networkId: string, patch: any) => ipcRenderer.invoke('crypto:admin:update-network', getSavedToken(), networkId, patch),
+    runReconciliation: () => ipcRenderer.invoke('crypto:admin:reconcile', getSavedToken()),
+    runMonitorSweep: () => ipcRenderer.invoke('crypto:admin:monitor-sweep', getSavedToken())
   }
 }
 

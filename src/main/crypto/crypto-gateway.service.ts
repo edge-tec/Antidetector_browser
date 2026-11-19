@@ -19,6 +19,7 @@ import { CryptoExchangeRateService } from './exchange-rate.service'
 import { BlockchainRpcClient } from './rpc-client.service'
 import { PaymentVerificationService, CryptoPaymentStatus } from './payment-verification.service'
 import { UserBalanceCreditService } from './balance-credit.service'
+import { assertSafeRotationUrl } from '../network/proxy-rotation'
 import { logger } from '../logging/logger'
 
 export interface CryptoInvoiceRecord {
@@ -127,6 +128,14 @@ class CryptoGatewayService {
       if (!isValidNetworkAddress(existing.network, patch.receivingAddress)) {
         throw new Error(`Invalid ${existing.networkLabel} wallet address format.`)
       }
+    }
+    if (patch.primaryRpcUrl !== undefined && patch.primaryRpcUrl.trim() !== '') {
+      const u = assertSafeRotationUrl(patch.primaryRpcUrl.trim())
+      if (u.protocol !== 'https:') throw new Error('Primary RPC URL must use HTTPS.')
+    }
+    if (patch.fallbackRpcUrl !== undefined && patch.fallbackRpcUrl.trim() !== '') {
+      const u = assertSafeRotationUrl(patch.fallbackRpcUrl.trim())
+      if (u.protocol !== 'https:') throw new Error('Fallback RPC URL must use HTTPS.')
     }
 
     const now = new Date().toISOString()

@@ -31,6 +31,7 @@ export interface InvoiceForVerification {
   requiredCryptoAtomic: string
   requiredConfirmations: number
   status: CryptoPaymentStatus
+  createdAt?: string
   expiresAt: string
 }
 
@@ -104,6 +105,18 @@ export class PaymentVerificationService {
         valid: false, shouldCredit: false, nextStatus: 'failed',
         receivedAtomic: '0', confirmations: tx.confirmations,
         reason: 'Transaction reverted / failed on-chain execution.'
+      }
+    }
+
+    // Shared-wallet historical replay guard: reject transactions mined before invoice creation (> 2m skew)
+    if (invoice.createdAt && typeof tx.blockTimestampMs === 'number' && tx.blockTimestampMs > 0) {
+      const invoiceCreatedMs = new Date(invoice.createdAt).getTime()
+      if (Number.isFinite(invoiceCreatedMs) && tx.blockTimestampMs < invoiceCreatedMs - 120_000) {
+        return {
+          valid: false, shouldCredit: false, nextStatus: 'manual_review',
+          receivedAtomic: '0', confirmations: tx.confirmations,
+          reason: 'Historical transaction predates invoice creation (shared-wallet replay blocked).'
+        }
       }
     }
 

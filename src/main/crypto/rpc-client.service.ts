@@ -7,11 +7,53 @@
 //   - Solana: Solana JSON-RPC getTransaction
 // ──────────────────────────────────────────────────────────────────
 
+import crypto from 'crypto'
 import http from 'http'
 import https from 'https'
 import type { CryptoNetworkKey } from './network-registry'
 
 export const ERC20_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+/**
+ * Convert a 20-byte hex address (40 hex chars, no 0x) into a TRON Base58Check address (T...).
+ */
+export function hex20ToTronBase58(hex20: string): string {
+  const clean = hex20.replace(/^0x/i, '').toLowerCase()
+  if (!/^[a-f0-9]{40}$/.test(clean)) return ''
+  const payload = Buffer.from('41' + clean, 'hex')
+  const h1 = crypto.createHash('sha256').update(payload).digest()
+  const h2 = crypto.createHash('sha256').update(h1).digest()
+  const full = Buffer.concat([payload, h2.subarray(0, 4)])
+
+  let num = BigInt('0x' + full.toString('hex'))
+  let encoded = ''
+  while (num > 0n) {
+    const rem = Number(num % 58n)
+    encoded = BASE58_ALPHABET[rem] + encoded
+    num /= 58n
+  }
+  for (const b of full) {
+    if (b === 0) encoded = '1' + encoded
+    else break
+  }
+  return encoded
+}
+
+/**
+ * Decode TRC20 transfer(address,uint256) calldata (selector a9059cbb) into real Base58Check recipient + amount.
+ */
+export function parseTronTrc20TransferData(dataHex: string): { matched: boolean; toAddress: string; amountAtomic: string } {
+  const clean = (dataHex || '').replace(/^0x/i, '').toLowerCase()
+  if (!clean.startsWith('a9059cbb') || clean.length < 136) {
+    return { matched: false, toAddress: '', amountAtomic: '0' }
+  }
+  const recipientHex20 = clean.slice(32, 72)
+  const amountHex = clean.slice(72, 136)
+  const toAddress = hex20ToTronBase58(recipientHex20)
+  const amountAtomic = BigInt('0x' + amountHex).toString()
+  return { matched: !!toAddress, toAddress, amountAtomic }
+}
 
 export interface OnChainTxObservation {
   found: boolean
@@ -24,6 +66,7 @@ export interface OnChainTxObservation {
   amountAtomic: string
   confirmations: number
   blockNumber: number
+  blockTimestampMs?: number
   rpcEndpointUsed: string
   error?: string
 }
@@ -254,23 +297,19 @@ export class BlockchainRpcClient {
 
       if (expectedContract) {
         const contractAddr = paramVal.contract_address || ''
-        const dataHex = String(paramVal.data || '')
-        // TRC20 transfer(address,uint256) selector: a9059cbb
-        let amountAtomic = '0'
-        if (dataHex.startsWith('a9059cbb') && dataHex.length >= 136) {
-          amountAtomic = BigInt('0x' + dataHex.slice(72, 136)).toString()
-        }
+        const decoded = parseTronTrc20TransferData(String(paramVal.data || ''))
         return {
           found: true,
           network,
           txHash,
           executionSuccess,
           fromAddress: paramVal.owner_address || '',
-          toAddress: expectedRecipient, // Verified via TRC20 recipient matching
+          toAddress: decoded.toAddress,
           contractAddress: contractAddr,
-          amountAtomic,
+          amountAtomic: decoded.amountAtomic,
           confirmations,
           blockNumber: blockNum,
+          blockTimestampMs: result.info?.blockTimeStamp || result.tx.raw_data?.timestamp || undefined,
           rpcEndpointUsed: rpcUrl
         }
       }

@@ -5,9 +5,17 @@
 
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { assertTrustedIpcSender } from './enterprise.ipc'
+import { sessionManager } from '../security/session'
 import { cryptoGatewayService } from '../crypto/crypto-gateway.service'
 import { CryptoExchangeRateService } from '../crypto/exchange-rate.service'
 import { UserBalanceCreditService } from '../crypto/balance-credit.service'
+
+export function assertAdminCryptoSession(sessionToken?: string): void {
+  const user = sessionManager.getSessionUser(sessionToken)
+  if (!user || user.role !== 'admin') {
+    throw new Error('Unauthorized: Admin privileges required for crypto gateway administration.')
+  }
+}
 
 function secureCryptoHandle(channel: string, handler: (event: IpcMainInvokeEvent, ...args: any[]) => any): void {
   ipcMain.handle(channel, (event, ...args) => {
@@ -46,17 +54,21 @@ export function registerCryptoPaymentHandlers(): void {
     UserBalanceCreditService.getUserLedger(userId, limit)
   )
 
-  // Admin APIs
-  secureCryptoHandle('crypto:admin:overview', () =>
-    cryptoGatewayService.getAdminOverview()
-  )
-  secureCryptoHandle('crypto:admin:update-network', (_e, networkId: string, patch: any) =>
-    cryptoGatewayService.updateNetworkConfig(networkId, patch)
-  )
-  secureCryptoHandle('crypto:admin:reconcile', () =>
-    cryptoGatewayService.runReconciliation()
-  )
-  secureCryptoHandle('crypto:admin:monitor-sweep', async () =>
-    cryptoGatewayService.runMonitorSweep()
-  )
+  // Admin APIs (strict backend admin role enforcement)
+  secureCryptoHandle('crypto:admin:overview', (_e, sessionToken?: string) => {
+    assertAdminCryptoSession(sessionToken)
+    return cryptoGatewayService.getAdminOverview()
+  })
+  secureCryptoHandle('crypto:admin:update-network', (_e, sessionToken: string, networkId: string, patch: any) => {
+    assertAdminCryptoSession(sessionToken)
+    return cryptoGatewayService.updateNetworkConfig(networkId, patch)
+  })
+  secureCryptoHandle('crypto:admin:reconcile', (_e, sessionToken?: string) => {
+    assertAdminCryptoSession(sessionToken)
+    return cryptoGatewayService.runReconciliation()
+  })
+  secureCryptoHandle('crypto:admin:monitor-sweep', async (_e, sessionToken?: string) => {
+    assertAdminCryptoSession(sessionToken)
+    return cryptoGatewayService.runMonitorSweep()
+  })
 }
