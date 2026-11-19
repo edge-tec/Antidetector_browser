@@ -4451,6 +4451,39 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         <div id="gatewayCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; margin-bottom: 28px;">
                             <!-- Injected dynamically via loadPaymentGatewaysTable() -->
                         </div>
+
+                        <!-- In-House HD Wallet & Auto-Sweep to Trust Wallet Live Monitor -->
+                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin-top: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                                <div>
+                                    <h4 style="font-size: 16px; color: #FFF; margin: 0 0 4px 0;">🔐 In-House HD Wallet & Auto-Sweep Monitor (Trust Wallet)</h4>
+                                    <p style="color: var(--text-muted); font-size: 12px; margin: 0;">Track per-order HD deposit addresses, instant package activations, and automatic sweeps into your Trust Wallet.</p>
+                                </div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button class="btn btn-primary" style="padding: 8px 14px; font-size: 12px;" onclick="triggerManualCryptoSweep()">⚡ Run Auto-Confirm & Sweep Now</button>
+                                    <button class="btn btn-outline" style="padding: 8px 14px; font-size: 12px;" onclick="loadHdSweepStatusTable()">🔄 Refresh Sweeps</button>
+                                </div>
+                            </div>
+                            <div id="hdSweepActionResult" style="display: none; margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-family: monospace;"></div>
+                            <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px;">
+                                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); background: rgba(255,255,255,0.02);">
+                                            <th style="padding: 10px 12px;">Invoice #</th>
+                                            <th style="padding: 10px 12px;">Network</th>
+                                            <th style="padding: 10px 12px;">HD Deposit Address</th>
+                                            <th style="padding: 10px 12px;">Trust Wallet Target</th>
+                                            <th style="padding: 10px 12px;">Amount</th>
+                                            <th style="padding: 10px 12px;">Status</th>
+                                            <th style="padding: 10px 12px;">Sweep TxHash</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hdSweepTableBody">
+                                        <tr><td colspan="7" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading HD deposit & sweep records...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- TAB: PAYMENTS & INVOICES -->
@@ -6043,13 +6076,13 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     <input type="text" id="gwEditPublicKey" placeholder="pk_live_..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
                 </div>
 
-                <div style="margin-bottom: 14px;">
+                <div style="margin-bottom: 14px;" id="gwFieldSecretKeyGroup">
                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;" id="gwLabelSecretKey">Secret Key / Merchant API Key</label>
                     <input type="password" id="gwEditSecretKey" placeholder="sk_live_... (Enter new key or leave as-is)" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
                     <span style="font-size: 11px; color: var(--text-muted);">Stored securely on server. Masked for security.</span>
                 </div>
 
-                <div style="margin-bottom: 16px;">
+                <div style="margin-bottom: 16px;" id="gwFieldWebhookSecretGroup">
                     <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 4px;" id="gwLabelWebhookSecret">Webhook Signing Secret / IPN Secret</label>
                     <input type="password" id="gwEditWebhookSecret" placeholder="whsec_... (Enter new secret or leave as-is)" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-family: monospace;">
                     <div style="margin-top: 6px; background: rgba(255,255,255,0.03); border: 1px dashed var(--border); border-radius: 6px; padding: 8px; font-size: 11px; color: var(--text-muted);">
@@ -6058,17 +6091,93 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     </div>
                 </div>
 
-                <!-- Dynamic Crypto Fields (Shown when editing Crypto Gateway) -->
-                <div id="gwCryptoSpecificSection" style="display: none; margin-bottom: 16px; background: rgba(129, 140, 248, 0.05); border: 1px solid rgba(129, 140, 248, 0.2); border-radius: 8px; padding: 12px;">
-                    <label style="font-size: 12px; color: #818CF8; font-weight: 700; display: block; margin-bottom: 6px;">Supported Cryptocurrencies</label>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;">
-                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinUSDT" checked> USDT</label>
-                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinBTC" checked> BTC</label>
-                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinETH" checked> ETH</label>
-                        <label style="color: #FFF; font-size: 13px;"><input type="checkbox" id="cryptoCoinUSDC" checked> USDC</label>
+                <!-- Dynamic In-House Crypto Gateway & HD Auto-Sweep Config (Shown when editing Crypto Gateway) -->
+                <div id="gwCryptoSpecificSection" style="display: none; margin-bottom: 16px;">
+                    <div style="background: rgba(45, 212, 191, 0.06); border: 1px solid rgba(45, 212, 191, 0.28); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+                        <label style="font-size: 12px; color: #2DD4BF; font-weight: 700; display: block; margin-bottom: 6px;">⚙️ Payment Architecture Mode</label>
+                        <select id="gwCryptoMode" onchange="toggleCryptoModeFields()" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; font-size: 13px; font-weight: 600;">
+                            <option value="hd_sweep">🔐 HD Wallet (Unique Address Per Order) + Auto-Sweep to Trust Wallet</option>
+                            <option value="direct">⚡ Direct-to-TrustWallet (Zero Sweep Gas / Micro-Amount Match)</option>
+                            <option value="nowpayments">🌐 Legacy Third-Party (NOWPayments API)</option>
+                        </select>
+                        <p style="font-size: 11px; color: var(--text-muted); margin: 6px 0 0 0;">
+                            HD Wallet mode generates a dedicated deposit address per order, activates the package immediately upon on-chain confirmation, and auto-sweeps funds to your Trust Wallet.
+                        </p>
                     </div>
-                    <label style="font-size: 12px; color: #818CF8; font-weight: 700; display: block; margin-bottom: 4px;">Direct Deposit Wallet Address (Fallback)</label>
-                    <input type="text" id="gwEditCryptoWallet" placeholder="e.g. TRC20 USDT Deposit Address" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: #FFF; font-size: 12px; font-family: monospace;">
+
+                    <!-- Trust Wallet Treasury Addresses -->
+                    <div id="gwCryptoTrustWalletsBox" style="background: rgba(129, 140, 248, 0.06); border: 1px solid rgba(129, 140, 248, 0.25); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+                        <label style="font-size: 12px; color: #818CF8; font-weight: 700; display: block; margin-bottom: 10px;">🏦 Your Trust Wallet Treasury Addresses (Destination for Auto-Sweep / Direct Pay)</label>
+
+                        <div style="margin-bottom: 10px;">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px;">TRON Trust Wallet (USDT-TRC20 & TRX)</label>
+                            <input type="text" id="gwTrustWalletTron" placeholder="T... (Your TRON Trust Wallet address)" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px;">EVM Trust Wallet (USDT-BEP20, BNB, USDT-ERC20, ETH, POL)</label>
+                            <input type="text" id="gwTrustWalletEvm" placeholder="0x... (Your BSC / Ethereum / Polygon Trust Wallet address)" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px;">Bitcoin Trust Wallet (BTC)</label>
+                                <input type="text" id="gwTrustWalletBtc" placeholder="bc1q... / 1... / 3..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                            </div>
+                            <div>
+                                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px;">Solana Trust Wallet (SOL)</label>
+                                <input type="text" id="gwTrustWalletSol" placeholder="Base58 SOL address..." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- HD Signer Service Settings (Shown when mode === hd_sweep) -->
+                    <div id="gwCryptoSignerBox" style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.28); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+                        <label style="font-size: 12px; color: #F59E0B; font-weight: 700; display: block; margin-bottom: 10px;">🔑 Local HD Signer Service (Auto-Sweep Engine)</label>
+
+                        <div style="margin-bottom: 10px;">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px;">Signer Local URL (127.0.0.1 only)</label>
+                            <input type="text" id="gwSignerUrl" value="http://127.0.0.1:3105" placeholder="http://127.0.0.1:3105" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                        </div>
+
+                        <div>
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px;">Signer API Key (must match SIGNER_API_KEY in signer-service/.env)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <input type="text" id="gwSignerApiKey" placeholder="Enter or click Generate Key (leave blank to keep existing)" style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                                <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; white-space: nowrap;" onclick="generateRandomSignerKey()">🎲 Generate</button>
+                                <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; white-space: nowrap;" onclick="copySignerKeyField()">📋 Copy</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supported Cryptocurrencies -->
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                        <label style="font-size: 12px; color: #FFF; font-weight: 700; display: block; margin-bottom: 8px;">🪙 Enabled Networks & Assets</label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="USDT-TRC20" checked> USDT (TRC20)</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="TRX" checked> TRX</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="USDT-BEP20" checked> USDT (BEP20)</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="BNB" checked> BNB</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="USDT-ERC20" checked> USDT (ERC20)</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="ETH" checked> ETH</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="BTC" checked> BTC</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="POL" checked> POL/MATIC</label>
+                            <label style="color: #E2E8F0; font-size: 12px;"><input type="checkbox" class="crypto-coin-cb" value="SOL" checked> SOL</label>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Optional Custom RPC URLs -->
+                    <details style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;">
+                        <summary style="cursor: pointer; font-size: 12px; color: var(--text-muted); font-weight: 700;">🌐 Optional Custom Blockchain RPC Endpoints (Leave blank for defaults)</summary>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+                            <input type="text" id="gwRpcTron" placeholder="TRON: https://api.trongrid.io" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 7px; color: #FFF; font-size: 11px; font-family: monospace;">
+                            <input type="text" id="gwRpcBsc" placeholder="BSC: https://bsc-dataseed.binance.org" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 7px; color: #FFF; font-size: 11px; font-family: monospace;">
+                            <input type="text" id="gwRpcEth" placeholder="ETH: https://ethereum-rpc.publicnode.com" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 7px; color: #FFF; font-size: 11px; font-family: monospace;">
+                            <input type="text" id="gwRpcPolygon" placeholder="POL: https://polygon-bor-rpc.publicnode.com" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 7px; color: #FFF; font-size: 11px; font-family: monospace;">
+                            <input type="text" id="gwRpcBtc" placeholder="BTC: https://mempool.space/api" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 7px; color: #FFF; font-size: 11px; font-family: monospace;">
+                            <input type="text" id="gwRpcSol" placeholder="SOL: https://api.mainnet-beta.solana.com" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 7px; color: #FFF; font-size: 11px; font-family: monospace;">
+                        </div>
+                    </details>
                 </div>
 
                 <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
@@ -9371,6 +9480,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 if (data.success && Array.isArray(list)) {
                     _cachedGateways = list;
                     renderGatewayCards(list);
+                    loadHdSweepStatusTable();
                 } else {
                     container.innerHTML = `<div style="grid-column:1/-1; color:#F87171; text-align:center; padding:30px;">${data.error || 'Failed to load payment gateways.'}</div>`;
                 }
@@ -9385,9 +9495,41 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
             container.innerHTML = gateways.map(gw => {
                 const isEnabled = gw.is_enabled === 1 || gw.is_enabled === '1' || gw.is_enabled === true;
-                const isTestMode = gw.test_mode === 1 || gw.test_mode === '1' || gw.test_mode === true;
+                const isTestMode = gw.is_test_mode === 1 || gw.is_test_mode === '1' || gw.test_mode === 1 || gw.test_mode === true;
                 const isStripe = gw.gateway_key === 'stripe';
                 const isCrypto = gw.gateway_key === 'crypto';
+                const cfg = gw.config || {};
+                const cryptoMode = (cfg.provider === 'nowpayments') ? 'NOWPayments' : (cfg.mode === 'hd_sweep' ? 'HD Wallet + Auto-Sweep' : 'Direct-to-TrustWallet');
+                const tw = cfg.trust_wallets || {};
+                const configuredChains = ['tron', 'evm', 'bitcoin', 'solana'].filter(k => (tw[k] || '').trim() !== '').map(k => k.toUpperCase());
+
+                const infoRows = isCrypto ? `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Mode:</span>
+                        <strong style="color: #2DD4BF;">${cryptoMode}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Trust Wallets:</span>
+                        <span style="color: #818CF8; font-family: monospace;">${configuredChains.length ? configuredChains.join(', ') : 'Not configured'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">HD Signer:</span>
+                        <span style="color: ${cfg.signer_url ? '#10B981' : '#94A3B8'}; font-family: monospace;">${cfg.signer_url || 'Direct Mode'}</span>
+                    </div>
+                ` : `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Currency:</span>
+                        <strong style="color: #FFF;">${gw.currency || 'USD'}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Public Key:</span>
+                        <span style="color: #818CF8; font-family: monospace;">${gw.public_key ? gw.public_key.substring(0, 16) + '...' : 'Not configured'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Secret Key:</span>
+                        <span style="color: #2DD4BF; font-family: monospace;">${gw.secret_key_masked ? gw.secret_key_masked : 'Not configured'}</span>
+                    </div>
+                `;
 
                 return `
                     <div style="background: var(--bg-card); border: 1px solid ${isEnabled ? '#2DD4BF' : 'var(--border)'}; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
@@ -9396,7 +9538,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <span style="font-size: 28px;">${isStripe ? '💳' : '🪙'}</span>
                                     <div>
-                                        <h4 style="font-size: 18px; color: #FFF; margin: 0;">${gw.name}</h4>
+                                        <h4 style="font-size: 18px; color: #FFF; margin: 0;">${isCrypto ? 'In-House Multi-Crypto' : gw.name}</h4>
                                         <span style="font-size: 11px; color: var(--text-muted); font-family: monospace;">Provider ID: ${gw.gateway_key}</span>
                                     </div>
                                 </div>
@@ -9407,22 +9549,11 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                             </div>
 
                             <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
-                                ${isStripe ? 'Official Stripe Checkout integration supporting Credit/Debit Cards, Apple Pay, Google Pay, and SEPA.' : 'Cryptocurrency payment gateway supporting USDT, Bitcoin, Ethereum, and multi-chain tokens.'}
+                                ${isStripe ? 'Official Stripe Checkout integration supporting Credit/Debit Cards, Apple Pay, Google Pay, and SEPA.' : 'In-House Multi-Crypto Gateway with per-order HD deposit addresses, instant package activation, and automatic Trust Wallet sweep.'}
                             </p>
 
                             <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                    <span style="color: var(--text-muted);">Currency:</span>
-                                    <strong style="color: #FFF;">${gw.currency || 'USD'}</strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                    <span style="color: var(--text-muted);">Public Key:</span>
-                                    <span style="color: #818CF8; font-family: monospace;">${gw.public_key ? gw.public_key.substring(0, 16) + '...' : 'Not configured'}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--text-muted);">Secret Key:</span>
-                                    <span style="color: #2DD4BF; font-family: monospace;">${gw.secret_key ? '••••••••••••••••' : 'Not configured'}</span>
-                                </div>
+                                ${infoRows}
                             </div>
                         </div>
 
@@ -9436,18 +9567,63 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }).join('');
         }
 
+        function toggleCryptoModeFields() {
+            const key = document.getElementById('gwEditKey').value;
+            const isCrypto = key === 'crypto';
+            const modeEl = document.getElementById('gwCryptoMode');
+            const mode = modeEl ? modeEl.value : 'hd_sweep';
+
+            const pubGrp = document.getElementById('gwFieldPublicKeyGroup');
+            const secGrp = document.getElementById('gwFieldSecretKeyGroup');
+            const whGrp = document.getElementById('gwFieldWebhookSecretGroup');
+            const signerBox = document.getElementById('gwCryptoSignerBox');
+            const twBox = document.getElementById('gwCryptoTrustWalletsBox');
+
+            if (!isCrypto) {
+                if (pubGrp) pubGrp.style.display = 'block';
+                if (secGrp) secGrp.style.display = 'block';
+                if (whGrp) whGrp.style.display = 'block';
+                return;
+            }
+
+            const isNowPayments = (mode === 'nowpayments');
+            if (pubGrp) pubGrp.style.display = isNowPayments ? 'block' : 'none';
+            if (secGrp) secGrp.style.display = isNowPayments ? 'block' : 'none';
+            if (whGrp) whGrp.style.display = isNowPayments ? 'block' : 'none';
+            if (signerBox) signerBox.style.display = (mode === 'hd_sweep') ? 'block' : 'none';
+            if (twBox) twBox.style.display = isNowPayments ? 'none' : 'block';
+        }
+
+        function generateRandomSignerKey() {
+            const bytes = new Uint8Array(32);
+            window.crypto.getRandomValues(bytes);
+            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            const input = document.getElementById('gwSignerApiKey');
+            if (input) input.value = hex;
+        }
+
+        function copySignerKeyField() {
+            const input = document.getElementById('gwSignerApiKey');
+            if (input && input.value && !input.value.includes('••••')) {
+                navigator.clipboard.writeText(input.value).then(() => alert('✓ Signer API Key copied! Paste the same key into signer-service/.env as SIGNER_API_KEY.'));
+            } else {
+                alert('Generate or enter a new Signer API Key first to copy it.');
+            }
+        }
+
         function openGatewayConfigModal(gatewayKey) {
             const gw = _cachedGateways.find(g => g.gateway_key === gatewayKey);
             if (!gw) return;
 
+            const cfg = gw.config || {};
             document.getElementById('gwEditKey').value = gw.gateway_key;
-            document.getElementById('modalGwTitle').innerText = 'Configure ' + gw.name;
+            document.getElementById('modalGwTitle').innerText = gatewayKey === 'crypto' ? 'Configure In-House Crypto & HD Auto-Sweep' : ('Configure ' + gw.name);
             document.getElementById('gwEditEnabled').checked = (gw.is_enabled == 1 || gw.is_enabled === true);
-            document.getElementById('gwEditTestMode').checked = (gw.test_mode == 1 || gw.test_mode === true);
+            document.getElementById('gwEditTestMode').checked = (gw.is_test_mode == 1 || gw.is_test_mode === true || gw.test_mode == 1);
             document.getElementById('gwEditCurrency').value = gw.currency || 'USD';
             document.getElementById('gwEditPublicKey').value = gw.public_key || '';
-            document.getElementById('gwEditSecretKey').value = gw.secret_key || '';
-            document.getElementById('gwEditWebhookSecret').value = gw.webhook_secret || '';
+            document.getElementById('gwEditSecretKey').value = gw.secret_key_masked || '';
+            document.getElementById('gwEditWebhookSecret').value = gw.webhook_secret_masked || '';
 
             const isCrypto = gw.gateway_key === 'crypto';
             const cryptoSec = document.getElementById('gwCryptoSpecificSection');
@@ -9456,18 +9632,30 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             const origin = window.location.origin || 'https://antiprofiles.com';
             document.getElementById('gwWebhookUrlDisplay').innerText = `${origin}/api/payments/${gw.gateway_key}/webhook`;
 
-            if (isCrypto && gw.supported_coins) {
-                try {
-                    const coins = typeof gw.supported_coins === 'string' ? JSON.parse(gw.supported_coins) : gw.supported_coins;
-                    if (Array.isArray(coins)) {
-                        ['USDT', 'BTC', 'ETH', 'USDC'].forEach(coin => {
-                            const el = document.getElementById('cryptoCoin' + coin);
-                            if (el) el.checked = coins.includes(coin);
-                        });
-                    }
-                } catch(e) {}
+            if (isCrypto) {
+                const mode = (cfg.provider === 'nowpayments') ? 'nowpayments' : (cfg.mode || 'hd_sweep');
+                document.getElementById('gwCryptoMode').value = mode;
+                const tw = cfg.trust_wallets || {};
+                document.getElementById('gwTrustWalletTron').value = tw.tron || cfg.wallet_address_trc20 || cfg.wallet_address || '';
+                document.getElementById('gwTrustWalletEvm').value = tw.evm || cfg.wallet_address_evm || '';
+                document.getElementById('gwTrustWalletBtc').value = tw.bitcoin || cfg.wallet_address_btc || '';
+                document.getElementById('gwTrustWalletSol').value = tw.solana || cfg.wallet_address_sol || '';
+                document.getElementById('gwSignerUrl').value = cfg.signer_url || 'http://127.0.0.1:3105';
+                document.getElementById('gwSignerApiKey').value = cfg.signer_api_key_masked || '';
+                document.getElementById('gwRpcTron').value = cfg.rpc_tron || '';
+                document.getElementById('gwRpcBsc').value = cfg.rpc_bsc || '';
+                document.getElementById('gwRpcEth').value = cfg.rpc_ethereum || '';
+                document.getElementById('gwRpcPolygon').value = cfg.rpc_polygon || '';
+                document.getElementById('gwRpcBtc').value = cfg.rpc_bitcoin || '';
+                document.getElementById('gwRpcSol').value = cfg.rpc_solana || '';
+
+                const coins = Array.isArray(cfg.supported_coins) ? cfg.supported_coins : null;
+                document.querySelectorAll('.crypto-coin-cb').forEach(cb => {
+                    cb.checked = coins ? coins.includes(cb.value) : true;
+                });
             }
 
+            toggleCryptoModeFields();
             document.getElementById('modalGatewayConfig').style.display = 'flex';
         }
 
@@ -9483,22 +9671,42 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             const isCrypto = gatewayKey === 'crypto';
 
             let supportedCoins = [];
+            let configObj = {};
             if (isCrypto) {
-                ['USDT', 'BTC', 'ETH', 'USDC'].forEach(coin => {
-                    const el = document.getElementById('cryptoCoin' + coin);
-                    if (el && el.checked) supportedCoins.push(coin);
-                });
+                document.querySelectorAll('.crypto-coin-cb:checked').forEach(cb => supportedCoins.push(cb.value));
+                const mode = document.getElementById('gwCryptoMode').value;
+                configObj = {
+                    provider: mode === 'nowpayments' ? 'nowpayments' : 'inhouse',
+                    mode: mode === 'nowpayments' ? 'direct' : mode,
+                    signer_url: document.getElementById('gwSignerUrl').value.trim() || 'http://127.0.0.1:3105',
+                    signer_api_key: document.getElementById('gwSignerApiKey').value.trim(),
+                    trust_wallets: {
+                        tron: document.getElementById('gwTrustWalletTron').value.trim(),
+                        evm: document.getElementById('gwTrustWalletEvm').value.trim(),
+                        bitcoin: document.getElementById('gwTrustWalletBtc').value.trim(),
+                        solana: document.getElementById('gwTrustWalletSol').value.trim()
+                    },
+                    rpc_tron: document.getElementById('gwRpcTron').value.trim(),
+                    rpc_bsc: document.getElementById('gwRpcBsc').value.trim(),
+                    rpc_ethereum: document.getElementById('gwRpcEth').value.trim(),
+                    rpc_polygon: document.getElementById('gwRpcPolygon').value.trim(),
+                    rpc_bitcoin: document.getElementById('gwRpcBtc').value.trim(),
+                    rpc_solana: document.getElementById('gwRpcSol').value.trim(),
+                    supported_coins: supportedCoins
+                };
             }
 
             const payload = {
                 gateway_key: gatewayKey,
                 is_enabled: document.getElementById('gwEditEnabled').checked ? 1 : 0,
+                is_test_mode: document.getElementById('gwEditTestMode').checked ? 1 : 0,
                 test_mode: document.getElementById('gwEditTestMode').checked ? 1 : 0,
                 currency: document.getElementById('gwEditCurrency').value,
                 public_key: document.getElementById('gwEditPublicKey').value.trim(),
                 secret_key: document.getElementById('gwEditSecretKey').value.trim(),
                 webhook_secret: document.getElementById('gwEditWebhookSecret').value.trim(),
-                supported_coins: supportedCoins
+                supported_coins: supportedCoins,
+                config: configObj
             };
 
             try {
@@ -9520,7 +9728,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 }
 
                 if (data.success) {
-                    alert('✓ ' + (data.message || 'Payment gateway credentials successfully updated!'));
+                    alert('✓ ' + (data.message || 'Payment gateway settings successfully updated!'));
                     closeGatewayConfigModal();
                     loadPaymentGatewaysTable();
                 } else {
@@ -9530,6 +9738,83 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 alert('⚠️ Server Communication Error: ' + (err.message || 'Network error'));
             }
             return false;
+        }
+
+        async function loadHdSweepStatusTable() {
+            const tbody = document.getElementById('hdSweepTableBody');
+            if (!tbody) return;
+            const token = localStorage.getItem('sessionToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+            try {
+                const res = await fetch('/api/payments.php?action=crypto/sweep-status' + (token ? '&token=' + encodeURIComponent(token) : ''), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const data = await res.json();
+                if (!data.success || !Array.isArray(data.deposits)) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 18px; text-align: center; color: var(--text-muted);">${data.error || 'No HD deposits yet.'}</td></tr>`;
+                    return;
+                }
+                if (data.deposits.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="padding: 18px; text-align: center; color: var(--text-muted);">No HD deposit orders yet. Once a user checks out in HD Wallet mode, their dedicated address & Trust Wallet sweep will appear here.</td></tr>';
+                    return;
+                }
+                const shortAddr = a => a ? (a.length > 16 ? a.slice(0, 8) + '...' + a.slice(-6) : a) : '—';
+                const statusBadge = st => {
+                    const colors = { swept: '#10B981', confirmed: '#2DD4BF', pending: '#F59E0B', sweeping: '#818CF8', sweep_failed: '#F87171' };
+                    const c = colors[st] || '#94A3B8';
+                    return `<span style="background: ${c}22; color: ${c}; padding: 2px 8px; border-radius: 10px; font-weight: 700; text-transform: uppercase; font-size: 10px;">${st}</span>`;
+                };
+                tbody.innerHTML = data.deposits.map(d => `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px 12px; color: #FFF; font-family: monospace;">${d.invoice_number}</td>
+                        <td style="padding: 10px 12px; color: #818CF8; font-weight: 600;">${(d.symbol || '').toUpperCase()} (${(d.network || '').toUpperCase()})</td>
+                        <td style="padding: 10px 12px; color: #E2E8F0; font-family: monospace;" title="${d.deposit_address}">${shortAddr(d.deposit_address)} <span style="color:#64748B;">#${d.derivation_index}</span></td>
+                        <td style="padding: 10px 12px; color: #2DD4BF; font-family: monospace;" title="${d.treasury_wallet}">${shortAddr(d.treasury_wallet)}</td>
+                        <td style="padding: 10px 12px; color: #FFF;">${d.received_amount > 0 ? d.received_amount : d.expected_amount} ${d.symbol}</td>
+                        <td style="padding: 10px 12px;">${statusBadge(d.status)}</td>
+                        <td style="padding: 10px 12px; color: #94A3B8; font-family: monospace;" title="${d.sweep_error || d.sweep_tx_hash || ''}">${d.sweep_tx_hash ? shortAddr(d.sweep_tx_hash) : (d.sweep_error ? '<span style="color:#F87171;">' + d.sweep_error.slice(0, 32) + '</span>' : '—')}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 18px; text-align: center; color: #F87171;">Failed to load HD sweep status.</td></tr>';
+            }
+        }
+
+        async function triggerManualCryptoSweep() {
+            const box = document.getElementById('hdSweepActionResult');
+            const token = localStorage.getItem('sessionToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+            if (box) {
+                box.style.display = 'block';
+                box.style.background = 'rgba(129, 140, 248, 0.12)';
+                box.style.color = '#818CF8';
+                box.innerText = '⏳ Scanning pending crypto invoices & running HD auto-sweep to Trust Wallet...';
+            }
+            try {
+                const res = await fetch('/api/admin/run-crypto-auto-sweep' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Auth-Token': token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const d = data.data;
+                    const sw = d.sweeps || { attempted: 0, swept: 0, failed: 0 };
+                    if (box) {
+                        box.style.background = 'rgba(16, 185, 129, 0.12)';
+                        box.style.color = '#10B981';
+                        box.innerText = `✓ Done! Checked: ${d.checked} | Packages Activated: ${d.activated} | Confirming: ${d.confirming} | Swept to Trust Wallet: ${sw.swept}/${sw.attempted}`;
+                    }
+                    loadHdSweepStatusTable();
+                } else if (box) {
+                    box.style.background = 'rgba(248, 113, 113, 0.12)';
+                    box.style.color = '#F87171';
+                    box.innerText = '⚠️ ' + (data.error || 'Auto-sweep run failed');
+                }
+            } catch (err) {
+                if (box) {
+                    box.style.background = 'rgba(248, 113, 113, 0.12)';
+                    box.style.color = '#F87171';
+                    box.innerText = '⚠️ Network error: ' + err.message;
+                }
+            }
         }
 
         async function toggleGateway(gatewayKey, enable) {

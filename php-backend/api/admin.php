@@ -1735,6 +1735,13 @@ switch ($action) {
             // Mask secrets safely before returning to Admin UI
             foreach ($gateways as &$gw) {
                 $gw['config'] = json_decode($gw['config_json'] ?? '{}', true) ?: [];
+                if (!empty($gw['config']['signer_api_key'])) {
+                    $sk = (string)$gw['config']['signer_api_key'];
+                    $gw['config']['signer_api_key_masked'] = substr($sk, 0, 6) . '••••••••••••' . substr($sk, -4);
+                    unset($gw['config']['signer_api_key']);
+                } else {
+                    $gw['config']['signer_api_key_masked'] = '';
+                }
                 if (!empty($gw['secret_key'])) {
                     $prefix = substr($gw['secret_key'], 0, 7);
                     $suffix = substr($gw['secret_key'], -4);
@@ -1793,8 +1800,29 @@ switch ($action) {
                 $webhookSecret = trim($input['webhook_secret']);
             }
 
-            if ($key === 'crypto' && !empty($input['supported_coins']) && is_array($input['supported_coins'])) {
-                $config['supported_coins'] = $input['supported_coins'];
+            $existingConfig = json_decode($existing['config_json'] ?? '{}', true) ?: [];
+            if (!is_array($config)) {
+                $config = [];
+            }
+
+            if ($key === 'crypto') {
+                // Preserve existing signer_api_key if masked or empty
+                $incomingSignerKey = trim((string)($config['signer_api_key'] ?? ''));
+                if ($incomingSignerKey === '' || strpos($incomingSignerKey, '••••') !== false) {
+                    if (!empty($existingConfig['signer_api_key'])) {
+                        $config['signer_api_key'] = $existingConfig['signer_api_key'];
+                    } else {
+                        unset($config['signer_api_key']);
+                    }
+                } else {
+                    $config['signer_api_key'] = $incomingSignerKey;
+                }
+                unset($config['signer_api_key_masked']);
+
+                if (!empty($input['supported_coins']) && is_array($input['supported_coins'])) {
+                    $config['supported_coins'] = $input['supported_coins'];
+                }
+                $config = array_merge($existingConfig, $config);
             }
 
             // Ensure payment_gateways table has all required columns
@@ -1916,27 +1944,99 @@ switch ($action) {
             }
         } elseif ($key === 'crypto') {
             $conf = json_decode($gw['config_json'] ?? '{}', true) ?: [];
-            $apiKey = trim($gw['secret_key'] ?? '');
+            $provider = strtolower(trim((string)($conf['provider'] ?? 'inhouse')));
+            $mode = strtolower(trim((string)($conf['mode'] ?? 'direct')));
 
-            if (!$apiKey) {
-                respondJson(['success' => false, 'error' => 'Crypto Provider API Key is not configured yet.'], 400);
+            if ($provider === 'nowpayments') {
+                $apiKey = trim($gw['secret_key'] ?? '');
+                if (!$apiKey) {
+                    respondJson(['success' => false, 'error' => 'NOWPayments API Key is not configured yet.'], 400);
+                }
+                $ch = curl_init('https://api.nowpayments.io/v1/status');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['x-api-key: ' . $apiKey]);
+                $res = curl_exec($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($code === 200) {
+                    respondJson(['success' => true, 'message' => 'NOWPayments API connection verified and active!']);
+                }
+                respondJson(['success' => false, 'error' => "NOWPayments API responded with HTTP $code."], 400);
             }
 
-            $ch = curl_init('https://api.nowpayments.io/v1/status');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['x-api-key: ' . $apiKey]);
-            $res = curl_exec($ch);
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($code === 200) {
-                respondJson(['success' => true, 'message' => 'Cryptocurrency API connection verified and active!']);
-            } else {
-                respondJson(['success' => false, 'error' => "Crypto Provider API responded with status code $code."], 400);
+            // In-House Crypto Gateway Diagnostics (HD Signer + Trust Wallets)
+            $wallets = $conf['trust_wallets'] ?? [];
+            $configuredChains = [];
+            foreach (['tron', 'evm', 'bitcoin', 'solana'] as $c) {
+                if (!empty(trim((string)($wallets[$c] ?? '')))) {
+                    $configuredChains[] = strtoupper($c);
+                }
             }
+            if (empty($configuredChains) && empty(trim((string)($conf['wallet_address'] ?? '')))) {
+                respondJson(['success' => false, 'error' => 'No Trust Wallet addresses configured yet. Open Configure → enter your TRON/EVM/BTC/SOL Trust Wallet addresses.'], 400);
+            }
+
+            if ($mode === 'hd_sweep') {
+                $signerUrl = rtrim(trim((string)($conf['signer_url'] ?? 'http://127.0.0.1:3105')), '/');
+                $signerKey = trim((string)($conf['signer_api_key'] ?? ''));
+                if (!$signerKey) {
+                    respondJson(['success' => false, 'error' => 'Signer API Key is missing. Configure it in Gateway Settings and signer-service/.env.'], 400);
+                }
+
+                // 1. Check /health
+                $ch = curl_init($signerUrl . '/health');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+                $healthRaw = curl_exec($ch);
+                $healthErr = curl_error($ch);
+                curl_close($ch);
+                if ($healthErr) {
+                    respondJson(['success' => false, 'error' => "HD Signer offline at {$signerUrl}: {$healthErr}"], 500);
+                }
+
+                // 2. Verify Bearer auth + live BIP-44 derivation (index 0)
+                $ch2 = curl_init($signerUrl . '/derive-address');
+                curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch2, CURLOPT_POST, true);
+                curl_setopt($ch2, CURLOPT_POSTFIELDS, json_encode(['network' => 'bsc', 'index' => 0]));
+                curl_setopt($ch2, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $signerKey]);
+                curl_setopt($ch2, CURLOPT_TIMEOUT, 8);
+                $drvRaw = curl_exec($ch2);
+                $drvCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+                curl_close($ch2);
+                $drvJson = json_decode((string)$drvRaw, true);
+
+                if ($drvCode !== 200 || empty($drvJson['success'])) {
+                    respondJson(['success' => false, 'error' => 'HD Signer auth failed (HTTP ' . $drvCode . '): ' . ($drvJson['error'] ?? 'Check SIGNER_API_KEY match')], 400);
+                }
+
+                respondJson([
+                    'success' => true,
+                    'message' => 'HD Wallet Signer ONLINE & Authenticated! Sample HD Address: ' . $drvJson['address'] . ' | Trust Wallets: ' . implode(', ', $configuredChains)
+                ]);
+            }
+
+            respondJson([
+                'success' => true,
+                'message' => 'In-House Direct-to-TrustWallet Gateway ready! Configured Trust Wallets: ' . implode(', ', $configuredChains)
+            ]);
         } else {
             respondJson(['success' => false, 'error' => "Unknown gateway {$key}"], 400);
+        }
+        break;
+
+    case 'run-crypto-auto-sweep':
+        try {
+            if (!defined('PAYMENTS_LIB_ONLY')) {
+                define('PAYMENTS_LIB_ONLY', true);
+            }
+            require_once __DIR__ . '/payments.php';
+            $result = runInHouseCryptoAutoConfirmCron($db);
+            respondJson(['success' => true, 'data' => $result]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
         }
         break;
 
