@@ -633,6 +633,20 @@ const api = {
     updateNetworkConfig: (networkId: string, patch: any) => ipcRenderer.invoke('crypto:admin:update-network', getSavedToken(), networkId, patch),
     runReconciliation: () => ipcRenderer.invoke('crypto:admin:reconcile', getSavedToken()),
     runMonitorSweep: () => ipcRenderer.invoke('crypto:admin:monitor-sweep', getSavedToken())
+  },
+
+  // ── Ultra-Pro Anti-Detect Suite (Cookie Robot, 2FA TOTP Vault, Stealth Score, Sync Humanizer) ──
+  ultraPro: {
+    listVaultAccounts: (profileId?: string) => ipcRenderer.invoke('ultrapro:vault:list', profileId),
+    upsertVaultAccount: (input: any) => ipcRenderer.invoke('ultrapro:vault:upsert', input),
+    revealVaultPassword: (accountId: string) => ipcRenderer.invoke('ultrapro:vault:reveal', accountId),
+    deleteVaultAccount: (accountId: string) => ipcRenderer.invoke('ultrapro:vault:delete', accountId),
+    generateTotp: (secret: string) => ipcRenderer.invoke('ultrapro:vault:totp', secret),
+    getCookieRobotPresets: () => ipcRenderer.invoke('ultrapro:cookie-robot:presets'),
+    getCookieRobotRuns: (profileId?: string) => ipcRenderer.invoke('ultrapro:cookie-robot:runs', profileId),
+    runCookieRobot: (options: any) => ipcRenderer.invoke('ultrapro:cookie-robot:run', options),
+    auditProfileStealth: (profileId: string) => ipcRenderer.invoke('ultrapro:stealth:audit', profileId),
+    setSyncHumanize: (cfg: any) => ipcRenderer.invoke('ultrapro:sync:humanize', cfg)
   }
 }
 

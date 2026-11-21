@@ -142,6 +142,7 @@ export type Page =
   | 'trash'
   | 'crypto-deposit'
   | 'crypto-admin'
+  | 'ultra-pro'
   | 'settings'
   | 'logs'
   | 'support'

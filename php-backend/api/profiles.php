@@ -476,6 +476,77 @@ switch ($action) {
         }
         break;
 
+    // ── Distributed Team Profile Session Lock (Prevents concurrent multi-user session corruption) ──
+    case 'lock':
+    case 'heartbeat':
+        $id = trim((string)($input['id'] ?? $_GET['id'] ?? ''));
+        $deviceId = trim((string)($input['device_id'] ?? $input['deviceId'] ?? 'desktop'));
+        if ($id === '') {
+            respondJson(['success' => false, 'error' => 'Profile ID required.'], 400);
+        }
+        try {
+            $db->exec("
+                CREATE TABLE IF NOT EXISTS `profile_locks` (
+                  `profile_id` VARCHAR(64) NOT NULL PRIMARY KEY,
+                  `locked_by_user_id` VARCHAR(64) NOT NULL,
+                  `locked_by_email` VARCHAR(160) DEFAULT '',
+                  `device_id` VARCHAR(120) DEFAULT '',
+                  `locked_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  `expires_at` DATETIME NOT NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+            // Clean expired stale locks (> 5 minutes without heartbeat)
+            $db->exec("DELETE FROM profile_locks WHERE expires_at < NOW()");
+
+            $stmt = $db->prepare("SELECT * FROM profile_locks WHERE profile_id = ? LIMIT 1");
+            $stmt->execute([$id]);
+            $lock = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($lock && $lock['locked_by_user_id'] !== $userId) {
+                respondJson([
+                    'success' => false,
+                    'locked' => true,
+                    'lockedBy' => $lock['locked_by_email'] ?: $lock['locked_by_user_id'],
+                    'expiresAt' => $lock['expires_at'],
+                    'error' => 'Profile is currently open by ' . ($lock['locked_by_email'] ?: 'another team member') . '.'
+                ], 409);
+            }
+
+            $userEmail = $authUser['email'] ?? '';
+            $up = $db->prepare("
+                INSERT INTO profile_locks (profile_id, locked_by_user_id, locked_by_email, device_id, locked_at, expires_at)
+                VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 5 MINUTE))
+                ON DUPLICATE KEY UPDATE
+                  locked_by_user_id = VALUES(locked_by_user_id),
+                  locked_by_email = VALUES(locked_by_email),
+                  device_id = VALUES(device_id),
+                  expires_at = DATE_ADD(NOW(), INTERVAL 5 MINUTE)
+            ");
+            $up->execute([$id, $userId, $userEmail, $deviceId]);
+
+            respondJson(['success' => true, 'locked' => true, 'profileId' => $id, 'ttlSeconds' => 300]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => 'Lock error: ' . $e->getMessage()], 500);
+        }
+        break;
+
+    case 'unlock':
+        $id = trim((string)($input['id'] ?? $_GET['id'] ?? ''));
+        if ($id === '') {
+            respondJson(['success' => false, 'error' => 'Profile ID required.'], 400);
+        }
+        try {
+            if ($isAdmin) {
+                $db->prepare("DELETE FROM profile_locks WHERE profile_id = ?")->execute([$id]);
+            } else {
+                $db->prepare("DELETE FROM profile_locks WHERE profile_id = ? AND locked_by_user_id = ?")->execute([$id, $userId]);
+            }
+            respondJson(['success' => true, 'unlocked' => true, 'profileId' => $id]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => 'Unlock error: ' . $e->getMessage()], 500);
+        }
+        break;
+
     default:
         respondJson(['success' => false, 'error' => "Unknown action '{$action}'."], 400);
         break;

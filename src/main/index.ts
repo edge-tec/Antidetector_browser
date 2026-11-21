@@ -25,6 +25,7 @@ import { registerLaunchUrlHandlers } from './ipc/launch-url.ipc'
 import { registerPaymentIpcHandlers } from './ipc/payment.ipc'
 import { registerEnterpriseHandlers } from './ipc/enterprise.ipc'
 import { registerCryptoPaymentHandlers } from './ipc/crypto.ipc'
+import { registerUltraProHandlers } from './ipc/ultra-pro.ipc'
 import { logger } from './logging/logger'
 
 // ── 1. Global Process Exception & Crash Handlers ──
@@ -167,6 +168,7 @@ app.whenReady().then(async () => {
   try { registerPaymentIpcHandlers() } catch (err: any) { logger.error('system', `Payment IPC failed: ${err.message}`) }
   try { registerEnterpriseHandlers() } catch (err: any) { logger.error('system', `Enterprise IPC failed: ${err.message}`) }
   try { registerCryptoPaymentHandlers() } catch (err: any) { logger.error('system', `Crypto IPC failed: ${err.message}`) }
+  try { registerUltraProHandlers() } catch (err: any) { logger.error('system', `Ultra-Pro IPC failed: ${err.message}`) }
 
   // Create main window immediately
   createWindow()

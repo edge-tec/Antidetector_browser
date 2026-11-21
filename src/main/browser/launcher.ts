@@ -737,12 +737,15 @@ function buildLaunchArgs(profile: Profile, fingerprint: Fingerprint, proxy: Prox
     args.push(`--dns-over-https-templates=${fingerprint.browser.primaryDns}`)
   }
 
-  // Proxy configuration
+  // Proxy configuration + DNS/QUIC Leak Shield
   if (proxy && proxy.type !== 'direct' && proxy.host) {
     const proxyUrl = `${proxy.type}://${proxy.host}:${proxy.port}`
     args.push(`--proxy-server=${proxyUrl}`)
     // Route all traffic through proxy without Windows system proxy fallback
     args.push('--proxy-bypass-list=<-loopback>')
+    // Prevent local DNS resolution leaks & HTTP/3 QUIC UDP proxy bypasses
+    args.push('--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1')
+    args.push('--disable-quic')
   } else {
     // Explicitly disable proxy when "No Proxy" / "Direct" is selected
     // Prevents Windows from using system proxy auto-detection (WPAD/PAC)
@@ -1120,7 +1123,8 @@ export async function launchBrowser(
       }
     } catch (err: any) {
       if (err.message.startsWith('Proxy is unreachable')) throw err
-      logger.warn('network', `[ProxyCheckSkipped] Could not verify proxy: ${err.message}. Proceeding with launch.`)
+      logger.error('network', `[ProxyKillSwitch] ✗ Proxy verification threw error: ${err.message}. Blocking launch to prevent real IP leak.`)
+      throw new Error(`Proxy Kill-Switch blocked launch: ${err.message}. Fix or disable proxy before launching.`)
     }
   }
 

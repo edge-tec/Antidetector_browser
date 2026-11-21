@@ -34,6 +34,7 @@ import { CloudSyncPage } from './pages/enterprise/CloudSyncPage'
 import { CookieManagerPage } from './pages/enterprise/CookieManagerPage'
 import { CryptoDepositPage } from './pages/enterprise/CryptoDepositPage'
 import { AdminCryptoPage } from './pages/enterprise/AdminCryptoPage'
+import { UltraProSuitePage } from './pages/enterprise/UltraProSuitePage'
 import { enterpriseService } from './services/enterpriseService'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
@@ -3204,6 +3205,7 @@ function AppContent() {
     { page: 'proxies', icon: Icons.proxies, label: 'Proxies' },
     { page: 'automation', icon: Icons.automation, label: 'API & Automation', section: 'TOOLS' },
     { page: 'synchronizer', icon: <span style={{ fontSize: 15 }}>🪟</span>, label: 'Synchronizer', section: 'ENTERPRISE' },
+    { page: 'ultra-pro', icon: <span style={{ fontSize: 15 }}>⚡</span>, label: 'Ultra-Pro Suite' },
     { page: 'extensions', icon: <span style={{ fontSize: 15 }}>🧩</span>, label: 'Extension Center' },
     { page: 'rpa', icon: <span style={{ fontSize: 15 }}>🤖</span>, label: 'RPA Builder' },
     { page: 'cookies', icon: <span style={{ fontSize: 15 }}>🍪</span>, label: 'Cookie Manager' },
@@ -3486,6 +3488,7 @@ function AppContent() {
               {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
               {currentPage === 'synchronizer' && <SynchronizerPage showToast={showToast} />}
+              {currentPage === 'ultra-pro' && <UltraProSuitePage showToast={showToast} />}
               {currentPage === 'extensions' && <ExtensionCenterPage showToast={showToast} />}
               {currentPage === 'rpa' && <RpaBuilderPage showToast={showToast} />}
               {currentPage === 'cookies' && <CookieManagerPage showToast={showToast} />}
