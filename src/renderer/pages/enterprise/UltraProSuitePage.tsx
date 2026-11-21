@@ -5,9 +5,17 @@ interface Props {
 }
 
 export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
-  const [activeTab, setActiveTab] = useState<'cookie-robot' | 'vault' | 'stealth'>('cookie-robot')
+  const [activeTab, setActiveTab] = useState<'cookie-robot' | 'vault' | 'stealth' | 'bulk-proxy'>('cookie-robot')
   const [profiles, setProfiles] = useState<any[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<string>('')
+
+  // Bulk Proxy & Fraud Score State
+  const [bulkProxyText, setBulkProxyText] = useState<string>('')
+  const [bulkProxyProtocol, setBulkProxyProtocol] = useState<string>('socks5')
+  const [importingProxies, setImportingProxies] = useState(false)
+  const [fraudIpInput, setFraudIpInput] = useState<string>('')
+  const [fraudReport, setFraudReport] = useState<any>(null)
+  const [checkingFraud, setCheckingFraud] = useState(false)
 
   // Cookie Robot State
   const [presets, setPresets] = useState<any[]>([])
@@ -150,6 +158,38 @@ export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
     }
   }
 
+  const handleImportBulkProxies = async () => {
+    if (!bulkProxyText.trim()) return showToast('Paste at least one proxy line first', 'error')
+    setImportingProxies(true)
+    try {
+      const res = await api.ultraPro.importBulkProxies(bulkProxyText, bulkProxyProtocol)
+      if (res?.success) {
+        showToast(`Imported ${res.importedCount} proxies (${res.duplicatesRemoved} duplicates skipped, ${res.invalidCount} invalid)`, 'success')
+        setBulkProxyText('')
+      } else {
+        showToast(res?.error || 'Bulk import failed', 'error')
+      }
+    } finally {
+      setImportingProxies(false)
+    }
+  }
+
+  const handleCheckFraudScore = async () => {
+    if (!fraudIpInput.trim()) return showToast('Enter an IP address or proxy host', 'error')
+    setCheckingFraud(true)
+    try {
+      const res = await api.ultraPro.checkIpFraudScore(fraudIpInput.trim())
+      if (res?.success) {
+        setFraudReport(res.report)
+        showToast(`Fraud Score: ${res.report.fraudScore}/100 (${res.report.category})`, res.report.fraudScore <= 35 ? 'success' : 'error')
+      } else {
+        showToast(res?.error || 'Fraud check failed', 'error')
+      }
+    } finally {
+      setCheckingFraud(false)
+    }
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 1120, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
@@ -193,6 +233,12 @@ export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
           onClick={() => setActiveTab('stealth')}
         >
           🛡️ Stealth Score Checker
+        </button>
+        <button
+          className={`btn ${activeTab === 'bulk-proxy' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('bulk-proxy')}
+        >
+          🌐 Bulk Proxy & Fraud Score
         </button>
       </div>
 
@@ -361,6 +407,72 @@ export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB 4: BULK PROXY IMPORTER & LIVE IP FRAUD SCORE */}
+      {activeTab === 'bulk-proxy' && (
+        <div style={{ display: 'grid', gap: 18 }}>
+          <div className="card" style={{ padding: 20 }}>
+            <h3 style={{ marginTop: 0 }}>🌐 One-Click Bulk Proxy Importer (BrightData / IPRoyal / Smartproxy / Webshare)</h3>
+            <p style={{ fontSize: 13, opacity: 0.75 }}>
+              Paste 100+ proxies in any format: <code>socks5://user:pass@host:port</code>, <code>host:port:user:pass</code>, <code>user:pass@host:port</code>, or <code>host:port</code>.
+            </p>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+              <label style={{ fontSize: 12 }}>Default Protocol:</label>
+              <select value={bulkProxyProtocol} onChange={(e) => setBulkProxyProtocol(e.target.value)} style={{ padding: '6px 10px', borderRadius: 6 }}>
+                <option value="socks5">SOCKS5</option>
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+                <option value="socks4">SOCKS4</option>
+              </select>
+            </div>
+            <textarea
+              rows={6}
+              value={bulkProxyText}
+              onChange={(e) => setBulkProxyText(e.target.value)}
+              placeholder={'socks5://user:pass@1.2.3.4:1080\n5.6.7.8:8080:user2:pass2\n9.10.11.12:3128'}
+              style={{ width: '100%', padding: 10, borderRadius: 8, fontFamily: 'monospace', fontSize: 12, marginBottom: 12 }}
+            />
+            <button className="btn btn-primary" disabled={importingProxies} onClick={handleImportBulkProxies}>
+              {importingProxies ? '⏳ Importing...' : '📥 Import Bulk Proxies'}
+            </button>
+          </div>
+
+          <div className="card" style={{ padding: 20 }}>
+            <h3 style={{ marginTop: 0 }}>🔍 Live IP Fraud / Risk Score Checker</h3>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <input
+                value={fraudIpInput}
+                onChange={(e) => setFraudIpInput(e.target.value)}
+                placeholder="Enter proxy IP or hostname (e.g. 1.1.1.1)"
+                style={{ flex: 1, padding: 10, borderRadius: 8, fontFamily: 'monospace' }}
+              />
+              <button className="btn btn-primary" disabled={checkingFraud} onClick={handleCheckFraudScore}>
+                {checkingFraud ? '⏳ Checking...' : '🩺 Check Fraud Score'}
+              </button>
+            </div>
+            {fraudReport && (
+              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <strong style={{ fontSize: 16 }}>
+                    {fraudReport.ip} — {fraudReport.category}
+                  </strong>
+                  <span style={{ fontWeight: 900, fontSize: 18, color: fraudReport.fraudScore <= 20 ? '#10B981' : fraudReport.fraudScore <= 55 ? '#F59E0B' : '#F87171' }}>
+                    Risk: {fraudReport.fraudScore}/100 ({fraudReport.riskLevel.toUpperCase()})
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.85, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 6 }}>
+                  <div>📍 Location: {fraudReport.city}, {fraudReport.region}, {fraudReport.country} ({fraudReport.countryCode})</div>
+                  <div>🏢 ISP: {fraudReport.isp}</div>
+                  <div>🌐 ASN: {fraudReport.asn}</div>
+                  <div>🕒 Timezone: {fraudReport.timezone}</div>
+                  <div>⚡ Latency: {fraudReport.latencyMs}ms</div>
+                  <div>🛡️ Flags: {fraudReport.isMobile ? 'Mobile' : 'Fixed'} | {fraudReport.isHosting ? 'Datacenter' : 'Non-DC'} | {fraudReport.isProxy ? 'Proxy/VPN' : 'Clean'}</div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

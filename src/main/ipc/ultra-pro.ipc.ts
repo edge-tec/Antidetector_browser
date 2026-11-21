@@ -21,6 +21,9 @@ import {
 } from '../automation/cookie-robot.service'
 import { auditProfileStealthScore } from '../browser/stealth-score.service'
 import { windowSynchronizer, type SyncHumanizeConfig } from '../browser/window-synchronizer'
+import { parseBulkProxies, importBulkProxies, checkIpFraudScore } from '../network/proxy-bulk-fraud.service'
+import { buildCamoufoxEnvConfig } from '../browser/multi-kernel-manager'
+import { ProfileRepository } from '../database/repositories/profile.repo'
 
 export function registerUltraProHandlers(): void {
   // ── 2FA (TOTP) & Account Vault ──
@@ -100,6 +103,43 @@ export function registerUltraProHandlers(): void {
   ipcMain.handle('ultrapro:sync:humanize', (_e, cfg: Partial<SyncHumanizeConfig>) => {
     try {
       return { success: true, humanize: windowSynchronizer.setHumanizeConfig(cfg) }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Bulk Proxy Importer & Live IP Fraud Score ──
+  ipcMain.handle('ultrapro:proxy:parse-bulk', (_e, rawText: string, defaultType?: any) => {
+    try {
+      return { success: true, ...parseBulkProxies(rawText, defaultType) }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('ultrapro:proxy:import-bulk', (_e, rawText: string, defaultType?: any) => {
+    try {
+      return { success: true, ...importBulkProxies(rawText, defaultType) }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('ultrapro:proxy:fraud-score', async (_e, ipOrHost: string) => {
+    try {
+      const report = await checkIpFraudScore(ipOrHost)
+      return { success: true, report }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── Camoufox C++ Native Kernel Config Preview ──
+  ipcMain.handle('ultrapro:camoufox:config', (_e, profileId: string) => {
+    try {
+      const profile = ProfileRepository.findById(profileId)
+      if (!profile) throw new Error('Profile not found')
+      return { success: true, env: buildCamoufoxEnvConfig(profile) }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

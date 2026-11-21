@@ -646,7 +646,11 @@ const api = {
     getCookieRobotRuns: (profileId?: string) => ipcRenderer.invoke('ultrapro:cookie-robot:runs', profileId),
     runCookieRobot: (options: any) => ipcRenderer.invoke('ultrapro:cookie-robot:run', options),
     auditProfileStealth: (profileId: string) => ipcRenderer.invoke('ultrapro:stealth:audit', profileId),
-    setSyncHumanize: (cfg: any) => ipcRenderer.invoke('ultrapro:sync:humanize', cfg)
+    setSyncHumanize: (cfg: any) => ipcRenderer.invoke('ultrapro:sync:humanize', cfg),
+    parseBulkProxies: (rawText: string, defaultType?: string) => ipcRenderer.invoke('ultrapro:proxy:parse-bulk', rawText, defaultType),
+    importBulkProxies: (rawText: string, defaultType?: string) => ipcRenderer.invoke('ultrapro:proxy:import-bulk', rawText, defaultType),
+    checkIpFraudScore: (ipOrHost: string) => ipcRenderer.invoke('ultrapro:proxy:fraud-score', ipOrHost),
+    getCamoufoxConfig: (profileId: string) => ipcRenderer.invoke('ultrapro:camoufox:config', profileId)
   }
 }
 

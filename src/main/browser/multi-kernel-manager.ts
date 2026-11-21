@@ -17,13 +17,13 @@ import {
 } from './runtime-provisioner'
 import { logger } from '../logging/logger'
 
-export type KernelEngine = 'chromium' | 'firefox'
+export type KernelEngine = 'chromium' | 'firefox' | 'camoufox'
 export type FirefoxChannel = 'esr' | 'devedition'
 
 export interface KernelRelease {
   id: string
   engine: KernelEngine
-  channel: 'stable' | 'esr' | 'devedition'
+  channel: 'stable' | 'esr' | 'devedition' | 'stealth'
   version: string
   major: number
   label: string
@@ -105,6 +105,15 @@ export const KERNEL_CATALOG: KernelRelease[] = [
     version: '138.0b9',
     major: 138,
     label: 'Firefox Developer Edition 138'
+  },
+  {
+    id: 'camoufox-135',
+    engine: 'camoufox',
+    channel: 'stealth',
+    version: '135.0.1-beta.24',
+    major: 135,
+    label: 'Camoufox 135 (C++ Native Anti-Detect Kernel)',
+    recommended: true
   }
 ]
 
@@ -138,6 +147,33 @@ export function getKernelArtifactSpec(release: KernelRelease): {
       executableRelativePath = path.join(`chrome-${platKey}`, 'chrome.exe')
     }
     return { downloadUrl, fileName, executableRelativePath }
+  }
+
+  if (release.engine === 'camoufox') {
+    const tag = `v${release.version}`
+    if (process.platform === 'darwin') {
+      const macArch = process.arch === 'arm64' ? 'arm64' : 'x86_64'
+      const fileName = `camoufox-${release.version}-mac.${macArch}.zip`
+      return {
+        downloadUrl: `https://github.com/daijro/camoufox/releases/download/${tag}/${fileName}`,
+        fileName,
+        executableRelativePath: path.join('Camoufox.app', 'Contents', 'MacOS', 'camoufox')
+      }
+    }
+    if (process.platform === 'win32') {
+      const fileName = `camoufox-${release.version}-win.x86_64.zip`
+      return {
+        downloadUrl: `https://github.com/daijro/camoufox/releases/download/${tag}/${fileName}`,
+        fileName,
+        executableRelativePath: 'camoufox.exe'
+      }
+    }
+    const fileName = `camoufox-${release.version}-lin.x86_64.zip`
+    return {
+      downloadUrl: `https://github.com/daijro/camoufox/releases/download/${tag}/${fileName}`,
+      fileName,
+      executableRelativePath: 'camoufox'
+    }
   }
 
   // Firefox ESR or Developer Edition
@@ -455,3 +491,47 @@ class MultiKernelManager {
 }
 
 export const multiKernelManager = new MultiKernelManager()
+
+/**
+ * Build native C++ Gecko environment config (`CAMOU_CONFIG_1`) for Camoufox.
+ * Allows Camoufox to spoof OS, Navigator, Screen, WebGL, Timezone, Locale,
+ * and WebRTC directly inside the C++ engine with zero JavaScript tampering.
+ */
+export function buildCamoufoxEnvConfig(profile: {
+  osType?: string
+  timezone?: string
+  screenWidth?: number
+  screenHeight?: number
+  fingerprint?: any
+}): Record<string, string> {
+  const fp = (profile?.fingerprint || {}) as any
+  const osRaw = String(profile?.osType || 'windows-10').toLowerCase()
+  const osTarget = osRaw.includes('mac') ? 'macos' : osRaw.includes('linux') ? 'linux' : 'windows'
+
+  const cfg: Record<string, any> = {
+    'navigator.userAgent': fp?.navigator?.userAgent || undefined,
+    'navigator.platform': fp?.navigator?.platform || (osTarget === 'macos' ? 'MacIntel' : osTarget === 'linux' ? 'Linux x86_64' : 'Win32'),
+    'navigator.hardwareConcurrency': Number(fp?.navigator?.hardwareConcurrency || 8),
+    'navigator.language': fp?.locale?.language || 'en-US',
+    'screen.width': Number(fp?.screen?.width || profile?.screenWidth || 1920),
+    'screen.height': Number(fp?.screen?.height || profile?.screenHeight || 1080),
+    'screen.availWidth': Number(fp?.screen?.width || profile?.screenWidth || 1920),
+    'screen.availHeight': Number((fp?.screen?.height || profile?.screenHeight || 1080) - 40),
+    'window.devicePixelRatio': Number(fp?.screen?.devicePixelRatio || 1),
+    'webGl:vendor': fp?.webgl?.unmaskedVendor || undefined,
+    'webGl:renderer': fp?.webgl?.unmaskedRenderer || undefined,
+    'timezone': fp?.timezone?.timezone || profile?.timezone || 'America/New_York',
+    'webrtc:ipv4': fp?.webrtc?.publicIp || undefined,
+    'canvas:aaOffset': 1,
+    'humanize': true
+  }
+
+  // Strip undefined entries cleanly
+  for (const k of Object.keys(cfg)) {
+    if (cfg[k] === undefined || cfg[k] === '') delete cfg[k]
+  }
+
+  return {
+    CAMOU_CONFIG_1: JSON.stringify(cfg)
+  }
+}
