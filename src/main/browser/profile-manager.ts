@@ -14,6 +14,7 @@ import { ensureBrowserRuntime } from './runtime-provisioner'
 import { resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { ProfileHealthChecker } from './profile-health-checker'
 import { ProfileLockSystem } from './profile-lock-system'
+import { centralApi } from '../services/api-client.service'
 import { CrashRecoveryManager } from './crash-recovery-manager'
 import { BackupIntegrityService } from '../storage/backup-integrity'
 import { logger } from '../logging/logger'
@@ -63,6 +64,19 @@ class ProfileManager {
 
     if (processTracker.isRunning(profileId) || ProfileLockSystem.isLocked(profileId)) {
       throw new Error(`Profile "${profile.name}" is already running in an active instance. Multi-instance concurrency locked.`)
+    }
+
+    // ── Distributed Team Profile Lock (Prevents concurrent multi-user session corruption) ──
+    try {
+      const lockRes = await centralApi.lockProfile(profileId)
+      if (lockRes && lockRes.success === false && lockRes.lockedBy) {
+        throw new Error(`Profile "${profile.name}" is currently open by team member ${lockRes.lockedBy}.`)
+      }
+    } catch (lockErr: any) {
+      if (lockErr.message && lockErr.message.includes('currently open by team member')) {
+        throw lockErr
+      }
+      // Offline / non-team standalone mode continues gracefully
     }
 
     // ── Profile Storage Health Check & Auto-Repair ──
@@ -150,6 +164,7 @@ class ProfileManager {
     CrashRecoveryManager.markCleanExit(profileId)
     ProfileLockSystem.releaseLock(profileId)
     await processTracker.stop(profileId)
+    centralApi.unlockProfile(profileId).catch(() => {})
   }
 
   /**

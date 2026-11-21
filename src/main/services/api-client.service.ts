@@ -525,6 +525,23 @@ export class CentralApiClient {
       body: JSON.stringify({ id: versionId })
     })
   }
+
+  // ── Distributed Team Profile Session Lock ──
+  public async lockProfile(profileId: string): Promise<{ success: boolean; locked?: boolean; lockedBy?: string; error?: string }> {
+    if (!this.token) return { success: true }
+    return await this.request('/api/profiles.php?action=lock', {
+      method: 'POST',
+      body: JSON.stringify({ id: profileId, device_id: this.installationId })
+    })
+  }
+
+  public async unlockProfile(profileId: string): Promise<{ success: boolean; unlocked?: boolean; error?: string }> {
+    if (!this.token) return { success: true }
+    return await this.request('/api/profiles.php?action=unlock', {
+      method: 'POST',
+      body: JSON.stringify({ id: profileId })
+    })
+  }
 }
 
 export const centralApi = new CentralApiClient()

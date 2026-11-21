@@ -13,6 +13,26 @@ export function SynchronizerPage({ showToast }: { showToast: ShowToastFn }) {
   const [navUrl, setNavUrl] = useState('https://example.com')
   const [typeText, setTypeText] = useState('')
   const [gridLayout, setGridLayout] = useState<TileGridLayout>('2x2')
+  const [delayMinMs, setDelayMinMs] = useState<number>(40)
+  const [delayMaxMs, setDelayMaxMs] = useState<number>(140)
+  const [jitterPx, setJitterPx] = useState<number>(3)
+  const [captureDom, setCaptureDom] = useState<boolean>(true)
+
+  const handleApplyHumanize = async () => {
+    try {
+      const res = await (window as any).api?.ultraPro?.setSyncHumanize?.({
+        delayMinMs,
+        delayMaxMs: Math.max(delayMinMs, delayMaxMs),
+        jitterPx,
+        captureMasterDomEvents: captureDom
+      })
+      if (res?.success) {
+        showToast('success', `Humanize applied: ${res.humanize.delayMinMs}-${res.humanize.delayMaxMs}ms delay, ±${res.humanize.jitterPx}px jitter`)
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to apply humanize settings')
+    }
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -170,6 +190,34 @@ export function SynchronizerPage({ showToast }: { showToast: ShowToastFn }) {
         <div className="stat-card">
           <div className="stat-card-value">{syncState?.excludedProfileIds.length ?? 0}</div>
           <div className="stat-card-label">Excluded Windows</div>
+        </div>
+      </div>
+
+      {/* Humanized Anti-Detection Controls */}
+      <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <strong style={{ fontSize: 13 }}>🎭 Anti-Bot Humanizer:</strong>
+            <label style={{ fontSize: 12 }}>
+              Min Delay: <strong>{delayMinMs}ms</strong>
+              <input type="range" min={0} max={500} step={10} value={delayMinMs} onChange={(e) => setDelayMinMs(Number(e.target.value))} style={{ marginLeft: 6, verticalAlign: 'middle' }} />
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Max Delay: <strong>{delayMaxMs}ms</strong>
+              <input type="range" min={0} max={1000} step={10} value={delayMaxMs} onChange={(e) => setDelayMaxMs(Number(e.target.value))} style={{ marginLeft: 6, verticalAlign: 'middle' }} />
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Click Jitter: <strong>±{jitterPx}px</strong>
+              <input type="range" min={0} max={12} step={1} value={jitterPx} onChange={(e) => setJitterPx(Number(e.target.value))} style={{ marginLeft: 6, verticalAlign: 'middle' }} />
+            </label>
+            <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="checkbox" checked={captureDom} onChange={(e) => setCaptureDom(e.target.checked)} />
+              Live Master Click/Scroll/Key Capture
+            </label>
+          </div>
+          <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={handleApplyHumanize}>
+            💾 Apply Humanizer
+          </button>
         </div>
       </div>
 

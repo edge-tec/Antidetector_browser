@@ -6211,27 +6211,52 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <!-- Gateway Selection State -->
             <div id="checkoutGatewaySelectSection">
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 10px;">CHOOSE PAYMENT METHOD</label>
-                <div id="checkoutGatewaysList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                <div id="checkoutGatewaysList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
                     <!-- Injected dynamically -->
+                </div>
+                <div id="checkoutCryptoNetworkWrap" style="margin-bottom: 16px; background: rgba(45, 212, 191, 0.05); border: 1px solid rgba(45, 212, 191, 0.25); border-radius: 10px; padding: 12px;">
+                    <label style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block; margin-bottom: 6px;">🪙 SELECT CRYPTO NETWORK (9 SUPPORTED)</label>
+                    <select id="checkoutCryptoNetworkSelect" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; color: #FFF; font-size: 13px; font-weight: 600;">
+                        <option value="usdt-tron">USDT — TRON (TRC20) ⚡ Recommended</option>
+                        <option value="usdt-bsc">USDT — BNB Smart Chain (BEP20)</option>
+                        <option value="usdt-ethereum">USDT — Ethereum (ERC20)</option>
+                        <option value="trx-tron">TRX — TRON</option>
+                        <option value="bnb-bsc">BNB — BNB Smart Chain</option>
+                        <option value="eth-ethereum">ETH — Ethereum</option>
+                        <option value="btc-bitcoin">BTC — Bitcoin</option>
+                        <option value="pol-polygon">POL/MATIC — Polygon</option>
+                        <option value="sol-solana">SOL — Solana</option>
+                    </select>
                 </div>
                 <button class="btn btn-primary" id="btnProceedToPay" style="width: 100%; justify-content: center; padding: 12px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;" onclick="submitCheckoutPayment()">🔒 Proceed to Secure Payment</button>
             </div>
 
             <!-- Crypto Invoice Display State -->
             <div id="checkoutCryptoInvoiceSection" style="display: none; text-align: center;">
-                <div style="background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 16px; font-size: 13px; color: #2DD4BF;">
-                    ⚡ Send exactly <strong id="cryptoPayAmountDisplay">49.00 USDT</strong> to the address below:
+                <div style="background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 13px; color: #2DD4BF;">
+                    <div id="cryptoNetworkBadge" style="font-size: 11px; color: #94A3B8; margin-bottom: 4px;">USDT — TRON (TRC20)</div>
+                    ⚡ Send exact <strong id="cryptoPayAmountDisplay">49.00 USDT</strong>
+                    <button type="button" onclick="copyCheckoutText('cryptoPayAmountRaw')" style="margin-left: 6px; background: rgba(45,212,191,0.2); border: none; color: #2DD4BF; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer;">📋 Copy</button>
+                    <input type="hidden" id="cryptoPayAmountRaw">
+                    <input type="hidden" id="cryptoActiveInvoiceNumber">
                 </div>
-                <div style="margin: 16px 0;">
-                    <img id="cryptoQrCodeImg" src="" alt="Payment QR Code" style="width: 160px; height: 160px; border-radius: 10px; border: 2px solid #FFF;">
+                <div style="margin: 12px 0;">
+                    <img id="cryptoQrCodeImg" src="" alt="Payment QR Code" style="width: 155px; height: 155px; border-radius: 10px; border: 2px solid #FFF;">
                 </div>
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 16px;">
-                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Deposit Address</span>
-                    <input type="text" id="cryptoAddressInput" readonly style="width: 100%; background: transparent; border: none; color: #FFF; font-family: monospace; font-size: 13px; text-align: center;" onclick="this.select()">
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Dedicated Deposit Address</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input type="text" id="cryptoAddressInput" readonly style="flex: 1; background: transparent; border: none; color: #FFF; font-family: monospace; font-size: 12px; text-align: center;" onclick="this.select()">
+                        <button type="button" onclick="copyCheckoutText('cryptoAddressInput')" style="background: rgba(129,140,248,0.2); border: none; color: #818CF8; border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">📋 Copy</button>
+                    </div>
                 </div>
-                <div style="display: flex; justify-content: center; align-items: center; gap: 8px; color: #F59E0B; font-size: 13px;">
+                <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                    <input type="text" id="cryptoManualTxHash" placeholder="Optional: Paste TxHash for instant verification..." style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: #FFF; font-family: monospace; font-size: 11px;">
+                    <button type="button" class="btn btn-primary" style="padding: 8px 12px; font-size: 11px;" onclick="verifyCryptoInvoiceNow()">✓ Verify</button>
+                </div>
+                <div id="cryptoLiveStatusRow" style="display: flex; justify-content: center; align-items: center; gap: 8px; color: #F59E0B; font-size: 12.5px;">
                     <span class="pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
-                    Awaiting blockchain network confirmation...
+                    <span id="cryptoLiveStatusText">Auto-scanning blockchain every 10s...</span>
                 </div>
             </div>
         </div>
@@ -6357,263 +6382,6 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         }
 
         async function handlePublicContactSubmit(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            const btn = document.getElementById('btnSendContactMsg');
-            const statusBox = document.getElementById('contactFormStatus');
-            const name = document.getElementById('contactSenderName').value.trim();
-            const email = document.getElementById('contactSenderEmail').value.trim();
-            const subject = document.getElementById('contactSenderSubject').value.trim();
-            const message = document.getElementById('contactSenderMessage').value.trim();
-
-            if (!name || !email || !message) {
-                if (statusBox) {
-                    statusBox.style.display = 'block';
-                    statusBox.style.background = 'rgba(239,68,68,0.15)';
-                    statusBox.style.color = '#F87171';
-                    statusBox.innerText = '❌ Please fill in your name, email, and message.';
-                }
-                return false;
-            }
-
-            if (btn) {
-                btn.disabled = true;
-                btn.innerText = 'Sending Message...';
-            }
-
-            if (statusBox) {
-                statusBox.style.display = 'block';
-                statusBox.style.background = 'rgba(99,102,241,0.15)';
-                statusBox.style.color = '#818CF8';
-                statusBox.innerText = '⏳ Delivering your message to info@antiprofiles.com...';
-            }
-
-            // Obtain Captcha Token if enabled
-            let captchaToken = null;
-            if (typeof getCaptchaToken === 'function') {
-                captchaToken = await getCaptchaToken('contact', 'contactTurnstileContainer');
-            }
-
-            try {
-                const res = await fetch('/api/support?action=contact-message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: name,
-                        email: email,
-                        subject: subject,
-                        message: message,
-                        captcha_token: captchaToken
-                    })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    if (statusBox) {
-                        statusBox.style.display = 'block';
-                        statusBox.style.background = 'rgba(45,212,191,0.15)';
-                        statusBox.style.color = '#2DD4BF';
-                        statusBox.innerText = '✅ ' + (data.message || 'Thank you for your message! Our team has received it at info@antiprofiles.com and will reply shortly.');
-                    }
-                    document.getElementById('publicContactForm').reset();
-                    if (typeof renderTurnstileWidget === 'function') renderTurnstileWidget('contactTurnstileContainer');
-                } else {
-                    if (statusBox) {
-                        statusBox.style.display = 'block';
-                        statusBox.style.background = 'rgba(239,68,68,0.15)';
-                        statusBox.style.color = '#F87171';
-                        statusBox.innerText = '❌ ' + (data.error || 'Failed to send message. Please try again.');
-                    }
-                }
-            } catch (err) {
-                if (statusBox) {
-                    statusBox.style.display = 'block';
-                    statusBox.style.background = 'rgba(239,68,68,0.15)';
-                    statusBox.style.color = '#F87171';
-                    statusBox.innerText = '❌ Network connection error. Please try again.';
-                }
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerText = 'Send Message';
-                }
-            }
-            return false;
-        }
-
-        function handleLogout() {
-            localStorage.removeItem('sessionToken');
-            localStorage.removeItem('user');
-            closeAdminDashboard();
-            closeModal();
-            if (window.history && window.history.replaceState) {
-                window.history.replaceState({}, '', '/');
-            }
-            openModal('login');
-        }
-
-        async function handleRegister(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            const name = document.getElementById('regName').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-            const confirmPassword = document.getElementById('regConfirmPassword') ? document.getElementById('regConfirmPassword').value : password;
-            const msg = document.getElementById('loginMsg');
-            const submitBtn = document.getElementById('registerSubmitBtn');
-
-            if (!name || name.length < 2) {
-                msg.style.display = 'block';
-                msg.style.background = 'rgba(239,68,68,0.2)';
-                msg.style.color = '#F87171';
-                msg.style.border = 'none';
-                msg.innerText = 'Please enter your full name (at least 2 characters).';
-                return false;
-            }
-
-            if (!email || !email.includes('@')) {
-                msg.style.display = 'block';
-                msg.style.background = 'rgba(239,68,68,0.2)';
-                msg.style.color = '#F87171';
-                msg.style.border = 'none';
-                msg.innerText = 'Please enter a valid email address.';
-                return false;
-            }
-
-            if (!password || password.length < 6) {
-                msg.style.display = 'block';
-                msg.style.background = 'rgba(239,68,68,0.2)';
-                msg.style.color = '#F87171';
-                msg.style.border = 'none';
-                msg.innerText = 'Password must be at least 6 characters long.';
-                return false;
-            }
-
-            if (password !== confirmPassword) {
-                msg.style.display = 'block';
-                msg.style.background = 'rgba(239,68,68,0.2)';
-                msg.style.color = '#F87171';
-                msg.style.border = 'none';
-                msg.innerText = 'Passwords do not match. Please check and try again.';
-                return false;
-            }
-
-            // Obtain Captcha Token if enabled
-            let captchaToken = null;
-            if (typeof getCaptchaToken === 'function') {
-                captchaToken = await getCaptchaToken('register', 'registerTurnstileContainer');
-            }
-
-            // Disable button to prevent double submission
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerText = 'Creating account & sending email...';
-                submitBtn.style.opacity = '0.7';
-                submitBtn.style.cursor = 'not-allowed';
-            }
-
-            msg.style.display = 'block';
-            msg.style.background = 'rgba(99,102,241,0.2)';
-            msg.style.color = '#818CF8';
-            msg.style.border = 'none';
-            msg.innerText = 'Creating account & dispatching verification email...';
-
-            try {
-                const res = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        password,
-                        captcha_token: captchaToken,
-                        aff_id: localStorage.getItem('aff_id') || '',
-                        click_id: localStorage.getItem('click_id') || ''
-                    })
-                });
-
-                if (!res.ok && res.status >= 500) {
-                    throw new Error('Server error (' + res.status + '). Please try again later.');
-                }
-
-                const data = await res.json();
-                if (data.success) {
-                    if (data.requiresVerification) {
-                        const safeEmail = (typeof window.escapeHtml === 'function') ? window.escapeHtml(email) : String(email).replace(/[<>&'"]/g, '');
-                        msg.style.display = 'block';
-                        msg.style.background = 'rgba(45,212,191,0.12)';
-                        msg.style.color = '#2DD4BF';
-                        msg.style.border = '1px solid rgba(45,212,191,0.3)';
-                        msg.style.borderRadius = '12px';
-                        msg.style.padding = '16px';
-                        msg.innerHTML = `
-                            <div style="font-size: 15px; font-weight: 800; margin-bottom: 6px; display:flex; align-items:center; gap:8px;">
-                                <span>✉️</span> <span>Verification Email Sent!</span>
-                            </div>
-                            <div style="font-size: 13px; color: #CBD5E1; line-height: 1.5; margin-bottom: 14px;">
-                                We've sent a verification link to <strong style="color:#FFF;">${safeEmail}</strong>. Please check your inbox and click the link to activate your account.
-                            </div>
-                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${safeEmail}', this)">🔄 Resend Verification Email</button>
-                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px;" onclick="openModal('login')">Go to Sign In</button>
-                            </div>
-                        `;
-                        if (submitBtn) {
-                            submitBtn.style.display = 'none';
-                        }
-                    } else {
-                        msg.style.background = 'rgba(45,212,191,0.2)';
-                        msg.style.color = '#2DD4BF';
-                        msg.innerText = data.message || 'Account created successfully! Opening dashboard...';
-
-                        if (data.sessionToken) {
-                            localStorage.setItem('sessionToken', data.sessionToken);
-                        }
-                        if (data.user) {
-                            localStorage.setItem('user', JSON.stringify(data.user));
-                        }
-
-                        if (window.history && window.history.pushState) {
-                            window.history.pushState({}, '', '/dashboard');
-                        }
-
-                        window._pvJustLoggedIn = true;
-
-                        setTimeout(() => {
-                            closeModal();
-                            checkSession();
-                        }, 400);
-                    }
-                } else {
-                    msg.style.background = 'rgba(239,68,68,0.2)';
-                    msg.style.color = '#F87171';
-                    msg.style.border = 'none';
-                    msg.innerText = data.error || 'Registration failed. Please try again.';
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.innerText = 'Create Account';
-                        submitBtn.style.opacity = '1';
-                        submitBtn.style.cursor = 'pointer';
-                    }
-                }
-            } catch(err) {
-                msg.style.background = 'rgba(239,68,68,0.2)';
-                msg.style.color = '#F87171';
-                msg.style.border = 'none';
-                msg.innerText = err.message || 'Unable to connect to authentication server. Please check your connection and try again.';
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = 'Create Account';
-                    submitBtn.style.opacity = '1';
-                    submitBtn.style.cursor = 'pointer';
-                }
-            }
-            return false;
-        }
-
-        async function resendVerificationEmail(email, btn) {
-            if (!email) {
-                const emailInput = document.getElementById('loginEmail') || document.getElementById('regEmail');
-                email = emailInput ? emailInput.value.trim() : '';
-            }
             if (!email) {
                 alert('Please enter your email address.');
                 return;
@@ -10044,6 +9812,15 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             document.getElementById('modalCheckoutPayment').style.display = 'none';
         }
 
+        function copyCheckoutText(elId) {
+            const el = document.getElementById(elId);
+            if (!el || !el.value) return;
+            navigator.clipboard.writeText(el.value).then(() => {
+                const st = document.getElementById('cryptoLiveStatusText');
+                if (st) st.innerText = '✓ Copied to clipboard!';
+            });
+        }
+
         async function submitCheckoutPayment() {
             const token = localStorage.getItem('sessionToken');
             if (!token || !_activeCheckoutPlan) return;
@@ -10055,6 +9832,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
 
             const gatewayKey = selectedGw.value;
+            const networkEl = document.getElementById('checkoutCryptoNetworkSelect');
+            const selectedNetwork = networkEl ? networkEl.value : 'usdt-tron';
             const btn = document.getElementById('btnProceedToPay');
             btn.disabled = true;
             btn.innerText = 'Creating Secure Payment Session...';
@@ -10066,6 +9845,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     body: JSON.stringify({
                         plan_id: _activeCheckoutPlan.planId,
                         gateway: gatewayKey,
+                        network: selectedNetwork,
                         success_url: window.location.origin + '/?payment=success',
                         cancel_url: window.location.origin + '/?payment=cancelled'
                     })
@@ -10081,14 +9861,23 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     if (checkoutUrl) {
                         window.location.href = checkoutUrl;
                     } else if (data.type === 'crypto' || data.gateway === 'crypto') {
-                        // Display Crypto payment deposit details
+                        const payAddr = data.payAddress || data.deposit_address || '';
+                        const payAmt = data.payAmount || data.amount || '';
+                        const payCoin = data.payCoin || data.currency || 'USDT';
+                        const invNum = data.invoiceNumber || data.invoice_number || '';
+
                         document.getElementById('checkoutGatewaySelectSection').style.display = 'none';
                         document.getElementById('checkoutCryptoInvoiceSection').style.display = 'block';
-                        document.getElementById('cryptoPayAmountDisplay').innerText = data.amount + ' ' + (data.currency || 'USDT');
-                        document.getElementById('cryptoAddressInput').value = data.deposit_address || '';
-                        document.getElementById('cryptoQrCodeImg').src = data.qr_code_url || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.deposit_address)}`;
+                        document.getElementById('cryptoNetworkBadge').innerText = (data.networkLabel || selectedNetwork) + (data.mode === 'hd_sweep' ? ' • Dedicated Order HD Address' : '');
+                        document.getElementById('cryptoPayAmountDisplay').innerText = payAmt + ' ' + payCoin;
+                        document.getElementById('cryptoPayAmountRaw').value = payAmt;
+                        document.getElementById('cryptoActiveInvoiceNumber').value = invNum;
+                        document.getElementById('cryptoAddressInput').value = payAddr;
+                        document.getElementById('cryptoManualTxHash').value = '';
+                        document.getElementById('cryptoQrCodeImg').src = data.qrUrl || data.qr_code_url || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(payAddr)}`;
+                        document.getElementById('cryptoLiveStatusText').innerText = 'Auto-scanning blockchain every 10s...';
 
-                        pollCryptoInvoiceStatus(data.invoice_number || data.invoiceNumber);
+                        pollCryptoInvoiceStatus(invNum);
                     } else {
                         alert(data.message || 'Payment initiated successfully.');
                     }
@@ -10102,21 +9891,43 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
         }
 
+        async function verifyCryptoInvoiceNow() {
+            const invNum = document.getElementById('cryptoActiveInvoiceNumber')?.value || '';
+            const txHash = (document.getElementById('cryptoManualTxHash')?.value || '').trim();
+            if (!invNum) return;
+            const st = document.getElementById('cryptoLiveStatusText');
+            if (st) st.innerText = 'Checking blockchain confirmations...';
+            try {
+                const res = await fetch('/api/payments.php?action=crypto/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice: invNum, tx_hash: txHash })
+                });
+                const data = await res.json();
+                if (data.success && (data.status === 'paid' || data.packageActivated)) {
+                    if (_cryptoPollTimer) clearInterval(_cryptoPollTimer);
+                    if (st) st.innerText = '🎉 Payment confirmed! Package activated immediately!';
+                    alert('🎉 Payment confirmed on-chain! Your subscription package is now ACTIVE.');
+                    closeCheckoutModal();
+                    if (typeof loadUserPortalData === 'function') loadUserPortalData();
+                    if (typeof loadSubscriptionsTable === 'function') loadSubscriptionsTable();
+                } else if (data.status === 'confirming' || data.status === 'detected') {
+                    if (st) st.innerText = `⏳ Detected! Confirmations: ${data.confirmations || 0}/${data.requiredConfirmations || 12}...`;
+                } else if (data.error) {
+                    if (st) st.innerText = '⚠️ ' + data.error;
+                } else {
+                    if (st) st.innerText = data.message || 'Waiting for incoming payment on-chain...';
+                }
+            } catch (err) {
+                if (st) st.innerText = 'Retrying blockchain check...';
+            }
+        }
+
         function pollCryptoInvoiceStatus(invoiceNumber) {
             if (_cryptoPollTimer) clearInterval(_cryptoPollTimer);
-            _cryptoPollTimer = setInterval(async () => {
-                try {
-                    const res = await fetch('/api/payments/status?invoice=' + encodeURIComponent(invoiceNumber));
-                    const data = await res.json();
-                    if (data.success && data.status === 'paid') {
-                        clearInterval(_cryptoPollTimer);
-                        alert('🎉 Cryptocurrency payment verified! Your subscription has been activated.');
-                        closeCheckoutModal();
-                        loadUserPortalData();
-                        loadSubscriptionsTable();
-                    }
-                } catch(e) {}
-            }, 5000);
+            _cryptoPollTimer = setInterval(() => {
+                verifyCryptoInvoiceNow();
+            }, 10000);
         }
 
         async function loadAuditLogsTable() {
