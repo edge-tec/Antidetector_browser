@@ -78,7 +78,7 @@ export function setupSupportIPC(): void {
 
     try {
       if (isAdmin) {
-        const centralRes = await centralApi.adminGetSupportConversation(conversationId)
+        const centralRes: any = await centralApi.adminGetSupportConversation(conversationId)
         if (centralRes.success && (centralRes.conversation || centralRes.data)) {
           const convData = centralRes.conversation || centralRes.data
           return {

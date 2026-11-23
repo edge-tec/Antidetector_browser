@@ -95,6 +95,10 @@ export class UserRepository {
     return userToDisplay(user, count)
   }
 
+  getAllDisplay(): UserDisplay[] {
+    return this.listUsers()
+  }
+
   update(id: string, input: UserUpdateInput): UserDisplay | null {
     const db = getDatabase()
     const existing = this.getById(id)

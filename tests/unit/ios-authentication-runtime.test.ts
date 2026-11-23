@@ -205,7 +205,7 @@ describe('AntiProfiles iOS Authentication Runtime (Google OAuth 2.0 Compliant)',
       const safariUA = generateGenuineIosSafariUserAgent(device)
       expect(safariUA).toContain('iPhone')
       expect(safariUA).toContain('AppleWebKit/605.1.15')
-      expect(safariUA).toContain('Version/18.0')
+      expect(safariUA).toContain(`Version/${device.iosVersion}`)
       expect(safariUA).toContain('Safari/604.1')
       expect(safariUA).not.toContain('Chrome')
       expect(safariUA).not.toContain('CriOS')

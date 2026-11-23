@@ -122,7 +122,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
   const [openFaq, setOpenFaq] = useState<string | null>(null)
 
   // OS & CPU Architecture Detection State
-  const [detectedTarget, setDetectedTarget] = useState<'windows-x64' | 'macos-arm64' | 'macos-x64'>('windows-x64')
+  const [detectedTarget, setDetectedTarget] = useState<'windows-x64' | 'macos-arm64' | 'macos-x64' | 'linux-x64'>('windows-x64')
   const [showArchHelpModal, setShowArchHelpModal] = useState(false)
 
   // Contact Form State
@@ -134,7 +134,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
     // OS and Architecture Detection
     const ua = navigator.userAgent || ''
     const platform = (navigator.platform || '').toLowerCase()
-    let isMac = platform.includes('mac') || ua.includes('Macintosh') || ua.includes('Mac OS')
+    const isMac = platform.includes('mac') || ua.includes('Macintosh') || ua.includes('Mac OS')
+    const isLinux = !isMac && !ua.includes('Android') && (platform.includes('linux') || ua.includes('X11; Linux'))
     
     if (isMac) {
       let isArm = false
@@ -154,6 +155,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
 
       if (isArm) setDetectedTarget('macos-arm64')
       else setDetectedTarget('macos-x64')
+    } else if (isLinux) {
+      setDetectedTarget('linux-x64')
     } else {
       setDetectedTarget('windows-x64')
     }

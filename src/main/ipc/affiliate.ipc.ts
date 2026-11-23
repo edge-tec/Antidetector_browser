@@ -304,4 +304,30 @@ export function registerAffiliateHandlers(): void {
       return { success: false, error: err.message }
     }
   })
+
+  // ── 19. Admin: Reverse Affiliate Commission ──
+  ipcMain.handle('affiliate:adminReverseCommission', async (_event, token: string, commissionId: string, reason: string) => {
+    try {
+      if (!verifyAdminSession(token)) {
+        return { success: false, error: 'Unauthorized. Admin access required.' }
+      }
+      const reversed = affiliateService.adminReverseCommission(commissionId, reason || 'Admin reversal')
+      return { success: true, data: reversed }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // ── 20. Admin: Manually Adjust Affiliate Balance ──
+  ipcMain.handle('affiliate:adminAdjustBalance', async (_event, token: string, userId: string, amount: number, reason: string) => {
+    try {
+      if (!verifyAdminSession(token)) {
+        return { success: false, error: 'Unauthorized. Admin access required.' }
+      }
+      affiliateService.adminAdjustBalance(userId, Number(amount), reason || 'Admin manual adjustment')
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }
