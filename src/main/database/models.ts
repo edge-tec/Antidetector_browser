@@ -28,6 +28,9 @@ export type LogCategory =
   | 'payment'
   | 'support'
   | 'central-api'
+  | 'automation'
+  | 'diagnostics'
+  | 'subscription'
 
 export type UserRole = 'admin' | 'user'
 export type AccountStatus = 'pending' | 'active' | 'suspended'

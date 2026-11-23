@@ -93,7 +93,7 @@ export function registerProxyHandlers(): void {
               timezone: geo.timezone,
               latitude: geo.latitude,
               longitude: geo.longitude,
-              publicIp: geo.publicIp
+              publicIp: (geo as any).publicIp || geo.ip
             } as any)
           }
         }).catch(() => {})

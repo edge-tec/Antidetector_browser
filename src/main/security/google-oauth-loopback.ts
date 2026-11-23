@@ -507,7 +507,7 @@ export async function startGoogleSystemBrowserOAuth(
     server.once('error', (err: any) => {
       if (err.code === 'EADDRINUSE') {
         logger.info('auth', '[GoogleAuth] Port 8080 in use, falling back to dynamic port')
-        server.listen(0, '127.0.0.1', onBound)
+        server?.listen(0, '127.0.0.1', onBound)
       } else {
         cleanup()
         logger.warn('auth', `[GoogleAuth] Loopback server error: ${err.message}`)

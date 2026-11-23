@@ -7,7 +7,7 @@ import { WebRTCFingerprint } from '../../../fingerprint/types'
 
 export function buildWebRTCScript(webrtcFp?: WebRTCFingerprint): string {
   const isOff = webrtcFp?.mode === 'disabled'
-  const publicIp = webrtcFp?.publicIp || ''
+  const publicIp = webrtcFp?.publicIP || (webrtcFp as any)?.publicIp || ''
 
   if (isOff) {
     return `

@@ -731,7 +731,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
       if (res?.success && res.data) {
         showToast('success', `✓ Gmail API Active: ${res.data.emailAddress || (p as any).googleAccount?.email} (${res.data.messagesTotal || 0} messages)`)
       } else {
-        showToast('warn', `Gmail API Status: ${res?.error || 'Account connected (API ready)'}`)
+        showToast('warning', `Gmail API Status: ${res?.error || 'Account connected (API ready)'}`)
       }
     } catch (e: any) {
       showToast('error', e.message || 'Gmail API request failed')

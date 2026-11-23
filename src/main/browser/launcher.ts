@@ -1083,8 +1083,16 @@ export async function launchBrowser(
           logger.info('proxy', `[ProxyGeoSync] ✓ Auto-matched geolocation coordinates (${geo.latitude}, ${geo.longitude}) for proxy host ${proxy.host} (${proxy.city || geo.city}, ${proxy.region || geo.region})`)
         }
         if (geo.ip) {
-          if (!fingerprint.webrtc) fingerprint.webrtc = {}
-          fingerprint.webrtc.publicIp = geo.ip
+          if (!fingerprint.webrtc) {
+            fingerprint.webrtc = {
+              mode: 'default',
+              ipPolicy: 'default_public_interface_only',
+              localIP: '',
+              publicIP: geo.ip
+            }
+          }
+          fingerprint.webrtc.publicIP = geo.ip
+          ;(fingerprint.webrtc as any).publicIp = geo.ip
         }
       }
     } catch (err: any) {
