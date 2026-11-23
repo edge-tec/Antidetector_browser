@@ -8,6 +8,8 @@ import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
 import { getDatabase as getDb } from '../database/connection'
 import { encryptPassword, decryptPassword } from './encryption'
+import { processTracker } from '../browser/process-tracker'
+import { profileManager } from '../browser/profile-manager'
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 
@@ -255,4 +257,111 @@ export function deleteVaultAccount(accountId: string): boolean {
   const db = getDb()
   const info = db.prepare('DELETE FROM profile_vault_accounts WHERE id = ?').run(accountId)
   return (info.changes || 0) > 0
+}
+
+/**
+ * One-Click Auto-Fill of Vault Username, Password, and live 6-digit 2FA TOTP code
+ * directly into the profile's active browser tab via CDP.
+ */
+export async function autoFillVaultAccount(accountId: string): Promise<{
+  filledUsername: boolean
+  filledPassword: boolean
+  filledTotp: boolean
+  totpCode?: string
+}> {
+  const db = getDb()
+  const row = db.prepare('SELECT * FROM profile_vault_accounts WHERE id = ?').get(accountId) as any
+  if (!row) throw new Error('Vault account not found')
+
+  const profileId: string = row.profile_id
+  const username: string = row.username || ''
+  const password: string = row.encrypted_password ? safeDecrypt(row.encrypted_password) : ''
+  const totpSecret: string = row.encrypted_totp ? safeDecrypt(row.encrypted_totp) : ''
+  const totpCode: string | undefined = totpSecret ? generateTotpCode(totpSecret).code : undefined
+  const loginUrl: string = row.login_url || ''
+
+  let tracked = processTracker.get(profileId)
+  if (!tracked?.browser || !tracked.browser.connected) {
+    await profileManager.startProfile(profileId)
+    tracked = processTracker.get(profileId)
+  }
+  if (!tracked?.browser || !tracked.browser.connected) {
+    throw new Error('Could not connect to profile browser session for Auto-Fill')
+  }
+
+  const pages = await tracked.browser.pages()
+  const page = pages[0] || (await tracked.browser.newPage())
+
+  if (loginUrl && (page.url() === 'about:blank' || !page.url().startsWith('http'))) {
+    const normalizedUrl = /^https?:\/\//i.test(loginUrl) ? loginUrl : `https://${loginUrl}`
+    await page.goto(normalizedUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {})
+  }
+
+  const result = await page.evaluate(
+    (creds: { username: string; password: string; totpCode?: string }) => {
+      const setNativeValue = (el: HTMLInputElement, val: string) => {
+        el.focus()
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+        if (setter) setter.call(el, val)
+        else el.value = val
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+
+      const inputs = Array.from(document.querySelectorAll('input')) as HTMLInputElement[]
+      const visibleInputs = inputs.filter((i) => {
+        const r = i.getBoundingClientRect()
+        return !i.disabled && !i.readOnly && i.type !== 'hidden' && r.width > 0 && r.height > 0
+      })
+
+      let filledUsername = false
+      let filledPassword = false
+      let filledTotp = false
+
+      // 1. Fill 2FA / OTP input if visible on page
+      if (creds.totpCode) {
+        const otpInput = visibleInputs.find((i) => {
+          const attr = `${i.name} ${i.id} ${i.placeholder} ${i.autocomplete} ${i.getAttribute('aria-label') || ''}`.toLowerCase()
+          return (
+            i.autocomplete === 'one-time-code' ||
+            /otp|totp|2fa|two.?factor|verification|security.?code|approvals_code|pin/i.test(attr) ||
+            (i.maxLength === 6 && (i.type === 'text' || i.type === 'tel' || i.type === 'number'))
+          )
+        })
+        if (otpInput) {
+          setNativeValue(otpInput, creds.totpCode)
+          filledTotp = true
+        }
+      }
+
+      // 2. Fill Username / Email input
+      if (creds.username) {
+        const userInput = visibleInputs.find((i) => {
+          const attr = `${i.name} ${i.id} ${i.placeholder} ${i.autocomplete} ${i.type}`.toLowerCase()
+          return (
+            i.type === 'email' ||
+            /user|email|login|identifier|phone|account/i.test(attr)
+          )
+        })
+        if (userInput) {
+          setNativeValue(userInput, creds.username)
+          filledUsername = true
+        }
+      }
+
+      // 3. Fill Password input
+      if (creds.password) {
+        const passInput = visibleInputs.find((i) => i.type === 'password')
+        if (passInput) {
+          setNativeValue(passInput, creds.password)
+          filledPassword = true
+        }
+      }
+
+      return { filledUsername, filledPassword, filledTotp }
+    },
+    { username, password, totpCode }
+  )
+
+  return { ...result, totpCode }
 }

@@ -458,14 +458,46 @@ class MultiKernelManager {
   }
 
   private extractArchive(archivePath: string, targetDir: string, release: KernelRelease): void {
+    // 1. Windows Firefox .exe installer (NSIS / 7-Zip SFX portable extraction)
+    if (archivePath.toLowerCase().endsWith('.exe') && process.platform === 'win32') {
+      const firefoxDir = path.join(targetDir, 'firefox')
+      if (!fs.existsSync(firefoxDir)) fs.mkdirSync(firefoxDir, { recursive: true })
+      try {
+        execFileSync(archivePath, [`/ExtractDir=${firefoxDir}`], { timeout: 300000, windowsHide: true })
+      } catch {
+        execFileSync(archivePath, ['/S', `/D=${firefoxDir}`], { timeout: 300000, windowsHide: true })
+      }
+      return
+    }
+
+    // 2. Cross-platform .zip extraction (Windows tar + PowerShell fallback, macOS/Linux unzip + ditto fallback)
     if (archivePath.endsWith('.zip')) {
       if (process.platform === 'win32') {
-        execFileSync('tar', ['-xf', archivePath, '-C', targetDir], { timeout: 300000 })
+        try {
+          execFileSync('tar', ['-xf', archivePath, '-C', targetDir], { timeout: 300000, windowsHide: true })
+        } catch {
+          const psCmd = `Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${targetDir}' -Force`
+          execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', psCmd], {
+            timeout: 300000,
+            windowsHide: true
+          })
+        }
+      } else if (process.platform === 'darwin') {
+        try {
+          execFileSync('ditto', ['-x', '-k', archivePath, targetDir], { timeout: 180000 })
+        } catch {
+          execFileSync('unzip', ['-q', '-o', archivePath, '-d', targetDir], { timeout: 180000 })
+        }
+        try {
+          execFileSync('xattr', ['-cr', targetDir], { timeout: 15000 })
+        } catch {}
       } else {
         execFileSync('unzip', ['-q', '-o', archivePath, '-d', targetDir], { timeout: 180000 })
       }
       return
     }
+
+    // 3. macOS .dmg extraction with Gatekeeper quarantine removal
     if (archivePath.endsWith('.dmg') && process.platform === 'darwin') {
       const mountPoint = path.join(targetDir, '_dmg_mount')
       fs.mkdirSync(mountPoint, { recursive: true })
@@ -476,12 +508,17 @@ class MultiKernelManager {
         const destApp = path.join(targetDir, appName)
         if (fs.existsSync(destApp)) fs.rmSync(destApp, { recursive: true, force: true })
         execFileSync('cp', ['-R', srcApp, destApp], { timeout: 60000 })
+        try {
+          execFileSync('xattr', ['-cr', destApp], { timeout: 15000 })
+        } catch {}
       } finally {
         try { execFileSync('hdiutil', ['detach', mountPoint, '-quiet'], { timeout: 15000 }) } catch {}
         try { fs.rmSync(mountPoint, { recursive: true, force: true }) } catch {}
       }
       return
     }
+
+    // 4. Linux .tar.xz / .tar.bz2 extraction
     if (archivePath.endsWith('.tar.xz') || archivePath.endsWith('.tar.bz2')) {
       execFileSync('tar', ['-xf', archivePath, '-C', targetDir], { timeout: 180000 })
       return

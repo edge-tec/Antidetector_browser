@@ -28,6 +28,14 @@ export class ProxyRepository {
     return row ? proxyFromRow(row) : null
   }
 
+  findById(id: string): Proxy | null {
+    return this.getById(id)
+  }
+
+  static findById(id: string): Proxy | null {
+    return new ProxyRepository().getById(id)
+  }
+
   getDisplayById(id: string): ProxyDisplay | null {
     const proxy = this.getById(id)
     return proxy ? proxyToDisplay(proxy) : null

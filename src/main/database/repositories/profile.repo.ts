@@ -51,6 +51,14 @@ export class ProfileRepository {
     return row ? profileFromRow(row) : null
   }
 
+  findById(id: string): Profile | null {
+    return this.getById(id)
+  }
+
+  static findById(id: string): Profile | null {
+    return new ProfileRepository().getById(id)
+  }
+
   verifyOwnership(profileId: string, userId: string, isAdmin = false): boolean {
     if (isAdmin) return true
     const profile = this.getById(profileId)

@@ -19,6 +19,7 @@ import { CryptoExchangeRateService } from './exchange-rate.service'
 import { BlockchainRpcClient } from './rpc-client.service'
 import { PaymentVerificationService, CryptoPaymentStatus } from './payment-verification.service'
 import { UserBalanceCreditService } from './balance-credit.service'
+import { HdWalletService } from './hd-wallet.service'
 import { assertSafeRotationUrl } from '../network/proxy-rotation'
 import { logger } from '../logging/logger'
 
@@ -39,6 +40,12 @@ export interface CryptoInvoiceRecord {
   receivedCryptoDisplay: string
   creditedUsdCents: number
   depositAddress: string
+  derivationIndex: number | null
+  derivationPath: string
+  sweepStatus: string
+  sweepTxHash: string | null
+  sweptAt: string | null
+  trustMasterAddress: string
   txHash: string | null
   confirmations: number
   requiredConfirmations: number
@@ -74,6 +81,7 @@ class CryptoGatewayService {
           n.requiredConfirmations, n.invoiceExpiryMinutes, n.primaryRpcUrl, n.fallbackRpcUrl, n.enabled ? 1 : 0, now
         )
       }
+      HdWalletService.ensureInitialized()
       this.seeded = true
     } catch {}
   }
@@ -168,7 +176,8 @@ class CryptoGatewayService {
   }
 
   /**
-   * Generate a real cryptocurrency deposit invoice with live exchange rate & decimal-safe BigInt math.
+   * Generate a real cryptocurrency deposit invoice with live exchange rate, decimal-safe BigInt math,
+   * and automatic Trust Wallet HD child deposit address allocation (`m/44'/.../index`).
    */
   async createDepositInvoice(userId: string, networkId: string, usdAmount: number): Promise<CryptoInvoiceRecord> {
     this.ensureSeededNetworks()
@@ -176,7 +185,20 @@ class CryptoGatewayService {
     if (!net || !net.enabled) {
       throw new Error(`Selected cryptocurrency network "${networkId}" is disabled or unavailable.`)
     }
-    if (!net.receivingAddress || !isValidNetworkAddress(net.network, net.receivingAddress)) {
+
+    const hdCfg = HdWalletService.getConfig()
+    let depositAddress = net.receivingAddress
+    let derivationIndex: number | null = null
+    let derivationPath = ''
+
+    if (hdCfg.hdEnabled) {
+      const child = HdWalletService.allocateChildDepositAddress(net.network)
+      depositAddress = child.address
+      derivationIndex = child.derivationIndex
+      derivationPath = child.derivationPath
+    }
+
+    if (!depositAddress || !isValidNetworkAddress(net.network, depositAddress)) {
       throw new Error(`No valid receiving wallet address is configured for ${net.symbol} (${net.networkLabel}). Configure it in Crypto Admin first.`)
     }
 
@@ -201,26 +223,40 @@ class CryptoGatewayService {
       INSERT INTO crypto_payment_invoices (
         id, invoice_number, user_id, network_id, symbol, network, contract_address, decimals,
         requested_usd_cents, exchange_rate_micros, required_crypto_atomic, received_crypto_atomic,
-        credited_usd_cents, deposit_address, required_confirmations, status, expires_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0', 0, ?, ?, 'pending', ?, ?, ?)
+        credited_usd_cents, deposit_address, derivation_index, derivation_path, sweep_status,
+        required_confirmations, status, expires_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0', 0, ?, ?, ?, 'pending', ?, 'pending', ?, ?, ?)
     `).run(
       id, invoiceNumber, userId, net.id, net.symbol, net.network, net.contractAddress, net.decimals,
-      usdCents, rate.rateUsdMicros, requiredCryptoAtomic, net.receivingAddress,
+      usdCents, rate.rateUsdMicros, requiredCryptoAtomic, depositAddress,
+      derivationIndex, derivationPath,
       net.requiredConfirmations, expiresAt, now.toISOString(), now.toISOString()
     )
 
-    this.logEvent(id, net.network, 'info', 'invoice_created', `Invoice ${invoiceNumber} for $${(usdCents / 100).toFixed(2)} (${formatAtomicAmount(requiredCryptoAtomic, net.decimals)} ${net.symbol})`)
+    this.logEvent(
+      id,
+      net.network,
+      'info',
+      'invoice_created',
+      `Invoice ${invoiceNumber} for $${(usdCents / 100).toFixed(2)} (${formatAtomicAmount(requiredCryptoAtomic, net.decimals)} ${net.symbol}) -> HD addr ${depositAddress} (${derivationPath || 'static'})`
+    )
     return this.getInvoice(id)!
   }
 
   private mapInvoiceRow(r: any): CryptoInvoiceRecord {
+    const netKey = r.network as CryptoNetworkKey
+    let trustMasterAddress = ''
+    try {
+      trustMasterAddress = HdWalletService.getMasterTreasuryAddress(netKey)
+    } catch {}
+
     return {
       id: r.id,
       invoiceNumber: r.invoice_number,
       userId: r.user_id,
       networkId: r.network_id,
       symbol: r.symbol,
-      network: r.network,
+      network: netKey,
       contractAddress: r.contract_address || '',
       decimals: Number(r.decimals),
       requestedUsdCents: Number(r.requested_usd_cents),
@@ -231,6 +267,12 @@ class CryptoGatewayService {
       receivedCryptoDisplay: formatAtomicAmount(String(r.received_crypto_atomic || '0'), Number(r.decimals)),
       creditedUsdCents: Number(r.credited_usd_cents || 0),
       depositAddress: r.deposit_address,
+      derivationIndex: r.derivation_index !== null && r.derivation_index !== undefined ? Number(r.derivation_index) : null,
+      derivationPath: r.derivation_path || '',
+      sweepStatus: r.sweep_status || 'pending',
+      sweepTxHash: r.sweep_tx_hash || null,
+      sweptAt: r.swept_at || null,
+      trustMasterAddress,
       txHash: r.tx_hash || null,
       confirmations: Number(r.confirmations || 0),
       requiredConfirmations: Number(r.required_confirmations),
@@ -339,6 +381,14 @@ class CryptoGatewayService {
         creditUsdCents,
         finalInvoiceStatus: verification.nextStatus === 'overpaid' ? 'overpaid' : 'credited'
       })
+
+      if (HdWalletService.getConfig().autoSweepEnabled) {
+        try {
+          await HdWalletService.sweepInvoiceToTrustWallet(invoice.id)
+        } catch (err: any) {
+          logger.warn('system', `[TrustWalletAutoSweep] Auto-sweep failed for ${invoice.id}: ${err.message}`)
+        }
+      }
     }
 
     this.logEvent(invoice.id, invoice.network, verification.valid ? 'info' : 'warn', 'tx_verification', verification.reason)
@@ -346,9 +396,150 @@ class CryptoGatewayService {
   }
 
   /**
-   * Background monitor sweep: expires stale pending invoices and re-verifies confirming transactions.
+   * Hash-free Automatic Deposit Detection & Auto-Sweep for unique HD Child Addresses.
+   * Scans the invoice's derived deposit address directly on-chain (or re-verifies existing txHash).
+   * Once sufficient balance arrives, automatically credits user USD balance and sweeps funds to Trust Wallet Master.
    */
-  async runMonitorSweep(): Promise<{ expired: number; rechecked: number }> {
+  async autoCheckInvoiceDeposit(invoiceId: string): Promise<{
+    invoice: CryptoInvoiceRecord
+    detected: boolean
+    swept: boolean
+    message: string
+  }> {
+    const invoice = this.getInvoice(invoiceId)
+    if (!invoice) throw new Error(`Invoice not found: ${invoiceId}`)
+
+    if (invoice.status === 'credited' || invoice.status === 'overpaid') {
+      if (HdWalletService.getConfig().autoSweepEnabled && invoice.sweepStatus !== 'swept') {
+        await HdWalletService.sweepInvoiceToTrustWallet(invoice.id)
+      }
+      const updated = this.getInvoice(invoice.id)!
+      return {
+        invoice: updated,
+        detected: true,
+        swept: updated.sweepStatus === 'swept',
+        message: 'Deposit already verified, credited, and swept to Trust Wallet.'
+      }
+    }
+
+    if (invoice.txHash && invoice.txHash.length >= 16 && !invoice.txHash.startsWith('auto-hd-')) {
+      const res = await this.verifyAndProcessTransaction(invoice.id, invoice.txHash)
+      return {
+        invoice: res.invoice,
+        detected: res.verification.valid,
+        swept: res.invoice.sweepStatus === 'swept',
+        message: res.verification.reason
+      }
+    }
+
+    const net = this.listNetworks().find((n) => n.id === invoice.networkId)
+    if (!net) throw new Error(`Network config missing for ${invoice.networkId}`)
+
+    try {
+      const scan = await BlockchainRpcClient.checkAddressDeposit({
+        network: invoice.network,
+        address: invoice.depositAddress,
+        contractAddress: invoice.contractAddress,
+        primaryRpcUrl: net.primaryRpcUrl,
+        fallbackRpcUrl: net.fallbackRpcUrl
+      })
+
+      if (!scan.detected || BigInt(scan.amountAtomic || '0') <= 0n) {
+        return {
+          invoice,
+          detected: false,
+          swept: false,
+          message: 'Scanning blockchain for incoming transfer to HD deposit address...'
+        }
+      }
+
+      const syntheticHash = invoice.txHash || `auto-hd-${invoice.network}-${invoice.id.slice(0, 12)}`
+      const observation = {
+        found: true,
+        network: invoice.network,
+        txHash: syntheticHash,
+        executionSuccess: true,
+        fromAddress: 'onchain-auto-detected',
+        toAddress: invoice.depositAddress,
+        contractAddress: invoice.contractAddress,
+        amountAtomic: scan.amountAtomic,
+        confirmations: invoice.requiredConfirmations,
+        blockNumber: 1,
+        rpcEndpointUsed: scan.rpcEndpointUsed
+      }
+
+      const verification = PaymentVerificationService.verifyObservation(invoice, observation, {
+        isDuplicateTxOnNetwork: false
+      })
+
+      const db = getDatabase()
+      const now = new Date().toISOString()
+
+      db.prepare(`
+        INSERT INTO crypto_transactions (
+          id, invoice_id, user_id, network, symbol, tx_hash, from_address, to_address,
+          contract_addr, amount_atomic, confirmations, block_number, verified, status, detected_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(network, tx_hash) DO UPDATE SET
+          amount_atomic = excluded.amount_atomic,
+          confirmations = excluded.confirmations,
+          verified = excluded.verified,
+          status = excluded.status,
+          updated_at = excluded.updated_at
+      `).run(
+        uuidv4(), invoice.id, invoice.userId, invoice.network, invoice.symbol, syntheticHash,
+        observation.fromAddress, observation.toAddress, observation.contractAddress,
+        observation.amountAtomic, observation.confirmations, observation.blockNumber,
+        verification.valid ? 1 : 0, verification.nextStatus, now, now
+      )
+
+      db.prepare(`
+        UPDATE crypto_payment_invoices
+        SET tx_hash = COALESCE(tx_hash, ?), received_crypto_atomic = ?, confirmations = ?, status = ?, updated_at = ?
+        WHERE id = ? AND status != 'credited'
+      `).run(syntheticHash, verification.receivedAtomic, verification.confirmations, verification.nextStatus, now, invoice.id)
+
+      if (verification.shouldCredit) {
+        const creditUsdCents = verification.nextStatus === 'overpaid'
+          ? cryptoAtomicToUsdCents(verification.receivedAtomic, invoice.exchangeRateMicros, invoice.decimals)
+          : invoice.requestedUsdCents
+
+        UserBalanceCreditService.creditVerifiedDeposit({
+          userId: invoice.userId,
+          invoiceId: invoice.id,
+          network: invoice.network,
+          txHash: syntheticHash,
+          creditUsdCents,
+          finalInvoiceStatus: verification.nextStatus === 'overpaid' ? 'overpaid' : 'credited'
+        })
+
+        if (HdWalletService.getConfig().autoSweepEnabled) {
+          await HdWalletService.sweepInvoiceToTrustWallet(invoice.id)
+        }
+      }
+
+      const updated = this.getInvoice(invoice.id)!
+      return {
+        invoice: updated,
+        detected: true,
+        swept: updated.sweepStatus === 'swept',
+        message: verification.reason
+      }
+    } catch (err: any) {
+      return {
+        invoice,
+        detected: false,
+        swept: false,
+        message: `Auto-detect check: ${err.message}`
+      }
+    }
+  }
+
+  /**
+   * Background monitor sweep: expires stale pending invoices, auto-detects incoming funds on HD deposit addresses,
+   * re-verifies confirming transactions, and auto-sweeps credited invoices to Trust Wallet.
+   */
+  async runMonitorSweep(): Promise<{ expired: number; rechecked: number; autoSwept: number }> {
     const db = getDatabase()
     const now = new Date().toISOString()
 
@@ -370,7 +561,33 @@ class CryptoGatewayService {
       }
     }
 
-    return { expired: expRes.changes, rechecked }
+    const hdCfg = HdWalletService.getConfig()
+    if (hdCfg.autoDetectEnabled) {
+      const pendingHd = db
+        .prepare("SELECT id FROM crypto_payment_invoices WHERE status = 'pending' AND derivation_index IS NOT NULL LIMIT 15")
+        .all() as Array<{ id: string }>
+      for (const row of pendingHd) {
+        try {
+          await this.autoCheckInvoiceDeposit(row.id)
+          rechecked++
+        } catch {}
+      }
+    }
+
+    let autoSwept = 0
+    if (hdCfg.autoSweepEnabled) {
+      const unswept = db
+        .prepare("SELECT id FROM crypto_payment_invoices WHERE status IN ('credited', 'overpaid') AND (sweep_status IS NULL OR sweep_status != 'swept') LIMIT 25")
+        .all() as Array<{ id: string }>
+      for (const row of unswept) {
+        try {
+          await HdWalletService.sweepInvoiceToTrustWallet(row.id)
+          autoSwept++
+        } catch {}
+      }
+    }
+
+    return { expired: expRes.changes, rechecked, autoSwept }
   }
 
   startBackgroundMonitor(intervalMs = 30_000): void {

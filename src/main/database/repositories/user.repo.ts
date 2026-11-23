@@ -88,6 +88,13 @@ export class UserRepository {
     return userToDisplay(user, count)
   }
 
+  getDisplayByEmail(email: string): UserDisplay | null {
+    const user = this.getByEmail(email)
+    if (!user) return null
+    const count = this.getUserProfileCount(user.id)
+    return userToDisplay(user, count)
+  }
+
   update(id: string, input: UserUpdateInput): UserDisplay | null {
     const db = getDatabase()
     const existing = this.getById(id)

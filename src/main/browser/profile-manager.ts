@@ -9,12 +9,14 @@ import { profileRepo } from '../database/repositories/profile.repo'
 import { Profile, ProfileCreateInput } from '../database/models'
 import { launchBrowser } from './launcher'
 import { processTracker } from './process-tracker'
-import { findChromiumPath, findFirefoxPath, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, clearProfileCookiesData, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
+import { findChromiumPath, findFirefoxPath, findBrowserExecutable, ensureProfileDataDir, ensureFirefoxProfileDataDir, deleteProfileDataDir, clearProfileCookiesData, getProfileDataDir, getProfileDataSize } from './chromium-resolver'
 import { ensureBrowserRuntime } from './runtime-provisioner'
+import { multiKernelManager, type KernelEngine } from './multi-kernel-manager'
 import { resolveFirefoxProfile } from './firefox/firefox-resolver'
 import { ProfileHealthChecker } from './profile-health-checker'
 import { ProfileLockSystem } from './profile-lock-system'
 import { centralApi } from '../services/api-client.service'
+import { updaterService } from '../services/updater.service'
 import { CrashRecoveryManager } from './crash-recovery-manager'
 import { BackupIntegrityService } from '../storage/backup-integrity'
 import { logger } from '../logging/logger'
@@ -62,6 +64,13 @@ class ProfileManager {
       throw new Error(`Profile not found: ${profileId}`)
     }
 
+    // ── Mandatory Software Update Lock Guard (Blocks profile execution on outdated app versions) ──
+    const pendingUpdate = updaterService.getPendingMandatoryUpdate()
+    if (pendingUpdate) {
+      updaterService.broadcastUpdateNotification(pendingUpdate)
+      throw new Error(`MANDATORY_UPDATE_REQUIRED: A new version of AntiProfiles (v${pendingUpdate.version}) is available. Please complete the in-app update before running any profiles.`)
+    }
+
     if (processTracker.isRunning(profileId) || ProfileLockSystem.isLocked(profileId)) {
       throw new Error(`Profile "${profile.name}" is already running in an active instance. Multi-instance concurrency locked.`)
     }
@@ -90,28 +99,50 @@ class ProfileManager {
       rawFp = typeof profile.fingerprint === 'string' ? JSON.parse(profile.fingerprint) : profile.fingerprint
     } catch {}
 
-    const browserType: 'chrome' | 'firefox' =
+    const rawBrowserType = String(
       (profile as any).browserType ||
       rawFp?.browser?.type ||
       (rawFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
+    ).toLowerCase()
+
+    const isCamoufox =
+      rawBrowserType === 'camoufox' ||
+      String(profile.browserVersion || '').toLowerCase().includes('camoufox') ||
+      String(rawFp?.browser?.kernelId || '').toLowerCase().includes('camoufox')
+
+    const browserType: 'chrome' | 'firefox' =
+      isCamoufox || rawBrowserType === 'firefox' ? 'firefox' : 'chrome'
 
     const targetEngine: 'chromium' | 'firefox' = browserType === 'firefox' ? 'firefox' : 'chromium'
+    const kernelEngine: KernelEngine = isCamoufox ? 'camoufox' : targetEngine
 
-    // Validate Firefox Profile Coherence if targetEngine is firefox
-    if (targetEngine === 'firefox') {
+    // Validate Firefox Profile Coherence if targetEngine is firefox (skip strict rejection for Camoufox C++ stealth kernel)
+    if (targetEngine === 'firefox' && !isCamoufox) {
       const resolved = resolveFirefoxProfile(profile)
       if (resolved.unsupportedAtRuntime) {
         throw new Error(`PROFILE_RUNTIME_MISMATCH: ${resolved.unsupportedReasons.join('; ')}`)
       }
     }
 
-    // ── Auto-Provision & Verify AntiProfiles-Managed Browser Runtime ──
+    // ── 1. First attempt version-pinned Multi-Kernel or Camoufox resolution ──
     let executablePath: string | null = null
     try {
-      executablePath = await ensureBrowserRuntime(targetEngine, profileId)
-    } catch (err: any) {
-      logger.warn('browser', `[BrowserLaunch] Managed runtime error: ${err.message}. Finding fallback browser...`)
-      executablePath = await findBrowserExecutable(browserType)
+      const requestedVer = rawFp?.browser?.kernelVersion || profile.browserVersion || undefined
+      const kernelReport = multiKernelManager.resolveKernelForProfile(kernelEngine, requestedVer)
+      if (kernelReport.compatible && kernelReport.resolvedExecutablePath && fs.existsSync(kernelReport.resolvedExecutablePath)) {
+        executablePath = kernelReport.resolvedExecutablePath
+        logger.info('browser', `[MultiKernel] Resolved ${kernelEngine} v${kernelReport.resolvedVersion} at: ${executablePath}`)
+      }
+    } catch {}
+
+    // ── 2. Auto-Provision & Verify AntiProfiles-Managed Browser Runtime ──
+    if (!executablePath) {
+      try {
+        executablePath = await ensureBrowserRuntime(targetEngine, profileId)
+      } catch (err: any) {
+        logger.warn('browser', `[BrowserLaunch] Managed runtime error: ${err.message}. Finding fallback browser...`)
+        executablePath = await findBrowserExecutable(browserType)
+      }
     }
 
     if (!executablePath || !fs.existsSync(executablePath)) {
@@ -158,9 +189,17 @@ class ProfileManager {
   }
 
   /**
-   * Stop a profile's browser.
+   * Stop a profile's browser and persist live cookies before closing.
    */
   async stopProfile(profileId: string): Promise<void> {
+    try {
+      const { CookieManager } = require('./cookie-manager')
+      const liveCookies = await CookieManager.getCookies(profileId)
+      if (Array.isArray(liveCookies) && liveCookies.length > 0) {
+        const storePath = path.join(getProfileDataDir(profileId), 'managed-cookies.json')
+        fs.writeFileSync(storePath, JSON.stringify(liveCookies, null, 2), 'utf8')
+      }
+    } catch {}
     CrashRecoveryManager.markCleanExit(profileId)
     ProfileLockSystem.releaseLock(profileId)
     await processTracker.stop(profileId)

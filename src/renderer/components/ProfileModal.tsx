@@ -407,25 +407,25 @@ export const POPULAR_UA_PRESETS = [
 ]
 
 export const CHROME_VERSIONS_CATALOG = [
-  { version: '128.0.6613.120', major: '128', label: 'Chrome 128.0.6613.120 (Latest Stable)' },
+  { version: '136.0.7103.92', major: '136', label: 'Chrome 136.0.7103.92 (Latest Multi-Kernel Stable)' },
+  { version: '134.0.6998.165', major: '134', label: 'Chrome 134.0.6998.165 (Multi-Kernel Stable)' },
+  { version: '131.0.6778.264', major: '131', label: 'Chrome 131.0.6778.264 (LTS Official)' },
+  { version: '128.0.6613.120', major: '128', label: 'Chrome 128.0.6613.120 (Stable)' },
   { version: '127.0.6533.120', major: '127', label: 'Chrome 127.0.6533.120' },
   { version: '126.0.6478.126', major: '126', label: 'Chrome 126.0.6478.126' },
   { version: '125.0.6422.141', major: '125', label: 'Chrome 125.0.6422.141' },
-  { version: '124.0.6367.207', major: '124', label: 'Chrome 124.0.6367.207' },
-  { version: '123.0.6312.122', major: '123', label: 'Chrome 123.0.6312.122' },
-  { version: '122.0.6261.128', major: '122', label: 'Chrome 122.0.6261.128' },
-  { version: '120.0.6099.109', major: '120', label: 'Chrome 120.0.6099.109' }
+  { version: '124.0.6367.207', major: '124', label: 'Chrome 124.0.6367.207' }
 ]
 
 export const FIREFOX_VERSIONS_CATALOG = [
+  { version: '135.0.1-camoufox', major: '135', label: 'Camoufox 135 (C++ Native Anti-Detect Stealth Kernel)' },
+  { version: '138.0b9', major: '138', label: 'Firefox 138.0 Developer Edition' },
+  { version: '131.0', major: '131', label: 'Firefox 131.0 (Quantum Official)' },
   { version: '129.0', major: '129', label: 'Firefox 129.0 (Quantum Stable)' },
   { version: '128.0', major: '128', label: 'Firefox 128.0 (ESR / Stable)' },
   { version: '127.0', major: '127', label: 'Firefox 127.0' },
   { version: '126.0', major: '126', label: 'Firefox 126.0' },
   { version: '125.0.1', major: '125', label: 'Firefox 125.0.1' },
-  { version: '124.0.2', major: '124', label: 'Firefox 124.0.2' },
-  { version: '123.0', major: '123', label: 'Firefox 123.0' },
-  { version: '120.0', major: '120', label: 'Firefox 120.0' },
   { version: '115.0', major: '115', label: 'Firefox 115.0 (ESR Legacy)' }
 ]
 

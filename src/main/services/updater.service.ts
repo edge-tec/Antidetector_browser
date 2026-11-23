@@ -13,6 +13,8 @@ import { spawn, execSync } from 'child_process'
 import { getDatabase } from '../database/connection'
 import { logger } from '../logging/logger'
 import { centralApi } from './api-client.service'
+import { processTracker } from '../browser/process-tracker'
+import { profileManager } from '../browser/profile-manager'
 
 export interface SoftwareVersionRecord {
   id: string
@@ -111,6 +113,7 @@ export class UpdaterService {
   private static instance: UpdaterService
   private currentAppVersion: string = '2.0.0'
   private autoCheckTimer: NodeJS.Timeout | null = null
+  private pendingMandatoryUpdate: SoftwareVersionRecord | null = null
 
   // Active Download State
   private activeRequest: http.ClientRequest | null = null
@@ -146,6 +149,33 @@ export class UpdaterService {
 
   public getCurrentVersion(): string {
     return this.currentAppVersion
+  }
+
+  /**
+   * Authoritative synchronous check: returns the pending newer release if the running app is outdated.
+   * Used by ProfileManager and IPC guards to block profile launches until the user updates.
+   */
+  public getPendingMandatoryUpdate(): SoftwareVersionRecord | null {
+    if (this.pendingMandatoryUpdate && compareSemver(this.pendingMandatoryUpdate.version, this.currentAppVersion) > 0) {
+      return this.pendingMandatoryUpdate
+    }
+    try {
+      const db = getDatabase()
+      const settings = this.getUpdateSettings()
+      const row = db.prepare(`
+        SELECT * FROM software_versions
+        WHERE status = 'published'
+          AND (channel = ? OR channel = 'stable')
+        ORDER BY published_at DESC, created_at DESC
+        LIMIT 1
+      `).get(settings.channel) as SoftwareVersionRecord | undefined
+
+      if (row && compareSemver(row.version, this.currentAppVersion) > 0) {
+        this.pendingMandatoryUpdate = row
+        return row
+      }
+    } catch {}
+    return null
   }
 
   /**
@@ -453,16 +483,19 @@ export class UpdaterService {
 
     const isNewer = compareSemver(latest.version, current) > 0
     const packageInfo = this.getPackageInfoForPlatform(latest)
-    const isBelowMin = compareSemver(latest.min_supported_version || '1.0.0', current) > 0
-    const isMandatory = isNewer && (Boolean(latest.force_update) || Boolean(latest.mandatory) || isBelowMin)
+    // Every newer published release is strictly mandatory: old app versions cannot run until updated
+    const isMandatory = isNewer
 
     if (isNewer) {
+      this.pendingMandatoryUpdate = latest
       this.broadcastUpdateNotification(latest)
 
       // If auto_download is true and notify_only is false, trigger background download
       if (settings.auto_download && !settings.notify_only && packageInfo.downloadUrl && packageInfo.downloadUrl.startsWith('http')) {
         this.downloadUpdatePackage(packageInfo.downloadUrl, packageInfo.sha256).catch(() => {})
       }
+    } else {
+      this.pendingMandatoryUpdate = null
     }
 
     return {
@@ -489,8 +522,10 @@ export class UpdaterService {
     const releaseTitle = data.release_title || `AntiProfiles v${version} Release`
     const releaseNotes = data.release_notes || 'Performance enhancements, security updates, and bug fixes.'
     const status = data.status || 'draft'
-    const minSupported = data.min_supported_version || '1.0.0'
-    const forceUpdate = (data.force_update || data.mandatory) ? 1 : 0
+    const minSupported = data.min_supported_version || version || '1.0.0'
+    const forceUpdate = (data.force_update !== undefined || data.mandatory !== undefined)
+      ? ((data.force_update || data.mandatory) ? 1 : 0)
+      : 1
     const signature = data.signature || ''
 
     const winUrl = data.win_download_url || ''
@@ -655,6 +690,9 @@ export class UpdaterService {
 
   public deleteVersion(versionId: string): boolean {
     const db = getDatabase()
+    if (this.pendingMandatoryUpdate && this.pendingMandatoryUpdate.id === versionId) {
+      this.pendingMandatoryUpdate = null
+    }
     const res = db.prepare('DELETE FROM software_versions WHERE id = ?').run(versionId)
     try { centralApi.adminDeleteSoftwareVersion(versionId).catch(() => {}) } catch {}
     return res.changes > 0
@@ -665,7 +703,11 @@ export class UpdaterService {
    */
   public broadcastUpdateNotification(release: SoftwareVersionRecord): void {
     const packageInfo = this.getPackageInfoForPlatform(release)
-    const isMandatory = Boolean(release.force_update) || Boolean(release.mandatory) || compareSemver(release.min_supported_version || '1.0.0', this.currentAppVersion) > 0
+    const isNewer = compareSemver(release.version, this.currentAppVersion) > 0
+    const isMandatory = isNewer || Boolean(release.force_update) || Boolean(release.mandatory)
+    if (isNewer) {
+      this.pendingMandatoryUpdate = release
+    }
 
     const payload = {
       version: release.version,
@@ -1026,26 +1068,76 @@ export class UpdaterService {
   }
 
   /**
-   * One-Click Native Installer Execution with Rollback Support
+   * Prepare system for update installation:
+   * 1. Create a pre-update safety backup of the local SQLite database
+   * 2. Gracefully flush cookies & stop all running browser profiles so zero session data is lost
    */
-  public async installUpdate(filePath: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  public async prepareForUpdateInstall(): Promise<{ stoppedProfiles: number; backupCreated: boolean }> {
+    let stoppedProfiles = 0
+    let backupCreated = false
+
+    // 1. Pre-Update Database Safety Snapshot
+    try {
+      const userDataDir = app ? app.getPath('userData') : ''
+      if (userDataDir) {
+        const dbPath = path.join(userDataDir, 'antiprofiles.db')
+        const backupDir = path.join(userDataDir, 'backups')
+        if (fs.existsSync(dbPath)) {
+          if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true })
+          const backupFile = path.join(backupDir, `pre-update-v${this.currentAppVersion}-${Date.now()}.db`)
+          fs.copyFileSync(dbPath, backupFile)
+          backupCreated = true
+          logger.info('updater', `[UpdaterService] Created pre-update DB backup at: ${backupFile}`)
+        }
+      }
+    } catch (err: any) {
+      logger.warn('updater', `[UpdaterService] Pre-update DB backup warning: ${err.message}`)
+    }
+
+    // 2. Gracefully save cookies & close all active running browser profiles
+    try {
+      const runningIds = processTracker.getRunningIds()
+      stoppedProfiles = runningIds.length
+      for (const pid of runningIds) {
+        try {
+          await profileManager.stopProfile(pid)
+        } catch {}
+      }
+      if (stoppedProfiles > 0) {
+        logger.info('updater', `[UpdaterService] Gracefully saved cookies and stopped ${stoppedProfiles} running profile(s) prior to update.`)
+      }
+    } catch (err: any) {
+      logger.warn('updater', `[UpdaterService] Error stopping profiles before update: ${err.message}`)
+    }
+
+    return { stoppedProfiles, backupCreated }
+  }
+
+  /**
+   * One-Click Native Installer Execution with Rollback Support & Graceful Profile Shutdown
+   */
+  public async installUpdate(filePath: string): Promise<{ success: boolean; message?: string; error?: string; stoppedProfiles?: number }> {
     if (!filePath || !fs.existsSync(filePath)) {
       return { success: false, error: 'Update installer file does not exist.' }
     }
 
     try {
-      logger.info('updater', `[UpdaterService] Installing update from package: ${filePath}`)
+      logger.info('updater', `[UpdaterService] Preparing and installing update from package: ${filePath}`)
+      const prep = await this.prepareForUpdateInstall()
       const platform = process.platform
 
       if (platform === 'darwin') {
         // ── macOS One-Click Installer Engine ──
-        return await this.installMacDmg(filePath)
+        const res = await this.installMacDmg(filePath)
+        return { ...res, stoppedProfiles: prep.stoppedProfiles }
       } else if (platform === 'win32') {
         // ── Windows One-Click NSIS Installer Engine ──
-        return await this.installWindowsExe(filePath)
+        const res = await this.installWindowsExe(filePath)
+        return { ...res, stoppedProfiles: prep.stoppedProfiles }
       } else {
         // ── Linux AppImage / Deb Installer Engine ──
-        return await this.installLinuxPackage(filePath)
+        const res = await this.installLinuxPackage(filePath)
+        return { ...res, stoppedProfiles: prep.stoppedProfiles }
       }
     } catch (err: any) {
       logger.error('updater', `[UpdaterService] Failed to apply update: ${err.message}`)
@@ -1054,15 +1146,35 @@ export class UpdaterService {
   }
 
   /**
-   * macOS: Mounts DMG, swaps app bundle cleanly into /Applications, and restarts
+   * macOS: Supports both .dmg and .zip update packages, swaps app bundle into /Applications, clears quarantine, and restarts
    */
-  private async installMacDmg(dmgPath: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  private async installMacDmg(dmgOrZipPath: string): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
+      if (dmgOrZipPath.toLowerCase().endsWith('.zip')) {
+        const extractDir = `/tmp/AntiProfiles_ZipUpdate_${Date.now()}`
+        fs.mkdirSync(extractDir, { recursive: true })
+        execSync(`ditto -x -k "${dmgOrZipPath}" "${extractDir}"`)
+        const entries = fs.readdirSync(extractDir)
+        const appName = entries.find(e => e.endsWith('.app'))
+        if (appName) {
+          const sourceApp = path.join(extractDir, appName)
+          const targetApp = `/Applications/${appName}`
+          execSync(`rm -rf "${targetApp}" && cp -R "${sourceApp}" "${targetApp}"`)
+          try { execSync(`xattr -cr "${targetApp}"`) } catch {}
+          try { fs.rmSync(extractDir, { recursive: true, force: true }) } catch {}
+          setTimeout(() => {
+            spawn('open', ['-n', targetApp], { detached: true, stdio: 'ignore' }).unref()
+            app.quit()
+          }, 800)
+          return { success: true, message: 'Update installed from ZIP bundle. Restarting AntiProfiles...' }
+        }
+      }
+
       const mountPoint = `/Volumes/AntiProfiles_Update_${Date.now()}`
       fs.mkdirSync(mountPoint, { recursive: true })
 
-      logger.info('updater', `[macOS Installer] Attaching DMG ${dmgPath} to ${mountPoint}`)
-      execSync(`hdiutil attach "${dmgPath}" -mountpoint "${mountPoint}" -nobrowse -quiet`)
+      logger.info('updater', `[macOS Installer] Attaching DMG ${dmgOrZipPath} to ${mountPoint}`)
+      execSync(`hdiutil attach "${dmgOrZipPath}" -mountpoint "${mountPoint}" -nobrowse -quiet`)
 
       // Find .app inside mountpoint
       const entries = fs.readdirSync(mountPoint)
@@ -1071,7 +1183,7 @@ export class UpdaterService {
       if (!appName) {
         try { execSync(`hdiutil detach "${mountPoint}" -force -quiet`) } catch {}
         // Fallback: open DMG in Finder for standard manual drag-and-drop
-        await shell.openPath(dmgPath)
+        await shell.openPath(dmgOrZipPath)
         return { success: true, message: 'Mounted installer DMG. Please drag AntiProfiles to Applications.' }
       }
 
@@ -1114,44 +1226,75 @@ export class UpdaterService {
       return { success: true, message: 'Update installed successfully. AntiProfiles is restarting...' }
     } catch (err: any) {
       logger.warn('updater', `Automated macOS install encountered issue, falling back to shell open: ${err.message}`)
-      await shell.openPath(dmgPath)
-      return { success: true, message: 'Opened installer DMG. Please complete installation and restart.' }
+      await shell.openPath(dmgOrZipPath)
+      return { success: true, message: 'Opened installer package. Please complete installation and restart.' }
     }
   }
 
   /**
-   * Windows: Executes NSIS installer and closes app for automated update
+   * Windows: Executes NSIS installer silently and auto-relaunches app after update
    */
   private async installWindowsExe(exePath: string): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      logger.info('updater', `[Windows Installer] Launching NSIS installer: ${exePath}`)
+      logger.info('updater', `[Windows Installer] Launching silent NSIS installer: ${exePath}`)
 
-      // Spawn installer with /S or standard mode detached
-      const child = spawn(exePath, ['--updated'], {
+      // Spawn NSIS installer with --updated and /S (silent install) + /FORCE-RUN to auto-reopen
+      const child = spawn(exePath, ['/S', '--force-run', '--updated'], {
         detached: true,
-        stdio: 'ignore'
+        stdio: 'ignore',
+        windowsHide: false
       })
       child.unref()
 
       setTimeout(() => {
         app.quit()
-      }, 1000)
+      }, 900)
 
-      return { success: true, message: 'Launching Windows installer. AntiProfiles will close to finish updating.' }
+      return { success: true, message: 'Installing update & restarting AntiProfiles automatically...' }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
   }
 
   /**
-   * Linux: Makes AppImage executable and restarts
+   * Linux: Supports .AppImage (with in-place APPIMAGE replacement), .deb, and .rpm packages
    */
   private async installLinuxPackage(pkgPath: string): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      fs.chmodSync(pkgPath, '755')
-      logger.info('updater', `[Linux Installer] Launching updated AppImage: ${pkgPath}`)
+      const lower = pkgPath.toLowerCase()
+      if (lower.endsWith('.deb')) {
+        try {
+          spawn('pkexec', ['dpkg', '-i', pkgPath], { detached: true, stdio: 'ignore' }).unref()
+        } catch {
+          await shell.openPath(pkgPath)
+        }
+        setTimeout(() => app.quit(), 1200)
+        return { success: true, message: 'Installing Debian (.deb) update package...' }
+      }
 
-      const child = spawn(pkgPath, [], {
+      if (lower.endsWith('.rpm')) {
+        try {
+          spawn('pkexec', ['rpm', '-Uvh', pkgPath], { detached: true, stdio: 'ignore' }).unref()
+        } catch {
+          await shell.openPath(pkgPath)
+        }
+        setTimeout(() => app.quit(), 1200)
+        return { success: true, message: 'Installing RPM (.rpm) update package...' }
+      }
+
+      // Default: AppImage
+      fs.chmodSync(pkgPath, 0o755)
+      let launchTarget = pkgPath
+      if (process.env.APPIMAGE && fs.existsSync(process.env.APPIMAGE)) {
+        try {
+          fs.copyFileSync(pkgPath, process.env.APPIMAGE)
+          fs.chmodSync(process.env.APPIMAGE, 0o755)
+          launchTarget = process.env.APPIMAGE
+        } catch {}
+      }
+
+      logger.info('updater', `[Linux Installer] Launching updated AppImage: ${launchTarget}`)
+      const child = spawn(launchTarget, [], {
         detached: true,
         stdio: 'ignore'
       })
@@ -1161,7 +1304,7 @@ export class UpdaterService {
         app.quit()
       }, 1000)
 
-      return { success: true, message: 'Launching updated Linux package.' }
+      return { success: true, message: 'Launching updated Linux AppImage package.' }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

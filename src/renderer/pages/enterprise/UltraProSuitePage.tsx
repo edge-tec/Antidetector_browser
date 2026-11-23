@@ -81,7 +81,7 @@ export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
     if (urls.length === 0) return showToast('Enter at least one URL', 'error')
     setRunningRobot(true)
     try {
-      const res = await api.ultraPro.runCookieRobot({ profileId: selectedProfileId, urls, scrollSteps: 3 })
+      const res = await api.ultraPro.runCookieRobot({ profileId: selectedProfileId, urls, scrollSteps: 3, clickInternalLinks: true })
       if (res?.success) {
         showToast(`Cookie Robot completed! Visited ${res.run.urlsVisited} sites (+${res.run.cookiesGained} cookies)`, 'success')
         refreshRuns(selectedProfileId)
@@ -92,6 +92,48 @@ export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
       showToast(err.message || 'Cookie Robot error', 'error')
     } finally {
       setRunningRobot(false)
+    }
+  }
+
+  const handleRunBatchCookieRobot = async () => {
+    const allIds = profiles.map((p) => p.id).filter(Boolean)
+    if (allIds.length === 0) return showToast('No profiles available for batch warm-up', 'error')
+    const urls = customUrls.split(/\r?\n/).map((u) => u.trim()).filter(Boolean)
+    if (urls.length === 0) return showToast('Enter at least one URL', 'error')
+    setRunningRobot(true)
+    try {
+      const res = await api.ultraPro.runBatchCookieRobot({ profileIds: allIds.slice(0, 15), urls, concurrency: 3, scrollSteps: 3 })
+      if (res?.success) {
+        showToast(`Batch Warm-Up done! ${res.succeeded}/${res.totalProfiles} profiles warmed up.`, 'success')
+        refreshRuns(selectedProfileId)
+      } else {
+        showToast(res?.error || 'Batch Cookie Robot failed', 'error')
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Batch Cookie Robot error', 'error')
+    } finally {
+      setRunningRobot(false)
+    }
+  }
+
+  const handleAutoFillVault = async (id: string) => {
+    try {
+      const res = await api.ultraPro.autoFillVaultAccount(id)
+      if (res?.success) {
+        const filled = [
+          res.filledUsername && 'Username',
+          res.filledPassword && 'Password',
+          res.filledTotp && `2FA (${res.totpCode})`
+        ].filter(Boolean)
+        showToast(
+          filled.length > 0 ? `Auto-filled: ${filled.join(', ')}` : 'Browser opened (focus login inputs and click again)',
+          'success'
+        )
+      } else {
+        showToast(res?.error || 'Auto-fill failed', 'error')
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Auto-fill error', 'error')
     }
   }
 
@@ -272,9 +314,14 @@ export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
             style={{ width: '100%', padding: 10, borderRadius: 8, fontFamily: 'monospace', fontSize: 12, marginBottom: 12 }}
           />
 
-          <button className="btn btn-primary" disabled={runningRobot} onClick={handleRunCookieRobot}>
-            {runningRobot ? '⏳ Warming up profile...' : '🚀 Start Cookie Robot Warm-Up'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" disabled={runningRobot} onClick={handleRunCookieRobot}>
+              {runningRobot ? '⏳ Warming up profile...' : '🚀 Start Cookie Robot Warm-Up'}
+            </button>
+            <button className="btn btn-secondary" disabled={runningRobot || profiles.length === 0} onClick={handleRunBatchCookieRobot}>
+              {runningRobot ? '⏳ Running Batch Queue...' : `⚡ Batch Warm-Up All Profiles (${Math.min(profiles.length, 15)})`}
+            </button>
+          </div>
 
           <h4 style={{ marginTop: 22, marginBottom: 8 }}>Recent Warm-Up Runs</h4>
           <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -348,7 +395,10 @@ export const UltraProSuitePage: React.FC<Props> = ({ showToast }) => {
                         <span style={{ opacity: 0.5 }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: 8, display: 'flex', gap: 6 }}>
+                    <td style={{ padding: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={() => handleAutoFillVault(acc.id)} title="Launch/attach browser and auto-fill Username + Password + Live 2FA">
+                        ⚡ Auto-Fill Login
+                      </button>
                       {acc.hasPassword && (
                         <button className="btn btn-secondary" style={{ fontSize: 11 }} onClick={() => handleRevealPassword(acc.id)}>🔑 Copy Pass</button>
                       )}

@@ -9,8 +9,12 @@ import { sessionManager } from '../security/session'
 import { cryptoGatewayService } from '../crypto/crypto-gateway.service'
 import { CryptoExchangeRateService } from '../crypto/exchange-rate.service'
 import { UserBalanceCreditService } from '../crypto/balance-credit.service'
+import { HdWalletService } from '../crypto/hd-wallet.service'
 
 export function assertAdminCryptoSession(sessionToken?: string): void {
+  if (!sessionToken || typeof sessionToken !== 'string' || !sessionToken.trim()) {
+    throw new Error('Unauthorized: Admin privileges required for crypto gateway administration.')
+  }
   const user = sessionManager.getSessionUser(sessionToken)
   if (!user || user.role !== 'admin') {
     throw new Error('Unauthorized: Admin privileges required for crypto gateway administration.')
@@ -47,6 +51,9 @@ export function registerCryptoPaymentHandlers(): void {
   secureCryptoHandle('crypto:tx:verify', async (_e, invoiceId: string, txHash: string) =>
     cryptoGatewayService.verifyAndProcessTransaction(invoiceId, txHash)
   )
+  secureCryptoHandle('crypto:invoice:auto-check', async (_e, invoiceId: string) =>
+    cryptoGatewayService.autoCheckInvoiceDeposit(invoiceId)
+  )
   secureCryptoHandle('crypto:wallet:balance', (_e, userId: string) => ({
     balanceCents: UserBalanceCreditService.getUserBalanceCents(userId)
   }))
@@ -70,5 +77,27 @@ export function registerCryptoPaymentHandlers(): void {
   secureCryptoHandle('crypto:admin:monitor-sweep', async (_e, sessionToken?: string) => {
     assertAdminCryptoSession(sessionToken)
     return cryptoGatewayService.runMonitorSweep()
+  })
+
+  // Trust Wallet HD Seed & Auto-Sweep Admin APIs
+  secureCryptoHandle('crypto:hd:get-config', (_e, sessionToken?: string) => {
+    assertAdminCryptoSession(sessionToken)
+    return HdWalletService.getConfig()
+  })
+  secureCryptoHandle('crypto:hd:save-config', (_e, sessionToken: string, patch: any) => {
+    assertAdminCryptoSession(sessionToken)
+    return HdWalletService.saveConfig(patch || {})
+  })
+  secureCryptoHandle('crypto:hd:reveal-mnemonic', (_e, sessionToken?: string) => {
+    assertAdminCryptoSession(sessionToken)
+    return HdWalletService.revealMnemonic()
+  })
+  secureCryptoHandle('crypto:hd:sweep-invoice', async (_e, sessionToken: string, invoiceId: string) => {
+    assertAdminCryptoSession(sessionToken)
+    return HdWalletService.sweepInvoiceToTrustWallet(invoiceId)
+  })
+  secureCryptoHandle('crypto:hd:sweep-logs', (_e, sessionToken?: string, limit?: number) => {
+    assertAdminCryptoSession(sessionToken)
+    return HdWalletService.listSweepLogs(limit || 50)
   })
 }

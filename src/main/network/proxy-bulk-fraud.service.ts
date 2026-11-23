@@ -5,7 +5,9 @@
 // ──────────────────────────────────────────────────────────────────
 
 import http from 'http'
+import https from 'https'
 import { ProxyRepository } from '../database/repositories/proxy.repo'
+import { startProxyBridge, stopProxyBridge } from './proxy-bridge'
 import type { ProxyType } from '../database/models'
 
 export interface ParsedProxyEntry {
@@ -171,11 +173,75 @@ export function importBulkProxies(rawText: string, defaultType: ProxyType = 'soc
 }
 
 /**
- * Live IP Fraud / Risk Score & Residential vs Datacenter Classification.
+ * Resolve the real exit IP through an active proxy (supports rotating residential gateways
+ * like brd.superproxy.io, gate.smartproxy.com, geo.iproyal.com, or any proxyId).
  */
-export async function checkIpFraudScore(ipOrHost: string): Promise<IpFraudScoreResult> {
-  const target = String(ipOrHost || '').trim()
-  if (!target) throw new Error('IP address or proxy hostname is required')
+export async function resolveProxyExitIp(proxyId: string): Promise<{ exitIp: string; latencyMs: number }> {
+  const proxy = ProxyRepository.findById(proxyId)
+  if (!proxy) throw new Error(`Proxy not found: ${proxyId}`)
+  const start = Date.now()
+  const bridgeProfileKey = `fraud_probe_${proxyId}`
+  const localBridgeUrl = await startProxyBridge(bridgeProfileKey, proxy)
+  const bridgePort = Number(localBridgeUrl.split(':').pop())
+
+  try {
+    const exitIp = await new Promise<string>((resolve, reject) => {
+      const req = http.request(
+        {
+          host: '127.0.0.1',
+          port: bridgePort,
+          method: 'GET',
+          path: 'http://ip-api.com/json/?fields=status,query',
+          headers: { Host: 'ip-api.com', 'User-Agent': 'AntiProfiles-ProxyProbe/2.0' },
+          timeout: 12000
+        },
+        (res) => {
+          let body = ''
+          res.on('data', (c) => (body += c))
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(body)
+              if (parsed?.query) resolve(String(parsed.query))
+              else reject(new Error('Proxy did not return a valid exit IP'))
+            } catch {
+              reject(new Error('Invalid response through proxy tunnel'))
+            }
+          })
+        }
+      )
+      req.on('error', reject)
+      req.on('timeout', () => {
+        req.destroy()
+        reject(new Error('Proxy tunnel probe timed out'))
+      })
+      req.end()
+    })
+    return { exitIp, latencyMs: Date.now() - start }
+  } finally {
+    stopProxyBridge(bridgeProfileKey)
+  }
+}
+
+/**
+ * Live IP Fraud / Risk Score & Residential vs Datacenter Classification.
+ * Accepts either an IP address, hostname, or a saved Proxy ID ( automatically resolves exit IP through tunnel).
+ */
+export async function checkIpFraudScore(ipOrHostOrProxyId: string): Promise<IpFraudScoreResult> {
+  let target = String(ipOrHostOrProxyId || '').trim()
+  if (!target) throw new Error('IP address, proxy hostname, or proxy ID is required')
+
+  let tunnelLatencyMs = 0
+  // If user passed a saved proxyId or rotating gateway host that matches a stored proxy, resolve real exit IP
+  try {
+    const repo = new ProxyRepository()
+    const allProxies = repo.getAll()
+    const matchedProxy = allProxies.find((p) => p.id === target || `${p.host}:${p.port}` === target)
+    if (matchedProxy) {
+      const probe = await resolveProxyExitIp(matchedProxy.id)
+      target = probe.exitIp
+      tunnelLatencyMs = probe.latencyMs
+    }
+  } catch {}
 
   const start = Date.now()
   const fields = 'status,message,country,countryCode,regionName,city,isp,org,as,proxy,hosting,mobile,timezone,lat,lon,query'
@@ -193,14 +259,50 @@ export async function checkIpFraudScore(ipOrHost: string): Promise<IpFraudScoreR
         }
       })
     })
-    req.on('error', reject)
+    req.on('error', async () => {
+      // HTTPS fallback via ipwho.is if plain HTTP port 80 is filtered by ISP
+      try {
+        const fallbackData = await new Promise<any>((resFallback, rejFallback) => {
+          https.get(`https://ipwho.is/${encodeURIComponent(target)}`, { timeout: 10000 }, (r2) => {
+            let b2 = ''
+            r2.on('data', (c) => (b2 += c))
+            r2.on('end', () => {
+              try {
+                const j = JSON.parse(b2)
+                resFallback({
+                  status: j.success !== false ? 'success' : 'fail',
+                  query: j.ip || target,
+                  country: j.country,
+                  countryCode: j.country_code,
+                  regionName: j.region,
+                  city: j.city,
+                  isp: j.connection?.isp || j.connection?.org || '',
+                  as: j.connection?.asn ? `AS${j.connection.asn}` : '',
+                  timezone: j.timezone?.id || '',
+                  lat: j.latitude,
+                  lon: j.longitude,
+                  proxy: Boolean(j.security?.proxy || j.security?.vpn || j.security?.tor),
+                  hosting: Boolean(j.security?.hosting),
+                  mobile: false
+                })
+              } catch (e) {
+                rejFallback(e)
+              }
+            })
+          }).on('error', rejFallback)
+        })
+        resolve(fallbackData)
+      } catch (e2) {
+        reject(e2)
+      }
+    })
     req.on('timeout', () => {
       req.destroy()
       reject(new Error('IP intelligence lookup timed out'))
     })
   })
 
-  const latencyMs = Date.now() - start
+  const latencyMs = tunnelLatencyMs || (Date.now() - start)
   if (data.status !== 'success') {
     throw new Error(data.message || `Could not resolve IP intelligence for "${target}"`)
   }

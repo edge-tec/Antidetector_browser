@@ -445,17 +445,45 @@ export async function setupBrowserInjection(browser: Browser, fingerprint: Finge
     logger.warn('browser', `Could not inject into existing pages: ${err.message}`)
   }
 
-  // Inject into all future pages/tabs
+  // Inject into all future pages/tabs AND Dedicated/Service Workers
   browser.on('targetcreated', async (target) => {
     try {
-      const page = await target.page()
-      if (page) {
-        await applyPageEmulation(page, fingerprint)
+      const targetType = target.type()
+      if (targetType === 'page') {
+        const page = await target.page()
+        if (page) {
+          await applyPageEmulation(page, fingerprint)
+        }
+      } else if (targetType === 'worker' || targetType === 'service_worker' || targetType === 'shared_worker') {
+        // Synchronize worker thread User-Agent, Client Hints, HardwareConcurrency, and Timezone via CDP
+        const workerClient = await target.createCDPSession()
+        const nav = fingerprint.navigator || ({} as any)
+        const userAgentMetadata = buildUserAgentMetadata(fingerprint)
+        const acceptLanguage = (fingerprint.locale?.languages || ['en-US', 'en']).join(',')
+
+        if (nav.hardwareConcurrency) {
+          await workerClient.send('Emulation.setHardwareConcurrencyOverride', {
+            hardwareConcurrency: nav.hardwareConcurrency
+          }).catch(() => {})
+        }
+        if (fingerprint.timezone?.timezone) {
+          await workerClient.send('Emulation.setTimezoneOverride', {
+            timezoneId: fingerprint.timezone.timezone
+          }).catch(() => {})
+        }
+        if (nav.userAgent) {
+          await workerClient.send('Network.setUserAgentOverride', {
+            userAgent: nav.userAgent,
+            acceptLanguage,
+            platform: nav.platform || 'Win32',
+            userAgentMetadata
+          }).catch(() => {})
+        }
       }
     } catch {
-      // Ignore errors for non-page targets (service workers, etc.)
+      // Ignore errors for transient targets
     }
   })
 
-  logger.info('browser', 'Browser injection setup complete')
+  logger.info('browser', 'Browser injection setup complete (Pages + Workers synchronized)')
 }

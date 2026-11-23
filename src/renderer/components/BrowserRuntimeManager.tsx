@@ -19,6 +19,8 @@ interface RuntimeStatusData {
 
 export const BrowserRuntimeManager: React.FC = () => {
   const [data, setData] = useState<RuntimeStatusData | null>(null)
+  const [kernels, setKernels] = useState<any[]>([])
+  const [kernelBusyId, setKernelBusyId] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
@@ -31,10 +33,38 @@ export const BrowserRuntimeManager: React.FC = () => {
           setData(res.data)
         }
       }
+      if ((window as any).api?.enterprise?.listKernels) {
+        const kRes = await (window as any).api.enterprise.listKernels()
+        if (Array.isArray(kRes)) {
+          setKernels(kRes)
+        } else if (Array.isArray(kRes?.kernels)) {
+          setKernels(kRes.kernels)
+        }
+      }
     } catch (err: any) {
       console.error('Failed to load runtime status:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleKernelAction = async (releaseId: string, action: 'install' | 'uninstall') => {
+    setKernelBusyId(releaseId)
+    setFeedbackMessage({ type: 'info', text: `${action === 'install' ? 'Downloading & installing' : 'Uninstalling'} kernel ${releaseId}...` })
+    try {
+      const api = (window as any).api?.enterprise
+      if (action === 'install') {
+        await api?.installKernel(releaseId)
+        setFeedbackMessage({ type: 'success', text: `Kernel ${releaseId} installed and verified!` })
+      } else {
+        await api?.uninstallKernel(releaseId)
+        setFeedbackMessage({ type: 'info', text: `Kernel ${releaseId} uninstalled.` })
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ type: 'error', text: err.message || `Kernel ${action} failed` })
+    } finally {
+      setKernelBusyId(null)
+      loadStatus()
     }
   }
 
@@ -294,6 +324,97 @@ export const BrowserRuntimeManager: React.FC = () => {
           '#FB923C'
         )}
       </div>
+
+      {/* Multi-Kernel Version & Camoufox C++ Stealth Catalog */}
+      {kernels.length > 0 && (
+        <div style={{ marginTop: '22px', borderTop: '1px solid #2A2A3C', paddingTop: '18px' }}>
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#F8FAFC' }}>
+            🧬 Enterprise Multi-Kernel & Camoufox C++ Anti-Detect Catalog
+          </h3>
+          <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#94A3B8' }}>
+            Install multiple isolated Chrome for Testing versions (128–136), Firefox ESR/DevEdition, or the C++ native Camoufox stealth kernel.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+            {kernels.map((k: any) => (
+              <div
+                key={k.id}
+                style={{
+                  background: '#181824',
+                  border: `1px solid ${k.installed ? 'rgba(45,212,191,0.35)' : '#2A2A3C'}`,
+                  borderRadius: '10px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '10px'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <strong style={{ fontSize: '13px', color: '#F1F5F9' }}>{k.label}</strong>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontWeight: 700,
+                        background: k.installed ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.12)',
+                        color: k.installed ? '#22C55E' : '#94A3B8'
+                      }}
+                    >
+                      {k.installed ? 'INSTALLED' : k.channel?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px', fontFamily: 'monospace' }}>
+                    Engine: {k.engine.toUpperCase()} • v{k.version}
+                  </div>
+                </div>
+                <div>
+                  {k.installed ? (
+                    <button
+                      type="button"
+                      disabled={kernelBusyId === k.id}
+                      onClick={() => handleKernelAction(k.id, 'uninstall')}
+                      style={{
+                        width: '100%',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        background: 'rgba(244,63,94,0.12)',
+                        color: '#FB7185',
+                        border: '1px solid rgba(244,63,94,0.3)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {kernelBusyId === k.id ? 'Removing...' : '🗑️ Uninstall Kernel'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={kernelBusyId === k.id}
+                      onClick={() => handleKernelAction(k.id, 'install')}
+                      style={{
+                        width: '100%',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        background: k.engine === 'camoufox' ? '#10B981' : '#6366F1',
+                        color: '#FFF',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {kernelBusyId === k.id ? '⏳ Downloading...' : `⬇️ Install ${k.engine === 'camoufox' ? 'Camoufox C++' : `v${k.major}`}`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

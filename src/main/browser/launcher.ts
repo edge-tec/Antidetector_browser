@@ -28,6 +28,7 @@ import { installFirefoxRuntimeExtension } from './firefox/firefox-extension-buil
 import { installChromiumRuntimeExtension } from './chromium/chromium-extension-builder'
 import { ExtensionManager } from './extension-manager'
 import { BrowserIconManager } from './branding/browser-icon-manager'
+import { buildCamoufoxEnvConfig } from './multi-kernel-manager'
 
 export interface LaunchResult {
   browser: Browser | any
@@ -519,12 +520,28 @@ export async function launchFirefox(
   }
 
   const tz = resolvedProfile.timezone
+  const isCamoufoxRuntime =
+    firefoxPath.toLowerCase().includes('camoufox') ||
+    String((profile as any).browserType || '').toLowerCase() === 'camoufox' ||
+    String(profile.browserVersion || '').toLowerCase().includes('camoufox')
+
+  const camouEnv = isCamoufoxRuntime
+    ? buildCamoufoxEnvConfig({
+        osType: profile.osType,
+        timezone: tz,
+        screenWidth: resolvedProfile.screenWidth,
+        screenHeight: resolvedProfile.screenHeight,
+        fingerprint: resolvedProfile.fingerprint
+      })
+    : {}
+
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     MOZ_NO_REMOTE: '1',
     MOZ_LEGACY_PROFILES: '1',
     MOZ_ALLOW_DOWNGRADE: '1',
-    ...(tz ? { TZ: tz } : {})
+    ...(tz ? { TZ: tz } : {}),
+    ...camouEnv
   }
 
   // Custom launch args (allowlisted)

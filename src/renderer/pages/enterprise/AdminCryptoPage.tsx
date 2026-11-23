@@ -5,6 +5,10 @@ export function AdminCryptoPage({ showToast }: { showToast: ShowToastFn }) {
   const cryptoApi = (window as any)?.api?.crypto
 
   const [overview, setOverview] = useState<any>(null)
+  const [hdConfig, setHdConfig] = useState<any>(null)
+  const [revealedMnemonic, setRevealedMnemonic] = useState<string | null>(null)
+  const [customMnemonicInput, setCustomMnemonicInput] = useState('')
+  const [sweepLogs, setSweepLogs] = useState<any[]>([])
   const [networks, setNetworks] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
   const [statusFilter, setStatusFilter] = useState('')
@@ -14,14 +18,18 @@ export function AdminCryptoPage({ showToast }: { showToast: ShowToastFn }) {
   const loadData = useCallback(async () => {
     if (!cryptoApi) return setLoading(false)
     try {
-      const [ov, nets, invs] = await Promise.all([
+      const [ov, nets, invs, hd, sweeps] = await Promise.all([
         cryptoApi.getAdminOverview(),
         cryptoApi.listNetworks(false),
-        cryptoApi.listInvoices({ status: statusFilter || undefined, limit: 100 })
+        cryptoApi.listInvoices({ status: statusFilter || undefined, limit: 100 }),
+        cryptoApi.getHdWalletConfig?.().catch(() => null),
+        cryptoApi.listSweepLogs?.(30).catch(() => [])
       ])
       setOverview(ov)
       setNetworks(nets || [])
       setInvoices(invs || [])
+      setHdConfig(hd)
+      setSweepLogs(sweeps || [])
     } catch (err: any) {
       showToast('error', err.message)
     } finally {
@@ -30,6 +38,46 @@ export function AdminCryptoPage({ showToast }: { showToast: ShowToastFn }) {
   }, [cryptoApi, statusFilter, showToast])
 
   useEffect(() => { loadData() }, [loadData])
+
+  const handleRevealMnemonic = async () => {
+    if (revealedMnemonic) {
+      setRevealedMnemonic(null)
+      return
+    }
+    try {
+      const res = await cryptoApi.revealHdMnemonic()
+      setRevealedMnemonic(res?.mnemonic || '')
+      showToast('info', 'Trust Wallet 12-word recovery phrase unlocked')
+    } catch (err: any) {
+      showToast('error', err.message)
+    }
+  }
+
+  const handleSaveHdConfig = async (patch: any, msg = 'Trust Wallet HD & Auto-Sweep configuration saved') => {
+    try {
+      const updated = await cryptoApi.saveHdWalletConfig(patch)
+      setHdConfig(updated)
+      setCustomMnemonicInput('')
+      if (patch.generateNewSeed || patch.mnemonic) {
+        const rev = await cryptoApi.revealHdMnemonic()
+        setRevealedMnemonic(rev?.mnemonic || null)
+      }
+      showToast('success', msg)
+      await loadData()
+    } catch (err: any) {
+      showToast('error', err.message)
+    }
+  }
+
+  const handleManualSweep = async (invoiceId: string) => {
+    try {
+      const res = await cryptoApi.sweepInvoiceToTrustWallet(invoiceId)
+      showToast('success', `Swept to Trust Wallet Master (${res.sweepTxHash.slice(0, 14)}...)`)
+      await loadData()
+    } catch (err: any) {
+      showToast('error', err.message)
+    }
+  }
 
   const handleSaveNetwork = async () => {
     if (!editingNet) return
@@ -106,6 +154,128 @@ export function AdminCryptoPage({ showToast }: { showToast: ShowToastFn }) {
         </div>
       </div>
 
+      {/* Trust Wallet Connected HD Seed & Auto-Sweep Treasury */}
+      {hdConfig && (
+        <div className="card" style={{ padding: 18, marginBottom: 20, border: '1px solid rgba(59,130,246,0.35)', background: 'linear-gradient(135deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9))' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                🛡️ Trust Wallet Connected HD Wallet & Auto-Sweep Treasury (BIP-32 / BIP-39 / BIP-44)
+              </h3>
+              <p className="text-secondary" style={{ margin: '4px 0 0', fontSize: 12 }}>
+                Every customer deposit invoice automatically derives a unique child address from your Trust Wallet seed phrase, auto-verifies incoming funds on-chain, and auto-sweeps them to your Trust Wallet Master Treasury (Index #0).
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-secondary btn-sm" onClick={handleRevealMnemonic}>
+                {revealedMnemonic ? '🙈 Hide Seed Phrase' : '🔑 Reveal 12-Word Trust Wallet Phrase'}
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleSaveHdConfig({ generateNewSeed: true }, 'Generated new 12-word Trust Wallet HD seed & synced Master Addresses')}
+              >
+                🎲 Generate New 12-Word Seed
+              </button>
+            </div>
+          </div>
+
+          {/* Toggles */}
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 14, padding: 10, borderRadius: 8, background: 'rgba(15,23,42,0.55)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!hdConfig.hdEnabled}
+                onChange={(e) => handleSaveHdConfig({ hdEnabled: e.target.checked })}
+              />
+              <strong>Auto-Derive Unique HD Address per Invoice</strong>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!hdConfig.autoDetectEnabled}
+                onChange={(e) => handleSaveHdConfig({ autoDetectEnabled: e.target.checked })}
+              />
+              <strong>Auto-Detect & Verify On-Chain Without TxHash</strong>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!hdConfig.autoSweepEnabled}
+                onChange={(e) => handleSaveHdConfig({ autoSweepEnabled: e.target.checked })}
+              />
+              <strong>Auto-Sweep Verified Funds to Trust Wallet Master</strong>
+            </label>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#60A5FA' }}>
+              Next HD Child Index: <strong>#{hdConfig.nextDerivationIndex}</strong>
+            </span>
+          </div>
+
+          {/* Mnemonic Display / Import */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div style={{ padding: 10, borderRadius: 8, background: 'rgba(15,23,42,0.65)', border: '1px solid var(--color-border)' }}>
+              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                Active Trust Wallet BIP-39 Seed Phrase (Import this 12-word phrase in Trust Wallet Mobile/Extension):
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <code style={{ flex: 1, fontSize: 12, color: revealedMnemonic ? '#34D399' : '#94A3B8', wordBreak: 'break-word' }}>
+                  {revealedMnemonic || hdConfig.mnemonicPreview}
+                </code>
+                {revealedMnemonic && (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => { navigator.clipboard.writeText(revealedMnemonic); showToast('success', 'Trust Wallet 12-word seed copied') }}
+                  >
+                    Copy
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div style={{ padding: 10, borderRadius: 8, background: 'rgba(15,23,42,0.65)', border: '1px solid var(--color-border)' }}>
+              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                Connect Existing Trust Wallet (Paste 12 or 24-word Mnemonic Phrase):
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  className="form-input"
+                  placeholder="word1 word2 word3 ... word12"
+                  value={customMnemonicInput}
+                  onChange={(e) => setCustomMnemonicInput(e.target.value)}
+                  style={{ flex: 1, fontSize: 12, fontFamily: 'monospace' }}
+                />
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={customMnemonicInput.trim().split(/\s+/).length < 12}
+                  onClick={() => handleSaveHdConfig({ mnemonic: customMnemonicInput.trim() }, 'Connected your Trust Wallet mnemonic phrase & derived Master Addresses')}
+                >
+                  Connect Trust Wallet
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Derived Trust Wallet Master Treasury Addresses (Index 0) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+            <div style={{ padding: 8, borderRadius: 6, background: 'rgba(15,23,42,0.45)', fontSize: 11 }}>
+              <span className="text-secondary">EVM Master (ETH / BSC / Polygon • m/44&apos;/60&apos;/0&apos;/0/0):</span>
+              <div style={{ fontFamily: 'monospace', color: '#E2E8F0', marginTop: 2 }}>{hdConfig.trustMasterEvmAddress}</div>
+            </div>
+            <div style={{ padding: 8, borderRadius: 6, background: 'rgba(15,23,42,0.45)', fontSize: 11 }}>
+              <span className="text-secondary">TRON Master (TRX / USDT-TRC20 • m/44&apos;/195&apos;/0&apos;/0/0):</span>
+              <div style={{ fontFamily: 'monospace', color: '#E2E8F0', marginTop: 2 }}>{hdConfig.trustMasterTronAddress}</div>
+            </div>
+            <div style={{ padding: 8, borderRadius: 6, background: 'rgba(15,23,42,0.45)', fontSize: 11 }}>
+              <span className="text-secondary">Bitcoin Native SegWit Master (BTC • m/84&apos;/0&apos;/0&apos;/0/0):</span>
+              <div style={{ fontFamily: 'monospace', color: '#E2E8F0', marginTop: 2 }}>{hdConfig.trustMasterBtcAddress}</div>
+            </div>
+            <div style={{ padding: 8, borderRadius: 6, background: 'rgba(15,23,42,0.45)', fontSize: 11 }}>
+              <span className="text-secondary">Solana Master (SOL • m/44&apos;/501&apos;/0&apos;/0&apos;):</span>
+              <div style={{ fontFamily: 'monospace', color: '#E2E8F0', marginTop: 2 }}>{hdConfig.trustMasterSolAddress}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Supported Networks Table */}
       <div className="card" style={{ padding: 18, marginBottom: 20 }}>
         <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Supported Cryptocurrencies & Networks (9)</h3>
@@ -157,11 +327,11 @@ export function AdminCryptoPage({ showToast }: { showToast: ShowToastFn }) {
             <thead>
               <tr>
                 <th>Invoice</th>
-                <th>User</th>
                 <th>Asset / Network</th>
+                <th>HD Child Address & Path</th>
                 <th>Requested</th>
                 <th>Received</th>
-                <th>TxHash</th>
+                <th>Auto-Sweep to Trust Wallet</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -169,11 +339,26 @@ export function AdminCryptoPage({ showToast }: { showToast: ShowToastFn }) {
               {invoices.map((inv) => (
                 <tr key={inv.id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{inv.invoiceNumber}</td>
-                  <td style={{ fontSize: 11 }}>{inv.userId.slice(0, 10)}</td>
                   <td>{inv.symbol} ({inv.network})</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                    <div>{inv.depositAddress ? `${inv.depositAddress.slice(0, 10)}...${inv.depositAddress.slice(-6)}` : '—'}</div>
+                    {inv.derivationPath && <span style={{ fontSize: 10, color: '#60A5FA' }}>{inv.derivationPath}</span>}
+                  </td>
                   <td>${(inv.requestedUsdCents / 100).toFixed(2)}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{inv.receivedCryptoDisplay} {inv.symbol}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{inv.txHash ? `${inv.txHash.slice(0, 14)}...` : '—'}</td>
+                  <td style={{ fontSize: 11 }}>
+                    {inv.sweepStatus === 'swept' ? (
+                      <span style={{ color: '#22C55E', fontWeight: 600 }}>
+                        ✅ Swept ({inv.sweepTxHash ? `${inv.sweepTxHash.slice(0, 10)}...` : 'OK'})
+                      </span>
+                    ) : (inv.status === 'credited' || inv.status === 'overpaid') ? (
+                      <button className="btn btn-secondary btn-sm" onClick={() => handleManualSweep(inv.id)}>
+                        ⚡ Sweep to Trust Wallet
+                      </button>
+                    ) : (
+                      <span className="text-secondary">Awaiting deposit</span>
+                    )}
+                  </td>
                   <td><strong>{String(inv.status).toUpperCase()}</strong></td>
                 </tr>
               ))}

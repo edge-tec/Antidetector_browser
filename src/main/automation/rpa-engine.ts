@@ -71,8 +71,83 @@ interface ActiveRunControl {
   stopped: boolean
 }
 
+/**
+ * Lightweight 5-field Cron Expression Matcher (`min hour dom month dow`).
+ */
+export function matchesCronExpression(cronExpr: string, date: Date = new Date()): boolean {
+  const trimmed = String(cronExpr || '').trim()
+  if (!trimmed) return false
+  const parts = trimmed.split(/\s+/)
+  if (parts.length !== 5) return false
+
+  const values = [
+    date.getMinutes(),
+    date.getHours(),
+    date.getDate(),
+    date.getMonth() + 1,
+    date.getDay()
+  ]
+
+  const matchField = (field: string, val: number): boolean => {
+    if (field === '*') return true
+    for (const segment of field.split(',')) {
+      if (segment.startsWith('*/')) {
+        const step = parseInt(segment.slice(2), 10)
+        if (step > 0 && val % step === 0) return true
+      } else if (segment.includes('-')) {
+        const [minS, maxS] = segment.split('-')
+        const min = parseInt(minS, 10)
+        const max = parseInt(maxS, 10)
+        if (val >= min && val <= max) return true
+      } else if (parseInt(segment, 10) === val) {
+        return true
+      }
+    }
+    return false
+  }
+
+  return parts.every((field, idx) => matchField(field, values[idx]))
+}
+
 class RpaEngine {
   private activeRuns = new Map<string, ActiveRunControl>()
+  private schedulerTimer: NodeJS.Timeout | null = null
+  private lastTriggeredMinute = ''
+
+  /**
+   * Start background cron scheduler loop that evaluates active scheduled workflows every 30s.
+   */
+  startScheduler(defaultProfileResolver?: () => string | null): void {
+    if (this.schedulerTimer) return
+    this.schedulerTimer = setInterval(async () => {
+      try {
+        const now = new Date()
+        const minuteKey = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}-${now.getUTCHours()}:${now.getUTCMinutes()}`
+        if (minuteKey === this.lastTriggeredMinute) return
+
+        const workflows = this.listWorkflows().filter((w) => w.scheduleActive && w.scheduleCron)
+        for (const wf of workflows) {
+          if (matchesCronExpression(wf.scheduleCron, now)) {
+            this.lastTriggeredMinute = minuteKey
+            const targetProfileId = wf.variables?.profileId || defaultProfileResolver?.() || ''
+            if (targetProfileId && processTracker.isRunning(targetProfileId)) {
+              logger.info('automation', `[RPAScheduler] Auto-triggering scheduled workflow "${wf.name}" on profile ${targetProfileId}`)
+              this.executeWorkflow(wf.id, targetProfileId).catch((err) => {
+                logger.warn('automation', `[RPAScheduler] Scheduled run failed: ${err.message}`)
+              })
+            }
+          }
+        }
+      } catch {}
+    }, 30000)
+  }
+
+  stopScheduler(): void {
+    if (this.schedulerTimer) {
+      clearInterval(this.schedulerTimer)
+      this.schedulerTimer = null
+    }
+  }
 
   createWorkflow(input: {
     name: string
@@ -245,14 +320,29 @@ class RpaEngine {
             break
           case 'click':
             if (step.selector) {
-              await page.waitForSelector(step.selector, { timeout: 15000 })
-              await page.click(step.selector)
+              const el = await page.waitForSelector(step.selector, { timeout: 15000 })
+              if (el) {
+                const box = await el.boundingBox()
+                if (box) {
+                  // Human-like quadratic curve mouse movement + micro-jitter
+                  const targetX = box.x + box.width / 2 + (Math.random() * 6 - 3)
+                  const targetY = box.y + box.height / 2 + (Math.random() * 6 - 3)
+                  await page.mouse.move(targetX * 0.5, targetY * 0.6, { steps: 6 })
+                  await page.mouse.move(targetX, targetY, { steps: 8 })
+                  await new Promise((r) => setTimeout(r, 35 + Math.floor(Math.random() * 55)))
+                  await page.mouse.click(targetX, targetY)
+                } else {
+                  await page.click(step.selector)
+                }
+              }
             }
             break
           case 'type':
             if (step.selector) {
               await page.waitForSelector(step.selector, { timeout: 15000 })
-              await page.type(step.selector, interpolate(step.value), { delay: 25 })
+              const textToType = interpolate(step.value)
+              const humanDelay = 25 + Math.floor(Math.random() * 45)
+              await page.type(step.selector, textToType, { delay: humanDelay })
             }
             break
           case 'select':

@@ -24,6 +24,18 @@ export interface CookieRobotOptions {
   dwellMinMs?: number
   dwellMaxMs?: number
   scrollSteps?: number
+  clickInternalLinks?: boolean
+  closeAfterRun?: boolean
+}
+
+export interface BatchCookieRobotOptions {
+  profileIds: string[]
+  urls: string[]
+  concurrency?: number
+  dwellMinMs?: number
+  dwellMaxMs?: number
+  scrollSteps?: number
+  clickInternalLinks?: boolean
   closeAfterRun?: boolean
 }
 
@@ -178,6 +190,30 @@ export async function runCookieRobot(options: CookieRobotOptions): Promise<Cooki
           }, deltaY).catch(() => {})
           await sleep(randomBetween(Math.floor(dwellMin / scrollSteps), Math.floor(dwellMax / scrollSteps)))
         }
+
+        // Optional: Click 1 safe internal link on the same domain to build deeper session cookies
+        if (options.clickInternalLinks !== false) {
+          await page.evaluate(() => {
+            try {
+              const host = window.location.hostname
+              const anchors = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[]
+              const safeLinks = anchors.filter((a) => {
+                try {
+                  const u = new URL(a.href, window.location.href)
+                  const r = a.getBoundingClientRect()
+                  return u.hostname === host && u.protocol.startsWith('http') && r.width > 20 && r.height > 12 && !/logout|signout|delete|login|signin/i.test(u.pathname)
+                } catch {
+                  return false
+                }
+              })
+              if (safeLinks.length > 0) {
+                const chosen = safeLinks[Math.floor(Math.random() * Math.min(safeLinks.length, 12))]
+                chosen.click()
+              }
+            } catch {}
+          }).catch(() => {})
+          await sleep(randomBetween(900, 1800))
+        }
       } catch (navErr: any) {
         logger.warn('automation', `[CookieRobot] Skipped ${url}: ${navErr.message}`)
       }
@@ -214,5 +250,56 @@ export async function runCookieRobot(options: CookieRobotOptions): Promise<Cooki
       await profileManager.stopProfile(options.profileId).catch(() => {})
     }
     throw err
+  }
+}
+
+/**
+ * Batch Multi-Profile Cookie Robot Queue Runner with bounded concurrency.
+ * Warms up multiple profiles in parallel (default concurrency = 3) without overloading RAM/CPU.
+ */
+export async function runBatchCookieRobot(options: BatchCookieRobotOptions): Promise<{
+  totalProfiles: number
+  succeeded: number
+  failed: number
+  runs: CookieRobotRunRecord[]
+  errors: Array<{ profileId: string; error: string }>
+}> {
+  const profileIds = Array.from(new Set((options.profileIds || []).filter(Boolean))).slice(0, 50)
+  if (profileIds.length === 0) throw new Error('At least one profileId is required for batch warm-up')
+
+  const concurrency = Math.max(1, Math.min(options.concurrency ?? 3, 6))
+  const queue = [...profileIds]
+  const runs: CookieRobotRunRecord[] = []
+  const errors: Array<{ profileId: string; error: string }> = []
+
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const pid = queue.shift()
+      if (!pid) break
+      try {
+        const rec = await runCookieRobot({
+          profileId: pid,
+          urls: options.urls,
+          dwellMinMs: options.dwellMinMs,
+          dwellMaxMs: options.dwellMaxMs,
+          scrollSteps: options.scrollSteps,
+          clickInternalLinks: options.clickInternalLinks,
+          closeAfterRun: options.closeAfterRun
+        })
+        runs.push(rec)
+      } catch (err: any) {
+        errors.push({ profileId: pid, error: err.message || 'Warm-up failed' })
+      }
+    }
+  })
+
+  await Promise.all(workers)
+
+  return {
+    totalProfiles: profileIds.length,
+    succeeded: runs.length,
+    failed: errors.length,
+    runs,
+    errors
   }
 }

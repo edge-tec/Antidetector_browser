@@ -16,6 +16,7 @@ import { TrashManager } from '../browser/trash-manager'
 import { CookieManager } from '../browser/cookie-manager'
 import { ProxyRotationManager } from '../network/proxy-rotation'
 import { rpaEngine } from './rpa-engine'
+import { paymentService } from '../services/payment.service'
 import { logger } from '../logging/logger'
 
 let server: Server | null = null
@@ -111,6 +112,26 @@ export function startApiServer(port: number = 37100): void {
   }
 
   const app = express()
+
+  // ── Official Stripe Webhook Receiver (Raw Body for HMAC-SHA256 Stripe-Signature Verification) ──
+  const stripeWebhookHandler = (req: express.Request, res: express.Response): void => {
+    try {
+      const rawPayload = Buffer.isBuffer(req.body)
+        ? req.body.toString('utf8')
+        : typeof req.body === 'string'
+          ? req.body
+          : JSON.stringify(req.body || {})
+      const sigHeader = String(req.headers['stripe-signature'] || '')
+      const out = paymentService.handleStripeWebhook(rawPayload, sigHeader)
+      res.status(out.statusCode).json(out.body)
+    } catch (err: any) {
+      logger.error('payment', `[StripeWebhookHTTP] Error handling webhook: ${err.message}`)
+      res.status(400).json({ success: false, error: err.message })
+    }
+  }
+  app.post('/api/payments/stripe/webhook', express.raw({ type: '*/*', limit: '2mb' }), stripeWebhookHandler)
+  app.post('/api/v2/payments/stripe/webhook', express.raw({ type: '*/*', limit: '2mb' }), stripeWebhookHandler)
+
   app.use(express.json({ limit: '5mb' }))
   app.use(authMiddleware)
 

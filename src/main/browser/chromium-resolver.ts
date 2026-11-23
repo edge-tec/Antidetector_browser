@@ -372,6 +372,45 @@ export async function findChromiumPath(customPath?: string): Promise<string | nu
   return null
 }
 
+function readWindowsExecutableVersion(exePath: string): { isValidPe: boolean; version: string } {
+  try {
+    const fd = fs.openSync(exePath, 'r')
+    const headerBuf = Buffer.alloc(2)
+    fs.readSync(fd, headerBuf, 0, 2, 0)
+    fs.closeSync(fd)
+    const isValidPe = headerBuf[0] === 0x4d && headerBuf[1] === 0x5a
+    if (!isValidPe) return { isValidPe: false, version: '' }
+
+    // 1. Fast sibling folder version check for Chromium/Chrome/Edge/Brave (e.g. Application\131.0.6778.264)
+    const dir = path.dirname(exePath)
+    const entries = fs.readdirSync(dir)
+    for (const entry of entries) {
+      if (/^\d+\.\d+\.\d+\.\d+$/.test(entry)) {
+        return { isValidPe: true, version: entry }
+      }
+    }
+
+    // 2. Check Firefox application.ini in the same directory
+    const appIniPath = path.join(dir, 'application.ini')
+    if (fs.existsSync(appIniPath)) {
+      const ini = fs.readFileSync(appIniPath, 'utf8')
+      const m = ini.match(/^Version=([^\r\n]+)/m)
+      if (m && m[1]) return { isValidPe: true, version: m[1].trim() }
+    }
+
+    // 3. Fallback to PowerShell PE FileVersionInfo without spawning the browser GUI
+    const safePath = exePath.replace(/'/g, "''")
+    const out = execSync(
+      `powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "(Get-Item -LiteralPath '${safePath}').VersionInfo.ProductVersion"`,
+      { encoding: 'utf8', timeout: 3500, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }
+    ).trim()
+    if (out) return { isValidPe: true, version: out }
+    return { isValidPe: true, version: 'Installed' }
+  } catch {
+    return { isValidPe: false, version: '' }
+  }
+}
+
 /**
  * Detect all installed Chromium & Firefox browsers on the system.
  */
@@ -403,6 +442,12 @@ export async function detectAllBrowsers(): Promise<BrowserInfo[]> {
     } else if (lower.includes('brave')) {
       name = 'Brave Browser'
       engine = 'Brave'
+    }
+
+    if (process.platform === 'win32') {
+      const winInfo = readWindowsExecutableVersion(cleaned)
+      found.push({ name, engine, path: cleaned, version: winInfo.version || 'Detected' })
+      return
     }
 
     try {
@@ -473,6 +518,38 @@ export async function testBrowserExecutable(executablePath: string): Promise<Bro
     }
   }
 
+  const lower = cleaned.toLowerCase()
+  let engine = 'Chromium'
+  if (lower.includes('camoufox')) engine = 'Camoufox C++ Stealth'
+  else if (lower.includes('firefox')) engine = 'Gecko / Firefox Quantum'
+  else if (lower.includes('chrome')) engine = 'Google Chrome'
+  else if (lower.includes('msedge') || lower.includes('edge')) engine = 'Microsoft Edge'
+  else if (lower.includes('brave')) engine = 'Brave'
+
+  // On Windows: verify PE header & file metadata without spawning a GUI browser window
+  if (process.platform === 'win32') {
+    const winInfo = readWindowsExecutableVersion(cleaned)
+    if (!winInfo.isValidPe) {
+      return {
+        valid: false,
+        exists: true,
+        isExecutable: false,
+        version: 'Invalid',
+        engine,
+        path: cleaned,
+        error: 'File is not a valid Windows PE executable (missing MZ header).'
+      }
+    }
+    return {
+      valid: true,
+      exists: true,
+      isExecutable: true,
+      version: winInfo.version || 'Verified',
+      engine,
+      path: cleaned
+    }
+  }
+
   try {
     const versionOutput = execSync(`"${cleaned}" --version`, {
       encoding: 'utf-8',
@@ -482,13 +559,6 @@ export async function testBrowserExecutable(executablePath: string): Promise<Bro
 
     const match = versionOutput.match(/[\d.]+/)
     const version = match ? match[0] : versionOutput || 'Unknown'
-
-    const lower = cleaned.toLowerCase()
-    let engine = 'Chromium'
-    if (lower.includes('firefox')) engine = 'Gecko / Firefox Quantum'
-    else if (lower.includes('chrome')) engine = 'Google Chrome'
-    else if (lower.includes('msedge') || lower.includes('edge')) engine = 'Microsoft Edge'
-    else if (lower.includes('brave')) engine = 'Brave'
 
     return {
       valid: true,

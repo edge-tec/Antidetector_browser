@@ -26,6 +26,7 @@ import { registerPaymentIpcHandlers } from './ipc/payment.ipc'
 import { registerEnterpriseHandlers } from './ipc/enterprise.ipc'
 import { registerCryptoPaymentHandlers } from './ipc/crypto.ipc'
 import { registerUltraProHandlers } from './ipc/ultra-pro.ipc'
+import { rpaEngine } from './automation/rpa-engine'
 import { logger } from './logging/logger'
 
 // ── 1. Global Process Exception & Crash Handlers ──
@@ -173,8 +174,9 @@ app.whenReady().then(async () => {
   // Create main window immediately
   createWindow()
 
-  // Initialize profile manager in background so UI displays instantly
+  // Initialize profile manager & background RPA cron scheduler so UI displays instantly
   try {
+    rpaEngine.startScheduler()
     profileManager.initialize().catch((err) => {
       logger.error('system', `Profile manager async initialization failed: ${err.message}`)
     })

@@ -78,7 +78,7 @@ export function buildNavigatorScript(
     appVersion: ${JSON.stringify(nav.appVersion || (isFirefox ? '5.0 (Windows)' : '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'))},
     userAgent: ${JSON.stringify(nav.userAgent || '')},
     hardwareConcurrency: ${nav.hardwareConcurrency || 8},
-    ${(!isFirefox && !isIos) ? `deviceMemory: ${Math.min(nav.deviceMemory || 8, 8)},` : ''}
+    ${!isIos ? `deviceMemory: ${nav.deviceMemory || 8},` : ''}
     ${isFirefox ? `oscpu: ${JSON.stringify(resolvedOscpu)},` : ''}
     maxTouchPoints: ${nav.maxTouchPoints ?? (isMobile ? 5 : 0)},
     doNotTrack: ${JSON.stringify(nav.doNotTrack || null)},

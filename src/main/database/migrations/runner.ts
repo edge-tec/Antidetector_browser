@@ -18,6 +18,7 @@ import * as migration012 from './012_payments_and_gateways'
 import * as migration013 from './013_enterprise_platform'
 import * as migration014 from './014_inhouse_crypto_gateway'
 import * as migration015 from './015_ultra_pro_features'
+import * as migration016 from './016_crypto_hd_wallet_autosweep'
 
 interface Migration {
   id: number
@@ -40,7 +41,8 @@ const migrations: Migration[] = [
   { id: migration012.id, name: migration012.name, up: migration012.up },
   { id: migration013.id, name: migration013.name, up: migration013.up },
   { id: migration014.id, name: migration014.name, up: migration014.up },
-  { id: migration015.id, name: migration015.name, up: migration015.up }
+  { id: migration015.id, name: migration015.name, up: migration015.up },
+  { id: migration016.id, name: migration016.name, up: migration016.up }
 ]
 
 export function runMigrations(db: Database.Database): void {

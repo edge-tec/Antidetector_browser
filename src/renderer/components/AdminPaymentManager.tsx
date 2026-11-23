@@ -58,6 +58,8 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
   })
   const [payments, setPayments] = useState<PaymentItem[]>([])
   const [gateways, setGateways] = useState<GatewayItem[]>([])
+  const [webhookEvents, setWebhookEvents] = useState<any[]>([])
+  const [testingStripe, setTestingStripe] = useState(false)
   const [usersList, setUsersList] = useState<{ id: string; name: string; email: string }[]>([])
 
   // Filters
@@ -117,6 +119,12 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
           setPayments(res.data.payments || [])
           setGateways(res.data.gateways || [])
         }
+        if ((window as any).api?.adminListStripeWebhookEvents) {
+          const evRes = await (window as any).api.adminListStripeWebhookEvents(token, 25)
+          if (evRes?.success && Array.isArray(evRes.data)) {
+            setWebhookEvents(evRes.data)
+          }
+        }
       } else {
         const res = await fetch(`/api/admin.php?action=get-payments-overview&search=${encodeURIComponent(searchQuery)}&status=${encodeURIComponent(statusFilter)}&gateway=${encodeURIComponent(gatewayFilter)}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -125,6 +133,12 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
           setMetrics(res.data.metrics || {})
           setPayments(res.data.payments || [])
           setGateways(res.data.gateways || [])
+        }
+        if ((window as any).api?.adminListStripeWebhookEvents) {
+          const evRes = await (window as any).api.adminListStripeWebhookEvents(token, 25)
+          if (evRes?.success && Array.isArray(evRes.data)) {
+            setWebhookEvents(evRes.data)
+          }
         }
       }
 
@@ -249,6 +263,41 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
         await loadPaymentsOverview()
       } else {
         showToast('error', res?.error || 'Failed to update gateway.')
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    }
+  }
+
+  const handleTestStripeConnection = async () => {
+    setTestingStripe(true)
+    try {
+      const token = localStorage.getItem('pv_session_token') || ''
+      if ((window as any).api?.adminTestStripeConnection) {
+        const res = await (window as any).api.adminTestStripeConnection(token)
+        if (res?.success) {
+          showToast('success', res.data?.message || 'Stripe connection & webhook configuration verified!')
+        } else {
+          showToast('error', res?.error || 'Stripe connection failed.')
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    } finally {
+      setTestingStripe(false)
+    }
+  }
+
+  const handleRunStripeAutoVerifySweep = async () => {
+    try {
+      const token = localStorage.getItem('pv_session_token') || ''
+      if ((window as any).api?.adminRunStripeAutoVerifySweep) {
+        const res = await (window as any).api.adminRunStripeAutoVerifySweep(token)
+        if (res?.success) {
+          showToast('success', `Stripe Auto-Verify complete: checked ${res.data?.checked || 0} pending invoices (${res.data?.verified || 0} verified & credited).`)
+          await loadPaymentsOverview()
+          if (onSubscriptionUpdated) onSubscriptionUpdated()
+        }
       }
     } catch (err: any) {
       showToast('error', err.message)
@@ -664,6 +713,34 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
                     </span>
                   </div>
                 )}
+                {gw.gateway_key === 'stripe' && (
+                  <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #232336', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#94A3B8' }}>Webhook Auto-Verify:</span>
+                      <span style={{ color: '#34D399', fontWeight: 700 }}>⚡ ACTIVE (HMAC-SHA256)</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                      Webhook URL: <code style={{ color: '#2DD4BF' }}>/api/payments/stripe/webhook</code>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                      <button
+                        type="button"
+                        disabled={testingStripe}
+                        onClick={handleTestStripeConnection}
+                        style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', backgroundColor: '#1E293B', border: '1px solid #334155', color: '#38BDF8', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {testingStripe ? 'Testing...' : '🔌 Test Stripe API'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRunStripeAutoVerifySweep}
+                        style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', backgroundColor: '#10B98120', border: '1px solid #10B98150', color: '#34D399', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        🔄 Auto-Verify Pending
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
@@ -685,6 +762,59 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
               </button>
             </div>
           ))}
+
+          {/* Stripe Webhook Events Audit Log */}
+          <div style={{ gridColumn: '1 / -1', backgroundColor: '#1E1E2E', borderRadius: '16px', border: '1px solid #2C2C3E', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFF' }}>
+                  ⚡ Stripe Webhook Events & Automatic Verification Log
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                  Real-time log of cryptographically verified Stripe webhooks (<code>checkout.session.completed</code>, <code>payment_intent.succeeded</code>, <code>charge.refunded</code>) and auto-credited invoices.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRunStripeAutoVerifySweep}
+                style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: '#2DD4BF20', border: '1px solid #2DD4BF60', color: '#2DD4BF', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                ↻ Scan & Verify Pending Now
+              </button>
+            </div>
+            {webhookEvents.length === 0 ? (
+              <div style={{ fontSize: '12px', color: '#64748B', padding: '12px 0' }}>
+                No Stripe webhook events recorded yet. Incoming Stripe webhooks will appear here automatically.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #2C2C3E', color: '#94A3B8' }}>
+                    <th style={{ padding: '8px 10px' }}>Event ID</th>
+                    <th style={{ padding: '8px 10px' }}>Event Type</th>
+                    <th style={{ padding: '8px 10px' }}>Invoice ID</th>
+                    <th style={{ padding: '8px 10px' }}>Status</th>
+                    <th style={{ padding: '8px 10px' }}>Processed At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {webhookEvents.map((ev: any) => (
+                    <tr key={ev.id} style={{ borderBottom: '1px solid #232336' }}>
+                      <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#CBD5E1' }}>{ev.event_id}</td>
+                      <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#38BDF8' }}>{ev.event_type}</td>
+                      <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#94A3B8' }}>{ev.invoice_id || '—'}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <span style={{ color: ev.status === 'processed' ? '#34D399' : '#F87171', fontWeight: 700 }}>
+                          {String(ev.status || '').toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 10px', color: '#94A3B8' }}>{ev.processed_at || ev.received_at}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 

@@ -12,6 +12,7 @@ import { logger } from '../logging/logger'
 import { authorizeUser, normalizeUserRole } from '../security/session'
 import { subscriptionRepo } from '../database/repositories/subscription.repo'
 import { centralApi } from '../services/api-client.service'
+import { updaterService } from '../services/updater.service'
 
 export function registerBrowserHandlers(): void {
   ipcMain.handle('browser:start', async (event, sessionTokenOrId: string, maybeId?: string) => {
@@ -34,6 +35,20 @@ export function registerBrowserHandlers(): void {
       if (!profileRepo.verifyOwnership(id, auth.user.id, isAdmin)) {
         logger.warn('browser', `[PROFILE_ACCESS_DENIED] User "${auth.user.email}" (${auth.user.id}) denied access to profile "${id}"`)
         return { success: false, error: 'Access denied. You do not own this profile.' }
+      }
+
+      // ── Mandatory In-App Update Lock Guard ──
+      const pendingUpdate = updaterService.getPendingMandatoryUpdate()
+      if (pendingUpdate) {
+        updaterService.broadcastUpdateNotification(pendingUpdate)
+        logger.warn('browser', `[BROWSER_LAUNCH_BLOCKED] Outdated app version (${updaterService.getCurrentVersion()}). Mandatory update v${pendingUpdate.version} required.`)
+        return {
+          success: false,
+          error: `Mandatory Update Required: AntiProfiles v${pendingUpdate.version} is available. Please update the app to continue running profiles.`,
+          locked: true,
+          updateRequired: true,
+          latestVersion: pendingUpdate.version
+        }
       }
 
       // ── Authoritative Trial / Subscription Expiration Lock Guard ──

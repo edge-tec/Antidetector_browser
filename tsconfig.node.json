@@ -20,5 +20,6 @@
     "src/main/**/*",
     "src/preload/**/*",
     "electron.vite.config.ts"
-  ]
+  ],
+  "exclude": ["out", "dist", "node_modules"]
 }

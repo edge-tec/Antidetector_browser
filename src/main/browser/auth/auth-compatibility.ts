@@ -395,7 +395,7 @@ export class SingleFlightAuthManager {
       this.completeAuthFlow(profileId, 'AUTH_PROVIDER_INCOMPATIBLE', {
         status,
         reason: "Google rejected embedded browser authentication (Google Security Policy: Sign in with a supported browser).",
-        guidance: "Continue securely with Safari authentication."
+        guidance: "Use a supported desktop presentation (Windows, macOS, or Linux) or continue securely with Safari authentication."
       })
       return 'AUTH_PROVIDER_INCOMPATIBLE'
     }

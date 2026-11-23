@@ -178,8 +178,9 @@ if ($action === 'check-update') {
     }
 
     $isNewer = compareSemverPhp($latest['version'], $currentVersion) > 0;
-    $minSupported = $latest['min_supported_version'] ?? '1.0.0';
-    $isMandatory = !empty($latest['mandatory']) || (compareSemverPhp($minSupported, $currentVersion) > 0);
+    $minSupported = $latest['min_supported_version'] ?: $latest['version'];
+    // Every newer published version is strictly mandatory so outdated app versions cannot run
+    $isMandatory = $isNewer || !empty($latest['mandatory']) || (compareSemverPhp($minSupported, $currentVersion) > 0);
 
     if (!$isNewer) {
         respondJson([

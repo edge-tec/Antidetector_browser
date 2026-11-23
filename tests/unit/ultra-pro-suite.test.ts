@@ -6,6 +6,8 @@ import { COOKIE_ROBOT_PRESETS } from '../../src/main/automation/cookie-robot.ser
 import { windowSynchronizer } from '../../src/main/browser/window-synchronizer'
 import { KERNEL_CATALOG, buildCamoufoxEnvConfig } from '../../src/main/browser/multi-kernel-manager'
 import { parseBulkProxies } from '../../src/main/network/proxy-bulk-fraud.service'
+import { matchesCronExpression } from '../../src/main/automation/rpa-engine'
+import { buildWorkerConsistencyScript } from '../../src/main/browser/injection/scripts/worker-consistency'
 
 describe('Ultra-Pro Anti-Detect Suite', () => {
   it('generates RFC 6238 compliant 6-digit TOTP codes and parses otpauth URIs', () => {
@@ -93,5 +95,29 @@ describe('Ultra-Pro Anti-Detect Suite', () => {
     expect(res.duplicatesRemoved).toBe(1)
     expect(res.invalidLines.length).toBe(1)
     expect(res.parsed[2].password).toBe('pass:with:colon')
+  })
+
+  it('evaluates 5-field RPA cron schedules and injects WorkerNavigator thread consistency', () => {
+    const testDate = new Date(2026, 10, 23, 14, 30, 0) // 14:30
+    expect(matchesCronExpression('30 14 * * *', testDate)).toBe(true)
+    expect(matchesCronExpression('*/15 * * * *', testDate)).toBe(true)
+    expect(matchesCronExpression('10 14 * * *', testDate)).toBe(false)
+
+    const workerScript = buildWorkerConsistencyScript(
+      {
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/136.0.0.0',
+        platform: 'Win32',
+        hardwareConcurrency: 12,
+        deviceMemory: 16,
+        languages: ['en-US', 'en']
+      } as any,
+      {
+        unmaskedVendor: 'Google Inc. (AMD)',
+        unmaskedRenderer: 'ANGLE (AMD, AMD Radeon RX 7900 XT)'
+      } as any
+    )
+    expect(workerScript).toContain('WorkerNavigator')
+    expect(workerScript).toContain('PatchedWorker')
+    expect(workerScript).toContain('AMD Radeon RX 7900 XT')
   })
 })

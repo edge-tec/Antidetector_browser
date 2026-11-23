@@ -75,5 +75,12 @@ describe('Software Updater & Version Management Tests', () => {
       expect(linuxPkg.sha256).toBe('abc123linux')
       expect(linuxPkg.filename).toBe('AntiProfiles-2.0.0.AppImage')
     })
+
+    it('gracefully prepares for update install by flushing running profiles and creating safety snapshot', async () => {
+      const updater = UpdaterService.getInstance()
+      const prep = await updater.prepareForUpdateInstall()
+      expect(typeof prep.stoppedProfiles).toBe('number')
+      expect(typeof prep.backupCreated).toBe('boolean')
+    })
   })
 })

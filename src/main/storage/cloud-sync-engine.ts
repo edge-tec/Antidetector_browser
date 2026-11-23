@@ -135,7 +135,8 @@ export function decryptProfilePayload(
 }
 
 /**
- * Collect persistent profile data files (cookies, bookmarks, preferences, managed-cookies)
+ * Collect persistent profile data files (cookies, bookmarks, preferences, managed-cookies,
+ * Chromium Network/Cookies SQLite, Local Storage LevelDB, and Firefox cookies/webappsstore)
  * into a compressed JSON bundle for deterministic E2E encrypted sync.
  */
 function serializeProfileSnapshot(profileId: string): Buffer {
@@ -143,17 +144,49 @@ function serializeProfileSnapshot(profileId: string): Buffer {
   const files: Record<string, string> = {}
   const targetRelPaths = [
     'managed-cookies.json',
+    'metadata.json',
+    'settings.json',
     path.join('Default', 'Bookmarks'),
     path.join('Default', 'Preferences'),
-    'user.js'
+    path.join('Default', 'Cookies'),
+    path.join('Default', 'Network', 'Cookies'),
+    path.join('Default', 'Extension State', 'CURRENT'),
+    'user.js',
+    'prefs.js',
+    'cookies.sqlite',
+    'webappsstore.sqlite',
+    'permissions.sqlite',
+    'xulstore.json'
   ]
 
   for (const rel of targetRelPaths) {
     const full = path.join(dataDir, rel)
-    if (fs.existsSync(full) && fs.statSync(full).isFile()) {
-      files[rel] = fs.readFileSync(full).toString('base64')
-    }
+    try {
+      if (fs.existsSync(full) && fs.statSync(full).isFile()) {
+        const stat = fs.statSync(full)
+        // Cap individual SQLite file at 15MB to keep encrypted snapshots fast
+        if (stat.size <= 15 * 1024 * 1024) {
+          files[rel] = fs.readFileSync(full).toString('base64')
+        }
+      }
+    } catch {}
   }
+
+  // Also include Chromium Local Storage LevelDB entries (< 5MB total)
+  const localStorageDir = path.join(dataDir, 'Default', 'Local Storage', 'leveldb')
+  try {
+    if (fs.existsSync(localStorageDir) && fs.statSync(localStorageDir).isDirectory()) {
+      for (const entry of fs.readdirSync(localStorageDir)) {
+        if (entry === 'LOCK') continue
+        const fullEntry = path.join(localStorageDir, entry)
+        const stat = fs.statSync(fullEntry)
+        if (stat.isFile() && stat.size <= 2 * 1024 * 1024) {
+          const relKey = path.join('Default', 'Local Storage', 'leveldb', entry)
+          files[relKey] = fs.readFileSync(fullEntry).toString('base64')
+        }
+      }
+    }
+  } catch {}
 
   return zlib.gzipSync(Buffer.from(JSON.stringify({ profileId, capturedAt: new Date().toISOString(), files }), 'utf8'))
 }

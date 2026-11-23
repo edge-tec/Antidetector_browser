@@ -128,9 +128,9 @@ function processSuccessfulPayment(
         ];
     }
 
-    // 2. Fetch the corresponding invoice
-    $invStmt = $db->prepare("SELECT * FROM invoices WHERE id = ? OR invoice_number = ? FOR UPDATE");
-    $invStmt->execute([$invoiceIdOrNum, $invoiceIdOrNum]);
+    // 2. Fetch the corresponding invoice (by id, invoice_number, or Stripe session/transaction_id)
+    $invStmt = $db->prepare("SELECT * FROM invoices WHERE id = ? OR invoice_number = ? OR transaction_id = ? FOR UPDATE");
+    $invStmt->execute([$invoiceIdOrNum, $invoiceIdOrNum, $invoiceIdOrNum]);
     $invoice = $invStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$invoice) {
@@ -767,8 +767,8 @@ switch ($action) {
             $secretKey = trim($gw['secret_key'] ?? '');
             
             $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL ? APP_BASE_URL : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https') . '://' . ($_SERVER['HTTP_HOST'] ?? 'antiprofiles.com'));
-            $successUrl = rtrim($baseUrl, '/') . '/#pricing?payment_status=success&invoice=' . $invNumber;
-            $cancelUrl = rtrim($baseUrl, '/') . '/#pricing?payment_status=cancelled&invoice=' . $invNumber;
+            $successUrl = rtrim($baseUrl, '/') . '/?payment_status=success&invoice=' . $invNumber . '&session_id={CHECKOUT_SESSION_ID}#pricing';
+            $cancelUrl = rtrim($baseUrl, '/') . '/?payment_status=cancelled&invoice=' . $invNumber . '#pricing';
 
             // If Secret Key is not configured or placeholder in test mode
             if (!$secretKey || strpos($secretKey, 'placeholder') !== false || strlen($secretKey) < 15) {
@@ -853,6 +853,9 @@ switch ($action) {
             }
 
             $session = $stripeRes['data'];
+            if (!empty($session['id'])) {
+                $db->prepare("UPDATE invoices SET transaction_id = ? WHERE id = ?")->execute([$session['id'], $invId]);
+            }
             respondJson([
                 'success' => true,
                 'type' => 'redirect',
@@ -1104,8 +1107,8 @@ switch ($action) {
         $eventType = $event['type'];
         $obj = $event['data']['object'] ?? [];
 
-        if ($eventType === 'checkout.session.completed') {
-            $invoiceNumber = $obj['client_reference_id'] ?? ($obj['metadata']['invoice_number'] ?? '');
+        if ($eventType === 'checkout.session.completed' || $eventType === 'checkout.session.async_payment_succeeded') {
+            $invoiceNumber = $obj['client_reference_id'] ?? ($obj['metadata']['invoice_number'] ?? ($obj['metadata']['invoice_id'] ?? ($obj['id'] ?? '')));
             $transactionId = $obj['payment_intent'] ?? $obj['id'] ?? '';
             $amount = ($obj['amount_total'] ?? 0) / 100;
             $currency = strtoupper($obj['currency'] ?? 'USD');
@@ -1120,14 +1123,15 @@ switch ($action) {
                 $transactionId,
                 $amount,
                 $currency,
-                ['payment_method' => 'card', 'customer_email' => $obj['customer_email'] ?? '']
+                ['payment_method' => 'card', 'customer_email' => $obj['customer_details']['email'] ?? ($obj['customer_email'] ?? '')]
             );
 
             http_response_code(200);
             respondJson(['success' => true, 'processed' => true, 'result' => $res]);
-        } elseif ($eventType === 'payment_intent.succeeded') {
-            $invoiceNumber = $obj['metadata']['invoice_number'] ?? '';
+        } elseif ($eventType === 'payment_intent.succeeded' || $eventType === 'invoice.payment_succeeded') {
+            $invoiceNumber = $obj['metadata']['invoice_number'] ?? ($obj['metadata']['invoice_id'] ?? ($obj['client_reference_id'] ?? ($obj['id'] ?? '')));
             if ($invoiceNumber) {
+                $rawCents = $obj['amount_received'] ?? ($obj['amount_paid'] ?? ($obj['amount'] ?? 0));
                 $res = processSuccessfulPayment(
                     $db,
                     'stripe',
@@ -1135,8 +1139,8 @@ switch ($action) {
                     $eventType,
                     $invoiceNumber,
                     $obj['id'],
-                    $obj['id'],
-                    ($obj['amount'] ?? 0) / 100,
+                    $obj['payment_intent'] ?? $obj['id'],
+                    $rawCents / 100,
                     strtoupper($obj['currency'] ?? 'USD'),
                     ['payment_method' => 'card']
                 );
@@ -1146,7 +1150,8 @@ switch ($action) {
         } elseif ($eventType === 'charge.refunded') {
             // Handle Stripe Refund event
             $chargeId = $obj['id'] ?? '';
-            $db->prepare("UPDATE payments SET status = 'refunded' WHERE transaction_id = ? OR provider_payment_id = ?")->execute([$chargeId, $chargeId]);
+            $paymentIntentId = $obj['payment_intent'] ?? $chargeId;
+            $db->prepare("UPDATE payments SET status = 'refunded' WHERE transaction_id IN (?, ?) OR provider_payment_id IN (?, ?)")->execute([$chargeId, $paymentIntentId, $chargeId, $paymentIntentId]);
             http_response_code(200);
             respondJson(['success' => true, 'refund_recorded' => true]);
         } else {
@@ -1154,6 +1159,88 @@ switch ($action) {
             http_response_code(200);
             respondJson(['success' => true, 'status' => 'ignored']);
         }
+        break;
+
+    // ── 4B. Automatic Real-Time Stripe Session & Invoice Verification ──
+    case 'stripe/verify':
+    case 'stripe-verify':
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+        $invRef = trim((string)($input['invoice'] ?? $input['invoice_number'] ?? $_GET['invoice'] ?? ''));
+        $sessionId = trim((string)($input['session_id'] ?? $input['sessionId'] ?? $_GET['session_id'] ?? ''));
+
+        if ($invRef === '' && $sessionId === '') {
+            respondJson(['success' => false, 'error' => 'Invoice number or Stripe session_id is required.'], 400);
+        }
+
+        $lookup = $invRef !== '' ? $invRef : $sessionId;
+        $stmt = $db->prepare("SELECT * FROM invoices WHERE invoice_number = ? OR id = ? OR transaction_id = ? LIMIT 1");
+        $stmt->execute([$lookup, $lookup, $sessionId ?: $lookup]);
+        $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$inv) {
+            respondJson(['success' => false, 'error' => 'Invoice not found.'], 404);
+        }
+
+        if ($inv['status'] === 'paid') {
+            respondJson([
+                'success' => true,
+                'paid' => true,
+                'status' => 'paid',
+                'invoiceNumber' => $inv['invoice_number'],
+                'planId' => $inv['plan_id'],
+                'message' => 'Stripe payment verified and subscription is active!'
+            ]);
+        }
+
+        $gw = getPaymentGatewayConfig($db, 'stripe');
+        $secretKey = trim($gw['secret_key'] ?? '');
+        $targetSession = $sessionId ?: trim((string)($inv['transaction_id'] ?? ''));
+
+        if ($secretKey && strlen($secretKey) >= 15 && strpos($secretKey, 'placeholder') === false && $targetSession !== '') {
+            $endpoint = strpos($targetSession, 'pi_') === 0
+                ? 'payment_intents/' . urlencode($targetSession)
+                : 'checkout/sessions/' . urlencode($targetSession);
+            $stripeCheck = callStripeApi($secretKey, $endpoint, 'GET');
+
+            if ($stripeCheck['success'] && !empty($stripeCheck['data'])) {
+                $sObj = $stripeCheck['data'];
+                $isPaid = ($sObj['payment_status'] ?? '') === 'paid' || ($sObj['status'] ?? '') === 'succeeded' || ($sObj['status'] ?? '') === 'complete';
+                if ($isPaid) {
+                    $txId = $sObj['payment_intent'] ?? ($sObj['id'] ?? $targetSession);
+                    $amt = isset($sObj['amount_total']) ? ($sObj['amount_total'] / 100) : (float)$inv['amount'];
+                    $cur = strtoupper($sObj['currency'] ?? ($inv['currency'] ?: 'USD'));
+                    $res = processSuccessfulPayment(
+                        $db,
+                        'stripe',
+                        'evt_autoverify_' . ($sObj['id'] ?? $inv['id']),
+                        'checkout.session.completed',
+                        $inv['invoice_number'],
+                        $sObj['id'] ?? $targetSession,
+                        $txId,
+                        $amt,
+                        $cur,
+                        ['payment_method' => 'card', 'verified_via' => 'stripe_auto_verify']
+                    );
+                    respondJson([
+                        'success' => true,
+                        'paid' => true,
+                        'status' => 'paid',
+                        'invoiceNumber' => $inv['invoice_number'],
+                        'planId' => $inv['plan_id'],
+                        'result' => $res,
+                        'message' => 'Stripe payment automatically verified and credited!'
+                    ]);
+                }
+            }
+        }
+
+        respondJson([
+            'success' => true,
+            'paid' => false,
+            'status' => $inv['status'],
+            'invoiceNumber' => $inv['invoice_number'],
+            'message' => 'Awaiting Stripe payment completion...'
+        ]);
         break;
 
     // ── 5. Official Cryptocurrency IPN / Webhook Handler ──

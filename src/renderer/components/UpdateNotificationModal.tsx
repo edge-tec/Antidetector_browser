@@ -58,9 +58,12 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
     return false
   })()
 
-  const isMandatory = isStrictlyNewer && Boolean(updateInfo.mandatory || updateInfo.forceUpdate)
+  // Every newer version is strictly mandatory: user must update before using the old app
+  const isMandatory = isStrictlyNewer || Boolean(updateInfo.mandatory || updateInfo.forceUpdate)
   const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'paused' | 'verifying' | 'ready_to_install' | 'installing' | 'error'>('idle')
   const [downloadedFilePath, setDownloadedFilePath] = useState<string | null>(null)
+  const [runningProfilesCount, setRunningProfilesCount] = useState<number>(0)
+  const [autoInstallCountdown, setAutoInstallCountdown] = useState<number | null>(null)
   const [progress, setProgress] = useState<{
     percent: number
     transferred: number
@@ -78,6 +81,18 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
 
   useEffect(() => {
     if (!isOpen) return
+
+    // Poll active running browser profiles count so user knows sessions will be safely saved
+    const fetchRunning = async () => {
+      try {
+        const r = await (window as any).api?.getRunningCount?.()
+        if (r?.success && typeof r.data === 'number') {
+          setRunningProfilesCount(r.data)
+        }
+      } catch {}
+    }
+    fetchRunning()
+    const runTimer = setInterval(fetchRunning, 2500)
 
     // Listen to real-time download progress from main process
     const cleanup = (window as any).api?.onDownloadProgress?.((_event: any, data: any) => {
@@ -99,10 +114,44 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
       }
     })
 
+    // Auto-start package download immediately when mandatory update modal opens (like AdsPower/Multilogin)
+    if (isMandatory && downloadState === 'idle' && updateInfo.packageInfo?.downloadUrl?.startsWith('http')) {
+      const autoTimer = setTimeout(() => {
+        handleStartDownload()
+      }, 400)
+      return () => {
+        clearTimeout(autoTimer)
+        clearInterval(runTimer)
+        if (typeof cleanup === 'function') cleanup()
+      }
+    }
+
     return () => {
+      clearInterval(runTimer)
       if (typeof cleanup === 'function') cleanup()
     }
-  }, [isOpen])
+  }, [isOpen, updateInfo.version])
+
+  // 10-second Auto-Install & Restart countdown once package is downloaded & verified
+  useEffect(() => {
+    if (downloadState !== 'ready_to_install' || !downloadedFilePath) {
+      setAutoInstallCountdown(null)
+      return
+    }
+    setAutoInstallCountdown(10)
+    const timer = setInterval(() => {
+      setAutoInstallCountdown((prev) => {
+        if (prev === null) return null
+        if (prev <= 1) {
+          clearInterval(timer)
+          handleInstall()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [downloadState, downloadedFilePath])
 
   if (!isOpen) return null
 
@@ -270,7 +319,7 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
             </div>
           </div>
 
-          {(!isMandatory || downloadState === 'error') && downloadState !== 'installing' && (
+          {!isMandatory && downloadState !== 'installing' && (
             <button
               onClick={onClose}
               title="Close update dialog"
@@ -407,9 +456,47 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
             </div>
           )}
 
-          {/* Zero Data Loss Assurance Notice */}
+          {/* Active Running Profiles Safe-Flush Banner */}
+          {runningProfilesCount > 0 && (
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(245, 158, 11, 0.14)',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              color: '#FCD34D',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>🟢</span>
+              <span>
+                {runningProfilesCount} active browser profile{runningProfilesCount > 1 ? 's are' : ' is'} running. Installing the update will automatically save all live cookies & sessions before restarting.
+              </span>
+            </div>
+          )}
+
+          {/* Mandatory Lock Notice & Zero Data Loss Assurance */}
+          {isMandatory && (
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              color: '#FCA5A5',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>🔒</span>
+              <span>This update is mandatory. Older application versions are locked until the update is installed.</span>
+            </div>
+          )}
           <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>🔒</span>
+            <span>🛡️</span>
             <span>Your profiles, cookies, proxies, and database remain 100% safe and intact.</span>
           </div>
         </div>
@@ -446,7 +533,7 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
           )}
 
           <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
-            {(!isMandatory || downloadState === 'error') && downloadState !== 'downloading' && downloadState !== 'installing' && downloadState !== 'ready_to_install' && (
+            {!isMandatory && downloadState !== 'downloading' && downloadState !== 'installing' && downloadState !== 'ready_to_install' && (
               <button
                 type="button"
                 onClick={onClose}
@@ -461,7 +548,7 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
                   cursor: 'pointer'
                 }}
               >
-                {downloadState === 'error' ? 'Dismiss' : 'Later'}
+                Later
               </button>
             )}
 
@@ -584,7 +671,12 @@ export const UpdateNotificationModal: React.FC<UpdateNotificationModalProps> = (
                 }}
               >
                 <span>🚀</span>
-                <span>Install & Restart</span>
+                <span>
+                  {runningProfilesCount > 0
+                    ? `Save ${runningProfilesCount} Profile(s), Install & Restart`
+                    : 'Install & Restart Now'}
+                  {autoInstallCountdown !== null && autoInstallCountdown > 0 ? ` (${autoInstallCountdown}s)` : ''}
+                </span>
               </button>
             )}
           </div>

@@ -36,7 +36,7 @@ export function buildWebGLScript(webgl: WebGLFingerprint): string {
   const maxCombinedTexUnits = isMobileGpu ? 32 : 64
 
   return `
-// ═══ WebGL & WebGL2 Capability Override ═══
+// ═══ WebGL Override — WebGL & WebGL2 Capability Override ═══
 (function() {
   'use strict';
   const cloak = window.__cloakFunction || function(f) { return f; };

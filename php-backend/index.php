@@ -6333,55 +6333,6 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <!-- Welcome default bot message -->
             <div class="chat-bubble-agent">
                 <span style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block;">AntiProfiles Support Team</span>
-                <p style="font-size: 13px; margin-top: 4px; line-height: 1.4;">Hello! 👋 Welcome to AntiProfiles. How can we help you with browser profiles, proxies, or subscriptions today?</p>
-                <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">Just now</span>
-            </div>
-        </div>
-
-        <!-- Guest Identity Form Bar (Shown for non-logged in visitors) -->
-        <div id="liveChatGuestBar" style="display: none; padding: 10px 14px; background: #181B26; border-top: 1px solid var(--border); font-size: 12px;">
-            <div style="display: flex; gap: 8px;">
-                <input type="text" id="liveChatGuestName" placeholder="Your Name" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
-                <input type="email" id="liveChatGuestEmail" placeholder="Your Email" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
-            </div>
-        </div>
-
-        <!-- Chat Input Bar -->
-        <form onsubmit="handleSendLiveChatMessage(event)" style="display: flex; gap: 8px; padding: 12px 14px; background: #12141F; border-top: 1px solid rgba(255,255,255,0.06); align-items: center;">
-            <input type="text" id="liveChatInput" placeholder="Type your message here..." required autocomplete="off" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: #FFF; font-size: 13px;">
-            <button type="submit" id="btnLiveChatSend" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); border: none; border-radius: 10px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #000; font-size: 15px; font-weight: 800;">➤</button>
-        </form>
-    </div>
-
-    <script>
-        function getAdminSessionToken() {
-            return localStorage.getItem('sessionToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
-        }
-        window.getAdminSessionToken = getAdminSessionToken;
-
-        function escapeHtml(str) {
-            if (str === null || str === undefined) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function toggleFaq(item) {
-            const answer = item.querySelector('.faq-answer');
-            const icon = item.querySelector('.faq-icon');
-            if (answer.style.display === 'block') {
-                answer.style.display = 'none';
-                icon.innerText = '+';
-            } else {
-                answer.style.display = 'block';
-                icon.innerText = '−';
-            }
-        }
-
-        async function handlePublicContactSubmit(e) {
             if (!email) {
                 alert('Please enter your email address.');
                 return;
@@ -9929,6 +9880,34 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 verifyCryptoInvoiceNow();
             }, 10000);
         }
+
+        // Auto-verify Stripe Checkout session immediately when user returns from Stripe
+        (function autoVerifyStripeOnReturn() {
+            try {
+                const searchParams = new URLSearchParams(window.location.search);
+                const hashQueryIdx = window.location.hash.indexOf('?');
+                const hashParams = hashQueryIdx >= 0 ? new URLSearchParams(window.location.hash.slice(hashQueryIdx + 1)) : new URLSearchParams();
+                const status = searchParams.get('payment_status') || searchParams.get('payment') || hashParams.get('payment_status') || '';
+                const inv = searchParams.get('invoice') || hashParams.get('invoice') || '';
+                const sessId = searchParams.get('session_id') || hashParams.get('session_id') || '';
+
+                if (status === 'success' && (inv || sessId)) {
+                    fetch('/api/payments.php?action=stripe/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ invoice: inv, session_id: sessId })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.paid) {
+                            alert('🎉 Stripe Payment Verified! Your subscription plan has been activated automatically.');
+                            if (typeof loadUserPortalData === 'function') loadUserPortalData();
+                        }
+                    })
+                    .catch(() => {});
+                }
+            } catch (e) {}
+        })();
 
         async function loadAuditLogsTable() {
             const token = localStorage.getItem('sessionToken');

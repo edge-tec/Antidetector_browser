@@ -2925,9 +2925,12 @@ function AppContent() {
     if (!sessionToken || !isAuthenticated) return
     try {
       if (typeof window !== 'undefined' && (window as any).api?.getLicenseStatus) {
-        const res = await (window as any).api.getLicenseStatus(sessionToken, installationId, 'desktop', '2.0.0')
+        const res = await (window as any).api.getLicenseStatus(sessionToken, installationId, 'desktop', appVersion || '2.0.0')
         if (res?.success && res.data) {
           setLicenseInfo(res.data)
+          if (res.data.subscription_status === 'update_required' || res.data.app_version_status?.force_update) {
+            setShowUpdateModal(true)
+          }
         }
       }
     } catch {}
@@ -3019,7 +3022,17 @@ function AppContent() {
 
     if (typeof window !== 'undefined' && (window as any).api?.getAppVersion) {
       (window as any).api.getAppVersion().then((r: any) => {
-        if (r?.success && r.data) setAppVersion(r.data)
+        if (r?.success && r.data) {
+          const currentVer = String(r.data)
+          setAppVersion(currentVer)
+          try {
+            const prevRecordedVer = localStorage.getItem('ap_last_installed_version')
+            if (prevRecordedVer && prevRecordedVer !== currentVer && isNewerVersion(currentVer, prevRecordedVer)) {
+              showToast('success', `🎉 Successfully updated to AntiProfiles v${currentVer}! All profiles, cookies & settings are intact.`)
+            }
+            localStorage.setItem('ap_last_installed_version', currentVer)
+          } catch {}
+        }
       }).catch(() => {})
     }
 
@@ -3036,8 +3049,8 @@ function AppContent() {
                 releaseTitle: latest.release_title || `AntiProfiles v${latest.version}`,
                 releaseNotes: latest.release_notes || 'Performance enhancements, bug fixes, and security patches.',
                 publishedAt: latest.published_at,
-                forceUpdate: Boolean(res.data.forceUpdate),
-                mandatory: Boolean(res.data.mandatory || res.data.forceUpdate),
+                forceUpdate: true,
+                mandatory: true,
                 packageInfo: res.data.packageInfo
               }
               setAvailableUpdate(info)
@@ -3048,15 +3061,15 @@ function AppContent() {
       } catch {}
     }
     checkAppUpdate()
-    const updateInterval = setInterval(checkAppUpdate, 5 * 60 * 1000)
+    const updateInterval = setInterval(checkAppUpdate, 2 * 60 * 1000)
 
     let unsubUpdate: (() => void) | undefined
     if ((window as any).api?.onSoftwareUpdateAvailable) {
       unsubUpdate = (window as any).api.onSoftwareUpdateAvailable((_e: any, data: any) => {
         if (data && data.version && isNewerVersion(data.version, appVersion || '2.0.0')) {
-          setAvailableUpdate(data)
+          setAvailableUpdate({ ...data, forceUpdate: true, mandatory: true })
           setShowUpdateModal(true)
-          showToast('info', `🚀 Real-Time Update: AntiProfiles release v${data.version} is now available!`)
+          showToast('info', `🚨 Mandatory Update: AntiProfiles v${data.version} is required to continue!`)
         }
       })
     }
@@ -3704,13 +3717,18 @@ function AppContent() {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <ConfirmDialog state={confirmState} onCancel={() => setConfirmState((s) => ({ ...s, show: false }))} />
 
-      {/* ── Enterprise Software Update Modal ── */}
+      {/* ── Enterprise Software Update Modal (Non-Bypassable Mandatory Gate) ── */}
       {availableUpdate && (
         <UpdateNotificationModal
-          isOpen={showUpdateModal}
+          isOpen={Boolean(availableUpdate.mandatory || availableUpdate.forceUpdate || showUpdateModal)}
           updateInfo={availableUpdate}
           currentVersion={appVersion}
           onClose={() => {
+            if (availableUpdate?.mandatory || availableUpdate?.forceUpdate) {
+              // Block dismissal on mandatory updates
+              setShowUpdateModal(true)
+              return
+            }
             if (availableUpdate) {
               sessionStorage.setItem('dismissed_update_' + availableUpdate.version, 'true')
             }

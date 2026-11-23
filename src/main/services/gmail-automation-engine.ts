@@ -75,6 +75,7 @@ export class GmailAutomationEngine {
   private static dailyCounters: Map<string, { dateStr: string; replies: number; followUps: number; total: number }> = new Map()
   private static isInitialized = false
   private static executingJobIds: Set<string> = new Set()
+  private static lastSerializedSnapshot: string | null = null
 
   /**
    * Resolve storage file path in userData directory.
@@ -105,8 +106,13 @@ export class GmailAutomationEngine {
   public static loadStateFromDisk(): void {
     try {
       const filePath = this.getStorageFilePath()
+      let raw: string | null = null
       if (fs.existsSync(filePath)) {
-        const raw = fs.readFileSync(filePath, 'utf8')
+        raw = fs.readFileSync(filePath, 'utf8')
+      } else if (this.lastSerializedSnapshot) {
+        raw = this.lastSerializedSnapshot
+      }
+      if (raw) {
         const data: PersistedAutomationData = JSON.parse(raw)
 
         if (data.rules) {
@@ -138,7 +144,6 @@ export class GmailAutomationEngine {
    */
   public static saveStateToDisk(): void {
     try {
-      const filePath = this.getStorageFilePath()
       const data: PersistedAutomationData = {
         rules: Object.fromEntries(this.rules.entries()),
         processedMessages: Array.from(this.processedMessages.values()),
@@ -146,8 +151,10 @@ export class GmailAutomationEngine {
         scheduledJobs: Object.fromEntries(this.scheduledJobs.entries()),
         dailyCounters: Object.fromEntries(this.dailyCounters.entries())
       }
-
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8')
+      const serialized = JSON.stringify(data, null, 2)
+      this.lastSerializedSnapshot = serialized
+      const filePath = this.getStorageFilePath()
+      fs.writeFileSync(filePath, serialized, 'utf8')
     } catch (err: any) {
       logger.warn('automation', `[GmailAutomation] Could not save state to disk: ${err.message}`)
     }

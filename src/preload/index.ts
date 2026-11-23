@@ -85,6 +85,15 @@ const api = {
   adminRefundPayment: (token: string, input: { paymentId: string; reason?: string }) => ipcRenderer.invoke('admin:refund-payment', token, input),
   adminRecordManualPayment: (token: string, paymentData: any) => ipcRenderer.invoke('admin:record-manual-payment', token, paymentData),
   getAvailablePaymentGateways: () => ipcRenderer.invoke('payment:get-available-gateways'),
+  createStripeCheckout: (input: any) => ipcRenderer.invoke('payment:create-stripe-checkout', input),
+  verifyStripeSession: (invoiceOrSessionId: string, options?: any) =>
+    ipcRenderer.invoke('payment:verify-stripe-session', invoiceOrSessionId, options),
+  dispatchStripeWebhook: (rawPayload: string, sigHeader: string) =>
+    ipcRenderer.invoke('payment:stripe-webhook', rawPayload, sigHeader),
+  adminTestStripeConnection: (token: string) => ipcRenderer.invoke('admin:test-stripe-connection', token),
+  adminRunStripeAutoVerifySweep: (token: string) => ipcRenderer.invoke('admin:run-stripe-autoverify-sweep', token),
+  adminListStripeWebhookEvents: (token: string, limit?: number) =>
+    ipcRenderer.invoke('admin:list-stripe-webhook-events', token, limit),
 
   // ── Profiles ──
   getProfiles: (sessionTokenOrSearch?: string, maybeSearch?: string, groupId?: string, status?: string) => {
@@ -627,12 +636,19 @@ const api = {
     listInvoices: (filter?: any) => ipcRenderer.invoke('crypto:invoice:list', filter),
     verifyTransaction: (invoiceId: string, txHash: string) =>
       ipcRenderer.invoke('crypto:tx:verify', invoiceId, txHash),
+    autoCheckInvoice: (invoiceId: string) =>
+      ipcRenderer.invoke('crypto:invoice:auto-check', invoiceId),
     getWalletBalance: (userId: string) => ipcRenderer.invoke('crypto:wallet:balance', userId),
     getWalletLedger: (userId: string, limit?: number) => ipcRenderer.invoke('crypto:wallet:ledger', userId, limit),
     getAdminOverview: () => ipcRenderer.invoke('crypto:admin:overview', getSavedToken()),
     updateNetworkConfig: (networkId: string, patch: any) => ipcRenderer.invoke('crypto:admin:update-network', getSavedToken(), networkId, patch),
     runReconciliation: () => ipcRenderer.invoke('crypto:admin:reconcile', getSavedToken()),
-    runMonitorSweep: () => ipcRenderer.invoke('crypto:admin:monitor-sweep', getSavedToken())
+    runMonitorSweep: () => ipcRenderer.invoke('crypto:admin:monitor-sweep', getSavedToken()),
+    getHdWalletConfig: () => ipcRenderer.invoke('crypto:hd:get-config', getSavedToken()),
+    saveHdWalletConfig: (patch: any) => ipcRenderer.invoke('crypto:hd:save-config', getSavedToken(), patch),
+    revealHdMnemonic: () => ipcRenderer.invoke('crypto:hd:reveal-mnemonic', getSavedToken()),
+    sweepInvoiceToTrustWallet: (invoiceId: string) => ipcRenderer.invoke('crypto:hd:sweep-invoice', getSavedToken(), invoiceId),
+    listSweepLogs: (limit?: number) => ipcRenderer.invoke('crypto:hd:sweep-logs', getSavedToken(), limit)
   },
 
   // ── Ultra-Pro Anti-Detect Suite (Cookie Robot, 2FA TOTP Vault, Stealth Score, Sync Humanizer) ──
@@ -642,9 +658,11 @@ const api = {
     revealVaultPassword: (accountId: string) => ipcRenderer.invoke('ultrapro:vault:reveal', accountId),
     deleteVaultAccount: (accountId: string) => ipcRenderer.invoke('ultrapro:vault:delete', accountId),
     generateTotp: (secret: string) => ipcRenderer.invoke('ultrapro:vault:totp', secret),
+    autoFillVaultAccount: (accountId: string) => ipcRenderer.invoke('ultrapro:vault:autofill', accountId),
     getCookieRobotPresets: () => ipcRenderer.invoke('ultrapro:cookie-robot:presets'),
     getCookieRobotRuns: (profileId?: string) => ipcRenderer.invoke('ultrapro:cookie-robot:runs', profileId),
     runCookieRobot: (options: any) => ipcRenderer.invoke('ultrapro:cookie-robot:run', options),
+    runBatchCookieRobot: (options: any) => ipcRenderer.invoke('ultrapro:cookie-robot:run-batch', options),
     auditProfileStealth: (profileId: string) => ipcRenderer.invoke('ultrapro:stealth:audit', profileId),
     setSyncHumanize: (cfg: any) => ipcRenderer.invoke('ultrapro:sync:humanize', cfg),
     parseBulkProxies: (rawText: string, defaultType?: string) => ipcRenderer.invoke('ultrapro:proxy:parse-bulk', rawText, defaultType),

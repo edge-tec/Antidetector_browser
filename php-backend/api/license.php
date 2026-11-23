@@ -55,10 +55,18 @@ function validateUserLicenseInternal(string $userId, ?string $installationId = n
         ];
     }
 
-    // 2. Desktop Version Check
+    // 2. Desktop Version Check (Mandatory In-App Update Enforcement)
     $config = getDesktopAppConfigMap();
     $minVersion = $config['min_supported_version'] ?? '1.0.0';
-    $forceUpdate = ($config['force_update'] ?? 'false') === 'true';
+    try {
+        $latestVerStmt = $db->query("SELECT version FROM software_versions WHERE status = 'published' ORDER BY published_at DESC, created_at DESC LIMIT 1");
+        if ($latestVerStmt && ($latestRow = $latestVerStmt->fetch()) && !empty($latestRow['version'])) {
+            if (compareSemanticVersions($latestRow['version'], $minVersion) > 0) {
+                $minVersion = $latestRow['version'];
+            }
+        }
+    } catch (Throwable $e) {}
+    $forceUpdate = true;
     $isVersionSupported = !$appVersion || compareSemanticVersions($appVersion, $minVersion) >= 0;
 
     if (!$isVersionSupported && $forceUpdate) {

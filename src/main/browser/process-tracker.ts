@@ -107,7 +107,21 @@ class ProcessTracker {
     // Comprehensive cleanup: kill any lingering renderer/GPU helper processes matching profileId user-data-dir
     try {
       if (process.platform === 'win32') {
-        execSync(`wmic process where "commandline like '%${profileId}%'" call terminate`, { stdio: 'ignore', timeout: 3000, windowsHide: true })
+        try {
+          const safeId = profileId.replace(/[^a-zA-Z0-9_-]/g, '')
+          const psCmd = `Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%${safeId}%'" | ForEach-Object { Invoke-CimMethod -InputObject $_ -MethodName Terminate } | Out-Null`
+          execSync(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "${psCmd}"`, {
+            stdio: 'ignore',
+            timeout: 4000,
+            windowsHide: true
+          })
+        } catch {
+          execSync(`wmic process where "commandline like '%${profileId}%'" call terminate`, {
+            stdio: 'ignore',
+            timeout: 3000,
+            windowsHide: true
+          })
+        }
       } else {
         execSync(`pkill -9 -f "${profileId}" 2>/dev/null || true`, { stdio: 'ignore', timeout: 3000 })
       }
@@ -161,6 +175,13 @@ class ProcessTracker {
   getBrowser(profileId: string): Browser | null {
     const tracked = this.processes.get(profileId)
     return (tracked && tracked.browser.connected) ? tracked.browser : null
+  }
+
+  /**
+   * Get tracked process details (alias `get` used by WindowSynchronizer, CookieManager, RPA, CookieRobot, TOTP).
+   */
+  get(profileId: string): TrackedProcess | null {
+    return this.processes.get(profileId) || null
   }
 
   /**

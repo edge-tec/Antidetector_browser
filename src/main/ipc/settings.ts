@@ -7,7 +7,9 @@ import { getDatabase } from '../database/connection'
 import { profileManager } from '../browser/profile-manager'
 import { findChromiumPath, findFirefoxPath, detectAllBrowsers, testBrowserExecutable, runBrowserDiagnostics } from '../browser/chromium-resolver'
 import { startApiServer, stopApiServer, isApiRunning, getApiToken } from '../automation/server'
+import { rotateApiToken } from '../security/api-auth'
 import { getRuntimeDetails, ensureBrowserRuntime, getEngineInstallDir, verifyManagedExecutable } from '../browser/runtime-provisioner'
+import { logger } from '../logging/logger'
 import fs from 'fs'
 
 export function registerSettingsHandlers(): void {

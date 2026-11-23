@@ -64,6 +64,9 @@ export function CryptoDepositPage({ showToast }: { showToast: ShowToastFn }) {
   const [activeInvoice, setActiveInvoice] = useState<any | null>(null)
   const [invoices, setInvoices] = useState<any[]>([])
   const [txHashInput, setTxHashInput] = useState('')
+  const [stripeAmountUsd, setStripeAmountUsd] = useState('50')
+  const [activeStripeSession, setActiveStripeSession] = useState<any | null>(null)
+  const [stripeBusy, setStripeBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -133,6 +136,113 @@ export function CryptoDepositPage({ showToast }: { showToast: ShowToastFn }) {
     }
   }
 
+  const handleAutoCheckNow = useCallback(async (silent = false) => {
+    if (!cryptoApi?.autoCheckInvoice || !activeInvoice) return
+    if (activeInvoice.status === 'credited' || activeInvoice.status === 'overpaid' || activeInvoice.status === 'expired') return
+    try {
+      const res = await cryptoApi.autoCheckInvoice(activeInvoice.id)
+      if (res?.invoice) {
+        setActiveInvoice(res.invoice)
+        if (res.detected) {
+          showToast('success', 'Payment auto-detected on blockchain, credited & swept to Trust Wallet!')
+          await loadData()
+        } else if (!silent) {
+          showToast('info', res.message || 'Scanning blockchain for incoming payment...')
+        }
+      }
+    } catch (err: any) {
+      if (!silent) showToast('error', err.message)
+    }
+  }, [cryptoApi, activeInvoice, showToast, loadData])
+
+  // Auto-poll blockchain every 10 seconds while an active pending/confirming invoice is open
+  useEffect(() => {
+    if (!activeInvoice || activeInvoice.status === 'credited' || activeInvoice.status === 'expired') return
+    const timer = setInterval(() => {
+      handleAutoCheckNow(true)
+    }, 10_000)
+    return () => clearInterval(timer)
+  }, [activeInvoice, handleAutoCheckNow])
+
+  // Real-time Stripe Webhook & Session Auto-Verify listener
+  const handleVerifyStripeNow = useCallback(async (sessionInfo: any, silent = false) => {
+    const api = (window as any)?.api
+    if (!api?.verifyStripeSession || !sessionInfo?.invoiceNumber) return
+    try {
+      const res = await api.verifyStripeSession(sessionInfo.invoiceNumber, {
+        allowTestAutoComplete: Boolean(sessionInfo.isTestSimulation)
+      })
+      if (res?.success && res.data?.paid) {
+        setActiveStripeSession((prev: any) => (prev ? { ...prev, status: 'paid' } : null))
+        showToast('success', '🎉 Stripe Payment Verified via Webhook! Balance credited automatically.')
+        await loadData()
+      } else if (!silent && res?.data?.message) {
+        showToast('info', res.data.message)
+      }
+    } catch (err: any) {
+      if (!silent) showToast('error', err.message)
+    }
+  }, [showToast, loadData])
+
+  useEffect(() => {
+    const api = (window as any)?.api
+    if (!api?.onPaymentCompleted) return
+    const unsub = api.onPaymentCompleted((_e: any, data: any) => {
+      if (data?.gateway === 'stripe') {
+        setActiveStripeSession((prev: any) => (prev ? { ...prev, status: 'paid' } : prev))
+        loadData()
+      }
+    })
+    return () => {
+      if (typeof unsub === 'function') unsub()
+    }
+  }, [loadData])
+
+  useEffect(() => {
+    if (!activeStripeSession || activeStripeSession.status === 'paid') return
+    const timer = setInterval(() => {
+      handleVerifyStripeNow(activeStripeSession, true)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [activeStripeSession, handleVerifyStripeNow])
+
+  const handlePayWithStripe = async () => {
+    const api = (window as any)?.api
+    if (!api?.createStripeCheckout) {
+      return showToast('error', 'Stripe Checkout API is unavailable.')
+    }
+    const amt = Number(stripeAmountUsd)
+    if (!Number.isFinite(amt) || amt < 1) {
+      return showToast('warning', 'Enter a valid USD amount ($1.00 minimum).')
+    }
+    setStripeBusy(true)
+    try {
+      const res = await api.createStripeCheckout({
+        userId,
+        amountUsd: amt,
+        purpose: 'wallet_deposit'
+      })
+      if (!res?.success || !res.data) {
+        throw new Error(res?.error || 'Failed to create Stripe Checkout session.')
+      }
+      const sess = { ...res.data, status: 'pending' }
+      setActiveStripeSession(sess)
+      if (!sess.isTestSimulation && sess.checkoutUrl && api.openExternal) {
+        api.openExternal(sess.checkoutUrl)
+        showToast('info', 'Stripe Checkout opened in browser. Waiting for automatic webhook verification...')
+      } else {
+        showToast('info', `Stripe Session ${sess.invoiceNumber} created. Verifying via signed Stripe Webhook...`)
+        setTimeout(() => {
+          handleVerifyStripeNow(sess, false)
+        }, 1200)
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    } finally {
+      setStripeBusy(false)
+    }
+  }
+
   if (loading) {
     return <div className="loading-state"><div className="loading-spinner" /><span>Loading Crypto Deposit Gateway...</span></div>
   }
@@ -141,13 +251,63 @@ export function CryptoDepositPage({ showToast }: { showToast: ShowToastFn }) {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Cryptocurrency Deposit</h1>
-          <p className="page-subtitle">Direct in-house blockchain verification across TRON, BSC, Ethereum, Bitcoin, Polygon & Solana (zero third-party processor)</p>
+          <h1 className="page-title">Wallet Deposit & Instant Billing (Stripe & In-House Crypto)</h1>
+          <p className="page-subtitle">Automatic Stripe Webhook Verification + Trust Wallet Connected HD Crypto Auto-Verify & Auto-Sweep</p>
         </div>
         <div className="card" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="text-secondary" style={{ fontSize: 12 }}>Available USD Balance:</span>
           <strong style={{ fontSize: 18, color: '#22C55E' }}>${(balanceCents / 100).toFixed(2)}</strong>
         </div>
+      </div>
+
+      {/* Instant Stripe Card / Apple Pay / Google Pay Top-Up with Automatic Webhook Verification */}
+      <div className="card" style={{ padding: 18, marginBottom: 20, border: '1px solid rgba(99,102,241,0.35)', background: 'linear-gradient(135deg, rgba(30,27,75,0.45), rgba(15,23,42,0.85))' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+              💳 Instant Stripe Deposit (Credit / Debit Card, Apple Pay, Google Pay — Webhook Auto-Verify)
+            </h3>
+            <p className="text-secondary" style={{ margin: '4px 0 0', fontSize: 12 }}>
+              Pay via official Stripe Checkout. As soon as your payment completes, our Stripe Webhook & Auto-Verifier immediately credits your USD balance.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>USD Amount:</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                className="form-input"
+                value={stripeAmountUsd}
+                onChange={(e) => setStripeAmountUsd(e.target.value)}
+                style={{ width: 110 }}
+              />
+            </div>
+            <button className="btn btn-primary" disabled={stripeBusy} onClick={handlePayWithStripe}>
+              {stripeBusy ? 'Initializing Stripe...' : '💳 Pay with Stripe (Auto-Verify)'}
+            </button>
+          </div>
+        </div>
+        {activeStripeSession && (
+          <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: 'rgba(15,23,42,0.65)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+            <div>
+              <strong>Invoice: {activeStripeSession.invoiceNumber}</strong> • Session: <code>{activeStripeSession.sessionId}</code> • Amount: <strong>${Number(activeStripeSession.amountUsd || 0).toFixed(2)} USD</strong>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {activeStripeSession.status === 'paid' ? (
+                <span style={{ color: '#22C55E', fontWeight: 700 }}>✅ Webhook Verified & Credited!</span>
+              ) : (
+                <>
+                  <span style={{ color: '#60A5FA' }}>🔄 Listening for Stripe Webhook...</span>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleVerifyStripeNow(activeStripeSession, false)}>
+                    ⚡ Verify Now
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 20, marginBottom: 20 }}>
@@ -211,13 +371,26 @@ export function CryptoDepositPage({ showToast }: { showToast: ShowToastFn }) {
                     Copy
                   </button>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                  Expires: {new Date(activeInvoice.expiresAt).toLocaleString()}
+                {activeInvoice.derivationPath && (
+                  <div style={{ fontSize: 11, color: '#60A5FA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>🔐 Unique HD Wallet Address ({activeInvoice.derivationPath})</span>
+                    {activeInvoice.sweepStatus === 'swept' ? (
+                      <span style={{ color: '#22C55E', fontWeight: 600 }}>✅ Auto-Swept to Trust Wallet</span>
+                    ) : (
+                      <span>🔄 Auto-Verify & Auto-Sweep Active</span>
+                    )}
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                  <span>Expires: {new Date(activeInvoice.expiresAt).toLocaleString()}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleAutoCheckNow(false)}>
+                    🔍 Auto-Check Blockchain Now
+                  </button>
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                   <input
                     className="form-input"
-                    placeholder="Paste blockchain TxHash to verify on RPC..."
+                    placeholder="Optional: Paste TxHash for instant manual verification..."
                     value={txHashInput}
                     onChange={(e) => setTxHashInput(e.target.value)}
                     style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}

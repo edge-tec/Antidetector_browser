@@ -158,5 +158,28 @@ describe('Enterprise Auto-Update Engine Tests', () => {
       const currentLatest = updater.getVersionById(v2.id)
       expect(currentLatest?.status).toBe('disabled')
     })
+
+    it('strictly enforces mandatory update lockout when a newer published version exists', async () => {
+      const updater = UpdaterService.getInstance()
+      const published = updater.saveVersion({
+        version: '9.9.9',
+        release_title: 'v9.9.9 Mandatory Update',
+        release_notes: 'Critical update',
+        status: 'published'
+      })
+      expect(published.force_update).toBe(1)
+
+      const pending = updater.getPendingMandatoryUpdate()
+      expect(pending).not.toBeNull()
+      expect(pending?.version).toBe('9.9.9')
+
+      const check = await updater.checkForUpdate('2.0.0')
+      expect(check.hasUpdate).toBe(true)
+      expect(check.mandatory).toBe(true)
+      expect(check.forceUpdate).toBe(true)
+
+      // Clean up test release so other tests aren't locked out
+      updater.deleteVersion(published.id)
+    })
   })
 })

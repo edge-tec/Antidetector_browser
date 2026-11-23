@@ -13,6 +13,8 @@ import {
 } from '../../src/main/crypto/network-registry'
 import { parseEvmTokenTransferLog, ERC20_TRANSFER_TOPIC } from '../../src/main/crypto/rpc-client.service'
 import { PaymentVerificationService, InvoiceForVerification } from '../../src/main/crypto/payment-verification.service'
+import { deriveTrustWalletAddress, generateTrustWalletMnemonic } from '../../src/main/crypto/hd-wallet.service'
+import { paymentService } from '../../src/main/services/payment.service'
 import { CryptoDepositPage } from '../../src/renderer/pages/enterprise/CryptoDepositPage'
 import { AdminCryptoPage } from '../../src/renderer/pages/enterprise/AdminCryptoPage'
 
@@ -174,9 +176,66 @@ describe('In-House Multi-Crypto Payment Gateway — Enterprise Financial & Secur
     const preloadSrc = fs.readFileSync(path.resolve(__dirname, '../../src/preload/index.ts'), 'utf8')
     const ipcSrc = fs.readFileSync(path.resolve(__dirname, '../../src/main/ipc/crypto.ipc.ts'), 'utf8')
     const channels = Array.from(preloadSrc.matchAll(/ipcRenderer\.invoke\('(crypto:[^']+)'/g)).map((m) => m[1])
-    expect(channels.length).toBeGreaterThanOrEqual(12)
+    expect(channels.length).toBeGreaterThanOrEqual(18)
     for (const ch of channels) {
       expect(ipcSrc).toContain(`secureCryptoHandle('${ch}'`)
     }
+  })
+
+  it('derives deterministic Trust Wallet compatible BIP-32/BIP-44/BIP-84/SLIP-0010 child addresses across EVM, TRON, Bitcoin, and Solana', () => {
+    const mnemonic = generateTrustWalletMnemonic()
+    expect(mnemonic.split(' ')).toHaveLength(12)
+
+    const evm0 = deriveTrustWalletAddress(mnemonic, 'ethereum', 0)
+    const evm1 = deriveTrustWalletAddress(mnemonic, 'bsc', 1)
+    expect(isValidNetworkAddress('ethereum', evm0.address)).toBe(true)
+    expect(isValidNetworkAddress('bsc', evm1.address)).toBe(true)
+    expect(evm0.address).not.toBe(evm1.address)
+    expect(evm1.derivationPath).toBe("m/44'/60'/0'/0/1")
+
+    const tron0 = deriveTrustWalletAddress(mnemonic, 'tron', 0)
+    const tron1 = deriveTrustWalletAddress(mnemonic, 'tron', 1)
+    expect(isValidNetworkAddress('tron', tron0.address)).toBe(true)
+    expect(isValidNetworkAddress('tron', tron1.address)).toBe(true)
+    expect(tron0.address).not.toBe(tron1.address)
+    expect(tron1.derivationPath).toBe("m/44'/195'/0'/0/1")
+
+    const btc0 = deriveTrustWalletAddress(mnemonic, 'bitcoin', 0)
+    const btc1 = deriveTrustWalletAddress(mnemonic, 'bitcoin', 1)
+    expect(isValidNetworkAddress('bitcoin', btc0.address)).toBe(true)
+    expect(isValidNetworkAddress('bitcoin', btc1.address)).toBe(true)
+    expect(btc0.address).not.toBe(btc1.address)
+    expect(btc1.derivationPath).toBe("m/84'/0'/0'/0/1")
+
+    const sol0 = deriveTrustWalletAddress(mnemonic, 'solana', 0)
+    const sol1 = deriveTrustWalletAddress(mnemonic, 'solana', 1)
+    expect(isValidNetworkAddress('solana', sol0.address)).toBe(true)
+    expect(isValidNetworkAddress('solana', sol1.address)).toBe(true)
+    expect(sol0.address).not.toBe(sol1.address)
+    expect(sol1.derivationPath).toBe("m/44'/501'/1'/0'")
+  })
+
+  it('verifies Stripe Webhook HMAC-SHA256 signatures and blocks forged or replay-expired payloads', () => {
+    const secret = 'whsec_test_stripe_secret_key_999'
+    const payload = JSON.stringify({
+      id: 'evt_test_1',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_test_123', payment_status: 'paid', amount_total: 5000 } }
+    })
+
+    const validSig = paymentService.signStripeWebhookPayload(payload, secret)
+    expect(paymentService.verifyStripeWebhookSignature(payload, validSig, secret)).toBe(true)
+
+    // Forged secret -> rejected
+    const forgedSig = paymentService.signStripeWebhookPayload(payload, 'whsec_wrong_secret')
+    expect(paymentService.verifyStripeWebhookSignature(payload, forgedSig, secret)).toBe(false)
+
+    // Tampered payload -> rejected
+    expect(paymentService.verifyStripeWebhookSignature(payload + ' ', validSig, secret)).toBe(false)
+
+    // Replay attack (timestamp 20 minutes old > 600s tolerance) -> rejected
+    const expiredTs = Math.floor(Date.now() / 1000) - 1200
+    const expiredSig = paymentService.signStripeWebhookPayload(payload, secret, expiredTs)
+    expect(paymentService.verifyStripeWebhookSignature(payload, expiredSig, secret, 600)).toBe(false)
   })
 })

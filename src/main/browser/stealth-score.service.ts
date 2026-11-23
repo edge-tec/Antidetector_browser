@@ -51,7 +51,10 @@ export function auditProfileStealthScore(profileId: string): StealthAuditReport 
   const checks: StealthCheckItem[] = []
 
   // 1. OS / User-Agent / Platform Consistency (15 pts)
-  const consistency = validateConsistency(fp)
+  const targetOs = (profile.osType as any) || 'windows-10'
+  const targetBrowser = ((profile as any).browserType === 'firefox' || fp?.browser?.type === 'firefox') ? 'firefox' : 'chrome'
+  const targetVer = profile.browserVersion || fp?.browser?.version || '131.0'
+  const consistency = validateConsistency(fp, targetOs, targetBrowser, targetVer)
   const osPts = consistency.contradictions.length === 0 ? 15 : Math.max(3, 15 - consistency.contradictions.length * 5)
   checks.push({
     id: 'os-ua-consistency',

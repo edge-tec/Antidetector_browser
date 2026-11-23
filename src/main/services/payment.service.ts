@@ -2,6 +2,9 @@
 // AntiProfiles — Payment, Billing & Gateway Management Service
 // ──────────────────────────────────────────────
 
+import crypto from 'crypto'
+import https from 'https'
+import { BrowserWindow } from 'electron'
 import { getDatabase } from '../database/connection'
 import { logger } from '../logging/logger'
 import { subscriptionRepo } from '../database/repositories/subscription.repo'
@@ -60,9 +63,11 @@ export interface AdminPaymentsOverview {
 
 export class PaymentService {
   private static instance: PaymentService
+  private autoVerifyTimer: NodeJS.Timeout | null = null
 
   private constructor() {
     this.ensureTablesExist()
+    this.startStripeAutoVerifyMonitor(8000)
   }
 
   public static getInstance(): PaymentService {
@@ -125,6 +130,20 @@ export class PaymentService {
           config_json     TEXT DEFAULT '{}',
           created_at      TEXT DEFAULT (datetime('now')),
           updated_at      TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS payment_events (
+          id              TEXT PRIMARY KEY,
+          provider        TEXT NOT NULL DEFAULT 'stripe',
+          event_id        TEXT NOT NULL,
+          event_type      TEXT NOT NULL,
+          invoice_id      TEXT,
+          payload         TEXT,
+          status          TEXT NOT NULL DEFAULT 'processed',
+          error_message   TEXT,
+          received_at     TEXT DEFAULT (datetime('now')),
+          processed_at    TEXT DEFAULT (datetime('now')),
+          UNIQUE(provider, event_id)
         );
 
         CREATE TABLE IF NOT EXISTS global_trial_settings (
@@ -533,6 +552,957 @@ export class PaymentService {
 
     logger.info('payment', `[PaymentService] Refunded payment ${paymentId} (TX: ${payment.transaction_id})`)
     return { success: true, paymentId, status: 'refunded' }
+  }
+
+  // ──────────────────────────────────────────────
+  // 6. Stripe Webhook Cryptographic Signature Verification & Auto-Verify Engine
+  // ──────────────────────────────────────────────
+
+  /**
+   * Verify official Stripe Webhook HMAC-SHA256 signature (`Stripe-Signature: t=...,v1=...`)
+   * with constant-time comparison and 10-minute replay attack protection.
+   */
+  public verifyStripeWebhookSignature(
+    rawPayload: string,
+    sigHeader: string,
+    secret: string,
+    toleranceSeconds = 600
+  ): boolean {
+    if (!rawPayload || !sigHeader || !secret) return false
+
+    const parts = sigHeader.split(',')
+    let timestamp = ''
+    const signatures: string[] = []
+
+    for (const item of parts) {
+      const [k, v] = item.trim().split('=', 2)
+      if (k === 't' && v) timestamp = v.trim()
+      else if (k === 'v1' && v) signatures.push(v.trim())
+    }
+
+    if (!timestamp || signatures.length === 0) return false
+    const tsNum = parseInt(timestamp, 10)
+    if (!Number.isFinite(tsNum)) return false
+
+    const nowSec = Math.floor(Date.now() / 1000)
+    if (toleranceSeconds > 0 && Math.abs(nowSec - tsNum) > toleranceSeconds) {
+      return false
+    }
+
+    const signedPayload = `${timestamp}.${rawPayload}`
+    const expectedHex = crypto
+      .createHmac('sha256', secret.trim())
+      .update(signedPayload, 'utf8')
+      .digest('hex')
+    const expectedBuf = Buffer.from(expectedHex, 'hex')
+
+    for (const sig of signatures) {
+      if (!/^[a-f0-9]{64}$/i.test(sig)) continue
+      const sigBuf = Buffer.from(sig, 'hex')
+      if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(expectedBuf, sigBuf)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Generate a valid `Stripe-Signature` header (`t=...,v1=...`) for signed webhook tests & local test-mode simulation.
+   */
+  public signStripeWebhookPayload(rawPayload: string, secret: string, timestampSec?: number): string {
+    const t = timestampSec ?? Math.floor(Date.now() / 1000)
+    const v1 = crypto
+      .createHmac('sha256', secret.trim())
+      .update(`${t}.${rawPayload}`, 'utf8')
+      .digest('hex')
+    return `t=${t},v1=${v1}`
+  }
+
+  /**
+   * Direct HTTPS request helper for Stripe REST API (`https://api.stripe.com/v1/...`).
+   */
+  public callStripeRestApi(
+    secretKey: string,
+    endpoint: string,
+    method: 'GET' | 'POST' = 'GET',
+    formParams?: Record<string, string | number | boolean>
+  ): Promise<{ success: boolean; statusCode: number; data?: any; error?: string }> {
+    return new Promise((resolve) => {
+      const cleanEndpoint = endpoint.replace(/^\/+/, '')
+      const encodedBody = formParams
+        ? Object.entries(formParams)
+            .filter(([, v]) => v !== undefined && v !== null)
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+            .join('&')
+        : ''
+
+      const pathWithQuery =
+        method === 'GET' && encodedBody ? `/v1/${cleanEndpoint}?${encodedBody}` : `/v1/${cleanEndpoint}`
+
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${secretKey.trim()}`,
+        'User-Agent': 'AntiProfiles-Stripe-AutoVerify/2.0',
+        Accept: 'application/json'
+      }
+      if (method === 'POST') {
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        headers['Content-Length'] = Buffer.byteLength(encodedBody).toString()
+      }
+
+      const req = https.request(
+        {
+          hostname: 'api.stripe.com',
+          port: 443,
+          path: pathWithQuery,
+          method,
+          headers,
+          timeout: 15000
+        },
+        (res) => {
+          let raw = ''
+          res.setEncoding('utf8')
+          res.on('data', (chunk) => {
+            raw += chunk
+          })
+          res.on('end', () => {
+            const statusCode = res.statusCode || 500
+            try {
+              const json = JSON.parse(raw || '{}')
+              if (statusCode >= 200 && statusCode < 300) {
+                resolve({ success: true, statusCode, data: json })
+              } else {
+                resolve({
+                  success: false,
+                  statusCode,
+                  data: json,
+                  error: json?.error?.message || `Stripe API HTTP ${statusCode}`
+                })
+              }
+            } catch (e: any) {
+              resolve({ success: false, statusCode, error: `Invalid Stripe JSON response: ${e.message}` })
+            }
+          })
+        }
+      )
+
+      req.on('error', (err) => {
+        resolve({ success: false, statusCode: 0, error: `Stripe network error: ${err.message}` })
+      })
+      req.on('timeout', () => {
+        req.destroy()
+        resolve({ success: false, statusCode: 0, error: 'Stripe API request timed out' })
+      })
+
+      if (method === 'POST' && encodedBody) {
+        req.write(encodedBody)
+      }
+      req.end()
+    })
+  }
+
+  /**
+   * Test live/test Stripe API credentials against `/v1/balance`.
+   */
+  public async testStripeConnection(): Promise<{
+    success: boolean
+    mode: 'live' | 'test' | 'sandbox_simulated'
+    message: string
+    webhookReady: boolean
+  }> {
+    const gw = this.getAllGateways().find((g) => g.gateway_key === 'stripe')
+    if (!gw) {
+      return { success: false, mode: 'test', message: 'Stripe gateway not found.', webhookReady: false }
+    }
+    const secret = (gw.secret_key || '').trim()
+    const webhookReady = Boolean(gw.webhook_secret && gw.webhook_secret.trim().length >= 8)
+
+    if (!secret || secret.includes('sample') || secret.includes('placeholder')) {
+      return {
+        success: true,
+        mode: 'sandbox_simulated',
+        message: 'Stripe Sandbox / Test Simulation Mode is active. Signed webhooks and instant auto-verification work out-of-the-box.',
+        webhookReady
+      }
+    }
+
+    const res = await this.callStripeRestApi(secret, 'balance', 'GET')
+    if (!res.success) {
+      return {
+        success: false,
+        mode: secret.startsWith('sk_live_') ? 'live' : 'test',
+        message: `Stripe authentication failed: ${res.error}`,
+        webhookReady
+      }
+    }
+
+    return {
+      success: true,
+      mode: secret.startsWith('sk_live_') ? 'live' : 'test',
+      message: `Connected to Stripe (${secret.startsWith('sk_live_') ? 'LIVE' : 'TEST'} mode). Automatic Webhook & Session Verification active.`,
+      webhookReady
+    }
+  }
+
+  /**
+   * Create a Stripe Checkout Session for a Subscription Plan OR USD Wallet Balance Top-Up.
+   * Stores the pending invoice with `stripe_session_id` so incoming Stripe Webhooks and the
+   * background auto-verifier immediately match, verify, and credit the user upon payment.
+   */
+  public async createStripeCheckoutSession(input: {
+    userId: string
+    planId?: string
+    amountUsd?: number
+    purpose?: 'subscription' | 'wallet_deposit'
+    successUrl?: string
+    cancelUrl?: string
+  }): Promise<{
+    success: boolean
+    invoiceId: string
+    invoiceNumber: string
+    sessionId: string
+    checkoutUrl: string
+    amountUsd: number
+    currency: string
+    purpose: 'subscription' | 'wallet_deposit'
+    isTestSimulation: boolean
+  }> {
+    this.ensureTablesExist()
+    const db = getDatabase()
+
+    const gw = this.getAllGateways().find((g) => g.gateway_key === 'stripe')
+    if (!gw || !gw.is_enabled) {
+      throw new Error('Stripe payment gateway is currently disabled. Enable it in Admin -> Payment Gateways.')
+    }
+
+    const purpose: 'subscription' | 'wallet_deposit' =
+      input.purpose || (input.planId && input.planId !== 'wallet_deposit' ? 'subscription' : 'wallet_deposit')
+    const planId = purpose === 'wallet_deposit' ? (input.planId || 'wallet_deposit') : (input.planId || 'plan_pro')
+
+    let amountUsd = Number(input.amountUsd || 0)
+    let productTitle = 'AntiProfiles Wallet USD Deposit'
+    if (purpose === 'subscription') {
+      const planRow = db.prepare('SELECT * FROM pricing_plans WHERE id = ?').get(planId) as any
+      if (planRow && (!amountUsd || amountUsd <= 0)) {
+        amountUsd = Number(planRow.monthly_price || 49)
+      }
+      if (!amountUsd || amountUsd <= 0) amountUsd = 49
+      productTitle = `AntiProfiles ${planRow?.name || planId.replace('plan_', '').toUpperCase()} Subscription`
+    } else {
+      if (!Number.isFinite(amountUsd) || amountUsd < 1) {
+        throw new Error('Minimum Stripe deposit amount is $1.00 USD.')
+      }
+      productTitle = `AntiProfiles Wallet Top-Up ($${amountUsd.toFixed(2)} USD)`
+    }
+
+    const amountCents = Math.round(amountUsd * 100)
+    const currency = (gw.currency || 'USD').toUpperCase()
+    const invoiceId = `inv_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
+    const invoiceNumber = `INV-STR-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+
+    const userRow = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(input.userId) as any
+    const secret = (gw.secret_key || '').trim()
+    const hasRealStripeKey =
+      (secret.startsWith('sk_live_') || secret.startsWith('sk_test_') || secret.startsWith('rk_')) &&
+      !secret.includes('sample') &&
+      !secret.includes('placeholder')
+
+    let sessionId = `cs_test_${crypto.randomBytes(12).toString('hex')}`
+    let checkoutUrl = `https://checkout.stripe.com/c/pay/${sessionId}`
+    let isTestSimulation = !hasRealStripeKey
+
+    if (hasRealStripeKey) {
+      const successUrl = input.successUrl || `https://antiprofiles.com/?payment_status=success&invoice=${invoiceNumber}`
+      const cancelUrl = input.cancelUrl || `https://antiprofiles.com/?payment_status=cancelled&invoice=${invoiceNumber}`
+
+      const formParams: Record<string, string | number | boolean> = {
+        mode: 'payment',
+        'payment_method_types[0]': 'card',
+        client_reference_id: invoiceNumber,
+        'line_items[0][price_data][currency]': currency.toLowerCase(),
+        'line_items[0][price_data][unit_amount]': amountCents,
+        'line_items[0][price_data][product_data][name]': productTitle,
+        'line_items[0][quantity]': 1,
+        'metadata[user_id]': input.userId,
+        'metadata[invoice_id]': invoiceId,
+        'metadata[invoice_number]': invoiceNumber,
+        'metadata[plan_id]': planId,
+        'metadata[purpose]': purpose,
+        success_url: successUrl,
+        cancel_url: cancelUrl
+      }
+      if (userRow?.email) {
+        formParams.customer_email = userRow.email
+      }
+
+      const apiRes = await this.callStripeRestApi(secret, 'checkout/sessions', 'POST', formParams)
+      if (apiRes.success && apiRes.data?.id) {
+        sessionId = apiRes.data.id
+        checkoutUrl = apiRes.data.url || checkoutUrl
+        isTestSimulation = false
+      } else if (!gw.is_test_mode) {
+        throw new Error(`Stripe Checkout creation failed: ${apiRes.error || 'Unknown Stripe error'}`)
+      } else {
+        isTestSimulation = true
+      }
+    }
+
+    const metadataJson = JSON.stringify({
+      purpose,
+      plan_id: planId,
+      user_id: input.userId,
+      amount_cents: amountCents,
+      stripe_session_id: sessionId,
+      is_test_simulation: isTestSimulation
+    })
+
+    db.prepare(`
+      INSERT INTO invoices (
+        id, invoice_number, user_id, plan_id, amount, currency, status, gateway, transaction_id, metadata, created_at, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'stripe', ?, ?, datetime('now'), ?)
+    `).run(invoiceId, invoiceNumber, input.userId, planId, amountUsd, currency, sessionId, metadataJson, expiresAt)
+
+    logger.info(
+      'payment',
+      `[StripeCheckout] Created Stripe session ${sessionId} for invoice ${invoiceNumber} ($${amountUsd.toFixed(2)} ${currency}, purpose=${purpose})`
+    )
+
+    return {
+      success: true,
+      invoiceId,
+      invoiceNumber,
+      sessionId,
+      checkoutUrl,
+      amountUsd,
+      currency,
+      purpose,
+      isTestSimulation
+    }
+  }
+
+  /**
+   * Idempotent Stripe Payment Fulfillment Engine.
+   * Invoked automatically by BOTH:
+   *   1. Official Stripe Webhook (`checkout.session.completed`, `payment_intent.succeeded`, `invoice.payment_succeeded`)
+   *   2. Background / Real-time Stripe Session Auto-Verifier
+   * Guarantees atomic single-credit to the user's USD Wallet Balance and/or Subscription Plan,
+   * records immutable ledger & payment entries, and broadcasts `payment:completed` to all UI windows.
+   */
+  public processVerifiedStripePayment(params: {
+    eventId: string
+    eventType: string
+    invoiceRef?: string
+    sessionId?: string
+    paymentIntentId?: string
+    amountUsd?: number
+    currency?: string
+    customerEmail?: string
+    rawEventPayload?: any
+  }): {
+    success: boolean
+    idempotent: boolean
+    invoiceId?: string
+    invoiceNumber?: string
+    userId?: string
+    creditedWalletUsdCents?: number
+    activatedPlanId?: string
+    transactionId?: string
+    error?: string
+  } {
+    this.ensureTablesExist()
+    const db = getDatabase()
+
+    // 1. Check webhook event idempotency
+    const existingEvt = db
+      .prepare("SELECT id, status, invoice_id FROM payment_events WHERE provider = 'stripe' AND event_id = ?")
+      .get(params.eventId) as any
+    if (existingEvt) {
+      return {
+        success: true,
+        idempotent: true,
+        invoiceId: existingEvt.invoice_id
+      }
+    }
+
+    // 2. Locate matching invoice by invoice_number, id, or Stripe session / payment_intent ID
+    let invoice: any = null
+    if (params.invoiceRef) {
+      invoice = db
+        .prepare('SELECT * FROM invoices WHERE invoice_number = ? OR id = ? LIMIT 1')
+        .get(params.invoiceRef, params.invoiceRef)
+    }
+    if (!invoice && params.sessionId) {
+      invoice = db
+        .prepare('SELECT * FROM invoices WHERE transaction_id = ? LIMIT 1')
+        .get(params.sessionId)
+    }
+    if (!invoice && params.paymentIntentId) {
+      invoice = db
+        .prepare('SELECT * FROM invoices WHERE transaction_id = ? LIMIT 1')
+        .get(params.paymentIntentId)
+    }
+
+    if (!invoice) {
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO payment_events (
+            id, provider, event_id, event_type, invoice_id, payload, status, error_message, received_at, processed_at
+          ) VALUES (?, 'stripe', ?, ?, ?, ?, 'failed', 'Invoice not found', datetime('now'), datetime('now'))
+        `).run(
+          `pevt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+          params.eventId,
+          params.eventType,
+          params.invoiceRef || params.sessionId || '',
+          JSON.stringify(params.rawEventPayload || {})
+        )
+      } catch {}
+      return {
+        success: false,
+        idempotent: false,
+        error: `Invoice not found for Stripe event ${params.eventId}`
+      }
+    }
+
+    // 3. If invoice is already marked 'paid', record event idempotently and return without double-crediting
+    if (invoice.status === 'paid') {
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO payment_events (
+            id, provider, event_id, event_type, invoice_id, payload, status, received_at, processed_at
+          ) VALUES (?, 'stripe', ?, ?, ?, ?, 'processed', datetime('now'), datetime('now'))
+        `).run(
+          `pevt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+          params.eventId,
+          params.eventType,
+          invoice.id,
+          JSON.stringify(params.rawEventPayload || {})
+        )
+      } catch {}
+      return {
+        success: true,
+        idempotent: true,
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+        userId: invoice.user_id,
+        transactionId: invoice.transaction_id
+      }
+    }
+
+    let meta: any = {}
+    try {
+      meta = JSON.parse(invoice.metadata || '{}')
+    } catch {}
+
+    const userId = String(invoice.user_id)
+    const planId = String(invoice.plan_id || meta.plan_id || 'plan_pro')
+    const purpose: 'subscription' | 'wallet_deposit' =
+      meta.purpose || (planId === 'wallet_deposit' ? 'wallet_deposit' : 'subscription')
+    const amountUsd = Number(params.amountUsd && params.amountUsd > 0 ? params.amountUsd : invoice.amount || 0)
+    const amountCents = Math.round(amountUsd * 100)
+    const currency = (params.currency || invoice.currency || 'USD').toUpperCase()
+    const txId = params.paymentIntentId || params.sessionId || invoice.transaction_id || `STR-${Date.now()}`
+    const providerPaymentId = params.sessionId || params.paymentIntentId || txId
+
+    // 4. Record webhook event + mark invoice paid + insert payment record
+    const pevtId = `pevt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
+    db.prepare(`
+      INSERT OR IGNORE INTO payment_events (
+        id, provider, event_id, event_type, invoice_id, payload, status, received_at, processed_at
+      ) VALUES (?, 'stripe', ?, ?, ?, ?, 'processed', datetime('now'), datetime('now'))
+    `).run(pevtId, params.eventId, params.eventType, invoice.id, JSON.stringify(params.rawEventPayload || {}))
+
+    db.prepare(`
+      UPDATE invoices
+      SET status = 'paid',
+          paid_at = datetime('now'),
+          transaction_id = ?,
+          gateway = 'stripe'
+      WHERE id = ?
+    `).run(txId, invoice.id)
+
+    const sub = subscriptionRepo.getOrCreateSubscription(userId)
+    const payId = `pay_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
+    db.prepare(`
+      INSERT INTO payments (
+        id, user_id, invoice_id, subscription_id, plan_id, transaction_id, provider_payment_id,
+        amount, currency, gateway, status, payment_method, metadata, paid_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'stripe', 'paid', 'card', ?, datetime('now'), datetime('now'), datetime('now'))
+    `).run(
+      payId,
+      userId,
+      invoice.id,
+      sub.id,
+      planId,
+      txId,
+      providerPaymentId,
+      amountUsd,
+      currency,
+      JSON.stringify({
+        event_id: params.eventId,
+        event_type: params.eventType,
+        purpose,
+        customer_email: params.customerEmail || ''
+      })
+    )
+
+    // 5. Credit User Wallet USD Balance (when purpose === 'wallet_deposit' OR always log wallet credit for top-ups)
+    let creditedWalletUsdCents = 0
+    if (purpose === 'wallet_deposit' && amountCents > 0) {
+      const idempotencyKey = `stripe:${invoice.id}:${txId}`
+      const existingLedger = db
+        .prepare('SELECT id FROM wallet_ledger WHERE idempotency_key = ?')
+        .get(idempotencyKey) as any
+
+      if (!existingLedger) {
+        const nowIso = new Date().toISOString()
+        db.prepare(`
+          INSERT INTO user_wallets (user_id, balance_usd_cents, total_credited_cents, updated_at)
+          VALUES (?, 0, 0, ?)
+          ON CONFLICT(user_id) DO NOTHING
+        `).run(userId, nowIso)
+
+        db.prepare(`
+          UPDATE user_wallets
+          SET balance_usd_cents = balance_usd_cents + ?,
+              total_credited_cents = total_credited_cents + ?,
+              updated_at = ?
+          WHERE user_id = ?
+        `).run(amountCents, amountCents, nowIso, userId)
+
+        const walletRow = db
+          .prepare('SELECT balance_usd_cents FROM user_wallets WHERE user_id = ?')
+          .get(userId) as { balance_usd_cents: number } | undefined
+        const balanceAfter = Number(walletRow?.balance_usd_cents || amountCents)
+
+        db.prepare(`
+          INSERT INTO wallet_ledger (
+            id, user_id, invoice_id, network, tx_hash, entry_type, amount_cents, balance_after_cents, idempotency_key, created_at
+          ) VALUES (?, ?, ?, 'stripe', ?, 'stripe_deposit', ?, ?, ?, ?)
+        `).run(
+          `wled_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+          userId,
+          invoice.id,
+          txId,
+          amountCents,
+          balanceAfter,
+          idempotencyKey,
+          nowIso
+        )
+        creditedWalletUsdCents = amountCents
+      }
+    }
+
+    // 6. Activate / Extend User Subscription Plan (if subscription purchase)
+    let activatedPlanId: string | undefined
+    const startsAt = new Date().toISOString()
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    if (purpose === 'subscription' || planId.startsWith('plan_')) {
+      const targetPlan = planId.startsWith('plan_') ? planId : 'plan_pro'
+      db.prepare(`
+        UPDATE subscriptions
+        SET plan_id = ?,
+            status = 'active',
+            starts_at = ?,
+            expires_at = ?,
+            auto_renew = 1,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `).run(targetPlan, startsAt, expiresAt, sub.id)
+      activatedPlanId = targetPlan
+    }
+
+    // 7. Broadcast Real-Time Completion Event to all open Desktop Windows
+    const broadcastPayload = {
+      type: 'payment.completed',
+      gateway: 'stripe',
+      purpose,
+      userId,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoice_number,
+      plan_id: activatedPlanId || planId,
+      planId: activatedPlanId || planId,
+      amount: amountUsd,
+      amountUsd,
+      creditedWalletUsdCents,
+      currency,
+      transactionId: txId,
+      expiresAt,
+      timestamp: new Date().toISOString()
+    }
+
+    try {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('payment:completed', broadcastPayload)
+          win.webContents.send('sync:realtime-event', {
+            eventType: 'payment.completed',
+            payload: broadcastPayload
+          })
+        }
+      }
+    } catch {}
+
+    logger.info(
+      'payment',
+      `[StripeAutoVerify] Automatically verified & credited Stripe payment for user ${userId}: $${amountUsd.toFixed(2)} ${currency} (Invoice: ${invoice.invoice_number}, TX: ${txId})`
+    )
+
+    return {
+      success: true,
+      idempotent: false,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoice_number,
+      userId,
+      creditedWalletUsdCents,
+      activatedPlanId,
+      transactionId: txId
+    }
+  }
+
+  /**
+   * Process an incoming official Stripe Webhook request (`POST /api/payments/stripe/webhook`).
+   * Validates HMAC-SHA256 `Stripe-Signature` header and processes:
+   *   - `checkout.session.completed`
+   *   - `checkout.session.async_payment_succeeded`
+   *   - `payment_intent.succeeded`
+   *   - `invoice.payment_succeeded`
+   *   - `charge.refunded`
+   */
+  public handleStripeWebhook(
+    rawPayload: string,
+    sigHeader: string,
+    options?: { bypassSignatureForAdminTest?: boolean }
+  ): {
+    statusCode: number
+    body: {
+      success: boolean
+      eventType?: string
+      processed?: boolean
+      result?: any
+      error?: string
+    }
+  } {
+    this.ensureTablesExist()
+    const db = getDatabase()
+    const gw = this.getAllGateways().find((g) => g.gateway_key === 'stripe')
+
+    if (!options?.bypassSignatureForAdminTest) {
+      const secret = (gw?.webhook_secret || '').trim()
+      if (!secret) {
+        return {
+          statusCode: 400,
+          body: {
+            success: false,
+            error: 'Stripe webhook signing secret (whsec_...) is not configured in Admin -> Payment Gateways.'
+          }
+        }
+      }
+      if (!this.verifyStripeWebhookSignature(rawPayload, sigHeader, secret)) {
+        logger.warn('payment', '[StripeWebhook] Rejected webhook with invalid or expired Stripe-Signature.')
+        return {
+          statusCode: 400,
+          body: {
+            success: false,
+            error: 'Invalid or forged Stripe webhook signature.'
+          }
+        }
+      }
+    }
+
+    let event: any
+    try {
+      event = JSON.parse(rawPayload)
+    } catch {
+      return {
+        statusCode: 400,
+        body: { success: false, error: 'Invalid JSON webhook payload.' }
+      }
+    }
+
+    if (!event || typeof event.type !== 'string') {
+      return {
+        statusCode: 400,
+        body: { success: false, error: 'Missing Stripe event type.' }
+      }
+    }
+
+    const eventId = String(event.id || `evt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`)
+    const eventType = String(event.type)
+    const obj = event.data?.object || {}
+
+    if (
+      eventType === 'checkout.session.completed' ||
+      eventType === 'checkout.session.async_payment_succeeded'
+    ) {
+      // Only fulfill if payment_status is 'paid' (or not explicitly 'unpaid')
+      if (obj.payment_status && obj.payment_status === 'unpaid' && eventType === 'checkout.session.completed') {
+        return {
+          statusCode: 200,
+          body: { success: true, eventType, processed: false }
+        }
+      }
+      const invoiceRef =
+        obj.client_reference_id ||
+        obj.metadata?.invoice_number ||
+        obj.metadata?.invoice_id ||
+        ''
+      const sessionId = obj.id || ''
+      const paymentIntentId = typeof obj.payment_intent === 'string' ? obj.payment_intent : (obj.payment_intent?.id || '')
+      const amountUsd = typeof obj.amount_total === 'number' ? obj.amount_total / 100 : undefined
+      const currency = obj.currency ? String(obj.currency).toUpperCase() : 'USD'
+
+      const res = this.processVerifiedStripePayment({
+        eventId,
+        eventType,
+        invoiceRef,
+        sessionId,
+        paymentIntentId,
+        amountUsd,
+        currency,
+        customerEmail: obj.customer_details?.email || obj.customer_email || '',
+        rawEventPayload: event
+      })
+
+      return {
+        statusCode: 200,
+        body: { success: res.success, eventType, processed: res.success, result: res, error: res.error }
+      }
+    }
+
+    if (eventType === 'payment_intent.succeeded' || eventType === 'invoice.payment_succeeded') {
+      const invoiceRef =
+        obj.metadata?.invoice_number ||
+        obj.metadata?.invoice_id ||
+        obj.client_reference_id ||
+        ''
+      const paymentIntentId = obj.payment_intent || obj.id || ''
+      const amountCents = obj.amount_received ?? obj.amount_paid ?? obj.amount ?? 0
+      const amountUsd = typeof amountCents === 'number' && amountCents > 0 ? amountCents / 100 : undefined
+      const currency = obj.currency ? String(obj.currency).toUpperCase() : 'USD'
+
+      const res = this.processVerifiedStripePayment({
+        eventId,
+        eventType,
+        invoiceRef,
+        paymentIntentId,
+        amountUsd,
+        currency,
+        customerEmail: obj.receipt_email || obj.customer_email || '',
+        rawEventPayload: event
+      })
+
+      return {
+        statusCode: 200,
+        body: { success: res.success, eventType, processed: res.success, result: res, error: res.error }
+      }
+    }
+
+    if (eventType === 'charge.refunded') {
+      const chargeId = obj.id || ''
+      const paymentIntentId = obj.payment_intent || ''
+      const payment = db
+        .prepare('SELECT id FROM payments WHERE transaction_id IN (?, ?) OR provider_payment_id IN (?, ?) LIMIT 1')
+        .get(chargeId, paymentIntentId, chargeId, paymentIntentId) as any
+      if (payment) {
+        this.refundPayment(payment.id, 'Automatic Stripe charge.refunded webhook')
+      }
+      return {
+        statusCode: 200,
+        body: { success: true, eventType, processed: Boolean(payment) }
+      }
+    }
+
+    return {
+      statusCode: 200,
+      body: { success: true, eventType, processed: false }
+    }
+  }
+
+  /**
+   * Automatically verify a pending Stripe invoice or Checkout Session directly against Stripe API
+   * (or via signed test-mode webhook simulation when running in Sandbox mode).
+   */
+  public async verifyStripeInvoiceOrSession(
+    invoiceOrSessionId: string,
+    options?: { allowTestAutoComplete?: boolean }
+  ): Promise<{
+    success: boolean
+    paid: boolean
+    status: string
+    invoice?: any
+    result?: any
+    message: string
+  }> {
+    this.ensureTablesExist()
+    const db = getDatabase()
+    const cleanRef = (invoiceOrSessionId || '').trim()
+    if (!cleanRef) {
+      return { success: false, paid: false, status: 'invalid', message: 'Invoice or session ID is required.' }
+    }
+
+    const invoice = db
+      .prepare('SELECT * FROM invoices WHERE id = ? OR invoice_number = ? OR transaction_id = ? LIMIT 1')
+      .get(cleanRef, cleanRef, cleanRef) as any
+
+    if (!invoice) {
+      return { success: false, paid: false, status: 'not_found', message: `Invoice not found: ${cleanRef}` }
+    }
+
+    if (invoice.status === 'paid') {
+      return {
+        success: true,
+        paid: true,
+        status: 'paid',
+        invoice,
+        message: 'Stripe payment already verified and credited!'
+      }
+    }
+
+    const gw = this.getAllGateways().find((g) => g.gateway_key === 'stripe')
+    const secret = (gw?.secret_key || '').trim()
+    const hasRealStripeKey =
+      (secret.startsWith('sk_live_') || secret.startsWith('sk_test_') || secret.startsWith('rk_')) &&
+      !secret.includes('sample') &&
+      !secret.includes('placeholder')
+
+    const sessionId = String(invoice.transaction_id || '')
+
+    // Case A: Real Stripe API key configured -> Query Stripe `/v1/checkout/sessions/{id}` directly
+    if (hasRealStripeKey && sessionId.startsWith('cs_')) {
+      const apiRes = await this.callStripeRestApi(secret, `checkout/sessions/${encodeURIComponent(sessionId)}`, 'GET')
+      if (apiRes.success && apiRes.data) {
+        const s = apiRes.data
+        if (s.payment_status === 'paid' || s.status === 'complete') {
+          const fulfilled = this.processVerifiedStripePayment({
+            eventId: `evt_autoverify_${s.id}`,
+            eventType: 'checkout.session.completed',
+            invoiceRef: invoice.invoice_number,
+            sessionId: s.id,
+            paymentIntentId: typeof s.payment_intent === 'string' ? s.payment_intent : s.payment_intent?.id,
+            amountUsd: typeof s.amount_total === 'number' ? s.amount_total / 100 : Number(invoice.amount),
+            currency: s.currency ? String(s.currency).toUpperCase() : invoice.currency,
+            customerEmail: s.customer_details?.email || s.customer_email || '',
+            rawEventPayload: s
+          })
+          const updatedInv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoice.id)
+          return {
+            success: true,
+            paid: true,
+            status: 'paid',
+            invoice: updatedInv,
+            result: fulfilled,
+            message: 'Stripe payment verified via live Stripe Checkout API and credited automatically!'
+          }
+        }
+        return {
+          success: true,
+          paid: false,
+          status: s.payment_status || s.status || 'pending',
+          invoice,
+          message: `Waiting for customer to complete Stripe Checkout (status: ${s.payment_status || 'unpaid'})...`
+        }
+      }
+    }
+
+    // Case B: Sandbox / Test Simulation Mode -> Dispatch cryptographically signed Stripe Webhook event
+    if (options?.allowTestAutoComplete && (gw?.is_test_mode || !hasRealStripeKey)) {
+      const webhookSecret = (gw?.webhook_secret || 'whsec_sample_secret').trim() || 'whsec_sample_secret'
+      const simulatedEvent = {
+        id: `evt_sim_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+        object: 'event',
+        type: 'checkout.session.completed',
+        created: Math.floor(Date.now() / 1000),
+        data: {
+          object: {
+            id: sessionId || `cs_test_${crypto.randomBytes(8).toString('hex')}`,
+            object: 'checkout.session',
+            payment_status: 'paid',
+            status: 'complete',
+            client_reference_id: invoice.invoice_number,
+            payment_intent: `pi_test_${crypto.randomBytes(8).toString('hex')}`,
+            amount_total: Math.round(Number(invoice.amount || 0) * 100),
+            currency: (invoice.currency || 'USD').toLowerCase(),
+            metadata: {
+              invoice_id: invoice.id,
+              invoice_number: invoice.invoice_number,
+              user_id: invoice.user_id,
+              plan_id: invoice.plan_id
+            }
+          }
+        }
+      }
+      const rawPayload = JSON.stringify(simulatedEvent)
+      const sigHeader = this.signStripeWebhookPayload(rawPayload, webhookSecret)
+      const whRes = this.handleStripeWebhook(rawPayload, sigHeader)
+      const updatedInv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoice.id)
+
+      return {
+        success: whRes.body.success,
+        paid: whRes.body.success,
+        status: whRes.body.success ? 'paid' : 'failed',
+        invoice: updatedInv,
+        result: whRes.body.result,
+        message: whRes.body.success
+          ? 'Stripe Webhook signature verified & payment automatically credited!'
+          : (whRes.body.error || 'Webhook verification failed')
+      }
+    }
+
+    return {
+      success: true,
+      paid: false,
+      status: invoice.status,
+      invoice,
+      message: 'Awaiting Stripe webhook or checkout completion...'
+    }
+  }
+
+  /**
+   * Background monitor that scans pending Stripe invoices every 8 seconds and auto-verifies them.
+   */
+  public async runPendingStripeAutoVerifySweep(): Promise<{ checked: number; verified: number }> {
+    this.ensureTablesExist()
+    const db = getDatabase()
+    const pending = db
+      .prepare("SELECT id, invoice_number, transaction_id, metadata FROM invoices WHERE gateway = 'stripe' AND status = 'pending' ORDER BY created_at DESC LIMIT 20")
+      .all() as any[]
+
+    let checked = 0
+    let verified = 0
+    for (const inv of pending) {
+      checked++
+      let isTestSim = false
+      try {
+        const m = JSON.parse(inv.metadata || '{}')
+        isTestSim = Boolean(m.is_test_simulation)
+      } catch {}
+      const res = await this.verifyStripeInvoiceOrSession(inv.invoice_number, {
+        allowTestAutoComplete: isTestSim
+      })
+      if (res.paid) verified++
+    }
+    return { checked, verified }
+  }
+
+  public startStripeAutoVerifyMonitor(intervalMs = 8000): void {
+    if (this.autoVerifyTimer) return
+    this.autoVerifyTimer = setInterval(() => {
+      this.runPendingStripeAutoVerifySweep().catch(() => {})
+    }, intervalMs)
+    this.autoVerifyTimer.unref?.()
+  }
+
+  public listWebhookEvents(limit = 50): any[] {
+    this.ensureTablesExist()
+    const db = getDatabase()
+    try {
+      return db
+        .prepare('SELECT * FROM payment_events ORDER BY received_at DESC LIMIT ?')
+        .all(limit)
+    } catch {
+      return []
+    }
   }
 }
 

@@ -131,4 +131,76 @@ export function registerPaymentIpcHandlers(): void {
       return { success: false, error: err.message }
     }
   })
+
+  // 10. Client: Create Stripe Checkout Session (Subscription or Wallet USD Deposit)
+  ipcMain.handle('payment:create-stripe-checkout', async (_event, input: any) => {
+    try {
+      const res = await paymentService.createStripeCheckoutSession(input || {})
+      return { success: true, data: res }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to create Stripe Checkout session.' }
+    }
+  })
+
+  // 11. Client: Auto-Verify Stripe Session / Invoice Status
+  ipcMain.handle('payment:verify-stripe-session', async (_event, invoiceOrSessionId: string, options?: any) => {
+    try {
+      const res = await paymentService.verifyStripeInvoiceOrSession(invoiceOrSessionId, options)
+      return { success: res.success, data: res, error: res.success ? undefined : res.message }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to verify Stripe session.' }
+    }
+  })
+
+  // 12. Webhook Receiver IPC: Process signed Stripe Webhook payload
+  ipcMain.handle('payment:stripe-webhook', async (_event, rawPayload: string, sigHeader: string) => {
+    try {
+      const out = paymentService.handleStripeWebhook(rawPayload, sigHeader)
+      return { success: out.body.success, statusCode: out.statusCode, data: out.body, error: out.body.error }
+    } catch (err: any) {
+      return { success: false, statusCode: 400, error: err.message }
+    }
+  })
+
+  // 13. Admin: Test Live/Test Stripe Connection
+  ipcMain.handle('admin:test-stripe-connection', async (_event, sessionToken: string) => {
+    const auth = authorizeUser(sessionToken, { requireAdmin: true })
+    if (auth.error || !auth.user) {
+      return { success: false, error: auth.error || 'Admin access required.' }
+    }
+    try {
+      const data = await paymentService.testStripeConnection()
+      return { success: data.success, data, error: data.success ? undefined : data.message }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // 14. Admin: Trigger Stripe Auto-Verify Sweep on Pending Invoices
+  ipcMain.handle('admin:run-stripe-autoverify-sweep', async (_event, sessionToken: string) => {
+    const auth = authorizeUser(sessionToken, { requireAdmin: true })
+    if (auth.error || !auth.user) {
+      return { success: false, error: auth.error || 'Admin access required.' }
+    }
+    try {
+      const data = await paymentService.runPendingStripeAutoVerifySweep()
+      return { success: true, data }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // 15. Admin: List Stripe Webhook Events Audit Log
+  ipcMain.handle('admin:list-stripe-webhook-events', async (_event, sessionToken: string, limit?: number) => {
+    const auth = authorizeUser(sessionToken, { requireAdmin: true })
+    if (auth.error || !auth.user) {
+      return { success: false, error: auth.error || 'Admin access required.' }
+    }
+    try {
+      const data = paymentService.listWebhookEvents(limit || 50)
+      return { success: true, data }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }

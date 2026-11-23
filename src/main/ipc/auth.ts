@@ -4,9 +4,10 @@
 
 import { ipcMain, BrowserWindow, shell } from 'electron'
 import http from 'http'
+import { getDatabase } from '../database/connection'
 import { userRepo } from '../database/repositories/user.repo'
 import { tokenRepo } from '../database/repositories/token.repo'
-import { verifyPassword } from '../security/password'
+import { verifyPassword, hashPassword } from '../security/password'
 import { sessionManager, authorizeUser } from '../security/session'
 import { emailService } from '../services/email.service'
 import { logger } from '../logging/logger'
@@ -713,11 +714,10 @@ export function setupAuthIPC(): void {
       const db = getDatabase()
       const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as { password_hash: string } | undefined
       if (row && row.password_hash) {
-        const bcrypt = require('bcryptjs')
-        if (oldPassword && !bcrypt.compareSync(oldPassword, row.password_hash)) {
+        if (oldPassword && !verifyPassword(oldPassword, row.password_hash)) {
           return { success: false, error: 'Current password is incorrect.' }
         }
-        const newHash = bcrypt.hashSync(newPassword, 10)
+        const newHash = hashPassword(newPassword)
         db.prepare('UPDATE users SET password_hash = ?, updated_at = datetime(\'now\') WHERE id = ?').run(newHash, user.id)
       }
       try {

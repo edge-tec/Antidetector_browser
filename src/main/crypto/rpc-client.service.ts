@@ -385,4 +385,115 @@ export class BlockchainRpcClient {
       rpcEndpointUsed: rpcUrl
     }
   }
+
+  /**
+   * Hash-free On-Chain Address Deposit Scanner for unique HD Child Wallet Addresses.
+   * Queries the current on-chain balance received at a derived invoice deposit address
+   * so payments are detected automatically without requiring the user to paste a TxHash.
+   */
+  static async checkAddressDeposit(params: {
+    network: CryptoNetworkKey
+    address: string
+    contractAddress: string
+    primaryRpcUrl: string
+    fallbackRpcUrl: string
+  }): Promise<{
+    detected: boolean
+    amountAtomic: string
+    rpcEndpointUsed: string
+  }> {
+    const { network, address, contractAddress, primaryRpcUrl, fallbackRpcUrl } = params
+
+    if (network === 'ethereum' || network === 'bsc' || network === 'polygon') {
+      const cleanAddr = address.trim().replace(/^0x/i, '').toLowerCase()
+      const { result, rpcUrl } = await callWithFallback(primaryRpcUrl, fallbackRpcUrl, async (url) => {
+        if (contractAddress && contractAddress.trim()) {
+          // ERC20/BEP20 balanceOf(address) -> selector 0x70a08231
+          const data = '0x70a08231' + cleanAddr.padStart(64, '0')
+          const res = await httpJsonRequest(url, 'POST', {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'eth_call',
+            params: [{ to: contractAddress.trim(), data }, 'latest']
+          })
+          return String(res?.result || '0x0')
+        }
+        const res = await httpJsonRequest(url, 'POST', {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_getBalance',
+          params: [address.trim(), 'latest']
+        })
+        return String(res?.result || '0x0')
+      })
+
+      const bal = BigInt(result && result !== '0x' ? result : '0x0')
+      return {
+        detected: bal > 0n,
+        amountAtomic: bal.toString(),
+        rpcEndpointUsed: rpcUrl
+      }
+    }
+
+    if (network === 'tron') {
+      const { result, rpcUrl } = await callWithFallback(primaryRpcUrl, fallbackRpcUrl, async (url) => {
+        if (contractAddress && contractAddress.trim()) {
+          const res = await httpJsonRequest(`${url}/wallet/triggersmartcontract`, 'POST', {
+            owner_address: address.trim(),
+            contract_address: contractAddress.trim(),
+            function_selector: 'balanceOf(address)',
+            parameter: '',
+            visible: true
+          })
+          const hexVal = res?.constant_result?.[0] || '0'
+          return BigInt('0x' + hexVal).toString()
+        }
+        const acc = await httpJsonRequest(`${url}/wallet/getaccount`, 'POST', {
+          address: address.trim(),
+          visible: true
+        })
+        return BigInt(acc?.balance || 0).toString()
+      })
+
+      const bal = BigInt(result || '0')
+      return {
+        detected: bal > 0n,
+        amountAtomic: bal.toString(),
+        rpcEndpointUsed: rpcUrl
+      }
+    }
+
+    if (network === 'bitcoin') {
+      const { result, rpcUrl } = await callWithFallback(primaryRpcUrl, fallbackRpcUrl, async (url) => {
+        const info = await httpJsonRequest(`${url}/address/${encodeURIComponent(address.trim())}`, 'GET')
+        const funded = BigInt(info?.chain_stats?.funded_txo_sum || 0)
+        return funded.toString()
+      })
+
+      const bal = BigInt(result || '0')
+      return {
+        detected: bal > 0n,
+        amountAtomic: bal.toString(),
+        rpcEndpointUsed: rpcUrl
+      }
+    }
+
+    // Solana getBalance
+    const { result, rpcUrl } = await callWithFallback(primaryRpcUrl, fallbackRpcUrl, async (url) => {
+      const res = await httpJsonRequest(url, 'POST', {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getBalance',
+        params: [address.trim()]
+      })
+      return BigInt(res?.result?.value || 0).toString()
+    })
+
+    const bal = BigInt(result || '0')
+    return {
+      detected: bal > 0n,
+      amountAtomic: bal.toString(),
+      rpcEndpointUsed: rpcUrl
+    }
+  }
 }

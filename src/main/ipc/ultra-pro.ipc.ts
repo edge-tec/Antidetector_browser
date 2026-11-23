@@ -11,13 +11,16 @@ import {
   revealVaultPassword,
   deleteVaultAccount,
   generateTotpCode,
+  autoFillVaultAccount,
   type VaultAccountInput
 } from '../security/totp.service'
 import {
   COOKIE_ROBOT_PRESETS,
   getCookieRobotRuns,
   runCookieRobot,
-  type CookieRobotOptions
+  runBatchCookieRobot,
+  type CookieRobotOptions,
+  type BatchCookieRobotOptions
 } from '../automation/cookie-robot.service'
 import { auditProfileStealthScore } from '../browser/stealth-score.service'
 import { windowSynchronizer, type SyncHumanizeConfig } from '../browser/window-synchronizer'
@@ -67,6 +70,15 @@ export function registerUltraProHandlers(): void {
     }
   })
 
+  ipcMain.handle('ultrapro:vault:autofill', async (_e, accountId: string) => {
+    try {
+      const res = await autoFillVaultAccount(accountId)
+      return { success: true, ...res }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
   // ── Cookie Robot (Profile Warm-Up) ──
   ipcMain.handle('ultrapro:cookie-robot:presets', () => {
     return { success: true, presets: COOKIE_ROBOT_PRESETS }
@@ -84,6 +96,15 @@ export function registerUltraProHandlers(): void {
     try {
       const run = await runCookieRobot(options)
       return { success: true, run }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('ultrapro:cookie-robot:run-batch', async (_e, options: BatchCookieRobotOptions) => {
+    try {
+      const summary = await runBatchCookieRobot(options)
+      return { success: true, ...summary }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
