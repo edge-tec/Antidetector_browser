@@ -6333,6 +6333,308 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <!-- Welcome default bot message -->
             <div class="chat-bubble-agent">
                 <span style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block;">AntiProfiles Support Team</span>
+                <p style="font-size: 13px; margin-top: 4px; line-height: 1.4;">Hello! 👋 Welcome to AntiProfiles. How can we help you with browser profiles, proxies, or subscriptions today?</p>
+                <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 4px;">Just now</span>
+            </div>
+        </div>
+
+        <!-- Guest Identity Form Bar (Shown for non-logged in visitors) -->
+        <div id="liveChatGuestBar" style="display: none; padding: 10px 14px; background: #181B26; border-top: 1px solid var(--border); font-size: 12px;">
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="liveChatGuestName" placeholder="Your Name" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
+                <input type="email" id="liveChatGuestEmail" placeholder="Your Email" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: #FFF; font-size: 12px;">
+            </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <form onsubmit="handleSendLiveChatMessage(event)" style="display: flex; gap: 8px; padding: 12px 14px; background: #12141F; border-top: 1px solid rgba(255,255,255,0.06); align-items: center;">
+            <input type="text" id="liveChatInput" placeholder="Type your message here..." required autocomplete="off" style="flex: 1; background: #0A0B10; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: #FFF; font-size: 13px;">
+            <button type="submit" id="btnLiveChatSend" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); border: none; border-radius: 10px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #000; font-size: 15px; font-weight: 800;">➤</button>
+        </form>
+    </div>
+
+    <script>
+        function getAdminSessionToken() {
+            return localStorage.getItem('sessionToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+        }
+        window.getAdminSessionToken = getAdminSessionToken;
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function toggleFaq(item) {
+            const answer = item.querySelector('.faq-answer');
+            const icon = item.querySelector('.faq-icon');
+            if (answer.style.display === 'block') {
+                answer.style.display = 'none';
+                icon.innerText = '+';
+            } else {
+                answer.style.display = 'block';
+                icon.innerText = '−';
+            }
+        }
+
+        async function handlePublicContactSubmit(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const btn = document.getElementById('btnSendContactMsg');
+            const statusBox = document.getElementById('contactFormStatus');
+            const name = document.getElementById('contactSenderName').value.trim();
+            const email = document.getElementById('contactSenderEmail').value.trim();
+            const subject = document.getElementById('contactSenderSubject').value.trim();
+            const message = document.getElementById('contactSenderMessage').value.trim();
+
+            if (!name || !email || !message) {
+                if (statusBox) {
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(239,68,68,0.15)';
+                    statusBox.style.color = '#F87171';
+                    statusBox.innerText = '❌ Please fill in your name, email, and message.';
+                }
+                return false;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Sending Message...';
+            }
+
+            if (statusBox) {
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(99,102,241,0.15)';
+                statusBox.style.color = '#818CF8';
+                statusBox.innerText = '⏳ Delivering your message to info@antiprofiles.com...';
+            }
+
+            // Obtain Captcha Token if enabled
+            let captchaToken = null;
+            if (typeof getCaptchaToken === 'function') {
+                captchaToken = await getCaptchaToken('contact', 'contactTurnstileContainer');
+            }
+
+            try {
+                const res = await fetch('/api/support?action=contact-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        subject: subject,
+                        message: message,
+                        captcha_token: captchaToken
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    if (statusBox) {
+                        statusBox.style.display = 'block';
+                        statusBox.style.background = 'rgba(45,212,191,0.15)';
+                        statusBox.style.color = '#2DD4BF';
+                        statusBox.innerText = '✅ ' + (data.message || 'Thank you for your message! Our team has received it at info@antiprofiles.com and will reply shortly.');
+                    }
+                    document.getElementById('publicContactForm').reset();
+                    if (typeof renderTurnstileWidget === 'function') renderTurnstileWidget('contactTurnstileContainer');
+                } else {
+                    if (statusBox) {
+                        statusBox.style.display = 'block';
+                        statusBox.style.background = 'rgba(239,68,68,0.15)';
+                        statusBox.style.color = '#F87171';
+                        statusBox.innerText = '❌ ' + (data.error || 'Failed to send message. Please try again.');
+                    }
+                }
+            } catch (err) {
+                if (statusBox) {
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(239,68,68,0.15)';
+                    statusBox.style.color = '#F87171';
+                    statusBox.innerText = '❌ Network connection error. Please try again.';
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Send Message';
+                }
+            }
+            return false;
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('sessionToken');
+            localStorage.removeItem('user');
+            closeAdminDashboard();
+            closeModal();
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState({}, '', '/');
+            }
+            openModal('login');
+        }
+
+        async function handleRegister(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword') ? document.getElementById('regConfirmPassword').value : password;
+            const msg = document.getElementById('loginMsg');
+            const submitBtn = document.getElementById('registerSubmitBtn');
+
+            if (!name || name.length < 2) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.style.border = 'none';
+                msg.innerText = 'Please enter your full name (at least 2 characters).';
+                return false;
+            }
+
+            if (!email || !email.includes('@')) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.style.border = 'none';
+                msg.innerText = 'Please enter a valid email address.';
+                return false;
+            }
+
+            if (!password || password.length < 6) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.style.border = 'none';
+                msg.innerText = 'Password must be at least 6 characters long.';
+                return false;
+            }
+
+            if (password !== confirmPassword) {
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.style.border = 'none';
+                msg.innerText = 'Passwords do not match. Please check and try again.';
+                return false;
+            }
+
+            // Obtain Captcha Token if enabled
+            let captchaToken = null;
+            if (typeof getCaptchaToken === 'function') {
+                captchaToken = await getCaptchaToken('register', 'registerTurnstileContainer');
+            }
+
+            // Disable button to prevent double submission
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Creating account & sending email...';
+                submitBtn.style.opacity = '0.7';
+                submitBtn.style.cursor = 'not-allowed';
+            }
+
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(99,102,241,0.2)';
+            msg.style.color = '#818CF8';
+            msg.style.border = 'none';
+            msg.innerText = 'Creating account & dispatching verification email...';
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        captcha_token: captchaToken,
+                        aff_id: localStorage.getItem('aff_id') || '',
+                        click_id: localStorage.getItem('click_id') || ''
+                    })
+                });
+
+                if (!res.ok && res.status >= 500) {
+                    throw new Error('Server error (' + res.status + '). Please try again later.');
+                }
+
+                const data = await res.json();
+                if (data.success) {
+                    if (data.requiresVerification) {
+                        const safeEmail = (typeof window.escapeHtml === 'function') ? window.escapeHtml(email) : String(email).replace(/[<>&'"]/g, '');
+                        msg.style.display = 'block';
+                        msg.style.background = 'rgba(45,212,191,0.12)';
+                        msg.style.color = '#2DD4BF';
+                        msg.style.border = '1px solid rgba(45,212,191,0.3)';
+                        msg.style.borderRadius = '12px';
+                        msg.style.padding = '16px';
+                        msg.innerHTML = `
+                            <div style="font-size: 15px; font-weight: 800; margin-bottom: 6px; display:flex; align-items:center; gap:8px;">
+                                <span>✉️</span> <span>Verification Email Sent!</span>
+                            </div>
+                            <div style="font-size: 13px; color: #CBD5E1; line-height: 1.5; margin-bottom: 14px;">
+                                We've sent a verification link to <strong style="color:#FFF;">${safeEmail}</strong>. Please check your inbox and click the link to activate your account.
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px; border-color: #2DD4BF; color: #2DD4BF;" onclick="resendVerificationEmail('${safeEmail}', this)">🔄 Resend Verification Email</button>
+                                <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px;" onclick="openModal('login')">Go to Sign In</button>
+                            </div>
+                        `;
+                        if (submitBtn) {
+                            submitBtn.style.display = 'none';
+                        }
+                    } else {
+                        msg.style.background = 'rgba(45,212,191,0.2)';
+                        msg.style.color = '#2DD4BF';
+                        msg.innerText = data.message || 'Account created successfully! Opening dashboard...';
+
+                        if (data.sessionToken) {
+                            localStorage.setItem('sessionToken', data.sessionToken);
+                        }
+                        if (data.user) {
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                        }
+
+                        if (window.history && window.history.pushState) {
+                            window.history.pushState({}, '', '/dashboard');
+                        }
+
+                        window._pvJustLoggedIn = true;
+
+                        setTimeout(() => {
+                            closeModal();
+                            checkSession();
+                        }, 400);
+                    }
+                } else {
+                    msg.style.background = 'rgba(239,68,68,0.2)';
+                    msg.style.color = '#F87171';
+                    msg.style.border = 'none';
+                    msg.innerText = data.error || 'Registration failed. Please try again.';
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Create Account';
+                        submitBtn.style.opacity = '1';
+                        submitBtn.style.cursor = 'pointer';
+                    }
+                }
+            } catch(err) {
+                msg.style.background = 'rgba(239,68,68,0.2)';
+                msg.style.color = '#F87171';
+                msg.style.border = 'none';
+                msg.innerText = err.message || 'Unable to connect to authentication server. Please check your connection and try again.';
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Create Account';
+                    submitBtn.style.opacity = '1';
+                    submitBtn.style.cursor = 'pointer';
+                }
+            }
+            return false;
+        }
+
+        async function resendVerificationEmail(email, btn) {
             if (!email) {
                 alert('Please enter your email address.');
                 return;
