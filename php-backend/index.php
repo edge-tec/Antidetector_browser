@@ -6600,7 +6600,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     if (!user || !user.email) {
                         throw new Error('Invalid stored user payload');
                     }
-                    const isAdmin = user.role === 'admin';
+                    const isAdmin = ['admin', 'super_admin', 'manager'].includes(String(user.role || '').toLowerCase());
 
                     const infoEl = document.getElementById('adminUserInfo');
                     if (infoEl) {
@@ -6617,16 +6617,21 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         adminModal.style.display = 'flex';
                     }
 
-                    if (isAdmin) {
-                        const btn = document.getElementById('btnTabUsers');
-                        switchAdminTab('users', btn);
-                    } else {
-                        const btn = document.getElementById('btnTabMyProfile');
-                        switchAdminTab('my-profile', btn);
+                    try {
+                        if (isAdmin) {
+                            const btn = document.getElementById('btnTabUsers');
+                            switchAdminTab('users', btn);
+                        } else {
+                            const btn = document.getElementById('btnTabMyProfile');
+                            switchAdminTab('my-profile', btn);
+                        }
+                    } catch (tabErr) {
+                        console.warn('[AntiProfiles] switchAdminTab warning:', tabErr);
                     }
 
                     loadUserPortalData();
                 } catch(e) {
+                    console.error('[AntiProfiles] checkSession error:', e);
                     localStorage.removeItem('sessionToken');
                     localStorage.removeItem('user');
                     if (adminModal) {
@@ -6664,9 +6669,12 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     return;
                 }
 
-                // Fetch License & Subscription Details from Server
-                const res = await fetch('/api/auth/me', {
-                    headers: { 'Authorization': 'Bearer ' + token }
+                // Fetch License & Subscription Details from Server (send token in header + query fallback for PHP-FPM/aaPanel)
+                const res = await fetch('/api/auth/me?token=' + encodeURIComponent(token), {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'X-Session-Token': token
+                    }
                 });
 
                 if (res.status === 401 || res.status === 403) {
@@ -12808,14 +12816,16 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 checkSession();
             } else {
                 closeAdminDashboard();
-                if (path.includes('/login')) {
+                if (path.includes('/login') || path.includes('/admin') || window.location.hash === '#admin') {
                     openModal('login');
                 } else if (path.includes('/register')) {
                     openModal('register');
                 }
             }
             initRealtimeWebSync();
-            loadUserPortalData();
+            if (!isAuthenticated) {
+                loadUserPortalData();
+            }
             fetchReleasesAndUpdateLanding();
 
             // Check for specific package plan or affiliate offer in URL
