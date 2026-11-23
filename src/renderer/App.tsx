@@ -46,32 +46,32 @@ import defaultFirefoxImg from './assets/antiprofiles-firefox.png'
 // ═══════════════════════════════════════════
 
 const Icons = {
-  dashboard: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
-  gift: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>,
-  profiles: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
-  groups: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>,
-  proxies: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
-  automation: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
-  settings: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>,
-  logs: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
-  play: <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
-  stop: <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>,
-  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  edit: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-  trash: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
-  copy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
-  search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
-  x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  sun: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
-  moon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
-  refresh: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
-  download: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-  upload: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
-  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
-  key: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>,
-  chat: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-  grid: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
-  list: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+  dashboard: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>,
+  gift: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>,
+  profiles: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" /></svg>,
+  groups: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" /></svg>,
+  proxies: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
+  automation: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>,
+  settings: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>,
+  logs: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
+  play: <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>,
+  stop: <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>,
+  edit: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>,
+  trash: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>,
+  copy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>,
+  search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
+  x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
+  sun: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>,
+  moon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>,
+  refresh: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" /></svg>,
+  download: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>,
+  upload: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>,
+  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>,
+  key: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>,
+  chat: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
+  grid: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>,
+  list: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>,
 }
 
 // ═══════════════════════════════════════════
@@ -94,7 +94,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss:
         <div key={t.id} className={`toast toast-${t.type} ${t.leaving ? 'leaving' : ''}`}>
           <span>{t.message}</span>
           <button className="toast-close" onClick={() => onDismiss(t.id)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
       ))}
@@ -176,7 +176,7 @@ function DashboardPage({ onNavigate, showToast, brandingConfig, proxies }: { onN
         cloudProvider: cloud.s3Configured ? 'S3 / R2' : 'Local Vault',
         syncActive: !!sync.active
       })
-    } catch {}
+    } catch { }
     setLoading(false)
   }, [])
 
@@ -611,7 +611,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
     } finally {
       setSyncingProfileId(null)
       loadProfiles()
-      window.api.getProxies().then((res) => { if (res.success && res.data) setProxies(res.data) }).catch(() => {})
+      window.api.getProxies().then((res) => { if (res.success && res.data) setProxies(res.data) }).catch(() => { })
     }
   }
 
@@ -626,7 +626,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
             if (gAcc?.success && gAcc.data) {
               return { ...p, googleAccount: gAcc.data }
             }
-          } catch {}
+          } catch { }
           return p
         })
       )
@@ -637,7 +637,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
       if (r?.success && r?.data?.limits) {
         setLicenseLimits(r.data.limits)
       }
-    }).catch(() => {})
+    }).catch(() => { })
   }, [sessionToken, search])
 
   const [provisioningProgress, setProvisioningProgress] = useState<ProvisioningProgressData | null>(null)
@@ -765,7 +765,7 @@ function ProfilesPage({ showToast, confirm, licenseInfo, onUpgrade, brandingConf
   const handleSaveProfile = async (input: any) => {
     if (!sessionToken) return
     const refreshProxiesList = () => {
-      window.api.getProxies().then((r) => { if (r?.success && r.data) setProxies(r.data) }).catch(() => {})
+      window.api.getProxies().then((r) => { if (r?.success && r.data) setProxies(r.data) }).catch(() => { })
     }
 
     if (editId) {
@@ -1758,9 +1758,9 @@ function AutomationPage({ showToast, licenseInfo, onUpgrade }: { showToast: (typ
             </div>
           </div>
           <div>
-            <button 
-              type="button" 
-              onClick={onUpgrade} 
+            <button
+              type="button"
+              onClick={onUpgrade}
               className="btn btn-primary"
               style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 800, background: 'linear-gradient(135deg, #2DD4BF, #06B6D4)', color: '#000', cursor: 'pointer' }}
             >
@@ -1807,7 +1807,7 @@ function AutomationPage({ showToast, licenseInfo, onUpgrade }: { showToast: (typ
       <div className="section">
         <h3 className="section-title">Example Usage</h3>
         <pre style={{ background: 'var(--color-bg-tertiary)', padding: 16, borderRadius: 8, fontSize: 12, fontFamily: 'monospace', overflow: 'auto', color: 'var(--color-text-primary)', lineHeight: 1.6 }}>
-{`# List profiles
+          {`# List profiles
 curl -H "Authorization: Bearer YOUR_TOKEN" \\
   http://127.0.0.1:37100/api/v1/profiles
 
@@ -1923,7 +1923,7 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
           setUpdatePlatform(res.data.platform)
         }
       }
-    } catch {}
+    } catch { }
   }, [])
 
   useEffect(() => {
@@ -2015,7 +2015,7 @@ function SettingsPage({ theme, setTheme, showToast, licenseInfo, onUpgrade, onNa
       if (res.success && res.data) {
         setDiagnostics(res.data)
       }
-    } catch {}
+    } catch { }
   }
 
   const handleAutoDetect = async () => {
@@ -2843,7 +2843,7 @@ function AppContent() {
     title: '',
     message: '',
     confirmLabel: 'Confirm',
-    onConfirm: () => {}
+    onConfirm: () => { }
   })
   const [runningCount, setRunningCount] = useState(0)
 
@@ -2855,7 +2855,7 @@ function AppContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.api?.getProxies) {
-      window.api.getProxies().then((r) => { if (r?.success && r.data) setProfilesProxies(r.data) }).catch(() => {})
+      window.api.getProxies().then((r) => { if (r?.success && r.data) setProfilesProxies(r.data) }).catch(() => { })
     }
   }, [currentPage])
 
@@ -2872,7 +2872,7 @@ function AppContent() {
     if (typeof window !== 'undefined' && (window as any).api?.getBrandingConfig) {
       (window as any).api.getBrandingConfig().then((res: any) => {
         if (res?.success && res?.data) setBrandingConfig(res.data)
-      }).catch(() => {})
+      }).catch(() => { })
     }
     const unsub = (window as any).api?.onBrandingUpdated?.((_e: any, config: any) => {
       if (config) setBrandingConfig(config)
@@ -2933,7 +2933,7 @@ function AppContent() {
           }
         }
       }
-    } catch {}
+    } catch { }
   }, [sessionToken, isAuthenticated, installationId])
 
   useEffect(() => {
@@ -2950,7 +2950,7 @@ function AppContent() {
     if (window.api?.getSyncStatus) {
       window.api.getSyncStatus().then((s: any) => {
         if (s) setSyncStatus(s)
-      }).catch(() => {})
+      }).catch(() => { })
     }
 
     const unsubStatus = window.api?.onSyncStatusChanged?.((_e: any, data: any) => {
@@ -3031,9 +3031,9 @@ function AppContent() {
               showToast('success', `🎉 Successfully updated to AntiProfiles v${currentVer}! All profiles, cookies & settings are intact.`)
             }
             localStorage.setItem('ap_last_installed_version', currentVer)
-          } catch {}
+          } catch { }
         }
-      }).catch(() => {})
+      }).catch(() => { })
     }
 
     const checkAppUpdate = async () => {
@@ -3058,7 +3058,7 @@ function AppContent() {
             }
           }
         }
-      } catch {}
+      } catch { }
     }
     checkAppUpdate()
     const updateInterval = setInterval(checkAppUpdate, 2 * 60 * 1000)
@@ -3090,7 +3090,7 @@ function AppContent() {
       try {
         const res = await window.api.getRunningCount()
         if (res.success && typeof res.data === 'number') setRunningCount(res.data)
-      } catch {}
+      } catch { }
     }
     poll()
     timer = setInterval(poll, 3000)
@@ -3284,466 +3284,465 @@ function AppContent() {
 
       <div className="app-layout" style={{ flex: 1, minHeight: 0, width: '100%' }}>
 
-      {/* ── Sidebar ── */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-brand">
-            <img src={brandingConfig?.app?.previewUrl || logoImg} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
-            <span className="sidebar-brand-text">AntiProfiles</span>
+        {/* ── Sidebar ── */}
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-brand">
+              <img src={brandingConfig?.app?.previewUrl || logoImg} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
+              <span className="sidebar-brand-text">AntiProfiles</span>
+            </div>
           </div>
-        </div>
 
-        <nav className="sidebar-nav">
-          {navItems.map((item) => {
-            const showSection = item.section && !renderedSections.includes(item.section)
-            if (item.section) renderedSections.push(item.section)
-            return (
-              <React.Fragment key={item.page}>
-                {showSection && <div className="sidebar-section-label">{item.section}</div>}
-                <button
-                  className={`sidebar-item ${
-                    adminView
+          <nav className="sidebar-nav">
+            {navItems.map((item) => {
+              const showSection = item.section && !renderedSections.includes(item.section)
+              if (item.section) renderedSections.push(item.section)
+              return (
+                <React.Fragment key={item.page}>
+                  {showSection && <div className="sidebar-section-label">{item.section}</div>}
+                  <button
+                    className={`sidebar-item ${adminView
                       ? ((item.page === 'launch_url' && adminInitialTab === 'launch_url') || (item.page === 'admin' && adminInitialTab !== 'launch_url') ? 'active' : '')
                       : (!adminView && currentPage === item.page ? 'active' : '')
-                  }`}
-                  onClick={() => {
-                    if (item.page === 'launch_url') {
-                      setAdminInitialTab('launch_url')
-                      setAdminView(true)
-                    } else if (item.page === 'admin') {
-                      setAdminInitialTab('users')
-                      setAdminView(true)
-                    } else {
-                      setAdminView(false)
-                      setCurrentPage(item.page as Page)
-                    }
-                  }}
-                >
-                  <span className="sidebar-item-icon">{item.icon}</span>
-                  {item.label}
-                  {item.page === 'profiles' && runningCount > 0 && (
-                    <span className="sidebar-item-badge">{runningCount}</span>
-                  )}
-                </button>
-              </React.Fragment>
-            )
-          })}
-        </nav>
+                      }`}
+                    onClick={() => {
+                      if (item.page === 'launch_url') {
+                        setAdminInitialTab('launch_url')
+                        setAdminView(true)
+                      } else if (item.page === 'admin') {
+                        setAdminInitialTab('users')
+                        setAdminView(true)
+                      } else {
+                        setAdminView(false)
+                        setCurrentPage(item.page as Page)
+                      }
+                    }}
+                  >
+                    <span className="sidebar-item-icon">{item.icon}</span>
+                    {item.label}
+                    {item.page === 'profiles' && runningCount > 0 && (
+                      <span className="sidebar-item-badge">{runningCount}</span>
+                    )}
+                  </button>
+                </React.Fragment>
+              )
+            })}
+          </nav>
 
-        <div className="sidebar-footer">
-          <div className="statusbar-item">
-            <span className={`statusbar-dot ${runningCount > 0 ? 'running' : 'stopped'}`} />
-            <span className="text-xs text-secondary">{runningCount} running</span>
+          <div className="sidebar-footer">
+            <div className="statusbar-item">
+              <span className={`statusbar-dot ${runningCount > 0 ? 'running' : 'stopped'}`} />
+              <span className="text-xs text-secondary">{runningCount} running</span>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* ── Main Area ── */}
-      <main className="app-main">
-        <div className="topbar">
-          <span className="topbar-title" style={{ marginLeft: 8 }}>
-            {adminView ? '👑 Admin Control Center' : (navItems.find((n) => n.page === currentPage)?.label || 'AntiProfiles')}
-          </span>
-          <div style={{ flex: 1 }} />
-          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flexShrink: 0 }}>
-            {/* Real-Time Software Update Available Pill */}
-            {availableUpdate && (
+        {/* ── Main Area ── */}
+        <main className="app-main">
+          <div className="topbar">
+            <span className="topbar-title" style={{ marginLeft: 8 }}>
+              {adminView ? '👑 Admin Control Center' : (navItems.find((n) => n.page === currentPage)?.label || 'AntiProfiles')}
+            </span>
+            <div style={{ flex: 1 }} />
+            <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flexShrink: 0 }}>
+              {/* Real-Time Software Update Available Pill */}
+              {availableUpdate && (
+                <button
+                  type="button"
+                  onClick={() => setShowUpdateModal(true)}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #2DD4BF80',
+                    background: 'linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(59, 130, 246, 0.2))',
+                    color: '#2DD4BF',
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 0 12px rgba(45, 212, 191, 0.25)',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="New Software Update Available"
+                >
+                  <span>🚀</span>
+                  <span>Update to v{availableUpdate.version}</span>
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={() => setShowUpdateModal(true)}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #2DD4BF80',
-                  background: 'linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(59, 130, 246, 0.2))',
-                  color: '#2DD4BF',
-                  fontWeight: 700,
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 0 12px rgba(45, 212, 191, 0.25)',
-                  whiteSpace: 'nowrap'
-                }}
-                title="New Software Update Available"
-              >
-                <span>🚀</span>
-                <span>Update to v{availableUpdate.version}</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setViewingPublicLanding(true)}
-              style={{
-                padding: '5px 10px',
-                borderRadius: '6px',
-                border: '1px solid #3B82F650',
-                backgroundColor: '#3B82F615',
-                color: '#60A5FA',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-              title="Public Landing Page"
-            >
-              🌐 Landing
-            </button>
-
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setAdminInitialTab('users')
-                  setAdminView(!adminView)
-                }}
+                onClick={() => setViewingPublicLanding(true)}
                 style={{
                   padding: '5px 10px',
                   borderRadius: '6px',
-                  border: adminView ? '1px solid #F59E0B' : '1px solid #2DD4BF',
-                  backgroundColor: adminView ? '#F59E0B20' : '#2DD4BF20',
-                  color: adminView ? '#F59E0B' : '#2DD4BF',
+                  border: '1px solid #3B82F650',
+                  backgroundColor: '#3B82F615',
+                  color: '#60A5FA',
                   fontWeight: 600,
                   fontSize: '11px',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap'
                 }}
+                title="Public Landing Page"
               >
-                {adminView ? '🌐 Profiles' : '👑 Admin'}
+                🌐 Landing
               </button>
-            )}
 
-            {/* Subscription & Plan Status Pill */}
-            {licenseInfo && (
-              <div
-                onClick={async () => {
-                  try {
-                    if (typeof window !== 'undefined' && (window as any).api?.getUserDevices) {
-                      const res = await (window as any).api.getUserDevices(sessionToken)
-                      if (res?.success) setUserDevices(res.data || [])
-                    }
-                  } catch {}
-                  setShowDevicesModal(true)
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  backgroundColor: licenseInfo.valid ? '#161622' : '#EF444420',
-                  border: licenseInfo.valid ? '1px solid #2C2C3E' : '1px solid #EF444450',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  whiteSpace: 'nowrap'
-                }}
-                title="Click to manage subscription and active devices"
-              >
-                <span style={{ fontWeight: 700, color: '#2DD4BF' }}>💳 {licenseInfo.plan?.name || 'Starter'}</span>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminInitialTab('users')
+                    setAdminView(!adminView)
+                  }}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: adminView ? '1px solid #F59E0B' : '1px solid #2DD4BF',
+                    backgroundColor: adminView ? '#F59E0B20' : '#2DD4BF20',
+                    color: adminView ? '#F59E0B' : '#2DD4BF',
+                    fontWeight: 600,
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {adminView ? '🌐 Profiles' : '👑 Admin'}
+                </button>
+              )}
+
+              {/* Subscription & Plan Status Pill */}
+              {licenseInfo && (
+                <div
+                  onClick={async () => {
+                    try {
+                      if (typeof window !== 'undefined' && (window as any).api?.getUserDevices) {
+                        const res = await (window as any).api.getUserDevices(sessionToken)
+                        if (res?.success) setUserDevices(res.data || [])
+                      }
+                    } catch { }
+                    setShowDevicesModal(true)
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: licenseInfo.valid ? '#161622' : '#EF444420',
+                    border: licenseInfo.valid ? '1px solid #2C2C3E' : '1px solid #EF444450',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="Click to manage subscription and active devices"
+                >
+                  <span style={{ fontWeight: 700, color: '#2DD4BF' }}>💳 {licenseInfo.plan?.name || 'Starter'}</span>
+                  <span style={{
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    backgroundColor: licenseInfo.subscription_status === 'active' ? '#10B98120' : '#EF444420',
+                    color: licenseInfo.subscription_status === 'active' ? '#10B981' : '#F87171'
+                  }}>
+                    {licenseInfo.subscription_status.toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#94A3B8' }}>
+                    ({licenseInfo.device?.device_count || 1}/{licenseInfo.device?.max_devices || 2})
+                  </span>
+                </div>
+              )}
+
+              {/* User Pill */}
+              <div style={{ fontSize: '11px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                <span style={{ fontWeight: 600, color: '#F1F5F9' }}>👤 {currentUser?.name}</span>
                 <span style={{
                   padding: '1px 5px',
                   borderRadius: '4px',
                   fontSize: '10px',
                   fontWeight: 700,
-                  backgroundColor: licenseInfo.subscription_status === 'active' ? '#10B98120' : '#EF444420',
-                  color: licenseInfo.subscription_status === 'active' ? '#10B981' : '#F87171'
+                  backgroundColor: isAdmin ? '#F59E0B20' : '#3B82F620',
+                  color: isAdmin ? '#F59E0B' : '#60A5FA',
+                  border: isAdmin ? '1px solid #F59E0B50' : '1px solid #3B82F650'
                 }}>
-                  {licenseInfo.subscription_status.toUpperCase()}
-                </span>
-                <span style={{ fontSize: '10px', color: '#94A3B8' }}>
-                  ({licenseInfo.device?.device_count || 1}/{licenseInfo.device?.max_devices || 2})
+                  {currentUser?.role.toUpperCase()}
                 </span>
               </div>
-            )}
-
-            {/* User Pill */}
-            <div style={{ fontSize: '11px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-              <span style={{ fontWeight: 600, color: '#F1F5F9' }}>👤 {currentUser?.name}</span>
-              <span style={{
-                padding: '1px 5px',
-                borderRadius: '4px',
-                fontSize: '10px',
-                fontWeight: 700,
-                backgroundColor: isAdmin ? '#F59E0B20' : '#3B82F620',
-                color: isAdmin ? '#F59E0B' : '#60A5FA',
-                border: isAdmin ? '1px solid #F59E0B50' : '1px solid #3B82F650'
-              }}>
-                {currentUser?.role.toUpperCase()}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => logout()}
-              style={{ fontSize: '11px', color: '#F87171', padding: '4px 8px', whiteSpace: 'nowrap' }}
-              title="Sign Out"
-            >
-              Logout
-            </button>
-
-            <button className="btn btn-ghost btn-icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
-              <span style={{ width: 14, height: 14, display: 'flex' }}>{theme === 'dark' ? Icons.sun : Icons.moon}</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="app-content">
-          {adminView && isAdmin ? (
-            <AdminDashboard initialTab={adminInitialTab} />
-          ) : (
-            <>
-              {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} brandingConfig={brandingConfig} proxies={profilesProxies} />}
-              {currentPage === 'profiles' && <ProfilesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} brandingConfig={brandingConfig} />}
-              {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
-              {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
-              {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
-              {currentPage === 'synchronizer' && <SynchronizerPage showToast={showToast} />}
-              {currentPage === 'ultra-pro' && <UltraProSuitePage showToast={showToast} />}
-              {currentPage === 'extensions' && <ExtensionCenterPage showToast={showToast} />}
-              {currentPage === 'rpa' && <RpaBuilderPage showToast={showToast} />}
-              {currentPage === 'cookies' && <CookieManagerPage showToast={showToast} />}
-              {currentPage === 'cloud-sync' && <CloudSyncPage showToast={showToast} />}
-              {currentPage === 'team' && <TeamWorkspacePage showToast={showToast} />}
-              {currentPage === 'crypto-deposit' && <CryptoDepositPage showToast={showToast} />}
-              {currentPage === 'crypto-admin' && isAdmin && <AdminCryptoPage showToast={showToast} />}
-              {currentPage === 'trash' && <TrashPage showToast={showToast} />}
-              {currentPage === 'settings' && (
-                <SettingsPage
-                  theme={theme}
-                  setTheme={setTheme}
-                  showToast={showToast}
-                  licenseInfo={licenseInfo}
-                  onUpgrade={() => setViewingPublicLanding(true)}
-                  onNavigateAdmin={(tab) => {
-                    setAdminInitialTab(tab as any)
-                    setAdminView(true)
-                  }}
-                  onOpenChangelog={() => setShowChangelogModal(true)}
-                />
-              )}
-              {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
-              {(currentPage === 'referral' || (currentPage as any) === 'affiliate') && <ReferralPage showToast={showToast} />}
-              {currentPage === 'support' && <SupportPage showToast={showToast} />}
-            </>
-          )}
-        </div>
-
-        <div className="statusbar">
-          <div className="statusbar-item">
-            <span className={`statusbar-dot ${runningCount > 0 ? 'running' : 'stopped'}`} />
-            {runningCount} profile{runningCount !== 1 ? 's' : ''} running
-          </div>
-          <div style={{ flex: 1 }} />
-          <span className="text-xs text-tertiary">AntiProfiles v2.0.0</span>
-        </div>
-      </main>
-
-      {/* ── Server License Lockout Overlay (Non-Bypassable) ── */}
-      {licenseInfo && !licenseInfo.valid && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: '#0F0F17EE',
-          backdropFilter: 'blur(16px)',
-          zIndex: 99999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px'
-        }}>
-          <div style={{
-            width: '100%',
-            maxWidth: '480px',
-            backgroundColor: '#161622',
-            border: '1px solid #EF444450',
-            borderRadius: '20px',
-            padding: '36px',
-            textAlign: 'center',
-            boxShadow: '0 25px 50px rgba(0,0,0,0.8)'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-              {licenseInfo.subscription_status === 'suspended' ? '🚫' : licenseInfo.subscription_status === 'update_required' ? '🚀' : '⚠️'}
-            </div>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#F1F5F9', margin: '0 0 12px' }}>
-              {licenseInfo.subscription_status === 'expired' ? 'Subscription Expired' : licenseInfo.subscription_status === 'suspended' ? 'Account Suspended' : licenseInfo.subscription_status === 'update_required' ? 'Update Required' : 'Device Limit Reached'}
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: '0 0 24px' }}>
-              {licenseInfo.error || 'Your subscription is currently inactive or restricted by server policy.'}
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button
-                type="button"
-                onClick={() => setViewingPublicLanding(true)}
-                style={{
-                  padding: '12px 20px',
-                  borderRadius: '10px',
-                  backgroundColor: '#2DD4BF',
-                  color: '#0F0F17',
-                  fontWeight: 800,
-                  fontSize: '14px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                💳 Renew Subscription / Upgrade Plan
-              </button>
 
               <button
                 type="button"
-                onClick={checkLicense}
-                style={{
-                  padding: '12px 20px',
-                  borderRadius: '10px',
-                  backgroundColor: '#161622',
-                  border: '1px solid #2C2C3E',
-                  color: '#F1F5F9',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  cursor: 'pointer'
-                }}
-              >
-                🔄 Refresh License & Sync Status
-              </button>
-
-              <button
-                type="button"
+                className="btn btn-ghost"
                 onClick={() => logout()}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#F87171',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  cursor: 'pointer'
-                }}
+                style={{ fontSize: '11px', color: '#F87171', padding: '4px 8px', whiteSpace: 'nowrap' }}
+                title="Sign Out"
               >
-                Sign Out
+                Logout
+              </button>
+
+              <button className="btn btn-ghost btn-icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
+                <span style={{ width: 14, height: 14, display: 'flex' }}>{theme === 'dark' ? Icons.sun : Icons.moon}</span>
               </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ── User Account & Devices Modal ── */}
-      {showDevicesModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
-          <div style={{ width: '90%', maxWidth: '520px', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2C2C3E', paddingBottom: '14px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '18px', color: '#F1F5F9' }}>Account & Active Devices</h3>
-                <span style={{ fontSize: '12px', color: '#94A3B8' }}>{currentUser?.email}</span>
-              </div>
-              <button type="button" onClick={() => setShowDevicesModal(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '18px', cursor: 'pointer' }}>✕</button>
-            </div>
-
-            <div style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-              <div>
-                <div style={{ fontSize: '11px', color: '#94A3B8' }}>CURRENT PLAN</div>
-                <div style={{ fontWeight: 800, color: '#2DD4BF', fontSize: '16px' }}>{licenseInfo?.plan?.name || 'Free'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#94A3B8' }}>EXPIRATION DATE</div>
-                <div style={{ fontWeight: 600, color: '#F1F5F9' }}>{new Date(licenseInfo?.expires_at || Date.now()).toLocaleDateString()}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#94A3B8' }}>PROFILE LIMIT</div>
-                <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.limits?.profiles || 3} Profiles</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#94A3B8' }}>TEAM MEMBERS / DEVICES</div>
-                <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.device?.device_count || 1} / {licenseInfo?.device?.max_devices || licenseInfo?.limits?.team_members || 1} Allowed</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#94A3B8' }}>PROXY SUPPORT</div>
-                <div style={{ fontWeight: 600, color: '#CBD5E1' }}>{licenseInfo?.features?.proxy_support === 'socks5' ? 'HTTP/HTTPS/SOCKS5' : licenseInfo?.features?.proxy_support === 'socks' ? 'HTTP/HTTPS/SOCKS' : 'Basic HTTP'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#94A3B8' }}>AUTOMATION API</div>
-                <div style={{ fontWeight: 600, color: '#CBD5E1' }}>{licenseInfo?.features?.api_access === 'unlimited' ? 'Unlimited API' : licenseInfo?.features?.api_access === 'full' ? 'Full REST & Driver' : licenseInfo?.features?.api_access === 'basic' ? 'Basic API' : '— (No API)'}</div>
-              </div>
-            </div>
-
-            <div>
-              <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#F1F5F9' }}>💻 Active Registered Devices</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                {userDevices.length === 0 ? (
-                  <div style={{ fontSize: '12px', color: '#94A3B8' }}>This device is currently active.</div>
-                ) : (
-                  userDevices.map((dev: any) => (
-                    <div key={dev.id} style={{ padding: '10px 14px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#F1F5F9' }}>{dev.device_name} ({dev.platform})</div>
-                        <div style={{ fontSize: '11px', color: '#94A3B8' }}>v{dev.app_version} • Last seen: {new Date(dev.last_seen_at).toLocaleDateString()}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!window.confirm('Revoke access for this device?')) return
-                          try {
-                            if (typeof window !== 'undefined' && (window as any).api?.revokeDevice) {
-                              await (window as any).api.revokeDevice(sessionToken, dev.installation_id)
-                              const res = await (window as any).api.getUserDevices(sessionToken)
-                              if (res?.success) setUserDevices(res.data || [])
-                              checkLicense()
-                            }
-                          } catch {}
-                        }}
-                        style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid #EF444450', backgroundColor: '#EF444415', color: '#F87171', fontSize: '11px', cursor: 'pointer' }}
-                      >
-                        Revoke
-                      </button>
-                    </div>
-                  ))
+          <div className="app-content">
+            {adminView && isAdmin ? (
+              <AdminDashboard initialTab={adminInitialTab} />
+            ) : (
+              <>
+                {currentPage === 'dashboard' && <DashboardPage onNavigate={setCurrentPage} showToast={showToast} brandingConfig={brandingConfig} proxies={profilesProxies} />}
+                {currentPage === 'profiles' && <ProfilesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} brandingConfig={brandingConfig} />}
+                {currentPage === 'groups' && <GroupsPage showToast={showToast} confirm={showConfirm} />}
+                {currentPage === 'proxies' && <ProxiesPage showToast={showToast} confirm={showConfirm} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
+                {currentPage === 'automation' && <AutomationPage showToast={showToast} licenseInfo={licenseInfo} onUpgrade={() => setViewingPublicLanding(true)} />}
+                {currentPage === 'synchronizer' && <SynchronizerPage showToast={showToast} />}
+                {currentPage === 'ultra-pro' && <UltraProSuitePage showToast={showToast} />}
+                {currentPage === 'extensions' && <ExtensionCenterPage showToast={showToast} />}
+                {currentPage === 'rpa' && <RpaBuilderPage showToast={showToast} />}
+                {currentPage === 'cookies' && <CookieManagerPage showToast={showToast} />}
+                {currentPage === 'cloud-sync' && <CloudSyncPage showToast={showToast} />}
+                {currentPage === 'team' && <TeamWorkspacePage showToast={showToast} />}
+                {currentPage === 'crypto-deposit' && <CryptoDepositPage showToast={showToast} />}
+                {currentPage === 'crypto-admin' && isAdmin && <AdminCryptoPage showToast={showToast} />}
+                {currentPage === 'trash' && <TrashPage showToast={showToast} />}
+                {currentPage === 'settings' && (
+                  <SettingsPage
+                    theme={theme}
+                    setTheme={setTheme}
+                    showToast={showToast}
+                    licenseInfo={licenseInfo}
+                    onUpgrade={() => setViewingPublicLanding(true)}
+                    onNavigateAdmin={(tab) => {
+                      setAdminInitialTab(tab as any)
+                      setAdminView(true)
+                    }}
+                    onOpenChangelog={() => setShowChangelogModal(true)}
+                  />
                 )}
-              </div>
-            </div>
+                {currentPage === 'logs' && <LogsPage showToast={showToast} confirm={showConfirm} />}
+                {(currentPage === 'referral' || (currentPage as any) === 'affiliate') && <ReferralPage showToast={showToast} />}
+                {currentPage === 'support' && <SupportPage showToast={showToast} />}
+              </>
+            )}
+          </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button type="button" onClick={() => setShowDevicesModal(false)} style={{ flex: 1, padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#CBD5E1', cursor: 'pointer' }}>Close</button>
-              <button type="button" onClick={() => { setShowDevicesModal(false); setViewingPublicLanding(true) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Renew / Upgrade Plan</button>
+          <div className="statusbar">
+            <div className="statusbar-item">
+              <span className={`statusbar-dot ${runningCount > 0 ? 'running' : 'stopped'}`} />
+              {runningCount} profile{runningCount !== 1 ? 's' : ''} running
+            </div>
+            <div style={{ flex: 1 }} />
+            <span className="text-xs text-tertiary">AntiProfiles v2.0.0</span>
+          </div>
+        </main>
+
+        {/* ── Server License Lockout Overlay (Non-Bypassable) ── */}
+        {licenseInfo && !licenseInfo.valid && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: '#0F0F17EE',
+            backdropFilter: 'blur(16px)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px'
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '480px',
+              backgroundColor: '#161622',
+              border: '1px solid #EF444450',
+              borderRadius: '20px',
+              padding: '36px',
+              textAlign: 'center',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.8)'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>
+                {licenseInfo.subscription_status === 'suspended' ? '🚫' : licenseInfo.subscription_status === 'update_required' ? '🚀' : '⚠️'}
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#F1F5F9', margin: '0 0 12px' }}>
+                {licenseInfo.subscription_status === 'expired' ? 'Subscription Expired' : licenseInfo.subscription_status === 'suspended' ? 'Account Suspended' : licenseInfo.subscription_status === 'update_required' ? 'Update Required' : 'Device Limit Reached'}
+              </h2>
+              <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: '0 0 24px' }}>
+                {licenseInfo.error || 'Your subscription is currently inactive or restricted by server policy.'}
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setViewingPublicLanding(true)}
+                  style={{
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    backgroundColor: '#2DD4BF',
+                    color: '#0F0F17',
+                    fontWeight: 800,
+                    fontSize: '14px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  💳 Renew Subscription / Upgrade Plan
+                </button>
+
+                <button
+                  type="button"
+                  onClick={checkLicense}
+                  style={{
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    backgroundColor: '#161622',
+                    border: '1px solid #2C2C3E',
+                    color: '#F1F5F9',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔄 Refresh License & Sync Status
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: '#F87171',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Overlays ── */}
-      <SupportChatWidget />
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      <ConfirmDialog state={confirmState} onCancel={() => setConfirmState((s) => ({ ...s, show: false }))} />
+        {/* ── User Account & Devices Modal ── */}
+        {showDevicesModal && (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
+            <div style={{ width: '90%', maxWidth: '520px', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2C2C3E', paddingBottom: '14px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#F1F5F9' }}>Account & Active Devices</h3>
+                  <span style={{ fontSize: '12px', color: '#94A3B8' }}>{currentUser?.email}</span>
+                </div>
+                <button type="button" onClick={() => setShowDevicesModal(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+              </div>
 
-      {/* ── Enterprise Software Update Modal (Non-Bypassable Mandatory Gate) ── */}
-      {availableUpdate && (
-        <UpdateNotificationModal
-          isOpen={Boolean(availableUpdate.mandatory || availableUpdate.forceUpdate || showUpdateModal)}
-          updateInfo={availableUpdate}
+              <div style={{ backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '12px', padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>CURRENT PLAN</div>
+                  <div style={{ fontWeight: 800, color: '#2DD4BF', fontSize: '16px' }}>{licenseInfo?.plan?.name || 'Free'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>EXPIRATION DATE</div>
+                  <div style={{ fontWeight: 600, color: '#F1F5F9' }}>{new Date(licenseInfo?.expires_at || Date.now()).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>PROFILE LIMIT</div>
+                  <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.limits?.profiles || 3} Profiles</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>TEAM MEMBERS / DEVICES</div>
+                  <div style={{ fontWeight: 600, color: '#A5B4FC' }}>{licenseInfo?.device?.device_count || 1} / {licenseInfo?.device?.max_devices || licenseInfo?.limits?.team_members || 1} Allowed</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>PROXY SUPPORT</div>
+                  <div style={{ fontWeight: 600, color: '#CBD5E1' }}>{licenseInfo?.features?.proxy_support === 'socks5' ? 'HTTP/HTTPS/SOCKS5' : licenseInfo?.features?.proxy_support === 'socks' ? 'HTTP/HTTPS/SOCKS' : 'Basic HTTP'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>AUTOMATION API</div>
+                  <div style={{ fontWeight: 600, color: '#CBD5E1' }}>{licenseInfo?.features?.api_access === 'unlimited' ? 'Unlimited API' : licenseInfo?.features?.api_access === 'full' ? 'Full REST & Driver' : licenseInfo?.features?.api_access === 'basic' ? 'Basic API' : '— (No API)'}</div>
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#F1F5F9' }}>💻 Active Registered Devices</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                  {userDevices.length === 0 ? (
+                    <div style={{ fontSize: '12px', color: '#94A3B8' }}>This device is currently active.</div>
+                  ) : (
+                    userDevices.map((dev: any) => (
+                      <div key={dev.id} style={{ padding: '10px 14px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#F1F5F9' }}>{dev.device_name} ({dev.platform})</div>
+                          <div style={{ fontSize: '11px', color: '#94A3B8' }}>v{dev.app_version} • Last seen: {new Date(dev.last_seen_at).toLocaleDateString()}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!window.confirm('Revoke access for this device?')) return
+                            try {
+                              if (typeof window !== 'undefined' && (window as any).api?.revokeDevice) {
+                                await (window as any).api.revokeDevice(sessionToken, dev.installation_id)
+                                const res = await (window as any).api.getUserDevices(sessionToken)
+                                if (res?.success) setUserDevices(res.data || [])
+                                checkLicense()
+                              }
+                            } catch { }
+                          }}
+                          style={{ padding: '4px 10px', borderRadius: '4px', border: '1px solid #EF444450', backgroundColor: '#EF444415', color: '#F87171', fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" onClick={() => setShowDevicesModal(false)} style={{ flex: 1, padding: '10px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E', color: '#CBD5E1', cursor: 'pointer' }}>Close</button>
+                <button type="button" onClick={() => { setShowDevicesModal(false); setViewingPublicLanding(true) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', backgroundColor: '#2DD4BF', color: '#0F0F17', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Renew / Upgrade Plan</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Overlays ── */}
+        <SupportChatWidget />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        <ConfirmDialog state={confirmState} onCancel={() => setConfirmState((s) => ({ ...s, show: false }))} />
+
+        {/* ── Enterprise Software Update Modal (Non-Bypassable Mandatory Gate) ── */}
+        {availableUpdate && (
+          <UpdateNotificationModal
+            isOpen={Boolean(availableUpdate.mandatory || availableUpdate.forceUpdate || showUpdateModal)}
+            updateInfo={availableUpdate}
+            currentVersion={appVersion}
+            onClose={() => {
+              if (availableUpdate?.mandatory || availableUpdate?.forceUpdate) {
+                // Block dismissal on mandatory updates
+                setShowUpdateModal(true)
+                return
+              }
+              if (availableUpdate) {
+                sessionStorage.setItem('dismissed_update_' + availableUpdate.version, 'true')
+              }
+              setShowUpdateModal(false)
+            }}
+            onOpenChangelog={() => setShowChangelogModal(true)}
+          />
+        )}
+
+        {/* ── Version History & Changelog Modal ── */}
+        <VersionHistoryModal
+          isOpen={showChangelogModal}
+          onClose={() => setShowChangelogModal(false)}
           currentVersion={appVersion}
-          onClose={() => {
-            if (availableUpdate?.mandatory || availableUpdate?.forceUpdate) {
-              // Block dismissal on mandatory updates
-              setShowUpdateModal(true)
-              return
-            }
-            if (availableUpdate) {
-              sessionStorage.setItem('dismissed_update_' + availableUpdate.version, 'true')
-            }
-            setShowUpdateModal(false)
-          }}
-          onOpenChangelog={() => setShowChangelogModal(true)}
         />
-      )}
-
-      {/* ── Version History & Changelog Modal ── */}
-      <VersionHistoryModal
-        isOpen={showChangelogModal}
-        onClose={() => setShowChangelogModal(false)}
-        currentVersion={appVersion}
-      />
       </div>
     </div>
   )
