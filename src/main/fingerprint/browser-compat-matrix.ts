@@ -41,54 +41,54 @@ export const BROWSER_COMPAT_MATRIX: BrowserCompatRule[] = [
   {
     osType: 'windows-11',
     browsers: [
-      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 100, max: 135 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome', 'webgpu'] },
-      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 100, max: 135 }, featureFlags: ['pdf-viewer'] }
+      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 100, max: 150 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome', 'webgpu'] },
+      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 100, max: 150 }, featureFlags: ['pdf-viewer'] }
     ]
   },
   {
     osType: 'windows-10',
     browsers: [
-      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 90, max: 135 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome', 'webgpu'] },
-      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 90, max: 135 }, featureFlags: ['pdf-viewer'] }
+      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 90, max: 150 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome', 'webgpu'] },
+      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 90, max: 150 }, featureFlags: ['pdf-viewer'] }
     ]
   },
   // macOS
   {
     osType: 'macos-arm',
     browsers: [
-      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 100, max: 135 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome'] },
-      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 100, max: 135 }, featureFlags: ['pdf-viewer'] }
+      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 100, max: 150 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome'] },
+      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 100, max: 150 }, featureFlags: ['pdf-viewer'] }
     ]
   },
   {
     osType: 'macos-intel',
     browsers: [
-      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 90, max: 135 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome'] },
-      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 90, max: 135 }, featureFlags: ['pdf-viewer'] }
+      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 90, max: 150 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome'] },
+      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 90, max: 150 }, featureFlags: ['pdf-viewer'] }
     ]
   },
   // Linux
   {
     osType: 'linux',
     browsers: [
-      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 90, max: 135 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome'] },
-      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 90, max: 135 }, featureFlags: ['pdf-viewer'] }
+      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 90, max: 150 }, featureFlags: ['client-hints', 'pdf-viewer', 'window-chrome'] },
+      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 90, max: 150 }, featureFlags: ['pdf-viewer'] }
     ]
   },
   // iOS — all browsers use WebKit engine
   {
     osType: 'ios',
     browsers: [
-      { browser: 'chrome', engine: 'webkit', supportedVersionRange: { min: 100, max: 135 }, featureFlags: [] },
-      { browser: 'firefox', engine: 'webkit', supportedVersionRange: { min: 100, max: 135 }, featureFlags: [] }
+      { browser: 'chrome', engine: 'webkit', supportedVersionRange: { min: 100, max: 150 }, featureFlags: [] },
+      { browser: 'firefox', engine: 'webkit', supportedVersionRange: { min: 100, max: 150 }, featureFlags: [] }
     ]
   },
   // Android
   {
     osType: 'android',
     browsers: [
-      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 100, max: 135 }, featureFlags: ['client-hints', 'window-chrome'] },
-      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 100, max: 135 }, featureFlags: [] }
+      { browser: 'chrome', engine: 'blink', supportedVersionRange: { min: 100, max: 150 }, featureFlags: ['client-hints', 'window-chrome'] },
+      { browser: 'firefox', engine: 'gecko', supportedVersionRange: { min: 100, max: 150 }, featureFlags: [] }
     ]
   }
 ]

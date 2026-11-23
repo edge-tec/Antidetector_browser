@@ -193,26 +193,31 @@ export class DeviceConsistencyValidator {
         maxTouchPoints = 5
         const uaModelMatch = (params.userAgent || '').match(/Android\s+[\d.]+;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?\)/i)
         const extractedModel = uaModelMatch && uaModelMatch[1] && uaModelMatch[1].trim() !== 'K' ? uaModelMatch[1].trim() : ''
-        model = params.deviceModel || extractedModel || 'SM-S928B'
+        model = params.deviceModel || extractedModel || 'SM-S948B'
         bitness = '64'
         defaultUA = `Mozilla/5.0 (Linux; Android ${verParts[0]}; ${model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVer} Mobile Safari/537.36`
         defaultAppVersion = `5.0 (Linux; Android ${verParts[0]}; ${model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browserVer} Mobile Safari/537.36`
         break
       }
 
-      case 'ios':
+      case 'ios': {
+        const uaIosVerMatch = (params.userAgent || '').match(/iPhone OS\s+(\d+(?:_\d+)*)/i)
+        const rawIosVer = uaIosVerMatch ? uaIosVerMatch[1].replace(/_/g, '.') : '26.1'
+        const iosParts = rawIosVer.split('.')
+        const iosUaToken = rawIosVer.replace(/\./g, '_')
         architecture = 'arm64'
         mobile = true
         touch = true
         platformString = 'iPhone'
         clientHintsPlatform = 'iOS'
-        clientHintsPlatformVersion = '18.0.0'
+        clientHintsPlatformVersion = `${iosParts[0]}.${iosParts[1] || '0'}.${iosParts[2] || '0'}`
         maxTouchPoints = 5
         model = 'iPhone'
         bitness = '64'
-        defaultUA = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1`
-        defaultAppVersion = `5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1`
+        defaultUA = `Mozilla/5.0 (iPhone; CPU iPhone OS ${iosUaToken} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${rawIosVer} Mobile/15E148 Safari/604.1`
+        defaultAppVersion = `5.0 (iPhone; CPU iPhone OS ${iosUaToken} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${rawIosVer} Mobile/15E148 Safari/604.1`
         break
+      }
     }
 
     const finalUA = params.userAgent || defaultUA

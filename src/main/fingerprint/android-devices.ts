@@ -71,7 +71,7 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
     brand: 'Samsung',
     modelName: 'Galaxy S25 Ultra (SM-S938B)',
     modelCode: 'SM-S938B',
-    androidVersion: '15',
+    androidVersion: '16',
     cpu: 'Snapdragon 8 Elite (Adreno 830)',
     gpuVendor: 'Qualcomm',
     gpuRenderer: 'Adreno (TM) 830',
@@ -80,6 +80,21 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
     dpr: 3.5,
     cores: 8,
     memory: 16
+  },
+  {
+    id: 'samsung-s25-edge',
+    brand: 'Samsung',
+    modelName: 'Galaxy S25 Edge (SM-S937B)',
+    modelCode: 'SM-S937B',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 919,
+    dpr: 3.5,
+    cores: 8,
+    memory: 12
   },
   {
     id: 'samsung-s25-plus',
@@ -369,11 +384,71 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
 
   // ── 2. Google Pixel (Next-Gen & Modern) ──
   {
+    id: 'pixel-10-pro-xl',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 10 Pro XL',
+    modelCode: 'Pixel 10 Pro XL',
+    androidVersion: '16',
+    cpu: 'Google Tensor G5 (PowerVR DXT-48-1536)',
+    gpuVendor: 'Imagination Technologies',
+    gpuRenderer: 'PowerVR DXT-48-1536',
+    screenWidth: 412,
+    screenHeight: 924,
+    dpr: 3.0,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'pixel-10-pro',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 10 Pro',
+    modelCode: 'Pixel 10 Pro',
+    androidVersion: '16',
+    cpu: 'Google Tensor G5 (PowerVR DXT-48-1536)',
+    gpuVendor: 'Imagination Technologies',
+    gpuRenderer: 'PowerVR DXT-48-1536',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.0,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'pixel-10',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 10',
+    modelCode: 'Pixel 10',
+    androidVersion: '16',
+    cpu: 'Google Tensor G5 (PowerVR DXT-48-1536)',
+    gpuVendor: 'Imagination Technologies',
+    gpuRenderer: 'PowerVR DXT-48-1536',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 2.625,
+    cores: 8,
+    memory: 12
+  },
+  {
+    id: 'pixel-9a',
+    brand: 'Google Pixel',
+    modelName: 'Pixel 9a',
+    modelCode: 'Pixel 9a',
+    androidVersion: '15',
+    cpu: 'Google Tensor G4 (Immortalis-G715)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G715 Immortalis MC12',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 2.625,
+    cores: 8,
+    memory: 8
+  },
+  {
     id: 'pixel-9-pro-xl',
     brand: 'Google Pixel',
     modelName: 'Pixel 9 Pro XL',
     modelCode: 'Pixel 9 Pro XL',
-    androidVersion: '15',
+    androidVersion: '16',
     cpu: 'Google Tensor G4 (Immortalis-G715)',
     gpuVendor: 'ARM',
     gpuRenderer: 'Mali-G715 Immortalis MC12',
@@ -551,6 +626,81 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
 
   // ── 3. Xiaomi / Redmi / POCO ──
   {
+    id: 'xiaomi-15-ultra',
+    brand: 'Xiaomi / Redmi',
+    modelName: 'Xiaomi 15 Ultra (25010PN30G)',
+    modelCode: '25010PN30G',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 919,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'xiaomi-15-pro',
+    brand: 'Xiaomi / Redmi',
+    modelName: 'Xiaomi 15 Pro (2410DPN6CC)',
+    modelCode: '2410DPN6CC',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'xiaomi-15',
+    brand: 'Xiaomi / Redmi',
+    modelName: 'Xiaomi 15 (24129PN74G)',
+    modelCode: '24129PN74G',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 393,
+    screenHeight: 873,
+    dpr: 3.0,
+    cores: 8,
+    memory: 12
+  },
+  {
+    id: 'redmi-note-14-pro-plus',
+    brand: 'Xiaomi / Redmi',
+    modelName: 'Redmi Note 14 Pro+ 5G (24090RA29G)',
+    modelCode: '24090RA29G',
+    androidVersion: '15',
+    cpu: 'Snapdragon 7s Gen 3 (Adreno 810)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 810',
+    screenWidth: 393,
+    screenHeight: 873,
+    dpr: 3.0,
+    cores: 8,
+    memory: 12
+  },
+  {
+    id: 'poco-f7-ultra',
+    brand: 'Xiaomi / Redmi',
+    modelName: 'POCO F7 Ultra (24122RKC7G)',
+    modelCode: '24122RKC7G',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
+  {
     id: 'xiaomi-14-pro',
     brand: 'Xiaomi / Redmi',
     modelName: 'Xiaomi 14 Pro (23116PN5BC)',
@@ -643,6 +793,36 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
 
   // ── 4. OnePlus ──
   {
+    id: 'oneplus-13',
+    brand: 'OnePlus',
+    modelName: 'OnePlus 13 (CPH2653)',
+    modelCode: 'CPH2653',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 919,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'oneplus-13r',
+    brand: 'OnePlus',
+    modelName: 'OnePlus 13R (CPH2645)',
+    modelCode: 'CPH2645',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Gen 3 (Adreno 750)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 750',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.0,
+    cores: 8,
+    memory: 16
+  },
+  {
     id: 'oneplus-12',
     brand: 'OnePlus',
     modelName: 'OnePlus 12 (CPH2581)',
@@ -720,6 +900,21 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
 
   // ── 5. Oppo ──
   {
+    id: 'oppo-find-x8-pro',
+    brand: 'Oppo',
+    modelName: 'Oppo Find X8 Pro (CPH2659)',
+    modelCode: 'CPH2659',
+    androidVersion: '15',
+    cpu: 'Dimensity 9400 (Immortalis-G925)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G925 Immortalis MC12',
+    screenWidth: 412,
+    screenHeight: 919,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
+  {
     id: 'oppo-find-x7-ultra',
     brand: 'Oppo',
     modelName: 'Oppo Find X7 Ultra (PHY110)',
@@ -766,6 +961,36 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
   },
 
   // ── 6. Vivo / iQOO ──
+  {
+    id: 'vivo-x200-pro',
+    brand: 'Vivo',
+    modelName: 'Vivo X200 Pro (V2405A)',
+    modelCode: 'V2405A',
+    androidVersion: '15',
+    cpu: 'Dimensity 9400 (Immortalis-G925)',
+    gpuVendor: 'ARM',
+    gpuRenderer: 'Mali-G925 Immortalis MC12',
+    screenWidth: 412,
+    screenHeight: 919,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
+  {
+    id: 'vivo-iqoo-13',
+    brand: 'Vivo',
+    modelName: 'iQOO 13 (V2408A)',
+    modelCode: 'V2408A',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 919,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
   {
     id: 'vivo-x100-pro',
     brand: 'Vivo',
@@ -878,6 +1103,21 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
 
   // ── 9. Asus ROG ──
   {
+    id: 'asus-rog-9-pro',
+    brand: 'Asus ROG',
+    modelName: 'Asus ROG Phone 9 Pro (AI2501)',
+    modelCode: 'AI2501',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.0,
+    cores: 8,
+    memory: 24
+  },
+  {
     id: 'asus-rog-8-pro',
     brand: 'Asus ROG',
     modelName: 'Asus ROG Phone 8 Pro (AI2401)',
@@ -909,6 +1149,21 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
   },
 
   // ── 10. Nothing Phone ──
+  {
+    id: 'nothing-phone-3a-pro',
+    brand: 'Nothing Phone',
+    modelName: 'Nothing Phone (3a) Pro (A059P)',
+    modelCode: 'A059P',
+    androidVersion: '15',
+    cpu: 'Snapdragon 7s Gen 3 (Adreno 810)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 810',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.0,
+    cores: 8,
+    memory: 12
+  },
   {
     id: 'nothing-phone-2',
     brand: 'Nothing Phone',
@@ -942,6 +1197,21 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
 
   // ── 11. Realme ──
   {
+    id: 'realme-gt-7-pro',
+    brand: 'Realme',
+    modelName: 'Realme GT 7 Pro (RMX5011)',
+    modelCode: 'RMX5011',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 915,
+    dpr: 3.0,
+    cores: 8,
+    memory: 16
+  },
+  {
     id: 'realme-gt-5-pro',
     brand: 'Realme',
     modelName: 'Realme GT 5 Pro (RMX3888)',
@@ -973,6 +1243,21 @@ export const ANDROID_DEVICES: AndroidDeviceSpec[] = [
   },
 
   // ── 12. Honor ──
+  {
+    id: 'honor-magic-7-pro',
+    brand: 'Honor',
+    modelName: 'Honor Magic 7 Pro (PTP-AN10)',
+    modelCode: 'PTP-AN10',
+    androidVersion: '15',
+    cpu: 'Snapdragon 8 Elite (Adreno 830)',
+    gpuVendor: 'Qualcomm',
+    gpuRenderer: 'Adreno (TM) 830',
+    screenWidth: 412,
+    screenHeight: 919,
+    dpr: 3.5,
+    cores: 8,
+    memory: 16
+  },
   {
     id: 'honor-magic-6-pro',
     brand: 'Honor',
@@ -1016,7 +1301,7 @@ export function getDeviceById(idOrCode: string): AndroidDeviceSpec | undefined {
 }
 export const getAndroidDeviceById = getDeviceById
 
-export function generateAndroidUserAgent(device: AndroidDeviceSpec, browser: 'chrome' | 'firefox' = 'chrome', version = '128.0.0.0'): string {
+export function generateAndroidUserAgent(device: AndroidDeviceSpec, browser: 'chrome' | 'firefox' = 'chrome', version = '136.0.7103.92'): string {
   if (browser === 'firefox') {
     const ffVer = version.includes('.') ? version : `${version}.0`
     return `Mozilla/5.0 (Android ${device.androidVersion}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`

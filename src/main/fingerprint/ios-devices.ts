@@ -21,11 +21,26 @@ export interface IosDeviceSpec {
 
 export const IOS_DEVICES: IosDeviceSpec[] = [
   {
+    id: 'iphone-17-ultra',
+    brand: 'Apple',
+    modelName: 'iPhone 17 Ultra',
+    modelCode: 'iPhone18,5',
+    iosVersion: '26.2',
+    cpu: 'Apple A19 Pro (6 Cores)',
+    gpuVendor: 'Apple Inc.',
+    gpuRenderer: 'Apple A19 Pro GPU',
+    screenWidth: 440,
+    screenHeight: 956,
+    dpr: 3.0,
+    cores: 6,
+    memory: 12
+  },
+  {
     id: 'iphone-17-pro-max',
     brand: 'Apple',
     modelName: 'iPhone 17 Pro Max',
     modelCode: 'iPhone18,2',
-    iosVersion: '26.0',
+    iosVersion: '26.1',
     cpu: 'Apple A19 Pro (6 Cores)',
     gpuVendor: 'Apple Inc.',
     gpuRenderer: 'Apple A19 Pro GPU',
@@ -40,7 +55,7 @@ export const IOS_DEVICES: IosDeviceSpec[] = [
     brand: 'Apple',
     modelName: 'iPhone 17 Pro',
     modelCode: 'iPhone18,1',
-    iosVersion: '26.0',
+    iosVersion: '26.1',
     cpu: 'Apple A19 Pro (6 Cores)',
     gpuVendor: 'Apple Inc.',
     gpuRenderer: 'Apple A19 Pro GPU',
@@ -59,8 +74,23 @@ export const IOS_DEVICES: IosDeviceSpec[] = [
     cpu: 'Apple A19 (6 Cores)',
     gpuVendor: 'Apple Inc.',
     gpuRenderer: 'Apple A19 GPU',
-    screenWidth: 414,
-    screenHeight: 896,
+    screenWidth: 420,
+    screenHeight: 912,
+    dpr: 3.0,
+    cores: 6,
+    memory: 8
+  },
+  {
+    id: 'iphone-17-plus',
+    brand: 'Apple',
+    modelName: 'iPhone 17 Plus',
+    modelCode: 'iPhone18,6',
+    iosVersion: '26.0',
+    cpu: 'Apple A19 (6 Cores)',
+    gpuVendor: 'Apple Inc.',
+    gpuRenderer: 'Apple A19 GPU',
+    screenWidth: 430,
+    screenHeight: 932,
     dpr: 3.0,
     cores: 6,
     memory: 8
@@ -85,7 +115,7 @@ export const IOS_DEVICES: IosDeviceSpec[] = [
     brand: 'Apple',
     modelName: 'iPhone 16 Pro Max',
     modelCode: 'iPhone17,2',
-    iosVersion: '18.0',
+    iosVersion: '18.4',
     cpu: 'Apple A18 Pro (6 Cores)',
     gpuVendor: 'Apple Inc.',
     gpuRenderer: 'Apple A18 Pro GPU',
@@ -100,7 +130,7 @@ export const IOS_DEVICES: IosDeviceSpec[] = [
     brand: 'Apple',
     modelName: 'iPhone 16 Pro',
     modelCode: 'iPhone17,1',
-    iosVersion: '18.0',
+    iosVersion: '18.4',
     cpu: 'Apple A18 Pro (6 Cores)',
     gpuVendor: 'Apple Inc.',
     gpuRenderer: 'Apple A18 Pro GPU',
@@ -115,7 +145,7 @@ export const IOS_DEVICES: IosDeviceSpec[] = [
     brand: 'Apple',
     modelName: 'iPhone 16 Plus',
     modelCode: 'iPhone17,4',
-    iosVersion: '18.0',
+    iosVersion: '18.3.1',
     cpu: 'Apple A18 (6 Cores)',
     gpuVendor: 'Apple Inc.',
     gpuRenderer: 'Apple A18 GPU',
@@ -130,12 +160,27 @@ export const IOS_DEVICES: IosDeviceSpec[] = [
     brand: 'Apple',
     modelName: 'iPhone 16',
     modelCode: 'iPhone17,3',
-    iosVersion: '18.0',
+    iosVersion: '18.3.1',
     cpu: 'Apple A18 (6 Cores)',
     gpuVendor: 'Apple Inc.',
     gpuRenderer: 'Apple A18 GPU',
     screenWidth: 393,
     screenHeight: 852,
+    dpr: 3.0,
+    cores: 6,
+    memory: 8
+  },
+  {
+    id: 'iphone-16e',
+    brand: 'Apple',
+    modelName: 'iPhone 16e',
+    modelCode: 'iPhone17,5',
+    iosVersion: '18.4',
+    cpu: 'Apple A18 (6 Cores)',
+    gpuVendor: 'Apple Inc.',
+    gpuRenderer: 'Apple A18 GPU',
+    screenWidth: 390,
+    screenHeight: 844,
     dpr: 3.0,
     cores: 6,
     memory: 8
@@ -279,12 +324,12 @@ export function generateGenuineIosSafariUserAgent(device: IosDeviceSpec): string
 export function generateIosUserAgent(
   device: IosDeviceSpec,
   browserType: 'chrome' | 'firefox' | 'safari' = 'chrome',
-  browserVersion = '128.0.6613.120'
+  browserVersion = '136.0.7103.92'
 ): string {
   if (browserType === 'safari') {
     return generateGenuineIosSafariUserAgent(device)
   }
-  const osVerFormatted = (device.iosVersion || '18.0').replace(/\./g, '_')
+  const osVerFormatted = (device.iosVersion || '26.1').replace(/\./g, '_')
   if (browserType === 'firefox') {
     const ffVer = browserVersion.includes('.') ? browserVersion : `${browserVersion}.0`
     return `Mozilla/5.0 (iPhone; CPU iPhone OS ${osVerFormatted} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/${ffVer} Mobile/15E148 Safari/605.1.15`

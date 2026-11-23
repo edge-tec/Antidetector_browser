@@ -16,7 +16,7 @@ export function buildNavigatorScript(
   const isMac = !isWin && (nav.platform.includes('Mac') || (nav.userAgent && nav.userAgent.includes('Macintosh')))
   const isLinux = !isWin && !isMac && !isMobile && (nav.platform.includes('Linux') || (nav.userAgent && nav.userAgent.includes('Linux')))
 
-  const brandVersion = nav.browserVersion ? nav.browserVersion.split('.')[0] : '131'
+  const brandVersion = nav.browserVersion ? nav.browserVersion.split('.')[0] : '136'
   const clientPlatform = isMobile
     ? (isIos ? 'iOS' : 'Android')
     : (isWin ? 'Windows' : isMac ? 'macOS' : 'Linux')
@@ -24,26 +24,34 @@ export function buildNavigatorScript(
   // Extract accurate device model for mobile Client Hints
   const uaModelMatch = (nav.userAgent || '').match(/Android\s+[\d.]+;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?\)/i)
   const resolvedModel = isMobile
-    ? ((nav as any).deviceModelCode || (nav as any).deviceModel || (uaModelMatch && uaModelMatch[1] && uaModelMatch[1] !== 'K' ? uaModelMatch[1].trim() : '') || (isIos ? 'iPhone' : 'SM-S928B'))
+    ? ((nav as any).deviceModelCode || (nav as any).deviceModel || (uaModelMatch && uaModelMatch[1] && uaModelMatch[1] !== 'K' ? uaModelMatch[1].trim() : '') || (isIos ? 'iPhone' : 'SM-S948B'))
     : ''
 
   // Extract accurate OS platformVersion for Client Hints
   const uaAndroidVerMatch = (nav.userAgent || '').match(/Android\s+(\d+(?:\.\d+)?)/i)
   const rawAndroidVer = (nav as any).androidVersion || (uaAndroidVerMatch ? uaAndroidVerMatch[1] : '')
+  const uaIosVerMatch = (nav.userAgent || '').match(/iPhone OS\s+(\d+(?:_\d+)*)/i)
+  const rawIosVer = (nav as any).iosVersion || (uaIosVerMatch ? uaIosVerMatch[1].replace(/_/g, '.') : '')
   const resolvedPlatformVersion = (() => {
     if (clientPlatform === 'Android') {
       if (rawAndroidVer) {
         const parts = String(rawAndroidVer).split('.')
         return `${parts[0]}.${parts[1] || '0'}.${parts[2] || '0'}`
       }
-      return '14.0.0'
+      return '16.0.0'
     }
     if (clientPlatform === 'Windows') {
       return (nav as any).osType === 'windows-10' ? '10.0.0' : '15.0.0'
     }
-    if (clientPlatform === 'macOS') return '14.5.0'
-    if (clientPlatform === 'iOS') return '18.0.0'
-    return '6.5.0'
+    if (clientPlatform === 'macOS') return '15.2.0'
+    if (clientPlatform === 'iOS') {
+      if (rawIosVer) {
+        const parts = String(rawIosVer).split('.')
+        return `${parts[0]}.${parts[1] || '0'}.${parts[2] || '0'}`
+      }
+      return '26.1.0'
+    }
+    return '6.8.0'
   })()
 
   const resolvedChArch = (clientPlatform === 'Android' || (nav.cpuArchitecture || '').toLowerCase().includes('arm') || (nav as any).osType === 'macos-arm')
@@ -208,8 +216,8 @@ export function buildNavigatorScript(
       { brand: 'Not_A Brand', version: '24' }
     ];
     const fullVersionList = [
-      { brand: 'Chromium', version: ${JSON.stringify(nav.browserVersion || '131.0.0.0')} },
-      { brand: 'Google Chrome', version: ${JSON.stringify(nav.browserVersion || '131.0.0.0')} },
+      { brand: 'Chromium', version: ${JSON.stringify(nav.browserVersion || '136.0.7103.92')} },
+      { brand: 'Google Chrome', version: ${JSON.stringify(nav.browserVersion || '136.0.7103.92')} },
       { brand: 'Not_A Brand', version: '24.0.0.0' }
     ];
 
@@ -227,7 +235,7 @@ export function buildNavigatorScript(
           model: ${JSON.stringify(resolvedModel)},
           platformVersion: ${JSON.stringify(resolvedPlatformVersion)},
           fullVersionList: fullVersionList,
-          uaFullVersion: ${JSON.stringify(nav.browserVersion || '131.0.0.0')}
+          uaFullVersion: ${JSON.stringify(nav.browserVersion || '136.0.7103.92')}
         });
       }, 'getHighEntropyValues'),
       toJSON: cloak(function() {

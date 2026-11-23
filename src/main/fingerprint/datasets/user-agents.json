@@ -37,15 +37,22 @@
     { "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", "version": "122.0.0.0", "chromium": "122" }
   ],
   "android": [
-    { "ua": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36", "version": "124.0.0.0", "chromium": "124" },
-    { "ua": "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36", "version": "124.0.0.0", "chromium": "124" },
-    { "ua": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36", "version": "125.0.0.0", "chromium": "125" },
-    { "ua": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36", "version": "123.0.0.0", "chromium": "123" }
+    { "ua": "Mozilla/5.0 (Linux; Android 16; SM-S948B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.92 Mobile Safari/537.36", "version": "136.0.7103.92", "chromium": "136" },
+    { "ua": "Mozilla/5.0 (Linux; Android 16; Pixel 10 Pro XL) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.92 Mobile Safari/537.36", "version": "136.0.7103.92", "chromium": "136" },
+    { "ua": "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.92 Mobile Safari/537.36", "version": "136.0.7103.92", "chromium": "136" },
+    { "ua": "Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro XL) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.165 Mobile Safari/537.36", "version": "134.0.6998.165", "chromium": "134" },
+    { "ua": "Mozilla/5.0 (Linux; Android 15; CPH2653) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.165 Mobile Safari/537.36", "version": "134.0.6998.165", "chromium": "134" },
+    { "ua": "Mozilla/5.0 (Linux; Android 15; 25010PN30G) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.264 Mobile Safari/537.36", "version": "131.0.6778.264", "chromium": "131" },
+    { "ua": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.264 Mobile Safari/537.36", "version": "131.0.6778.264", "chromium": "131" },
+    { "ua": "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.120 Mobile Safari/537.36", "version": "128.0.6613.120", "chromium": "128" }
   ],
   "ios": [
+    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/136.0.7103.92 Mobile/15E148 Safari/604.1", "version": "136.0.7103.92", "chromium": "136" },
+    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/136.0.7103.92 Mobile/15E148 Safari/604.1", "version": "136.0.7103.92", "chromium": "136" },
+    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/134.0.6998.165 Mobile/15E148 Safari/604.1", "version": "134.0.6998.165", "chromium": "134" },
+    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/134.0.6998.165 Mobile/15E148 Safari/604.1", "version": "134.0.6998.165", "chromium": "134" },
+    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.264 Mobile/15E148 Safari/604.1", "version": "131.0.6778.264", "chromium": "131" },
     { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.114 Mobile/15E148 Safari/604.1", "version": "128.0.6613.114", "chromium": "128" },
-    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/125.0.6422.80 Mobile/15E148 Safari/604.1", "version": "125.0.6422.80", "chromium": "125" },
-    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/124.0.6367.111 Mobile/15E148 Safari/604.1", "version": "124.0.6367.111", "chromium": "124" },
-    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/123.0.6312.52 Mobile/15E148 Safari/604.1", "version": "123.0.6312.52", "chromium": "123" }
+    { "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.114 Mobile/15E148 Safari/604.1", "version": "128.0.6613.114", "chromium": "128" }
   ]
 }

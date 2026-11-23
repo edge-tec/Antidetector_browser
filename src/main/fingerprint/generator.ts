@@ -101,8 +101,8 @@ export const OS_APP_VERSION_PREFIX: Record<OSType, string> = {
   'macos-intel': '5.0 (Macintosh; Intel Mac OS X 10_15_7)',
   'macos-arm': '5.0 (Macintosh; Intel Mac OS X 10_15_7)',
   'linux': '5.0 (X11; Linux x86_64)',
-  'android': '5.0 (Linux; Android 14)',
-  'ios': '5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'
+  'android': '5.0 (Linux; Android 16)',
+  'ios': '5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X)'
 }
 
 export const OS_CPU_ARCHITECTURES: Record<OSFamily, { arch: string; platformArch: string }> = {
@@ -151,7 +151,7 @@ const WEBGL_EXTENSIONS = [
 export function formatUserAgent(
   osType: OSType,
   browserType: 'chrome' | 'firefox' = 'chrome',
-  browserVersion = '131.0.0.0',
+  browserVersion = '136.0.7103.92',
   deviceModelId?: string
 ): string {
   const family = getOSFamily(osType)
@@ -163,8 +163,8 @@ export function formatUserAgent(
 
   if (family === 'android') {
     const dev = (deviceModelId ? getAndroidDeviceById(deviceModelId) : null) || ANDROID_DEVICES[0]
-    const osVer = dev.androidVersion || '14'
-    const modelCode = dev.modelCode || 'SM-S928B'
+    const osVer = dev.androidVersion || '16'
+    const modelCode = dev.modelCode || 'SM-S948B'
     if (browserType === 'firefox') {
       const ffVer = browserVersion.includes('.') ? browserVersion : `${browserVersion}.0`
       return `Mozilla/5.0 (Android ${osVer}; Mobile; rv:${ffVer}) Gecko/${ffVer} Firefox/${ffVer}`
@@ -223,13 +223,13 @@ export function recalculateDependentFields(
 
   const browserType: 'chrome' | 'firefox' =
     options.browserType || currentFp?.browser?.type || (currentFp?.navigator?.userAgent?.includes('Firefox') ? 'firefox' : 'chrome')
-  let defaultVer = browserType === 'firefox' ? '129.0' : '128.0.6613.120'
+  let defaultVer = browserType === 'firefox' ? '135.0' : '136.0.7103.92'
   let rawVersion = options.browserVersion || currentFp?.browser?.version || currentFp?.navigator?.browserVersion || defaultVer
-  if (browserType === 'firefox' && (rawVersion.split('.').length > 2 || rawVersion.includes('6613') || rawVersion.includes('Chrome'))) {
-    rawVersion = '129.0'
+  if (browserType === 'firefox' && (rawVersion.split('.').length > 2 || rawVersion.includes('6613') || rawVersion.includes('7103') || rawVersion.includes('Chrome'))) {
+    rawVersion = '135.0'
   }
   if (browserType === 'chrome' && rawVersion.split('.').length <= 2) {
-    rawVersion = '128.0.6613.120'
+    rawVersion = '136.0.7103.92'
   }
   const browserVersion = rawVersion
 

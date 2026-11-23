@@ -134,17 +134,17 @@ export function resolveMasterProfile(input: MasterProfileInput): MasterResolvedP
   const isLinux = osFamily === 'linux'
 
   const browserType: 'chrome' | 'firefox' = input.browserType === 'firefox' ? 'firefox' : 'chrome'
-  const defaultVer = browserType === 'firefox' ? '129.0' : '128.0.6613.120'
+  const defaultVer = browserType === 'firefox' ? '135.0' : '136.0.7103.92'
   let rawVersion = (input.browserVersion && input.browserVersion.trim()) || defaultVer
-  if (browserType === 'firefox' && (rawVersion.split('.').length > 2 || rawVersion.includes('6613') || rawVersion.includes('Chrome'))) {
-    rawVersion = '129.0'
+  if (browserType === 'firefox' && (rawVersion.split('.').length > 2 || rawVersion.includes('6613') || rawVersion.includes('7103') || rawVersion.includes('Chrome'))) {
+    rawVersion = '135.0'
   }
   if (browserType === 'chrome' && rawVersion.split('.').length <= 2) {
-    rawVersion = '128.0.6613.120'
+    rawVersion = '136.0.7103.92'
   }
   const match = rawVersion.match(/\d+(\.\d+)*/)
   const browserVersion = match ? match[0] : defaultVer
-  const majorBrowserVersion = browserVersion.split('.')[0] || (browserType === 'firefox' ? '129' : '128')
+  const majorBrowserVersion = browserVersion.split('.')[0] || (browserType === 'firefox' ? '135' : '136')
   const engine = getEngineForBrowser(osType, browserType)
 
   const seed = input.seed || (input.existingFingerprint as any)?.seed || crypto.randomBytes(16).toString('hex')
