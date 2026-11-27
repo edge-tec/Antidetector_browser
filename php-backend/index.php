@@ -587,6 +587,10 @@ if (empty($dynamicPricingPlans)) {
         ['id' => 'plan_business', 'name' => 'Business', 'slug' => 'business', 'description' => 'Dedicated Account Manager', 'monthly_price' => 99, 'yearly_price' => 79, 'profile_limit' => 500, 'team_limit' => 25, 'api_limit' => 'Unlimited API', 'badge' => 'BEST VALUE', 'is_popular' => 0, 'sort_order' => 4],
     ];
 }
+if (!headers_sent()) {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -4189,7 +4193,7 @@ if (empty($dynamicPricingPlans)) {
                 <button type="button" id="lpBillingYearlyBtn" class="lp-billing-btn" onclick="setLandingBillingCycle('yearly')">Yearly <span class="lp-save-pill">Save 20%</span></button>
             </div>
         </div>
-        <div class="pricing-section-grid">
+        <div class="pricing-section-grid" id="landingPricingCardsGrid">
             <?php foreach ($dynamicPricingPlans as $dp):
                 $pId = (string)($dp['id'] ?? '');
                 $pSlug = htmlspecialchars((string)($dp['slug'] ?? $pId), ENT_QUOTES, 'UTF-8');
@@ -5239,7 +5243,7 @@ if (empty($dynamicPricingPlans)) {
                                     </div>
                                 </div>
                             </div>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px;">
+                            <div id="portalUpgradePlansGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px;">
                                 <?php foreach ($dynamicPricingPlans as $up):
                                     $upPrice = (float)($up['monthly_price'] ?? 0);
                                     if ($upPrice <= 0) continue;
@@ -12896,6 +12900,132 @@ if (empty($dynamicPricingPlans)) {
             }
         }
 
+        async function refreshLivePricingCards() {
+            try {
+                const res = await fetch('/api/public/landing-data?t=' + Date.now(), { cache: 'no-store' });
+                const payload = await res.json();
+                if (!payload || !payload.success || !payload.data) return;
+                const plans = Array.isArray(payload.data.pricing_plans) ? payload.data.pricing_plans : [];
+                if (!plans.length) return;
+
+                const trial = payload.data.trial_settings || {};
+                const trialActive = !!(trial.is_enabled == 1 || trial.is_enabled === true);
+                const trialDays = Math.max(1, Number(trial.trial_duration_days || 7));
+                const trialPlanId = trial.default_plan_id || 'plan_starter';
+                const trialScope = trial.applies_to_packages || 'all';
+                const isTrialFor = (id) => trialActive && (trialScope === 'all' || trialPlanId === id);
+                const fmtPrice = (n) => {
+                    const num = Number(n || 0);
+                    return '$' + (num === Math.floor(num) ? String(num) : num.toFixed(2));
+                };
+                const isLoggedIn = !!getActiveUserToken();
+
+                // 1. Re-render Landing Page #pricing cards immediately
+                const landingGrid = document.getElementById('landingPricingCardsGrid');
+                if (landingGrid) {
+                    const isYearly = document.getElementById('lpBillingYearlyBtn')?.classList.contains('active');
+                    landingGrid.innerHTML = plans.map(dp => {
+                        const pId = String(dp.id || '');
+                        const pSlug = escapeHtml(dp.slug || pId);
+                        const pName = String(dp.name || 'Plan');
+                        const pNameEsc = escapeHtml(pName);
+                        const mPrice = Number(dp.monthly_price || 0);
+                        const yPrice = (dp.yearly_price !== undefined && dp.yearly_price !== null && dp.yearly_price !== '') ? Number(dp.yearly_price) : Math.round(mPrice * 80) / 100;
+                        const mFmt = fmtPrice(mPrice);
+                        const yFmt = fmtPrice(yPrice);
+                        const pProfiles = Number(dp.profile_limit || 25);
+                        const pUsers = Number(dp.team_limit || 2);
+                        const pApi = escapeHtml(dp.api_limit || 'Basic API');
+                        const pBadge = String(dp.badge || '').trim();
+                        const pDesc = String(dp.description || '').trim();
+                        const pPopular = (dp.is_popular == 1 || dp.is_popular === true);
+                        const isFree = mPrice <= 0;
+                        const hasTrial = !isFree && isTrialFor(pId);
+                        const cardBorder = pPopular
+                            ? 'border: 2px solid #2DD4BF; box-shadow: 0 14px 44px rgba(45, 212, 191, 0.16);'
+                            : (hasTrial ? 'border-color: rgba(45, 212, 191, 0.45);' : 'border-color: rgba(148, 163, 184, 0.15);');
+                        const proxyLabel = isFree ? 'Basic' : 'HTTP/HTTPS/SOCKS5';
+                        const fpLabel = isFree ? 'Standard' : (pProfiles >= 300 ? 'Full Hardware Spoofing' : 'Advanced Controls');
+                        const supportLabel = pDesc ? escapeHtml(pDesc) : (isFree ? 'Community' : (pPopular ? 'Priority 24/7' : '24/7 Email & Chat'));
+
+                        let badgeTop = '';
+                        if (hasTrial && pBadge) {
+                            badgeTop = `<span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>${trialDays}-DAY FREE TRIAL • ${escapeHtml(pBadge)}</span>`;
+                        } else if (hasTrial) {
+                            badgeTop = `<span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>${trialDays}-DAY FREE TRIAL</span>`;
+                        } else if (pBadge) {
+                            badgeTop = `<span style="position: absolute; top: -12px; right: 20px; background: ${pPopular ? 'linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;' : 'rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4);'} font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">${escapeHtml(pBadge)}</span>`;
+                        }
+
+                        let ctaHtml = '';
+                        if (isFree) {
+                            ctaHtml = `<button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'free')">Start Free</button>`;
+                        } else if (hasTrial && !isLoggedIn) {
+                            ctaHtml = `
+                                <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="${escapeHtml(pId)}" data-plan-name="${pNameEsc}" data-plan-amount="${mPrice}" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick="handlePlanAction(${JSON.stringify(pId).replace(/"/g, '&quot;')}, ${JSON.stringify(pName).replace(/"/g, '&quot;')}, ${mPrice}, true)"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start ${trialDays}-Day Free Trial</button>
+                                <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px; ${pPopular ? 'border-color: rgba(45, 212, 191, 0.4); color: #2DD4BF;' : ''}" onclick="handlePlanAction(${JSON.stringify(pId).replace(/"/g, '&quot;')}, ${JSON.stringify(pName).replace(/"/g, '&quot;')}, ${mPrice}, false)">Pay &amp; Upgrade (${mFmt})</button>`;
+                        } else {
+                            ctaHtml = `<button class="btn ${pPopular ? 'btn-primary' : 'btn-outline'} lp-plan-cta-btn" data-plan-id="${escapeHtml(pId)}" data-plan-name="${pNameEsc}" data-plan-amount="${mPrice}" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="handlePlanAction(${JSON.stringify(pId).replace(/"/g, '&quot;')}, ${JSON.stringify(pName).replace(/"/g, '&quot;')}, ${mPrice}, false)">Pay &amp; Upgrade (${mFmt})</button>`;
+                        }
+
+                        return `
+                        <div id="plan-card-${pSlug}" class="plan-card ${pPopular ? 'popular' : ''}" style="${cardBorder}">
+                            ${badgeTop}
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                <h3 style="font-size: 19px; color: #FFF; margin: 0;">${pNameEsc}</h3>
+                                ${hasTrial ? '<span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Trial Available</span>' : ''}
+                            </div>
+                            <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="${mFmt}" data-yearly="${yFmt}">${isYearly ? yFmt : mFmt}</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                            ${ctaHtml}
+                            <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
+                                <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">${pProfiles.toLocaleString()} Profiles</strong></li>
+                                <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Proxy Support: <strong style="color: #E2E8F0;">${proxyLabel}</strong></li>
+                                <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Fingerprint Controls: <strong style="color: #E2E8F0;">${fpLabel}</strong></li>
+                                <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Team Users: <strong style="color: #E2E8F0;">${pUsers} ${pUsers === 1 ? 'User' : 'Users'}</strong></li>
+                                <li>${(isFree && (pApi === '—' || pApi === 'None')) ? '— API Access: <strong style="color: #64748B;">—</strong>' : '<svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> API Access: <strong style="color: #E2E8F0;">' + pApi + '</strong>'}</li>
+                                <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Support: <strong style="color: #E2E8F0;">${supportLabel}</strong></li>
+                            </ul>
+                        </div>`;
+                    }).join('');
+                }
+
+                // 2. Re-render User Portal upgrade cards immediately
+                const portalGrid = document.getElementById('portalUpgradePlansGrid');
+                if (portalGrid) {
+                    const paidPlans = plans.filter(p => Number(p.monthly_price || 0) > 0);
+                    portalGrid.innerHTML = paidPlans.map(up => {
+                        const upId = String(up.id || '');
+                        const upName = String(up.name || 'Plan');
+                        const upNameEsc = escapeHtml(upName);
+                        const upPrice = Number(up.monthly_price || 0);
+                        const upFmt = fmtPrice(upPrice);
+                        const upProfiles = Number(up.profile_limit || 25);
+                        const upUsers = Number(up.team_limit || 2);
+                        const upApi = escapeHtml(up.api_limit || 'Full API Access');
+                        const upBadge = String(up.badge || '').trim();
+                        const upPop = (up.is_popular == 1 || up.is_popular === true);
+                        return `
+                        <div style="background: ${upPop ? 'linear-gradient(180deg, rgba(45, 212, 191, 0.1), rgba(8, 11, 19, 0.9))' : 'rgba(8, 11, 19, 0.85)'}; border: ${upPop ? '1.5px solid #2DD4BF; box-shadow: 0 12px 30px rgba(45, 212, 191, 0.12);' : '1px solid rgba(148,163,184,0.18);'} border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                                    <span style="font-size: 15px; font-weight: 700; color: #FFF;">${upNameEsc}</span>
+                                    ${upBadge ? `<span style="background: ${upPop ? '#2DD4BF; color: #04131A;' : 'rgba(129, 140, 248, 0.2); color: #A5B4FC;'} font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;">${escapeHtml(upBadge)}</span>` : ''}
+                                </div>
+                                <div style="font-size: 30px; font-weight: 800; color: #2DD4BF; margin: 10px 0 14px 0;">${upFmt} <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
+                                <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: ${upPop ? '#CBD5E1' : '#94A3B8'}; display: flex; flex-direction: column; gap: 8px;">
+                                    <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>${upProfiles.toLocaleString()} Browser Profiles</span></li>
+                                    <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>${upUsers} Team Users &amp; Devices</span></li>
+                                    <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>HTTP/HTTPS/SOCKS5 Proxies</span></li>
+                                    <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>${upApi}</span></li>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn ${upPop ? 'btn-primary' : 'btn-outline'}" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; ${upPop ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800;' : 'font-weight: 700;'} display: inline-flex; align-items: center; gap: 7px;" onclick="initiatePackagePayment(${JSON.stringify(upId).replace(/"/g, '&quot;')}, ${JSON.stringify(upName).replace(/"/g, '&quot;')}, ${upPrice})"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade (${upFmt})</span></button>
+                        </div>`;
+                    }).join('');
+                }
+            } catch(e) {}
+        }
+
         let _cachedAdminPlans = [];
 
         async function loadAdminPricingPlans() {
@@ -13041,8 +13171,9 @@ if (empty($dynamicPricingPlans)) {
                         msgEl.style.display = 'block';
                         msgEl.style.background = 'rgba(16,185,129,0.16)';
                         msgEl.style.color = '#34D399';
-                        msgEl.textContent = '✓ ' + (data.message || 'Package saved! Refresh the page to see it on Landing & Checkout.');
+                        msgEl.textContent = '✓ ' + (data.message || 'Package saved and synced live across Landing Page & User Portal!');
                         loadAdminPricingPlans();
+                        refreshLivePricingCards();
                     } else {
                         msgEl.style.background = 'rgba(239,68,68,0.16)';
                         msgEl.style.color = '#FCA5A5';
@@ -13075,6 +13206,7 @@ if (empty($dynamicPricingPlans)) {
                 const data = await res.json();
                 if (data.success) {
                     loadAdminPricingPlans();
+                    refreshLivePricingCards();
                 } else {
                     alert(data.error || 'Failed to delete package.');
                 }
@@ -15395,6 +15527,7 @@ if (empty($dynamicPricingPlans)) {
                 loadUserPortalData();
             }
             fetchReleasesAndUpdateLanding();
+            if (typeof refreshLivePricingCards === 'function') refreshLivePricingCards();
 
             // Check for specific package plan or affiliate offer in URL
             try {

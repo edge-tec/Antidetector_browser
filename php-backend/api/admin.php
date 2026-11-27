@@ -1262,43 +1262,61 @@ switch ($action) {
             $isActive = isset($input['is_active']) ? (!empty($input['is_active']) ? 1 : 0) : 1;
             $sortOrder = (int)($input['sort_order'] ?? 10);
 
-            $stmt = $db->prepare("
-                INSERT INTO pricing_plans (id, name, slug, description, monthly_price, yearly_price, profile_limit, team_limit, api_limit, badge, button_text, button_url, is_popular, is_active, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    name = VALUES(name),
-                    slug = VALUES(slug),
-                    description = VALUES(description),
-                    monthly_price = VALUES(monthly_price),
-                    yearly_price = VALUES(yearly_price),
-                    profile_limit = VALUES(profile_limit),
-                    team_limit = VALUES(team_limit),
-                    api_limit = VALUES(api_limit),
-                    badge = VALUES(badge),
-                    button_text = VALUES(button_text),
-                    button_url = VALUES(button_url),
-                    is_popular = VALUES(is_popular),
-                    is_active = VALUES(is_active),
-                    sort_order = VALUES(sort_order),
-                    updated_at = CURRENT_TIMESTAMP
-            ");
-            $stmt->execute([
-                $planId,
-                $name,
-                $slug,
-                $description,
-                $monthlyPrice,
-                $yearlyPrice,
-                $profileLimit,
-                $teamLimit,
-                $apiLimit,
-                $badge,
-                $buttonText,
-                $buttonUrl,
-                $isPopular,
-                $isActive,
-                $sortOrder
-            ]);
+            // Check if editing an existing package ID
+            $existsStmt = $db->prepare("SELECT id, slug FROM pricing_plans WHERE id = ? LIMIT 1");
+            $existsStmt->execute([$planId]);
+            $existingRow = $existsStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existingRow) {
+                // Keep existing slug if name didn't change, or ensure uniqueness if it did
+                $finalSlug = $existingRow['slug'] ?: $slug;
+                $updStmt = $db->prepare("
+                    UPDATE pricing_plans
+                    SET name = ?, slug = ?, description = ?, monthly_price = ?, yearly_price = ?,
+                        profile_limit = ?, team_limit = ?, api_limit = ?, badge = ?,
+                        button_text = ?, button_url = ?, is_popular = ?, is_active = ?, sort_order = ?
+                    WHERE id = ?
+                ");
+                $updStmt->execute([
+                    $name,
+                    $finalSlug,
+                    $description,
+                    $monthlyPrice,
+                    $yearlyPrice,
+                    $profileLimit,
+                    $teamLimit,
+                    $apiLimit,
+                    $badge,
+                    $buttonText,
+                    $buttonUrl,
+                    $isPopular,
+                    $isActive,
+                    $sortOrder,
+                    $planId
+                ]);
+            } else {
+                $stmt = $db->prepare("
+                    INSERT INTO pricing_plans (id, name, slug, description, monthly_price, yearly_price, profile_limit, team_limit, api_limit, badge, button_text, button_url, is_popular, is_active, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $planId,
+                    $name,
+                    $slug,
+                    $description,
+                    $monthlyPrice,
+                    $yearlyPrice,
+                    $profileLimit,
+                    $teamLimit,
+                    $apiLimit,
+                    $badge,
+                    $buttonText,
+                    $buttonUrl,
+                    $isPopular,
+                    $isActive,
+                    $sortOrder
+                ]);
+            }
 
             logAdminAction($admin['id'], $admin['email'], 'SAVE_PRICING_PLAN', $planId, "Saved package {$name} (\${$monthlyPrice}/mo, {$profileLimit} profiles, {$teamLimit} users)");
             respondJson([
