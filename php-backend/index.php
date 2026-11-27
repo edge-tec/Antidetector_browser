@@ -1685,12 +1685,12 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         }
 
         .admin-sidebar {
-            width: 250px;
-            min-width: 250px;
-            background: #0F1016;
-            border-right: 1px solid var(--border);
+            width: 268px;
+            min-width: 268px;
+            background: linear-gradient(180deg, #0C101B 0%, #090C14 100%);
+            border-right: 1px solid rgba(148, 163, 184, 0.12);
             overflow-y: auto;
-            padding: 16px 10px;
+            padding: 18px 12px;
             display: flex;
             flex-direction: column;
             box-sizing: border-box;
@@ -1699,8 +1699,11 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         .admin-viewport-wrapper {
             flex: 1;
             overflow-y: auto;
-            background: #08090E;
-            padding: 24px 20px 60px 20px;
+            background:
+                radial-gradient(ellipse 65% 32% at 50% 0%, rgba(45, 212, 191, 0.065), transparent 70%),
+                radial-gradient(ellipse 45% 28% at 85% 10%, rgba(99, 102, 241, 0.06), transparent 65%),
+                #07090F;
+            padding: 28px 26px 64px 26px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1712,18 +1715,139 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            animation: tabFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: tabFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .admin-card-box {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 22px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(180deg, rgba(19, 24, 38, 0.92) 0%, rgba(13, 16, 27, 0.96) 100%);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
             margin-bottom: 22px;
             width: 100%;
             box-sizing: border-box;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .admin-card-box:hover {
+            border-color: rgba(148, 163, 184, 0.24);
+        }
+
+        /* Enhanced User Portal Components */
+        .portal-hero-banner {
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.1) 0%, rgba(99, 102, 241, 0.1) 55%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1px solid rgba(45, 212, 191, 0.24);
+            border-radius: 18px;
+            padding: 22px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 18px;
+            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .portal-avatar-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #2DD4BF 0%, #6366F1 100%);
+            color: #06121A;
+            font-size: 20px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 8px 22px rgba(45, 212, 191, 0.28);
+            letter-spacing: 0.02em;
+        }
+        .portal-card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: rgba(45, 212, 191, 0.12);
+            border: 1px solid rgba(45, 212, 191, 0.28);
+            color: #2DD4BF;
+        }
+        .portal-card-icon.indigo {
+            background: rgba(99, 102, 241, 0.14);
+            border-color: rgba(129, 140, 248, 0.3);
+            color: #A5B4FC;
+        }
+        .portal-card-icon.amber {
+            background: rgba(245, 158, 11, 0.14);
+            border-color: rgba(245, 158, 11, 0.3);
+            color: #FBBF24;
+        }
+        .portal-card-icon.emerald {
+            background: rgba(16, 185, 129, 0.14);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #34D399;
+        }
+        .portal-kpi-card {
+            background: linear-gradient(180deg, rgba(19, 24, 38, 0.92) 0%, rgba(12, 15, 25, 0.96) 100%);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 16px;
+            padding: 20px;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+        }
+        .portal-kpi-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(45, 212, 191, 0.34);
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+        }
+        .portal-input {
+            width: 100%;
+            background: rgba(8, 11, 19, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 11px;
+            padding: 12px 14px;
+            color: #F8FAFC;
+            font-size: 13.5px;
+            margin-top: 6px;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+        .portal-input:focus {
+            border-color: #2DD4BF;
+            background: rgba(11, 15, 26, 0.98);
+            box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.14);
+        }
+        .portal-sidebar-user-card {
+            margin-top: auto;
+            padding: 12px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .admin-sidebar-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #E2E8F0;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+        .admin-sidebar-toggle:hover {
+            background: rgba(45, 212, 191, 0.12);
+            border-color: rgba(45, 212, 191, 0.4);
+            color: #2DD4BF;
         }
 
         .admin-grid-2col {
@@ -1779,30 +1903,35 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         .admin-sidebar-btn {
             width: 100%;
             padding: 10px 12px;
-            margin-bottom: 4px;
-            border-radius: 8px;
+            margin-bottom: 5px;
+            border-radius: 11px;
             background: transparent;
-            border: none;
-            color: var(--text-muted);
+            border: 1px solid transparent;
+            color: #94A3B8;
             font-size: 13px;
             font-weight: 600;
             text-align: left;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.18s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
         .admin-sidebar-btn:hover {
-            background: rgba(255, 255, 255, 0.06);
-            color: #FFF;
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(148, 163, 184, 0.12);
+            color: #F8FAFC;
             transform: translateX(2px);
         }
         .admin-sidebar-btn.active {
-            background: linear-gradient(135deg, var(--primary), #4F46E5);
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.16) 0%, rgba(99, 102, 241, 0.18) 100%);
+            border-color: rgba(45, 212, 191, 0.35);
             color: #FFF;
-            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+            box-shadow: 0 6px 18px rgba(45, 212, 191, 0.12);
             font-weight: 700;
+        }
+        .admin-sidebar-btn.active .lp-ico {
+            color: #2DD4BF;
         }
 
         /* Footer */
@@ -1940,9 +2069,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         }
 
         .admin-top-bar {
-            padding: 12px 20px;
-            background: #151720;
-            border-bottom: 1px solid var(--border);
+            padding: 12px 22px;
+            background: rgba(12, 16, 27, 0.94);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -2590,6 +2720,15 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <symbol id="lp-ico-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
             <symbol id="lp-ico-map-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
             <symbol id="lp-ico-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+            <symbol id="lp-ico-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+            <symbol id="lp-ico-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+            <symbol id="lp-ico-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+            <symbol id="lp-ico-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+            <symbol id="lp-ico-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+            <symbol id="lp-ico-paperclip" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+            <symbol id="lp-ico-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+            <symbol id="lp-ico-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+            <symbol id="lp-ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
         </defs>
     </svg>
 
@@ -4697,21 +4836,32 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             <div class="admin-top-bar" id="adminTopBar">
                 <div class="admin-top-left">
                     <button class="admin-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="Toggle Menu" id="adminSidebarToggleBtn">
-                        <span style="font-size: 15px; line-height: 1;">☰</span> <span class="btn-text-menu" style="font-size: 12px;">Menu</span>
+                        <svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-menu"></use></svg>
+                        <span class="btn-text-menu" style="font-size: 12px;">Menu</span>
                     </button>
                     <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img admin-top-logo" onerror="this.onerror=null; this.src='/logo.png';">
                     <div class="admin-top-info">
-                        <h2>Central Web Control Center</h2>
-                        <p id="adminUserInfo">Logged in as System Admin</p>
+                        <h2>Account Workspace</h2>
+                        <p id="adminUserInfo">Logged in as AntiProfiles Member</p>
                     </div>
                 </div>
-                <div class="admin-top-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <a href="/" target="_blank" class="btn btn-outline" style="font-size: 12px; padding: 7px 14px; text-decoration: none; border-color: rgba(255,255,255,0.15); color: #FFF; display: inline-flex; align-items: center; gap: 6px;">🌐 Landing</a>
-                    <button type="button" class="btn btn-outline admin-only-section" onclick="switchAdminTab('releases')" style="font-size: 12px; padding: 7px 14px; border-color: rgba(45,212,191,0.5); color: #2DD4BF; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; background: rgba(45,212,191,0.1); cursor: pointer;" title="Manage software version releases and broadcast real-time update alerts to all devices">
-                        🚀 Software Update & Releases
+                <div class="admin-top-right" style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
+                    <a href="/" target="_blank" class="btn btn-outline" style="font-size: 12px; padding: 7px 13px; text-decoration: none; border-color: rgba(148,163,184,0.22); color: #E2E8F0; display: inline-flex; align-items: center; gap: 6px; border-radius: 10px;">
+                        <svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-globe"></use></svg>
+                        <span>Website</span>
+                    </a>
+                    <button type="button" class="btn btn-outline admin-only-section" onclick="switchAdminTab('releases')" style="font-size: 12px; padding: 7px 13px; border-color: rgba(45,212,191,0.45); color: #2DD4BF; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; background: rgba(45,212,191,0.1); cursor: pointer; border-radius: 10px;" title="Manage software version releases and broadcast real-time update alerts to all devices">
+                        <svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-rocket"></use></svg>
+                        <span>Releases</span>
                     </button>
-                    <button class="btn btn-outline admin-btn-logout" onclick="handleLogout()">🚪 <span class="btn-text-logout">Logout</span></button>
-                    <button class="close-modal admin-btn-close" onclick="closeAdminDashboard()">✕ <span class="btn-text-close">Close</span></button>
+                    <button class="btn btn-outline admin-btn-logout" onclick="handleLogout()" style="border-radius: 10px; gap: 6px;">
+                        <svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-logout"></use></svg>
+                        <span class="btn-text-logout">Logout</span>
+                    </button>
+                    <button class="close-modal admin-btn-close" onclick="closeAdminDashboard()" style="border-radius: 10px; padding: 6px 11px !important;">
+                        <span style="font-size: 15px; line-height: 1;">&times;</span>
+                        <span class="btn-text-close">Close</span>
+                    </button>
                 </div>
             </div>
 
@@ -4726,106 +4876,149 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     <!-- Mobile Sidebar Close Button -->
                     <div class="admin-sidebar-close-row" style="display: none; padding: 10px 8px 14px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 13px; font-weight: 700; color: #FFF; display: flex; align-items: center; gap: 6px;">📂 Navigation</span>
-                            <button onclick="toggleAdminSidebar(true)" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #FFF; font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: 600;">✕ Close</button>
+                            <span style="font-size: 13px; font-weight: 700; color: #FFF; display: flex; align-items: center; gap: 7px;"><svg class="lp-ico" width="15" height="15" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-layers"></use></svg> Navigation</span>
+                            <button onclick="toggleAdminSidebar(true)" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #FFF; font-size: 12px; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-weight: 600;">&times; Close</button>
                         </div>
                     </div>
                     <!-- User Profile & Controls Section (Visible to ALL users) -->
-                    <div class="admin-sidebar-header" style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 8px 12px;">MY ACCOUNT PORTAL</div>
-                    <button class="admin-sidebar-btn active" id="btnTabMyProfile" onclick="switchAdminTab('my-profile', this)">👤 My Profile & Password</button>
-                    <button class="admin-sidebar-btn" id="btnTabMySubscription" onclick="switchAdminTab('my-subscription', this)">💳 My Subscription & Quota</button>
-                    <button class="admin-sidebar-btn" id="btnTabMyAffiliate" onclick="switchAdminTab('my-affiliate', this)">🤝 My Affiliate & CPA Portal</button>
-                    <button class="admin-sidebar-btn" id="btnTabUserDownloads" onclick="switchAdminTab('user-downloads', this)">🚀 Desktop App Downloads</button>
-                    <button class="admin-sidebar-btn" id="btnTabUserSupport" onclick="switchAdminTab('user-support', this)">💬 Help & Live Support</button>
+                    <div class="admin-sidebar-header" style="font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; color: #64748B; text-transform: uppercase; padding: 6px 12px 10px 12px;">MY ACCOUNT PORTAL</div>
+                    <button class="admin-sidebar-btn active" id="btnTabMyProfile" onclick="switchAdminTab('my-profile', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-user"></use></svg><span>My Profile &amp; Password</span></button>
+                    <button class="admin-sidebar-btn" id="btnTabMySubscription" onclick="switchAdminTab('my-subscription', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>My Subscription &amp; Quota</span></button>
+                    <button class="admin-sidebar-btn" id="btnTabMyAffiliate" onclick="switchAdminTab('my-affiliate', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-link"></use></svg><span>Affiliate &amp; CPA Portal</span></button>
+                    <button class="admin-sidebar-btn" id="btnTabUserDownloads" onclick="switchAdminTab('user-downloads', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-download"></use></svg><span>Desktop App Downloads</span></button>
+                    <button class="admin-sidebar-btn" id="btnTabUserSupport" onclick="switchAdminTab('user-support', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-headset"></use></svg><span>Help &amp; Live Support</span></button>
 
                     <!-- Admin Control Sections (Hidden for regular users, visible ONLY for admins) -->
-                    <div class="admin-sidebar-header admin-only-section" style="font-size: 11px; font-weight: 700; color: #818CF8; text-transform: uppercase; padding: 16px 12px 8px 12px;">ADMIN CONTROL PANEL</div>
-                    <button class="admin-sidebar-btn admin-only-section" id="btnTabUsers" onclick="switchAdminTab('users', this)">👥 All Users & Accounts</button>
-                    <button class="admin-sidebar-btn admin-only-section" id="btnTabAdminAffiliates" onclick="switchAdminTab('admin-affiliates', this)">🤝 Affiliate & CPA Control</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('subscriptions', this)">💳 Subscription Manager</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('gateways', this)">⚡ Payment Gateways</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('payments', this)">💰 Payments & Invoices</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profiles', this)">🌐 Browser Profiles Engine</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profile-audit', this)">🔬 7-Layer Settings Audit</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('releases', this)">🚀 App Downloads Config</button>
+                    <div class="admin-sidebar-header admin-only-section" style="font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; color: #818CF8; text-transform: uppercase; padding: 18px 12px 8px 12px; margin-top: 8px; border-top: 1px solid rgba(148,163,184,0.1);">ADMIN CONTROL PANEL</div>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabUsers" onclick="switchAdminTab('users', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-users"></use></svg><span>All Users &amp; Accounts</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabAdminAffiliates" onclick="switchAdminTab('admin-affiliates', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-link"></use></svg><span>Affiliate &amp; CPA Control</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('subscriptions', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-award"></use></svg><span>Subscription Manager</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('gateways', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-bolt"></use></svg><span>Payment Gateways</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('payments', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-coins"></use></svg><span>Payments &amp; Invoices</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profiles', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-globe"></use></svg><span>Browser Profiles Engine</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('profile-audit', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-fingerprint"></use></svg><span>7-Layer Settings Audit</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('releases', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-rocket"></use></svg><span>App Downloads Config</span></button>
                     <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('support', this)" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>💬 Admin Support Inbox</span>
+                        <span style="display:inline-flex; align-items:center; gap:10px;"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-chat"></use></svg><span>Admin Support Inbox</span></span>
                         <span id="adminSupportSidebarBadge" style="display:none; background:#EF4444; color:#FFF; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">0</span>
                     </button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('notifications', this)">🔔 Broadcast Notifications</button>
-                    <button class="admin-sidebar-btn admin-only-section" id="btnTabGoogleOauth" onclick="switchAdminTab('google-oauth', this)">🔑 Google OAuth Config</button>
-                    <button class="admin-sidebar-btn admin-only-section" id="btnTabCaptcha" onclick="switchAdminTab('captcha', this)">🛡️ Bot Protection (Captcha)</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)">📧 Email & SMTP Config</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('seo', this)">🔍 SEO & Meta Manager</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('landing', this)">🎨 Landing CMS & Pricing</button>
-                    <button class="admin-sidebar-btn admin-only-section" id="btnTabSoftwareFeatures" onclick="switchAdminTab('software-features', this)">✨ Software Features CMS</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('roles', this)">🔑 Roles & Permissions</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('security', this)">🛡️ Security Logs</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('audit', this)">📜 System Audit Logs</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('health', this)">🩺 Health Checks</button>
-                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('settings', this)">⚙️ aaPanel DB Settings</button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('notifications', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-bell"></use></svg><span>Broadcast Notifications</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabGoogleOauth" onclick="switchAdminTab('google-oauth', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-key"></use></svg><span>Google OAuth Config</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabCaptcha" onclick="switchAdminTab('captcha', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-shield"></use></svg><span>Bot Protection (Captcha)</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('smtp', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-mail"></use></svg><span>Email &amp; SMTP Config</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('seo', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-search"></use></svg><span>SEO &amp; Meta Manager</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('landing', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-layers"></use></svg><span>Landing CMS &amp; Pricing</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" id="btnTabSoftwareFeatures" onclick="switchAdminTab('software-features', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg><span>Software Features CMS</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('roles', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-lock"></use></svg><span>Roles &amp; Permissions</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('security', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-shield"></use></svg><span>Security Logs</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('audit', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-file-text"></use></svg><span>System Audit Logs</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('health', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-activity"></use></svg><span>Health Checks</span></button>
+                    <button class="admin-sidebar-btn admin-only-section" onclick="switchAdminTab('settings', this)"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-database"></use></svg><span>aaPanel DB Settings</span></button>
+
+                    <!-- Sidebar Bottom Compact Account Summary -->
+                    <div class="portal-sidebar-user-card" style="margin-top: 16px;">
+                        <div class="portal-avatar-circle" id="portalSidebarAvatar" style="width: 36px; height: 36px; border-radius: 10px; font-size: 13px;">U</div>
+                        <div style="min-width: 0; flex: 1;">
+                            <div id="portalSidebarUserName" style="font-size: 12.5px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Account</div>
+                            <div id="portalSidebarUserEmail" style="font-size: 11px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">member@antiprofiles.com</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Content Panel -->
                 <div class="admin-viewport-wrapper">
                     
                     <!-- Global Trial Expired Warning & Locking Paywall Banner -->
-                    <div id="userTrialExpiredPaywallBanner" style="display: none; background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.08)); border: 1px solid rgba(239, 68, 68, 0.45); border-radius: 14px; padding: 18px 22px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.25);">
+                    <div id="userTrialExpiredPaywallBanner" style="display: none; background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.08)); border: 1px solid rgba(239, 68, 68, 0.45); border-radius: 16px; padding: 18px 22px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.22); width: 100%; max-width: 1200px; box-sizing: border-box;">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                             <div style="display: flex; align-items: center; gap: 14px;">
-                                <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; font-size: 22px;">
-                                    🔒
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; color: #FCA5A5;">
+                                    <svg class="lp-ico" width="21" height="21" aria-hidden="true"><use href="#lp-ico-lock"></use></svg>
                                 </div>
                                 <div>
-                                    <h4 style="color: #F87171; margin: 0; font-weight: 800; font-size: 16px;">Your Free Trial Has Expired (All Options Locked)</h4>
-                                    <p style="color: #CBD5E1; font-size: 12.5px; margin: 3px 0 0 0;">Browser profile launching, new profile creation, proxy setup, and team options are locked. Please subscribe to an active plan to unlock your profiles immediately.</p>
+                                    <h4 style="color: #FCA5A5; margin: 0; font-weight: 800; font-size: 15.5px;">Your Free Trial Has Expired (All Options Locked)</h4>
+                                    <p style="color: #CBD5E1; font-size: 12.5px; margin: 3px 0 0 0;">Browser profile launching, new profile creation, proxy setup, and team options are locked. Subscribe to an active plan to unlock immediately.</p>
                                 </div>
                             </div>
-                            <button type="button" onclick="openSubscriptionUpgradeTab()" class="btn btn-primary" style="background: linear-gradient(135deg, #F87171, #EF4444); color: #FFF; font-weight: 800; padding: 10px 22px; border-radius: 10px; font-size: 13.5px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
-                                💳 Choose Plan &amp; Unlock Now
+                            <button type="button" onclick="openSubscriptionUpgradeTab()" class="btn btn-primary" style="background: linear-gradient(135deg, #F87171, #EF4444); color: #FFF; font-weight: 800; padding: 10px 20px; border-radius: 11px; font-size: 13px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4); display: inline-flex; align-items: center; gap: 8px;">
+                                <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg>
+                                <span>Choose Plan &amp; Unlock Now</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- USER TAB 1: MY PROFILE (Editable Profile Info & Password Only) -->
                     <div id="tab-my-profile" class="admin-tab-content">
-                        <div style="margin-bottom: 24px;">
-                            <h3 style="font-size: 20px; color: #FFF; margin-bottom: 6px;">My Personal Account Settings</h3>
-                            <p style="color: var(--text-muted); font-size: 13px;">Manage your personal profile details, contact email, and secure password.</p>
+                        <!-- Account Hero Summary Banner -->
+                        <div class="portal-hero-banner">
+                            <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
+                                <div class="portal-avatar-circle" id="portalHeroAvatar">U</div>
+                                <div style="min-width: 0;">
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <h3 style="font-size: 20px; font-weight: 800; color: #FFF; margin: 0;" id="portalHeroName">My Personal Account</h3>
+                                        <span id="portalHeroStatus" style="display: inline-flex; align-items: center; gap: 5px; background: rgba(16, 185, 129, 0.16); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.35); font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.04em;">ACTIVE</span>
+                                    </div>
+                                    <p style="color: #94A3B8; font-size: 13px; margin: 4px 0 0 0;" id="portalHeroEmail">Manage your profile identity, security credentials, and workspace preferences.</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <button type="button" onclick="openSubscriptionUpgradeTab()" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; padding: 10px 16px; border-radius: 11px; font-size: 13px; display: inline-flex; align-items: center; gap: 7px;">
+                                    <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg>
+                                    <span>Manage Plan</span>
+                                </button>
+                                <button type="button" onclick="switchAdminTab('user-downloads', document.getElementById('btnTabUserDownloads'))" class="btn btn-outline" style="padding: 10px 16px; border-radius: 11px; font-size: 13px; border-color: rgba(148,163,184,0.28); color: #E2E8F0; display: inline-flex; align-items: center; gap: 7px;">
+                                    <svg class="lp-ico" width="15" height="15" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-download"></use></svg>
+                                    <span>Desktop App</span>
+                                </button>
+                            </div>
                         </div>
-                        
+
                         <div class="admin-grid-2col">
                             <div class="admin-card-box">
-                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                                    <span>👤</span> Profile Information
-                                </h4>
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid rgba(148,163,184,0.12);">
+                                    <span class="portal-card-icon"><svg class="lp-ico" width="18" height="18" aria-hidden="true"><use href="#lp-ico-user"></use></svg></span>
+                                    <div>
+                                        <h4 style="font-size: 16px; font-weight: 700; color: #FFF; margin: 0;">Profile Information</h4>
+                                        <span style="font-size: 12px; color: #64748B;">Update your display name and primary contact email</span>
+                                    </div>
+                                </div>
                                 <form id="formMyProfile" onsubmit="return updateMyProfileInfo(event)">
                                     <div style="margin-bottom: 16px;">
-                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Full Name</label>
-                                        <input type="text" id="myProfileName" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                        <label style="font-size: 12px; color: #94A3B8; font-weight: 700; letter-spacing: 0.02em;">Full Name</label>
+                                        <input type="text" id="myProfileName" required placeholder="Enter your full name" class="portal-input">
                                     </div>
-                                    <div style="margin-bottom: 24px;">
-                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Email Address</label>
-                                        <input type="email" id="myProfileEmail" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                    <div style="margin-bottom: 22px;">
+                                        <label style="font-size: 12px; color: #94A3B8; font-weight: 700; letter-spacing: 0.02em;">Email Address</label>
+                                        <input type="email" id="myProfileEmail" required placeholder="you@example.com" class="portal-input">
                                     </div>
-                                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px 20px; font-weight: 700;">💾 Update Profile Information</button>
+                                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px 20px; font-weight: 800; border-radius: 12px; background: linear-gradient(135deg, #2DD4BF, #3B82F6); color: #04131A; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                                        <svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-save"></use></svg>
+                                        <span>Update Profile Information</span>
+                                    </button>
                                 </form>
                             </div>
 
                             <div class="admin-card-box">
-                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                                    <span>🔒</span> Change Security Password
-                                </h4>
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid rgba(148,163,184,0.12);">
+                                    <span class="portal-card-icon indigo"><svg class="lp-ico" width="18" height="18" aria-hidden="true"><use href="#lp-ico-lock"></use></svg></span>
+                                    <div>
+                                        <h4 style="font-size: 16px; font-weight: 700; color: #FFF; margin: 0;">Change Security Password</h4>
+                                        <span style="font-size: 12px; color: #64748B;">Protect your vault with a strong unique password</span>
+                                    </div>
+                                </div>
                                 <form id="formMyPassword" onsubmit="return updateMyPassword(event)">
                                     <div style="margin-bottom: 16px;">
-                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Current Password</label>
-                                        <input type="password" id="myCurrentPassword" required placeholder="••••••••" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                        <label style="font-size: 12px; color: #94A3B8; font-weight: 700; letter-spacing: 0.02em;">Current Password</label>
+                                        <input type="password" id="myCurrentPassword" required placeholder="Enter current password" class="portal-input">
                                     </div>
-                                    <div style="margin-bottom: 24px;">
-                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">New Secure Password</label>
-                                        <input type="password" id="myNewPassword" required minlength="6" placeholder="At least 6 characters" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 11px; color: #FFF; margin-top: 6px;">
+                                    <div style="margin-bottom: 22px;">
+                                        <label style="font-size: 12px; color: #94A3B8; font-weight: 700; letter-spacing: 0.02em;">New Secure Password</label>
+                                        <input type="password" id="myNewPassword" required minlength="6" placeholder="At least 6 characters" class="portal-input">
                                     </div>
-                                    <button type="submit" class="btn btn-outline" style="width: 100%; padding: 11px 20px; font-weight: 700; border-color: var(--primary); color: #818CF8;">🔒 Change Password</button>
+                                    <button type="submit" class="btn btn-outline" style="width: 100%; padding: 12px 20px; font-weight: 700; border-radius: 12px; border-color: rgba(129, 140, 248, 0.5); color: #A5B4FC; background: rgba(99, 102, 241, 0.08); display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                                        <svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-shield"></use></svg>
+                                        <span>Update Security Password</span>
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -4833,131 +5026,155 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
                     <!-- USER TAB 2: MY SUBSCRIPTION & QUOTA (Strictly Read-Only) -->
                     <div id="tab-my-subscription" class="admin-tab-content" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <div>
-                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">My Subscription & Quota Usage</h3>
-                                <p style="color: var(--text-muted); font-size: 13px;">View your active subscription plan, device limits, and profile quota.</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="portal-card-icon"><svg class="lp-ico" width="19" height="19" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg></span>
+                                <div>
+                                    <h3 style="font-size: 20px; font-weight: 800; color: #FFF; margin: 0 0 3px 0;">My Subscription &amp; Quota Usage</h3>
+                                    <p style="color: #94A3B8; font-size: 13px; margin: 0;">View your active subscription tier, device allocation, and profile quota.</p>
+                                </div>
                             </div>
-                            <button type="button" onclick="scrollToPortalUpgradePlans()" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 20px;">⚡ Renew / Upgrade Subscription</button>
+                            <button type="button" onclick="scrollToPortalUpgradePlans()" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; padding: 11px 20px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px;">
+                                <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-bolt"></use></svg>
+                                <span>Renew / Upgrade Subscription</span>
+                            </button>
                         </div>
 
                         <!-- Read-Only Subscription Overview Cards -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 28px;">
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">CURRENT PLAN</span>
-                                <h2 style="font-size: 24px; color: #2DD4BF; margin-top: 6px;" id="userSubPlanName">Starter Plan</h2>
-                                <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 800;" id="userSubStatus">ACTIVE</span>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; margin-bottom: 24px;">
+                            <div class="portal-kpi-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; letter-spacing: 0.06em;">CURRENT PLAN</span>
+                                    <span class="portal-card-icon" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-award"></use></svg></span>
+                                </div>
+                                <h2 style="font-size: 23px; font-weight: 800; color: #2DD4BF; margin: 0 0 8px 0;" id="userSubPlanName">Starter Plan</h2>
+                                <span style="background: rgba(16, 185, 129, 0.16); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800;" id="userSubStatus">ACTIVE</span>
                             </div>
 
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">PROFILE LIMIT & USAGE</span>
-                                <h2 style="font-size: 24px; color: #FFF; margin-top: 6px;" id="userProfileQuotaDisplay">0 / 25 Profiles</h2>
-                                <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Managed browser profile capacity</p>
+                            <div class="portal-kpi-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; letter-spacing: 0.06em;">PROFILE LIMIT &amp; USAGE</span>
+                                    <span class="portal-card-icon indigo" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-layers"></use></svg></span>
+                                </div>
+                                <h2 style="font-size: 23px; font-weight: 800; color: #FFF; margin: 0 0 6px 0;" id="userProfileQuotaDisplay">0 / 25 Profiles</h2>
+                                <p style="font-size: 12px; color: #64748B; margin: 0;">Managed browser profile capacity</p>
                             </div>
 
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">DEVICE LIMIT & USAGE</span>
-                                <h2 style="font-size: 24px; color: #FFF; margin-top: 6px;" id="userDeviceQuotaDisplay">1 / 2 Devices</h2>
-                                <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Active desktop installations</p>
+                            <div class="portal-kpi-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; letter-spacing: 0.06em;">DEVICE LIMIT &amp; USAGE</span>
+                                    <span class="portal-card-icon emerald" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-laptop"></use></svg></span>
+                                </div>
+                                <h2 style="font-size: 23px; font-weight: 800; color: #FFF; margin: 0 0 6px 0;" id="userDeviceQuotaDisplay">1 / 2 Devices</h2>
+                                <p style="font-size: 12px; color: #64748B; margin: 0;">Active desktop installations</p>
                             </div>
 
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">EXPIRATION DATE</span>
-                                <h2 style="font-size: 20px; color: #FFF; margin-top: 6px;" id="userSubExpiresAt">September 15, 2027</h2>
-                                <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Grace Period: 3 Days</p>
+                            <div class="portal-kpi-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; letter-spacing: 0.06em;">EXPIRATION DATE</span>
+                                    <span class="portal-card-icon amber" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-clock"></use></svg></span>
+                                </div>
+                                <h2 style="font-size: 19px; font-weight: 800; color: #FFF; margin: 0 0 6px 0;" id="userSubExpiresAt">September 15, 2027</h2>
+                                <p style="font-size: 12px; color: #64748B; margin: 0;">Grace Period: 3 Days</p>
                             </div>
                         </div>
 
                         <!-- Read-Only Features Matrix -->
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
-                            <h4 style="font-size: 16px; color: #FFF; margin-bottom: 16px;">Included Features & API Access</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
-                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                        <div class="admin-card-box">
+                            <h4 style="font-size: 15.5px; font-weight: 700; color: #FFF; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                                <svg class="lp-ico" width="17" height="17" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-shield"></use></svg>
+                                <span>Included Features &amp; API Access</span>
+                            </h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
+                                <div style="display: flex; gap: 11px; align-items: center; background: rgba(8, 11, 19, 0.75); padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.14);">
+                                    <span class="portal-card-icon emerald" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-check"></use></svg></span>
                                     <div>
-                                        <h5 style="font-size: 13px; color: #FFF;">Browser Profile Isolation</h5>
-                                        <span style="font-size: 11px; color: var(--text-muted);">Canvas & WebGL noise</span>
+                                        <h5 style="font-size: 13px; color: #FFF; margin: 0;">Browser Profile Isolation</h5>
+                                        <span style="font-size: 11px; color: #64748B;">Canvas &amp; WebGL noise</span>
                                     </div>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
-                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                                <div style="display: flex; gap: 11px; align-items: center; background: rgba(8, 11, 19, 0.75); padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.14);">
+                                    <span class="portal-card-icon emerald" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-check"></use></svg></span>
                                     <div>
-                                        <h5 style="font-size: 13px; color: #FFF;">Proxy Manager</h5>
-                                        <span style="font-size: 11px; color: var(--text-muted);">HTTP / SOCKS5 bridge</span>
+                                        <h5 style="font-size: 13px; color: #FFF; margin: 0;">Proxy Manager</h5>
+                                        <span style="font-size: 11px; color: #64748B;">HTTP / SOCKS5 bridge</span>
                                     </div>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
-                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                                <div style="display: flex; gap: 11px; align-items: center; background: rgba(8, 11, 19, 0.75); padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.14);">
+                                    <span class="portal-card-icon emerald" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-check"></use></svg></span>
                                     <div>
-                                        <h5 style="font-size: 13px; color: #FFF;">Cross-Platform Desktop Client</h5>
-                                        <span style="font-size: 11px; color: var(--text-muted);">Windows, macOS & Linux</span>
+                                        <h5 style="font-size: 13px; color: #FFF; margin: 0;">Cross-Platform Desktop Client</h5>
+                                        <span style="font-size: 11px; color: #64748B;">Windows, macOS &amp; Linux</span>
                                     </div>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; background: #0A0B10; padding: 12px; border-radius: 10px; border: 1px solid #272A3B;">
-                                    <span style="color: #10B981; font-size: 18px;">✓</span>
+                                <div style="display: flex; gap: 11px; align-items: center; background: rgba(8, 11, 19, 0.75); padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.14);">
+                                    <span class="portal-card-icon emerald" style="width: 32px; height: 32px; border-radius: 9px;"><svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-check"></use></svg></span>
                                     <div>
-                                        <h5 style="font-size: 13px; color: #FFF;">Local Storage Encryption</h5>
-                                        <span style="font-size: 11px; color: var(--text-muted);">AES-256 GCM</span>
+                                        <h5 style="font-size: 13px; color: #FFF; margin: 0;">Local Storage Encryption</h5>
+                                        <span style="font-size: 11px; color: #64748B;">AES-256 GCM vault</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Direct In-Portal Plan Upgrade & Payment Section -->
-                        <div id="portalUpgradePlansSection" style="background: var(--bg-card); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 16px; padding: 24px; margin-top: 24px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;">
-                                <div>
-                                    <h4 style="font-size: 17px; color: #FFF; margin: 0;">💳 Upgrade or Renew Your Plan Directly</h4>
-                                    <p style="font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0 0;">Select a plan below to pay securely with Card or Cryptocurrency for instant activation.</p>
+                        <div id="portalUpgradePlansSection" class="admin-card-box" style="border-color: rgba(45, 212, 191, 0.28);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span class="portal-card-icon"><svg class="lp-ico" width="18" height="18" aria-hidden="true"><use href="#lp-ico-bolt"></use></svg></span>
+                                    <div>
+                                        <h4 style="font-size: 17px; font-weight: 800; color: #FFF; margin: 0;">Upgrade or Renew Your Plan Directly</h4>
+                                        <p style="font-size: 12.5px; color: #94A3B8; margin: 3px 0 0 0;">Select a plan below to pay securely with Card or Cryptocurrency for instant activation.</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-                                <div style="background: #0A0B10; border: 1px solid #272A3B; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px;">
+                                <div style="background: rgba(8, 11, 19, 0.85); border: 1px solid rgba(148,163,184,0.16); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
                                     <div>
                                         <div style="font-size: 15px; font-weight: 700; color: #FFF;">Starter</div>
-                                        <div style="font-size: 28px; font-weight: 800; color: #2DD4BF; margin: 10px 0;">$19 <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">/month</span></div>
-                                        <ul style="list-style: none; padding: 0; margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;">
-                                            <li>✓ 25 Browser Profiles</li>
-                                            <li>✓ 2 Team Users &amp; Devices</li>
-                                            <li>✓ HTTP/HTTPS/SOCKS5 Proxies</li>
-                                            <li>✓ Basic API Access</li>
+                                        <div style="font-size: 30px; font-weight: 800; color: #2DD4BF; margin: 10px 0 14px 0;">$19 <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
+                                        <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: #94A3B8; display: flex; flex-direction: column; gap: 8px;">
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>25 Browser Profiles</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>2 Team Users &amp; Devices</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>HTTP/HTTPS/SOCKS5 Proxies</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Basic API Access</span></li>
                                         </ul>
                                     </div>
-                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">Pay &amp; Upgrade ($19)</button>
+                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade ($19)</span></button>
                                 </div>
 
-                                <div style="background: linear-gradient(180deg, rgba(45, 212, 191, 0.08), #0A0B10); border: 2px solid #2DD4BF; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div style="background: linear-gradient(180deg, rgba(45, 212, 191, 0.1), rgba(8, 11, 19, 0.9)); border: 1.5px solid #2DD4BF; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 12px 30px rgba(45, 212, 191, 0.12);">
                                     <div>
                                         <div style="display: flex; justify-content: space-between; align-items: center;">
                                             <span style="font-size: 15px; font-weight: 700; color: #FFF;">Professional</span>
-                                            <span style="background: #2DD4BF; color: #000; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px;">POPULAR</span>
+                                            <span style="background: #2DD4BF; color: #04131A; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;">POPULAR</span>
                                         </div>
-                                        <div style="font-size: 28px; font-weight: 800; color: #2DD4BF; margin: 10px 0;">$49 <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">/month</span></div>
-                                        <ul style="list-style: none; padding: 0; margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;">
-                                            <li>✓ 100 Browser Profiles</li>
-                                            <li>✓ 10 Team Users &amp; Devices</li>
-                                            <li>✓ Full REST &amp; Driver API</li>
-                                            <li>✓ Priority 24/7 Support</li>
+                                        <div style="font-size: 30px; font-weight: 800; color: #2DD4BF; margin: 10px 0 14px 0;">$49 <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
+                                        <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: #CBD5E1; display: flex; flex-direction: column; gap: 8px;">
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>100 Browser Profiles</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>10 Team Users &amp; Devices</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Full REST &amp; Driver API</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Priority 24/7 Support</span></li>
                                         </ul>
                                     </div>
-                                    <button type="button" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">Pay &amp; Upgrade ($49)</button>
+                                    <button type="button" class="btn btn-primary" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; display: inline-flex; align-items: center; gap: 7px;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade ($49)</span></button>
                                 </div>
 
-                                <div style="background: #0A0B10; border: 1px solid rgba(129, 140, 248, 0.45); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div style="background: rgba(8, 11, 19, 0.85); border: 1px solid rgba(129, 140, 248, 0.4); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
                                     <div>
                                         <div style="display: flex; justify-content: space-between; align-items: center;">
                                             <span style="font-size: 15px; font-weight: 700; color: #FFF;">Business</span>
-                                            <span style="background: rgba(129, 140, 248, 0.2); color: #818CF8; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px;">BEST VALUE</span>
+                                            <span style="background: rgba(129, 140, 248, 0.2); color: #A5B4FC; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;">BEST VALUE</span>
                                         </div>
-                                        <div style="font-size: 28px; font-weight: 800; color: #818CF8; margin: 10px 0;">$99 <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">/month</span></div>
-                                        <ul style="list-style: none; padding: 0; margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;">
-                                            <li>✓ 500 Browser Profiles</li>
-                                            <li>✓ 25 Team Users &amp; Devices</li>
-                                            <li>✓ Full Hardware Spoofing</li>
-                                            <li>✓ Unlimited API &amp; Manager</li>
+                                        <div style="font-size: 30px; font-weight: 800; color: #A5B4FC; margin: 10px 0 14px 0;">$99 <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
+                                        <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: #94A3B8; display: flex; flex-direction: column; gap: 8px;">
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>500 Browser Profiles</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>25 Team Users &amp; Devices</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Full Hardware Spoofing</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Unlimited API &amp; Manager</span></li>
                                         </ul>
                                     </div>
-                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center; border-color: rgba(129, 140, 248, 0.5); color: #A5B4FC;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">Pay &amp; Upgrade ($99)</button>
+                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; font-weight: 700; border-color: rgba(129, 140, 248, 0.5); color: #A5B4FC; display: inline-flex; align-items: center; gap: 7px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade ($99)</span></button>
                                 </div>
                             </div>
                         </div>
@@ -4966,71 +5183,87 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     <!-- USER TAB 2B: MY AFFILIATE & CPA PORTAL -->
                     <div id="tab-my-affiliate" class="admin-tab-content" style="display: none;">
                         <!-- Header Banner -->
-                        <div style="background: linear-gradient(135deg, rgba(45,212,191,0.1), rgba(129,140,248,0.1)); border: 1px solid rgba(45,212,191,0.25); border-radius: 16px; padding: 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                                    <h3 style="font-size: 20px; color: #FFF; margin: 0;">🤝 CPA Affiliate & Referral Partner Portal</h3>
-                                    <span id="userAffStatusBadge" style="background: rgba(16,185,129,0.2); color: #10B981; border: 1px solid rgba(16,185,129,0.4); font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 20px;">ACTIVE</span>
+                        <div class="portal-hero-banner">
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                <span class="portal-card-icon" style="width: 46px; height: 46px; border-radius: 13px;"><svg class="lp-ico" width="22" height="22" aria-hidden="true"><use href="#lp-ico-link"></use></svg></span>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
+                                        <h3 style="font-size: 20px; font-weight: 800; color: #FFF; margin: 0;">CPA Affiliate &amp; Referral Partner Portal</h3>
+                                        <span id="userAffStatusBadge" style="background: rgba(16,185,129,0.2); color: #34D399; border: 1px solid rgba(16,185,129,0.4); font-size: 10.5px; font-weight: 800; padding: 2px 10px; border-radius: 999px;">ACTIVE</span>
+                                    </div>
+                                    <p style="color: #94A3B8; font-size: 13px; margin: 0;">
+                                        Affiliate ID: <strong id="userAffIdDisplay" style="color: #2DD4BF; font-family: monospace;">AFF-...</strong> • 
+                                        Referral Code: <strong id="userRefCodeDisplay" style="color: #A5B4FC; font-family: monospace;">REF_...</strong>
+                                    </p>
                                 </div>
-                                <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
-                                    Affiliate ID: <strong id="userAffIdDisplay" style="color: #2DD4BF; font-family: monospace;">AFF-...</strong> • 
-                                    Referral Code: <strong id="userRefCodeDisplay" style="color: #818CF8; font-family: monospace;">REF_...</strong>
-                                </p>
                             </div>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <button class="btn btn-primary" onclick="openUserWithdrawalModal()" style="font-weight: 700;">💳 Request Payout</button>
-                                <button class="btn btn-outline" onclick="loadMyAffiliatePortal()">🔄 Refresh Stats</button>
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="openUserWithdrawalModal()" style="font-weight: 800; border-radius: 11px; display: inline-flex; align-items: center; gap: 7px;"><svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Request Payout</span></button>
+                                <button class="btn btn-outline" onclick="loadMyAffiliatePortal()" style="border-radius: 11px; display: inline-flex; align-items: center; gap: 7px;"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-refresh"></use></svg><span>Refresh Stats</span></button>
                             </div>
                         </div>
 
                         <!-- Quick Referral Link Bar -->
-                        <div style="background: rgba(45,212,191,0.06); border: 1px solid rgba(45,212,191,0.2); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 18px;">🔗</span>
-                                <div>
-                                    <div style="font-size: 11px; font-weight: 700; color: #2DD4BF; text-transform: uppercase;">Your Personal Referral Invite Link</div>
-                                    <div style="font-size: 13px; color: #FFF; font-family: monospace; font-weight: 600;" id="userMainRefLinkDisplay">https://antiprofiles.com/register?ref=REF_...</div>
+                        <div style="background: rgba(45,212,191,0.06); border: 1px solid rgba(45,212,191,0.24); border-radius: 14px; padding: 15px 18px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                                <span class="portal-card-icon" style="width: 38px; height: 38px; border-radius: 10px;"><svg class="lp-ico" width="17" height="17" aria-hidden="true"><use href="#lp-ico-link"></use></svg></span>
+                                <div style="min-width: 0;">
+                                    <div style="font-size: 11px; font-weight: 700; color: #2DD4BF; text-transform: uppercase; letter-spacing: 0.05em;">Your Personal Referral Invite Link</div>
+                                    <div style="font-size: 13px; color: #FFF; font-family: monospace; font-weight: 600; word-break: break-all;" id="userMainRefLinkDisplay">https://antiprofiles.com/register?ref=REF_...</div>
                                 </div>
                             </div>
-                            <button class="btn btn-primary" onclick="copyMainReferralLink()" style="padding: 6px 16px; font-size: 12px; font-weight: 700;">📋 Copy Referral Link</button>
+                            <button class="btn btn-primary" onclick="copyMainReferralLink()" style="padding: 8px 16px; font-size: 12.5px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px;"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-copy"></use></svg><span>Copy Referral Link</span></button>
                         </div>
 
                         <!-- KPI Metrics Grid -->
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;">
-                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Clicks</span>
-                                <h3 style="font-size: 24px; color: #FFF; margin: 6px 0 2px 0;" id="userAffTotalClicks">0</h3>
-                                <span style="font-size: 12px; color: #818CF8;"><span id="userAffUniqueClicks">0</span> unique IPs</span>
+                            <div class="portal-kpi-card">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase;">Total Clicks</span>
+                                    <svg class="lp-ico" width="16" height="16" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-activity"></use></svg>
+                                </div>
+                                <h3 style="font-size: 26px; font-weight: 800; color: #FFF; margin: 8px 0 3px 0;" id="userAffTotalClicks">0</h3>
+                                <span style="font-size: 12px; color: #A5B4FC;"><span id="userAffUniqueClicks">0</span> unique IPs</span>
                             </div>
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;">
-                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Conversions</span>
-                                <h3 style="font-size: 24px; color: #FFF; margin: 6px 0 2px 0;" id="userAffTotalConv">0</h3>
-                                <span style="font-size: 12px; color: #10B981;"><span id="userAffCrRate">0</span>% CR</span>
+                            <div class="portal-kpi-card">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase;">Conversions</span>
+                                    <svg class="lp-ico" width="16" height="16" style="color:#34D399;" aria-hidden="true"><use href="#lp-ico-check"></use></svg>
+                                </div>
+                                <h3 style="font-size: 26px; font-weight: 800; color: #FFF; margin: 8px 0 3px 0;" id="userAffTotalConv">0</h3>
+                                <span style="font-size: 12px; color: #34D399;"><span id="userAffCrRate">0</span>% CR</span>
                             </div>
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;">
-                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Lifetime Earnings</span>
-                                <h3 style="font-size: 24px; color: #2DD4BF; margin: 6px 0 2px 0;">$<span id="userAffLifetimeEarn">0.00</span></h3>
-                                <span style="font-size: 12px; color: var(--text-muted);">Gross attributed</span>
+                            <div class="portal-kpi-card">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase;">Lifetime Earnings</span>
+                                    <svg class="lp-ico" width="16" height="16" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-coins"></use></svg>
+                                </div>
+                                <h3 style="font-size: 26px; font-weight: 800; color: #2DD4BF; margin: 8px 0 3px 0;">$<span id="userAffLifetimeEarn">0.00</span></h3>
+                                <span style="font-size: 12px; color: #64748B;">Gross attributed</span>
                             </div>
-                            <div style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(45,212,191,0.05)); border: 1px solid rgba(16,185,129,0.3); border-radius: 14px; padding: 18px;">
-                                <span style="font-size: 11px; color: #10B981; font-weight: 800; text-transform: uppercase;">Available Balance</span>
-                                <h3 style="font-size: 24px; color: #10B981; margin: 6px 0 2px 0;">$<span id="userAffAvailableBal">0.00</span></h3>
-                                <span style="font-size: 12px; color: var(--text-muted);">Ready for withdrawal</span>
+                            <div class="portal-kpi-card" style="background: linear-gradient(135deg, rgba(16,185,129,0.14), rgba(45,212,191,0.06)); border-color: rgba(16,185,129,0.34);">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <span style="font-size: 11px; color: #34D399; font-weight: 800; text-transform: uppercase;">Available Balance</span>
+                                    <svg class="lp-ico" width="16" height="16" style="color:#34D399;" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg>
+                                </div>
+                                <h3 style="font-size: 26px; font-weight: 800; color: #34D399; margin: 8px 0 3px 0;">$<span id="userAffAvailableBal">0.00</span></h3>
+                                <span style="font-size: 12px; color: #94A3B8;">Ready for withdrawal</span>
                             </div>
                         </div>
 
                         <!-- AVAILABLE CPA CAMPAIGN OFFERS SECTION -->
                         <div style="margin-bottom: 24px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
                                 <div>
-                                    <h4 style="font-size: 16px; color: #FFF; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
-                                        <span>🎯 Available CPA Campaign Offers</span>
+                                    <h4 style="font-size: 16px; font-weight: 700; color: #FFF; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
+                                        <svg class="lp-ico" width="17" height="17" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-megaphone"></use></svg>
+                                        <span>Available CPA Campaign Offers</span>
                                     </h4>
-                                    <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+                                    <p style="font-size: 12px; color: #94A3B8; margin: 0;">
                                         Select any active campaign offer to promote and earn recurring revshare or instant fixed bounties.
                                     </p>
                                 </div>
-                                <button class="btn btn-outline" style="font-size: 11px; padding: 4px 10px;" onclick="loadOffersDropdown()">🔄 Refresh Offers</button>
+                                <button class="btn btn-outline" style="font-size: 11.5px; padding: 6px 12px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px;" onclick="loadOffersDropdown()"><svg class="lp-ico" width="13" height="13" aria-hidden="true"><use href="#lp-ico-refresh"></use></svg><span>Refresh Offers</span></button>
                             </div>
                             <div id="userAffOffersCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
                                 <div style="grid-column: 1/-1; text-align: center; padding: 24px; color: var(--text-muted); background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border);">
@@ -5043,81 +5276,83 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 24px;">
                             
                             <!-- CPA Link Builder Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px;">
-                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                                    <span>🔗 CPA Campaign Link Generator</span>
+                            <div class="admin-card-box" style="margin-bottom: 0;">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 10px; display: flex; align-items: center; gap: 9px;">
+                                    <svg class="lp-ico" width="17" height="17" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-link"></use></svg>
+                                    <span>CPA Campaign Link Generator</span>
                                 </h4>
-                                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                                <p style="font-size: 12px; color: #94A3B8; margin-bottom: 16px;">
                                     Select an offer and attach sub-tracking IDs to track conversions from different traffic sources (Google Ads, Facebook, TikTok).
                                 </p>
                                 <div style="display: flex; flex-direction: column; gap: 12px;">
                                     <div>
-                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Select Offer / Campaign</label>
-                                        <select id="userLinkOfferSelect" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;" onchange="onUserOfferChange()">
-                                            <option value="offer_main_saas">AntiProfiles Pro & Team Subscription Plan (15% Recurring RevShare)</option>
+                                        <label style="font-size: 12px; color: #94A3B8; font-weight: 600;">Select Offer / Campaign</label>
+                                        <select id="userLinkOfferSelect" class="portal-input" style="padding: 10px 12px;" onchange="onUserOfferChange()">
+                                            <option value="offer_main_saas">AntiProfiles Pro &amp; Team Subscription Plan (15% Recurring RevShare)</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label style="font-size: 12px; color: #2DD4BF; font-weight: 700;">🎯 Target Landing Page</label>
-                                        <select id="userLinkLandingPageSelect" style="width: 100%; background: var(--bg-input); border: 1px solid #2DD4BF60; border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px;" onchange="generateCustomAffiliateLink()">
-                                            <option value="offer_default">🎯 Offer Dedicated Landing Page (Recommended)</option>
-                                            <option value="main_home">🏠 Main Homepage (/)</option>
-                                            <option value="pricing">💎 Pricing Table (/pricing)</option>
-                                            <option value="signup">📝 Direct Signup & Checkout (/signup)</option>
+                                        <label style="font-size: 12px; color: #2DD4BF; font-weight: 700;">Target Landing Page</label>
+                                        <select id="userLinkLandingPageSelect" class="portal-input" style="padding: 10px 12px; border-color: rgba(45,212,191,0.35);" onchange="generateCustomAffiliateLink()">
+                                            <option value="offer_default">Offer Dedicated Landing Page (Recommended)</option>
+                                            <option value="main_home">Main Homepage (/)</option>
+                                            <option value="pricing">Pricing Table (/pricing)</option>
+                                            <option value="signup">Direct Signup &amp; Checkout (/signup)</option>
                                         </select>
                                     </div>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                         <div>
-                                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Sub ID 1 (e.g. google_ad1)</label>
-                                            <input type="text" id="userLinkSubId1" placeholder="google_camp_1" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;" oninput="generateCustomAffiliateLink()">
+                                            <label style="font-size: 12px; color: #94A3B8; font-weight: 600;">Sub ID 1 (e.g. google_ad1)</label>
+                                            <input type="text" id="userLinkSubId1" placeholder="google_camp_1" class="portal-input" style="padding: 9px 11px;" oninput="generateCustomAffiliateLink()">
                                         </div>
                                         <div>
-                                            <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Sub ID 2 (Optional)</label>
-                                            <input type="text" id="userLinkSubId2" placeholder="fb_retarget" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px; color: #FFF; margin-top: 4px;" oninput="generateCustomAffiliateLink()">
+                                            <label style="font-size: 12px; color: #94A3B8; font-weight: 600;">Sub ID 2 (Optional)</label>
+                                            <input type="text" id="userLinkSubId2" placeholder="fb_retarget" class="portal-input" style="padding: 9px 11px;" oninput="generateCustomAffiliateLink()">
                                         </div>
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: #2DD4BF; font-weight: 700;">Your Generated Tracking Link</label>
-                                        <div style="display: flex; gap: 8px; margin-top: 4px;">
-                                            <input type="text" id="userGeneratedTrackingUrl" readonly style="flex: 1; background: #0A0B10; border: 1px solid #2DD4BF; border-radius: 8px; padding: 10px; color: #2DD4BF; font-family: monospace; font-size: 12px;">
-                                            <button class="btn btn-primary" onclick="copyAffiliateLink()" style="padding: 0 16px; font-weight: 700;">📋 Copy</button>
+                                        <div style="display: flex; gap: 8px; margin-top: 6px;">
+                                            <input type="text" id="userGeneratedTrackingUrl" readonly style="flex: 1; background: #07090F; border: 1px solid rgba(45,212,191,0.45); border-radius: 10px; padding: 10px; color: #2DD4BF; font-family: monospace; font-size: 12px;">
+                                            <button class="btn btn-primary" onclick="copyAffiliateLink()" style="padding: 0 16px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px;"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-copy"></use></svg><span>Copy</span></button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Server-to-Server Postback Webhook Card -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px;">
-                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                                    <span>⚡ Server-to-Server (S2S) Postback Webhook</span>
+                            <div class="admin-card-box" style="margin-bottom: 0;">
+                                <h4 style="font-size: 16px; color: #FFF; margin-bottom: 10px; display: flex; align-items: center; gap: 9px;">
+                                    <svg class="lp-ico" width="17" height="17" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-bolt"></use></svg>
+                                    <span>Server-to-Server (S2S) Postback Webhook</span>
                                 </h4>
-                                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+                                <p style="font-size: 12px; color: #94A3B8; margin-bottom: 14px;">
                                     Forward conversion data into your tracking platform (Voluum, Keitaro, RedTrack, Binom). Macros are dynamically replaced on approved orders.
                                 </p>
-                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
                                     <div>
-                                        <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Postback URL</label>
-                                        <input type="url" id="userPostbackUrlInput" placeholder="https://your-tracker.com/postback?click_id={CLICK_ID}&payout={PAYOUT}&status={STATUS}" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: #FFF; margin-top: 4px; font-family: monospace; font-size: 12px;">
+                                        <label style="font-size: 12px; color: #94A3B8; font-weight: 600;">Postback URL</label>
+                                        <input type="url" id="userPostbackUrlInput" placeholder="https://your-tracker.com/postback?click_id={CLICK_ID}&payout={PAYOUT}&status={STATUS}" class="portal-input" style="font-family: monospace; font-size: 12px;">
                                     </div>
                                     <div>
-                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Click to Insert Dynamic Macro:</label>
-                                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{CLICK_ID}')">{CLICK_ID}</button>
-                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{PAYOUT}')">{PAYOUT}</button>
-                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{STATUS}')">{STATUS}</button>
-                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{OFFER_ID}')">{OFFER_ID}</button>
-                                            <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px;" onclick="insertPostbackMacro('{CONVERSION_ID}')">{CONVERSION_ID}</button>
+                                        <label style="font-size: 11px; color: #94A3B8; font-weight: 600;">Click to Insert Dynamic Macro:</label>
+                                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+                                            <button type="button" class="btn btn-outline" style="padding: 3px 9px; font-size: 11px; border-radius: 7px;" onclick="insertPostbackMacro('{CLICK_ID}')">{CLICK_ID}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 3px 9px; font-size: 11px; border-radius: 7px;" onclick="insertPostbackMacro('{PAYOUT}')">{PAYOUT}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 3px 9px; font-size: 11px; border-radius: 7px;" onclick="insertPostbackMacro('{STATUS}')">{STATUS}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 3px 9px; font-size: 11px; border-radius: 7px;" onclick="insertPostbackMacro('{OFFER_ID}')">{OFFER_ID}</button>
+                                            <button type="button" class="btn btn-outline" style="padding: 3px 9px; font-size: 11px; border-radius: 7px;" onclick="insertPostbackMacro('{CONVERSION_ID}')">{CONVERSION_ID}</button>
                                         </div>
                                     </div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
-                                            <label style="font-size: 12px; color: var(--text-muted);">Method:</label>
-                                            <select id="userPostbackMethod" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: #FFF; font-size: 12px;">
+                                            <label style="font-size: 12px; color: #94A3B8;">Method:</label>
+                                            <select id="userPostbackMethod" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; color: #FFF; font-size: 12px;">
                                                 <option value="GET">GET</option>
                                                 <option value="POST">POST</option>
                                             </select>
                                         </div>
-                                        <button class="btn btn-primary" onclick="saveUserPostbackConfig()" style="padding: 6px 16px; font-size: 13px; font-weight: 700;">💾 Save Postback</button>
+                                        <button class="btn btn-primary" onclick="saveUserPostbackConfig()" style="padding: 8px 16px; font-size: 12.5px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px;"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-save"></use></svg><span>Save Postback</span></button>
                                     </div>
                                 </div>
                             </div>
@@ -5127,8 +5362,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 24px;">
                             
                             <!-- Clicks Table -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">📡 Live Click Stream</h4>
+                            <div class="admin-card-box" style="margin-bottom: 0; padding: 20px;">
+                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;"><svg class="lp-ico" width="16" height="16" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-activity"></use></svg><span>Live Click Stream</span></h4>
                                 <div style="overflow-x: auto;">
                                     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
                                         <thead>
@@ -5148,8 +5383,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                             </div>
 
                             <!-- Conversions Table -->
-                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px;">💰 Recent Conversions</h4>
+                            <div class="admin-card-box" style="margin-bottom: 0; padding: 20px;">
+                                <h4 style="font-size: 15px; color: #FFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;"><svg class="lp-ico" width="16" height="16" style="color:#34D399;" aria-hidden="true"><use href="#lp-ico-coins"></use></svg><span>Recent Conversions</span></h4>
                                 <div style="overflow-x: auto;">
                                     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
                                         <thead>
@@ -5170,10 +5405,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         </div>
 
                         <!-- Withdrawal History Table -->
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <h4 style="font-size: 15px; color: #FFF; margin: 0;">📜 Withdrawal & Payout History</h4>
-                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;" onclick="openUserWithdrawalModal()">➕ New Withdrawal</button>
+                        <div class="admin-card-box" style="padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                                <h4 style="font-size: 15px; color: #FFF; margin: 0; display: flex; align-items: center; gap: 8px;"><svg class="lp-ico" width="16" height="16" style="color:#A5B4FC;" aria-hidden="true"><use href="#lp-ico-file-text"></use></svg><span>Withdrawal &amp; Payout History</span></h4>
+                                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px;" onclick="openUserWithdrawalModal()"><svg class="lp-ico" width="13" height="13" aria-hidden="true"><use href="#lp-ico-plus"></use></svg><span>New Withdrawal</span></button>
                             </div>
                             <div style="overflow-x: auto;">
                                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
@@ -5199,86 +5434,89 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     <div id="tab-user-downloads" class="admin-tab-content" style="display: none;">
                         
                         <!-- Header & Title -->
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-                            <div>
-                                <h3 style="color: #FFF; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                    <span>🚀 Download Official Desktop Application</span>
-                                    <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: clamp(10.5px, 1.1vw, 12px); font-weight: 800; padding: 3px 10px; border-radius: 20px;">v1.0.0 Stable</span>
-                                </h3>
-                                <p style="color: var(--text-muted); margin: 0;">Download and install the native AntiProfiles anti-detect browser application for Windows, macOS, or Linux.</p>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="portal-card-icon"><svg class="lp-ico" width="19" height="19" aria-hidden="true"><use href="#lp-ico-download"></use></svg></span>
+                                <div>
+                                    <h3 style="color: #FFF; font-size: 20px; font-weight: 800; margin: 0 0 4px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span>Download Official Desktop Application</span>
+                                        <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px;">v2.0 Stable</span>
+                                    </h3>
+                                    <p style="color: #94A3B8; font-size: 13px; margin: 0;">Download and install the native AntiProfiles anti-detect browser application for Windows, macOS, or Linux.</p>
+                                </div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 6px 12px; border-radius: 8px;">
-                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
-                                <span>All builds verified & signed</span>
+                            <div style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #34D399; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.28); padding: 6px 12px; border-radius: 999px; font-weight: 700;">
+                                <svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-shield"></use></svg>
+                                <span>All builds verified &amp; signed</span>
                             </div>
                         </div>
 
                         <!-- Intelligent OS Auto-Detection Hero Banner -->
-                        <div id="userOsDetectedHero" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(45, 212, 191, 0.08)); border: 1px solid rgba(45, 212, 191, 0.35); border-radius: 16px; padding: 18px 22px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        <div id="userOsDetectedHero" class="portal-hero-banner">
                             <div style="display: flex; align-items: center; gap: 14px;">
-                                <div id="userDetectedOsIcon" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center;">
+                                <div id="userDetectedOsIcon" style="width: 48px; height: 48px; border-radius: 13px; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.18); display: flex; align-items: center; justify-content: center;">
                                     <?php if ($detectedPlatform === 'windows-x64'): ?>
-                                        <svg width="28" height="28" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
+                                        <svg width="26" height="26" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
                                     <?php elseif ($detectedPlatform === 'linux-x64'): ?>
-                                        <svg width="28" height="28" viewBox="0 0 448 512" fill="none"><path d="M220.8 123.3c1 .5 1.8 1.7 3 1.7 1.1 0 2.8-.4 2.9-1.5.2-1.4-1.9-2.3-3.2-2.9-1.3-.7-2.9-1-4.3-.7-1.7.3-3.3 1.3-4.5 2.5-1.2 1.2-2.2 2.7-2.8 4.3-.6 1.6-.6 3.4-.2 5 .4 1.7 1.4 3.1 2.8 4.1 1.4 1 3.2 1.5 5 1.4 1.7-.1 3.4-.8 4.7-1.9 1.3-1.1 2.2-2.6 2.5-4.3.3-1.7-.1-3.4-1-4.9-.9-1.4-2.3-2.5-3.9-3-1.6-.4-3.3-.3-4.8.4zm-20.2 133.7c-5.8 4.2-12.8 6.5-20 6.5s-14.2-2.3-20-6.5c-4.4-3.2-8-7.3-10.7-12-3.4 10.6-4.5 22-3.1 33.1 2.3 18.2 10.3 35.1 23 48 12.8 12.8 29.7 20.8 48 23 11.1 1.4 22.5.3 33.1-3.1-4.7-2.7-8.8-6.3-12-10.7-4.2-5.8-6.5-12.8-6.5-20s2.3-14.2 6.5-20c2.7-3.7 6-6.8 9.8-9.2-8.5-17.7-21.9-32.3-38.4-42.1-3.1 5.3-5.7 11-7.7 17-2.1-6-4.7-11.7-7.7-17-16.5 9.8-29.9 24.4-38.4 42.1 3.8 2.4 7.1 5.5 9.8 9.2zm148.9-80.1C336.7 82.2 284.1 0 224 0S111.3 82.2 98.5 176.9c-27.4 18.7-44.5 49.3-46.5 82.6-.9 14.5 2.1 29 8.6 42 6.5 13 16.3 23.8 28.3 31.2 2.6 47.9 21.6 93.6 54 128.5 32.4 34.9 76.9 55.4 123.6 57.8 23.3 1.2 46.8-2.6 68.7-11.1 21.9-8.5 41.7-21.6 58-38.3 16.3-16.7 28.6-36.8 36.1-59 7.5-22.1 10.3-45.7 8.3-69 12-7.4 21.8-18.2 28.3-31.2 6.5-13 9.5-27.5 8.6-42-2-33.3-19.1-63.9-46.5-82.6z" fill="#FACC15"/></svg>
+                                        <svg class="lp-ico" width="24" height="24" style="color:#FACC15;" aria-hidden="true"><use href="#lp-ico-linux"></use></svg>
                                     <?php else: ?>
-                                        <svg width="28" height="28" viewBox="0 0 170 170" fill="none"><path d="M150.37 130.25C146.59 135.79 142.34 141.05 137.62 146.03C131.18 152.83 124.97 158.4 118.99 162.74C111.02 168.51 103.35 171.4 96 171.4C90.72 171.4 84.77 169.89 78.15 166.87C71.53 163.85 65.41 162.34 59.79 162.34C53.79 162.34 47.45 163.95 40.77 167.17C34.09 170.39 28.53 172 24.1 172C16.94 172 9.27 169.01 1.09 163.04C-4.89 158.7 -11.05 153.18 -17.39 146.48C-26.17 137.22 -33.15 125.75 -38.33 112.07C-43.51 98.39 -46.1 84.8 -46.1 71.3C-46.1 56.4 -42.27 43.64 -34.61 33.02C-26.95 22.4 -16.98 17.09 -4.7 17.09C1.1 17.09 7.6 18.7 14.8 21.92C22 25.14 27.26 26.75 30.58 26.75C33.32 26.75 38.64 24.99 46.54 21.47C54.44 17.95 61.34 16.19 67.24 16.19C80.34 16.19 91.13 20.31 99.61 28.55C108.09 36.79 113.19 47.38 114.91 60.32C103.73 67.1 98.14 76.5 98.14 88.52C98.14 98.18 101.69 106.28 108.79 112.82C115.89 119.36 124.32 123.08 134.08 123.98C131.62 131.2 128.2 138.08 123.82 144.62L150.37 130.25ZM104.44 0C104.44 7.64 101.65 15.34 96.07 23.1C90.49 30.86 83.47 36.42 75.01 39.78C73.91 32.22 76.84 24.63 83.8 17.01C90.76 9.39 97.64 3.72 104.44 0Z" fill="#F8FAFC"/></svg>
+                                        <svg class="lp-ico" width="24" height="24" style="color:#F8FAFC;" aria-hidden="true"><use href="#lp-ico-apple"></use></svg>
                                     <?php endif; ?>
                                 </div>
                                 <div>
-                                    <div style="font-size: 11px; font-weight: 800; color: #2DD4BF; text-transform: uppercase; letter-spacing: 0.5px;">RECOMMENDED FOR YOUR OPERATING SYSTEM</div>
-                                    <h4 id="userDetectedOsTitle" style="color: #FFF; margin: 2px 0 0 0; font-weight: 800; font-size: clamp(15px, 2vw, 18px);"><?= ($detectedPlatform === 'windows-x64') ? 'AntiProfiles for Windows (64-Bit)' : (($detectedPlatform === 'linux-x64') ? 'AntiProfiles for Linux' : 'AntiProfiles for macOS (Apple Silicon)') ?></h4>
-                                    <p id="userDetectedOsSub" style="color: var(--text-muted); font-size: 12px; margin: 2px 0 0 0;">Automatic architecture and OS optimization detected • v<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['version']) ?></p>
+                                    <div style="font-size: 11px; font-weight: 800; color: #2DD4BF; text-transform: uppercase; letter-spacing: 0.06em;">RECOMMENDED FOR YOUR OPERATING SYSTEM</div>
+                                    <h4 id="userDetectedOsTitle" style="color: #FFF; margin: 3px 0 0 0; font-weight: 800; font-size: clamp(15px, 2vw, 18px);"><?= ($detectedPlatform === 'windows-x64') ? 'AntiProfiles for Windows (64-Bit)' : (($detectedPlatform === 'linux-x64') ? 'AntiProfiles for Linux' : 'AntiProfiles for macOS (Apple Silicon)') ?></h4>
+                                    <p id="userDetectedOsSub" style="color: #94A3B8; font-size: 12px; margin: 2px 0 0 0;">Automatic architecture and OS optimization detected • v<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['version']) ?></p>
                                 </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <a id="userDetectedOsBtn" href="<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['url']) ?>" download class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 22px; border-radius: 10px; font-size: 13.5px; box-shadow: 0 6px 20px rgba(45,212,191,0.35);">
-                                    ⬇️ Direct Download for <?= ($detectedPlatform === 'windows-x64') ? 'Windows' : (($detectedPlatform === 'linux-x64') ? 'Linux' : 'Mac') ?> (v<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['version']) ?>)
+                                <a id="userDetectedOsBtn" href="<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['url']) ?>" download class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; padding: 11px 22px; border-radius: 12px; font-size: 13.5px; box-shadow: 0 6px 20px rgba(45,212,191,0.3); display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                                    <svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-download"></use></svg>
+                                    <span>Direct Download for <?= ($detectedPlatform === 'windows-x64') ? 'Windows' : (($detectedPlatform === 'linux-x64') ? 'Linux' : 'Mac') ?> (v<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['version']) ?>)</span>
                                 </a>
                             </div>
                         </div>
 
                         <!-- Section Subtitle -->
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                            <h5 style="color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">ALL SUPPORTED PLATFORMS & PACKAGES</h5>
-                            <span style="font-size: 11px; color: var(--text-muted);">64-Bit Native Binaries</span>
+                            <h5 style="color: #94A3B8; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin: 0;">ALL SUPPORTED PLATFORMS &amp; PACKAGES</h5>
+                            <span style="font-size: 11px; color: #64748B;">64-Bit Native Binaries</span>
                         </div>
 
-                        <!-- 4-Card Symmetrical Responsive Grid (4 cols on desktop, 2x2 on tablet, 1 on mobile) -->
+                        <!-- 4-Card Symmetrical Responsive Grid -->
                         <div class="download-cards-grid">
                             
                             <!-- 1. Windows x64 Card -->
                             <div class="platform-download-card <?= ($detectedPlatform === 'windows-x64') ? 'card-recommended' : '' ?>" id="cardWinPlatform">
                                 <?php if ($detectedPlatform === 'windows-x64'): ?>
-                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);">RECOMMENDED</span>
+                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em;">RECOMMENDED</span>
                                 <?php endif; ?>
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
-                                        <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(0, 120, 212, 0.1); border: 1px solid rgba(0, 120, 212, 0.25);">
-                                            <svg width="26" height="26" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
+                                        <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(0, 120, 212, 0.12); border: 1px solid rgba(0, 120, 212, 0.28);">
+                                            <svg width="24" height="24" viewBox="0 0 88 88" fill="none"><path d="M0 12.402L35.687 7.525V42.062H0V12.402ZM0 45.938H35.687V80.475L0 75.598V45.938ZM39.697 6.974L88 0V42.062H39.697V6.974ZM39.697 45.938H88V88L39.697 81.026V45.938Z" fill="#00A4EF"/></svg>
                                         </div>
                                         <span style="background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">WINDOWS</span>
                                     </div>
                                     <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">Windows Client</h4>
                                     <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userWinVerText">v<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?> (x64 Architecture)</div>
-                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native standalone installer for Windows 10 & 11 (64-bit systems).</p>
+                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native standalone installer for Windows 10 &amp; 11 (64-bit systems).</p>
                                 </div>
-                                <a href="<?= htmlspecialchars($activeLandingReleases['windows-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'windows-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; <?= ($detectedPlatform === 'windows-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'font-weight: 700; border-color: rgba(96,165,250,0.4); font-size: 13px;' ?>" id="userBtnWinDl">
-                                    ⬇️ Download .exe (v<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?>)
+                                <a href="<?= htmlspecialchars($activeLandingReleases['windows-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'windows-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; <?= ($detectedPlatform === 'windows-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; font-size: 13px;' : 'font-weight: 700; border-color: rgba(96,165,250,0.4); font-size: 13px;' ?>" id="userBtnWinDl">
+                                    <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-download"></use></svg>
+                                    <span>Download .exe (v<?= htmlspecialchars($activeLandingReleases['windows-x64']['version']) ?>)</span>
                                 </a>
                             </div>
 
                             <!-- 2. macOS Apple Silicon Card -->
                             <div class="platform-download-card <?= ($detectedPlatform === 'macos-arm64') ? 'card-recommended' : '' ?>" id="cardMacArmPlatform">
                                 <?php if ($detectedPlatform === 'macos-arm64'): ?>
-                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 2px 9px; border-radius: 10px; letter-spacing: 0.5px;">RECOMMENDED</span>
+                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em;">RECOMMENDED</span>
                                 <?php endif; ?>
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;">
-                                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/>
-                                            </svg>
+                                            <svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/></svg>
                                         </div>
                                         <span style="background: rgba(45,212,191,0.15); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">APPLE SILICON</span>
                                     </div>
@@ -5286,22 +5524,21 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                     <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacArmVerText">v<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?> (M1 / M2 / M3 / M4)</div>
                                     <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Native ARM64 disk image for Apple M-series chips (M1 to M4).</p>
                                 </div>
-                                <a href="<?= htmlspecialchars($activeLandingReleases['macos-arm64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'macos-arm64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; <?= ($detectedPlatform === 'macos-arm64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'font-weight: 700; font-size: 13px;' ?>" id="userBtnMacArmDl">
-                                    ⬇️ Download .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?>)
+                                <a href="<?= htmlspecialchars($activeLandingReleases['macos-arm64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'macos-arm64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; <?= ($detectedPlatform === 'macos-arm64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; font-size: 13px;' : 'font-weight: 700; font-size: 13px;' ?>" id="userBtnMacArmDl">
+                                    <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-download"></use></svg>
+                                    <span>Download .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-arm64']['version']) ?>)</span>
                                 </a>
                             </div>
 
                             <!-- 3. macOS Intel Card -->
                             <div class="platform-download-card <?= ($detectedPlatform === 'macos-x64') ? 'card-recommended' : '' ?>" id="cardMacIntelPlatform">
                                 <?php if ($detectedPlatform === 'macos-x64'): ?>
-                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 2px 9px; border-radius: 10px; letter-spacing: 0.5px;">RECOMMENDED</span>
+                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em;">RECOMMENDED</span>
                                 <?php endif; ?>
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;">
-                                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/>
-                                            </svg>
+                                            <svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor" style="color: #F8FAFC;"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.85.94-2.93-.93.04-2.03.62-2.69 1.39-.58.67-1.09 1.77-.95 2.82 1.03.08 2.07-.51 2.7-1.28z"/></svg>
                                         </div>
                                         <span style="background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid rgba(148,163,184,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">MACOS INTEL</span>
                                     </div>
@@ -5309,77 +5546,77 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                     <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userMacIntelVerText">v<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?> (Intel Processors)</div>
                                     <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Disk image optimized for Intel Macs manufactured prior to late 2020.</p>
                                 </div>
-                                <a href="<?= htmlspecialchars($activeLandingReleases['macos-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'macos-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; <?= ($detectedPlatform === 'macos-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'font-weight: 700; font-size: 13px;' ?>" id="userBtnMacIntelDl">
-                                    ⬇️ Download .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?>)
+                                <a href="<?= htmlspecialchars($activeLandingReleases['macos-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'macos-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; <?= ($detectedPlatform === 'macos-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; font-size: 13px;' : 'font-weight: 700; font-size: 13px;' ?>" id="userBtnMacIntelDl">
+                                    <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-download"></use></svg>
+                                    <span>Download .dmg (v<?= htmlspecialchars($activeLandingReleases['macos-x64']['version']) ?>)</span>
                                 </a>
                             </div>
 
                             <!-- 4. Linux x64 Card -->
                             <div class="platform-download-card <?= ($detectedPlatform === 'linux-x64') ? 'card-recommended' : '' ?>" id="cardLinuxPlatform">
                                 <?php if ($detectedPlatform === 'linux-x64'): ?>
-                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(45,212,191,0.4);">RECOMMENDED</span>
+                                    <span class="card-rec-badge" style="position: absolute; top: -11px; right: 14px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-size: 9.5px; font-weight: 900; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em;">RECOMMENDED</span>
                                 <?php endif; ?>
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                                         <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.25);">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: #FACC15;">
-                                                <path d="M12 2C9.5 2 7.8 3.5 7.8 6.5c0 1.2.3 2.6.7 3.7C7 11.2 5.5 13.5 5.5 16.5c0 2.8 1.5 4.8 3.8 5.3-.2.4-.3.8-.3 1.2 0 .6.4 1 1 1h4c.6 0 1-.4 1-1 0-.4-.1-.8-.3-1.2 2.3-.5 3.8-2.5 3.8-5.3 0-3-1.5-5.3-3-6.3.4-1.1.7-2.5.7-3.7C16.2 3.5 14.5 2 12 2zm-1.8 4.5c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm3.6 0c.4 0 .8.4.8.8s-.4.8-.8.8-.8-.4-.8-.8.4-.8.8-.8zm-1.8 1.8c.8 0 1.5.4 1.5 1s-.7 1-1.5 1-1.5-.4-1.5-1 .7-1 1.5-1zm0 4.2c2.2 0 4 2.2 4 5s-1.8 5-4 5-4-2.2-4-5 1.8-5 4-5z"/>
-                                            </svg>
+                                            <svg class="lp-ico" width="22" height="22" style="color:#FACC15;" aria-hidden="true"><use href="#lp-ico-linux"></use></svg>
                                         </div>
                                         <span style="background: rgba(234,179,8,0.15); color: #FACC15; border: 1px solid rgba(234,179,8,0.3); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px;">LINUX</span>
                                     </div>
                                     <h4 style="color: #FFF; margin-bottom: 2px; font-weight: 700; font-size: 17px;">Linux Client</h4>
-                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userLinuxVerText">v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?> (AppImage & .deb)</div>
-                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Universal standalone package for Ubuntu, Debian, Fedora & Arch.</p>
+                                    <div style="color: #2DD4BF; font-size: 12px; font-weight: 600; margin-bottom: 8px;" id="userLinuxVerText">v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?> (AppImage &amp; .deb)</div>
+                                    <p style="color: var(--text-muted); font-size: 12.5px; margin-bottom: 18px; line-height: 1.5;">Universal standalone package for Ubuntu, Debian, Fedora &amp; Arch.</p>
                                 </div>
-                                <a href="<?= htmlspecialchars($activeLandingReleases['linux-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'linux-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; <?= ($detectedPlatform === 'linux-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 13px;' : 'font-weight: 700; border-color: rgba(250,204,21,0.4); font-size: 13px;' ?>" id="userBtnLinuxDl">
-                                    ⬇️ Download .AppImage (v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>)
+                                <a href="<?= htmlspecialchars($activeLandingReleases['linux-x64']['url']) ?>" download class="btn <?= ($detectedPlatform === 'linux-x64') ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; padding: 10px 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; <?= ($detectedPlatform === 'linux-x64') ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; font-size: 13px;' : 'font-weight: 700; border-color: rgba(250,204,21,0.4); font-size: 13px;' ?>" id="userBtnLinuxDl">
+                                    <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-download"></use></svg>
+                                    <span>Download .AppImage (v<?= htmlspecialchars($activeLandingReleases['linux-x64']['version']) ?>)</span>
                                 </a>
                             </div>
 
                         </div>
 
                         <!-- macOS Gatekeeper Installation Helper Box -->
-                        <div style="margin-top: 18px; margin-bottom: 20px; padding: 14px 18px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; font-size: 12px; color: #94A3B8; line-height: 1.6;">
+                        <div style="margin-top: 18px; margin-bottom: 20px; padding: 15px 18px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 14px; font-size: 12px; color: #94A3B8; line-height: 1.6;">
                             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                <span style="font-size: 16px;">🍏</span>
+                                <svg class="lp-ico" width="16" height="16" style="color:#60A5FA;" aria-hidden="true"><use href="#lp-ico-terminal"></use></svg>
                                 <strong style="color: #60A5FA; font-size: 13px;">macOS Installation Guide (If blocked by Gatekeeper)</strong>
                             </div>
                             If macOS displays <em>"AntiProfiles is damaged and can't be opened. You should move it to the Trash."</em>, open <strong>Terminal</strong> and run:
-                            <div style="margin-top: 6px; padding: 8px 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-family: monospace; color: #34D399; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="margin-top: 8px; padding: 9px 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: monospace; color: #34D399; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                                 <code>xattr -cr /Applications/AntiProfiles.app</code>
-                                <button type="button" onclick="navigator.clipboard.writeText('xattr -cr /Applications/AntiProfiles.app'); alert('Command copied to clipboard!');" style="background: rgba(255,255,255,0.15); color: #FFF; border: none; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;">📋 Copy Command</button>
+                                <button type="button" onclick="navigator.clipboard.writeText('xattr -cr /Applications/AntiProfiles.app'); alert('Command copied to clipboard!');" style="background: rgba(255,255,255,0.12); color: #FFF; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;"><svg class="lp-ico" width="12" height="12" aria-hidden="true"><use href="#lp-ico-copy"></use></svg><span>Copy</span></button>
                             </div>
                         </div>
 
                         <!-- System Security & Feature Highlights Bar -->
                         <div class="security-highlights-grid">
                             <div style="display: flex; gap: 12px; align-items: center;">
-                                <span style="font-size: 22px;">🛡️</span>
+                                <span class="portal-card-icon"><svg class="lp-ico" width="17" height="17" aria-hidden="true"><use href="#lp-ico-shield"></use></svg></span>
                                 <div>
                                     <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Isolated Sandbox Engine</h5>
-                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">100% separate cookies & storage per profile</p>
+                                    <p style="color: #64748B; font-size: 11px; margin: 0;">100% separate cookies &amp; storage per profile</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
-                                <span style="font-size: 22px;">⚡</span>
+                                <span class="portal-card-icon amber"><svg class="lp-ico" width="17" height="17" aria-hidden="true"><use href="#lp-ico-bolt"></use></svg></span>
                                 <div>
                                     <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Native HW Acceleration</h5>
-                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">Multi-core GPU spoofing with zero lag</p>
+                                    <p style="color: #64748B; font-size: 11px; margin: 0;">Multi-core GPU spoofing with zero lag</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
-                                <span style="font-size: 22px;">🔄</span>
+                                <span class="portal-card-icon indigo"><svg class="lp-ico" width="17" height="17" aria-hidden="true"><use href="#lp-ico-refresh"></use></svg></span>
                                 <div>
                                     <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Auto-Update Ready</h5>
-                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">Direct seamless OTA patch delivery</p>
+                                    <p style="color: #64748B; font-size: 11px; margin: 0;">Direct seamless OTA patch delivery</p>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 12px; align-items: center;">
-                                <span style="font-size: 22px;">🔒</span>
+                                <span class="portal-card-icon emerald"><svg class="lp-ico" width="17" height="17" aria-hidden="true"><use href="#lp-ico-lock"></use></svg></span>
                                 <div>
                                     <h5 style="color: #FFF; margin: 0 0 2px 0; font-weight: 700; font-size: 13px;">Encrypted Credentials</h5>
-                                    <p style="color: var(--text-muted); font-size: 11px; margin: 0;">AES-256 GCM client storage</p>
+                                    <p style="color: #64748B; font-size: 11px; margin: 0;">AES-256 GCM client storage</p>
                                 </div>
                             </div>
                         </div>
@@ -5387,29 +5624,35 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
                     <!-- USER TAB 4: LIVE HELP & SUPPORT CHAT -->
                     <div id="tab-user-support" class="admin-tab-content" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <div>
-                                <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">Live Help & Support Chat</h3>
-                                <p style="color: var(--text-muted); font-size: 13px;">Chat directly with AntiProfiles technical support team.</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="portal-card-icon"><svg class="lp-ico" width="19" height="19" aria-hidden="true"><use href="#lp-ico-headset"></use></svg></span>
+                                <div>
+                                    <h3 style="font-size: 20px; font-weight: 800; color: #FFF; margin: 0 0 3px 0;">Live Help &amp; Support Chat</h3>
+                                    <p style="color: #94A3B8; font-size: 13px; margin: 0;">Chat directly with AntiProfiles technical support engineers.</p>
+                                </div>
                             </div>
-                            <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 800;">🟢 Support Team Online</span>
+                            <span style="display: inline-flex; align-items: center; gap: 7px; background: rgba(16, 185, 129, 0.14); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.32); padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800;">
+                                <svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-activity"></use></svg>
+                                <span>Support Team Online</span>
+                            </span>
                         </div>
 
                         <!-- Chat Message Thread Box -->
-                        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; height: 420px; display: flex; flex-direction: column;">
-                            <div id="userChatThread" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 10px;">
-                                <div style="background: #181B26; border: 1px solid #272A3B; border-radius: 12px; padding: 14px; max-width: 80%; align-self: flex-start;">
-                                    <span style="font-size: 11px; color: #2DD4BF; font-weight: 700;">AntiProfiles Support Team</span>
-                                    <p style="font-size: 13px; color: #FFF; margin-top: 4px;">Hello! Welcome to AntiProfiles Support. How can we assist you with your browser profiles or proxy configurations today?</p>
-                                    <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 6px;">Today 12:00 PM</span>
+                        <div class="admin-card-box" style="height: 460px; display: flex; flex-direction: column; padding: 20px;">
+                            <div id="userChatThread" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px;">
+                                <div style="background: rgba(24, 29, 46, 0.9); border: 1px solid rgba(148,163,184,0.16); border-radius: 14px; padding: 15px 16px; max-width: 80%; align-self: flex-start;">
+                                    <span style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;"><svg class="lp-ico" width="13" height="13" aria-hidden="true"><use href="#lp-ico-headset"></use></svg><span>AntiProfiles Support Team</span></span>
+                                    <p style="font-size: 13.5px; color: #F1F5F9; margin: 6px 0 0 0; line-height: 1.55;">Hello! Welcome to AntiProfiles Support. How can we assist you with your browser profiles, subscriptions, or proxy configurations today?</p>
+                                    <span style="font-size: 10.5px; color: #64748B; display: block; margin-top: 6px;">Online • Instant reply</span>
                                 </div>
                             </div>
 
                             <!-- Chat Input Form -->
-                            <form onsubmit="handleSendUserSupportMessage(event)" style="display: flex; gap: 10px; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
-                                <input type="text" id="userSupportInput" placeholder="Type your message here..." required style="flex: 1; background: #0A0B10; border: 1px solid #272A3B; border-radius: 8px; padding: 12px; color: #FFF; font-size: 14px;">
-                                <button type="button" class="btn btn-outline" style="padding: 0 16px;" onclick="alert('File attachment feature ready.')">📎</button>
-                                <button type="submit" class="btn btn-primary" style="padding: 12px 24px; background: #2DD4BF; color: #000; font-weight: 800;">Send Message</button>
+                            <form onsubmit="handleSendUserSupportMessage(event)" style="display: flex; gap: 10px; margin-top: 16px; border-top: 1px solid rgba(148,163,184,0.14); padding-top: 16px;">
+                                <input type="text" id="userSupportInput" placeholder="Type your message here..." required class="portal-input" style="margin-top: 0; flex: 1;">
+                                <button type="button" class="btn btn-outline" style="padding: 0 14px; border-radius: 11px; border-color: rgba(148,163,184,0.22); color: #94A3B8;" onclick="alert('File attachment feature ready.')" aria-label="Attach file"><svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-paperclip"></use></svg></button>
+                                <button type="submit" class="btn btn-primary" style="padding: 11px 22px; border-radius: 11px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; display: inline-flex; align-items: center; gap: 7px;"><svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-send"></use></svg><span>Send</span></button>
                             </form>
                         </div>
                     </div>
@@ -8350,11 +8593,30 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             try {
                 const user = JSON.parse(userStr);
                 
-                // Populate Profile Tab
+                // Populate Profile Tab & Modern Portal Overview Banner
                 if (document.getElementById('uProfileName')) document.getElementById('uProfileName').value = user.name || '';
                 if (document.getElementById('uProfileEmail')) document.getElementById('uProfileEmail').value = user.email || '';
                 if (document.getElementById('uProfileRole')) document.getElementById('uProfileRole').value = 'Role: ' + (user.role || 'user').toUpperCase();
                 if (document.getElementById('uProfileStatus')) document.getElementById('uProfileStatus').value = 'Status: ' + (user.accountStatus || 'active').toUpperCase();
+                if (document.getElementById('myProfileName') && !document.getElementById('myProfileName').value) {
+                    document.getElementById('myProfileName').value = user.name || '';
+                }
+                if (document.getElementById('myProfileEmail') && !document.getElementById('myProfileEmail').value) {
+                    document.getElementById('myProfileEmail').value = user.email || '';
+                }
+                const initials = (user.name || user.email || 'U')
+                    .trim()
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map(p => (p[0] || '').toUpperCase())
+                    .join('') || 'U';
+                if (document.getElementById('portalHeroAvatar')) document.getElementById('portalHeroAvatar').innerText = initials;
+                if (document.getElementById('portalSidebarAvatar')) document.getElementById('portalSidebarAvatar').innerText = initials;
+                if (document.getElementById('portalHeroName')) document.getElementById('portalHeroName').innerText = user.name || 'AntiProfiles User';
+                if (document.getElementById('portalHeroEmail')) document.getElementById('portalHeroEmail').innerText = user.email || '';
+                if (document.getElementById('portalHeroStatus')) document.getElementById('portalHeroStatus').innerText = (user.accountStatus || 'ACTIVE').toUpperCase();
+                if (document.getElementById('portalSidebarUserName')) document.getElementById('portalSidebarUserName').innerText = user.name || 'Account';
+                if (document.getElementById('portalSidebarUserEmail')) document.getElementById('portalSidebarUserEmail').innerText = user.email || '';
 
                 // Skip server re-validation if user just logged in (grace period)
                 if (window._pvJustLoggedIn) {
