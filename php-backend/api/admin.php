@@ -1215,33 +1215,116 @@ switch ($action) {
         respondJson(['success' => true]);
         break;
 
+    case 'get-plans':
+        try {
+            $stmt = $db->query("SELECT * FROM pricing_plans ORDER BY sort_order ASC, monthly_price ASC, created_at ASC");
+            $plans = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+            respondJson(['success' => true, 'data' => $plans]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+        break;
+
     case 'save-plan':
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $planId = $input['id'] ?? ('plan_' . bin2hex(random_bytes(4)));
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $name = trim((string)($input['name'] ?? ''));
+            if ($name === '') {
+                respondJson(['success' => false, 'error' => 'Package name is required.'], 400);
+            }
 
-        $stmt = $db->prepare("
-            REPLACE INTO pricing_plans (id, name, slug, description, monthly_price, yearly_price, profile_limit, team_limit, api_limit, badge, button_text, button_url, is_popular, is_active, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([
-            $planId,
-            $input['name'] ?? 'Plan',
-            $input['slug'] ?? strtolower($input['name'] ?? 'plan'),
-            $input['description'] ?? '',
-            (float)($input['monthly_price'] ?? 0),
-            (float)($input['yearly_price'] ?? 0),
-            (int)($input['profile_limit'] ?? 25),
-            (int)($input['team_limit'] ?? 2),
-            $input['api_limit'] ?? 'Basic',
-            $input['badge'] ?? '',
-            $input['button_text'] ?? 'Get Started',
-            $input['button_url'] ?? '#register',
-            (int)($input['is_popular'] ?? 0),
-            (int)($input['is_active'] ?? 1),
-            (int)($input['sort_order'] ?? 0)
-        ]);
+            $rawSlug = trim((string)($input['slug'] ?? ''));
+            $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $rawSlug !== '' ? $rawSlug : $name));
+            $slug = trim($slug, '-') ?: ('plan-' . bin2hex(random_bytes(3)));
 
-        respondJson(['success' => true]);
+            $existingId = trim((string)($input['id'] ?? ''));
+            $planId = $existingId !== '' ? $existingId : ('plan_' . str_replace('-', '_', $slug) . '_' . substr(bin2hex(random_bytes(3)), 0, 4));
+
+            // Ensure unique slug when creating a new plan or changing slug
+            $slugCheck = $db->prepare("SELECT id FROM pricing_plans WHERE slug = ? AND id != ? LIMIT 1");
+            $slugCheck->execute([$slug, $planId]);
+            if ($slugCheck->fetch()) {
+                $slug .= '-' . substr(bin2hex(random_bytes(2)), 0, 4);
+            }
+
+            $monthlyPrice = max(0, (float)($input['monthly_price'] ?? 0));
+            $yearlyPrice = isset($input['yearly_price']) && $input['yearly_price'] !== ''
+                ? max(0, (float)$input['yearly_price'])
+                : round($monthlyPrice * 0.8, 2);
+            $profileLimit = max(1, (int)($input['profile_limit'] ?? 25));
+            $teamLimit = max(1, (int)($input['team_limit'] ?? 2));
+            $apiLimit = trim((string)($input['api_limit'] ?? 'Basic API')) ?: 'Basic API';
+            $badge = trim((string)($input['badge'] ?? ''));
+            $description = trim((string)($input['description'] ?? ''));
+            $buttonText = trim((string)($input['button_text'] ?? ($monthlyPrice > 0 ? 'Pay & Upgrade' : 'Start Free')));
+            $buttonUrl = trim((string)($input['button_url'] ?? '#register'));
+            $isPopular = !empty($input['is_popular']) ? 1 : 0;
+            $isActive = isset($input['is_active']) ? (!empty($input['is_active']) ? 1 : 0) : 1;
+            $sortOrder = (int)($input['sort_order'] ?? 10);
+
+            $stmt = $db->prepare("
+                INSERT INTO pricing_plans (id, name, slug, description, monthly_price, yearly_price, profile_limit, team_limit, api_limit, badge, button_text, button_url, is_popular, is_active, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
+                    slug = VALUES(slug),
+                    description = VALUES(description),
+                    monthly_price = VALUES(monthly_price),
+                    yearly_price = VALUES(yearly_price),
+                    profile_limit = VALUES(profile_limit),
+                    team_limit = VALUES(team_limit),
+                    api_limit = VALUES(api_limit),
+                    badge = VALUES(badge),
+                    button_text = VALUES(button_text),
+                    button_url = VALUES(button_url),
+                    is_popular = VALUES(is_popular),
+                    is_active = VALUES(is_active),
+                    sort_order = VALUES(sort_order),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            $stmt->execute([
+                $planId,
+                $name,
+                $slug,
+                $description,
+                $monthlyPrice,
+                $yearlyPrice,
+                $profileLimit,
+                $teamLimit,
+                $apiLimit,
+                $badge,
+                $buttonText,
+                $buttonUrl,
+                $isPopular,
+                $isActive,
+                $sortOrder
+            ]);
+
+            logAdminAction($admin['id'], $admin['email'], 'SAVE_PRICING_PLAN', $planId, "Saved package {$name} (\${$monthlyPrice}/mo, {$profileLimit} profiles, {$teamLimit} users)");
+            respondJson([
+                'success' => true,
+                'id' => $planId,
+                'message' => "Subscription package '{$name}' saved successfully!"
+            ]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => 'Failed to save package: ' . $e->getMessage()], 400);
+        }
+        break;
+
+    case 'delete-plan':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $planId = trim((string)($input['id'] ?? $_GET['id'] ?? ''));
+            if ($planId === '') {
+                respondJson(['success' => false, 'error' => 'Package ID is required.'], 400);
+            }
+            $stmt = $db->prepare("DELETE FROM pricing_plans WHERE id = ?");
+            $stmt->execute([$planId]);
+            logAdminAction($admin['id'], $admin['email'], 'DELETE_PRICING_PLAN', $planId, "Deleted pricing package {$planId}");
+            respondJson(['success' => true, 'message' => 'Package deleted successfully.']);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => 'Failed to delete package: ' . $e->getMessage()], 400);
+        }
         break;
 
     // ── 4.5. Google OAuth Configuration APIs ──

@@ -567,6 +567,26 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
     if ($trialScope === 'all') return true;
     return $trialPlanId === $planId;
 };
+
+// Load Active Dynamic Subscription Packages from Database (with clean default fallback)
+$dynamicPricingPlans = [];
+try {
+    if ($pdo) {
+        $pStmt = $pdo->query("SELECT * FROM pricing_plans WHERE is_active = 1 ORDER BY sort_order ASC, monthly_price ASC");
+        if ($pStmt) {
+            $dynamicPricingPlans = $pStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
+} catch (Throwable $e) {}
+
+if (empty($dynamicPricingPlans)) {
+    $dynamicPricingPlans = [
+        ['id' => 'plan_free', 'name' => 'Free', 'slug' => 'free', 'description' => 'Community Support', 'monthly_price' => 0, 'yearly_price' => 0, 'profile_limit' => 3, 'team_limit' => 1, 'api_limit' => '—', 'badge' => '', 'is_popular' => 0, 'sort_order' => 1],
+        ['id' => 'plan_starter', 'name' => 'Starter', 'slug' => 'starter', 'description' => 'Email Support', 'monthly_price' => 19, 'yearly_price' => 15, 'profile_limit' => 25, 'team_limit' => 2, 'api_limit' => 'Basic API', 'badge' => '', 'is_popular' => 0, 'sort_order' => 2],
+        ['id' => 'plan_pro', 'name' => 'Professional', 'slug' => 'professional', 'description' => 'Priority 24/7 Support', 'monthly_price' => 49, 'yearly_price' => 39, 'profile_limit' => 100, 'team_limit' => 10, 'api_limit' => 'Full REST & Driver API', 'badge' => 'MOST POPULAR', 'is_popular' => 1, 'sort_order' => 3],
+        ['id' => 'plan_business', 'name' => 'Business', 'slug' => 'business', 'description' => 'Dedicated Account Manager', 'monthly_price' => 99, 'yearly_price' => 79, 'profile_limit' => 500, 'team_limit' => 25, 'api_limit' => 'Unlimited API', 'badge' => 'BEST VALUE', 'is_popular' => 0, 'sort_order' => 4],
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -4170,108 +4190,69 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             </div>
         </div>
         <div class="pricing-section-grid">
-            <!-- Free Plan -->
-            <div id="plan-card-free" class="plan-card">
-                <h3 style="font-size: 19px; color: #FFF;">Free</h3>
-                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$0" data-yearly="$0">$0</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'free')">Start Free</button>
-                <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">3 Profiles</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Proxy Support: <strong style="color: #E2E8F0;">Basic</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Fingerprint Controls: <strong style="color: #E2E8F0;">Standard</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Team Users: <strong style="color: #E2E8F0;">1 User</strong></li>
-                    <li>— API Access: <strong style="color: #64748B;">—</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Support: <strong style="color: #E2E8F0;">Community</strong></li>
-                </ul>
-            </div>
-
-            <!-- Starter Plan -->
-            <div id="plan-card-starter" class="plan-card" style="border-color: <?= $isPlanTrial('plan_starter') ? 'rgba(45, 212, 191, 0.55)' : 'rgba(148, 163, 184, 0.15)' ?>;">
-                <?php if ($isPlanTrial('plan_starter')): ?>
+            <?php foreach ($dynamicPricingPlans as $dp):
+                $pId = (string)($dp['id'] ?? '');
+                $pSlug = htmlspecialchars((string)($dp['slug'] ?? $pId), ENT_QUOTES, 'UTF-8');
+                $pNameRaw = (string)($dp['name'] ?? 'Plan');
+                $pNameEsc = htmlspecialchars($pNameRaw, ENT_QUOTES, 'UTF-8');
+                $pNameJs = json_encode($pNameRaw);
+                $pIdJs = json_encode($pId);
+                $mPrice = (float)($dp['monthly_price'] ?? 0);
+                $yPrice = (float)($dp['yearly_price'] ?? round($mPrice * 0.8, 2));
+                $mPriceFmt = ($mPrice == (int)$mPrice) ? '$' . (int)$mPrice : '$' . number_format($mPrice, 2);
+                $yPriceFmt = ($yPrice == (int)$yPrice) ? '$' . (int)$yPrice : '$' . number_format($yPrice, 2);
+                $pProfiles = (int)($dp['profile_limit'] ?? 25);
+                $pUsers = (int)($dp['team_limit'] ?? 2);
+                $pApi = htmlspecialchars((string)($dp['api_limit'] ?: 'Basic API'), ENT_QUOTES, 'UTF-8');
+                $pBadge = trim((string)($dp['badge'] ?? ''));
+                $pDesc = trim((string)($dp['description'] ?? ''));
+                $pPopular = !empty($dp['is_popular']);
+                $isFree = ($mPrice <= 0);
+                $hasTrial = !$isFree && $isPlanTrial($pId);
+                $cardBorder = $pPopular
+                    ? 'border: 2px solid #2DD4BF; box-shadow: 0 14px 44px rgba(45, 212, 191, 0.16);'
+                    : ($hasTrial ? 'border-color: rgba(45, 212, 191, 0.45);' : 'border-color: rgba(148, 163, 184, 0.15);');
+                $proxyLabel = $isFree ? 'Basic' : 'HTTP/HTTPS/SOCKS5';
+                $fpLabel = $isFree ? 'Standard' : ($pProfiles >= 300 ? 'Full Hardware Spoofing' : 'Advanced Controls');
+                $supportLabel = $pDesc !== '' ? htmlspecialchars($pDesc, ENT_QUOTES, 'UTF-8') : ($isFree ? 'Community' : ($pPopular ? 'Priority 24/7' : '24/7 Email & Chat'));
+            ?>
+            <div id="plan-card-<?= $pSlug ?>" class="plan-card <?= $pPopular ? 'popular' : '' ?>" style="<?= $cardBorder ?>">
+                <?php if ($hasTrial && $pBadge !== ''): ?>
+                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg><?= $trialDays ?>-DAY FREE TRIAL • <?= htmlspecialchars($pBadge, ENT_QUOTES, 'UTF-8') ?></span>
+                <?php elseif ($hasTrial): ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg><?= $trialDays ?>-DAY FREE TRIAL</span>
+                <?php elseif ($pBadge !== ''): ?>
+                    <span style="position: absolute; top: -12px; right: 20px; background: <?= $pPopular ? 'linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;' : 'rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4);' ?> font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;"><?= htmlspecialchars($pBadge, ENT_QUOTES, 'UTF-8') ?></span>
                 <?php endif; ?>
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <h3 style="font-size: 19px; color: #FFF; margin: 0;">Starter</h3>
-                    <?php if ($isPlanTrial('plan_starter')): ?>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <h3 style="font-size: 19px; color: #FFF; margin: 0;"><?= $pNameEsc ?></h3>
+                    <?php if ($hasTrial): ?>
                         <span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Trial Available</span>
                     <?php endif; ?>
                 </div>
-                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$19" data-yearly="$15">$19</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <?php if ($isPlanTrial('plan_starter')): ?>
-                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_starter" data-plan-name="Starter" data-plan-amount="19" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick="handlePlanAction('plan_starter', 'Starter', 19, true)"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
-                    <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px;" onclick="handlePlanAction('plan_starter', 'Starter', 19, false)">Pay &amp; Upgrade ($19)</button>
-                <?php else: ?>
-                    <button class="btn btn-outline lp-plan-cta-btn" data-plan-id="plan_starter" data-plan-name="Starter" data-plan-amount="19" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="handlePlanAction('plan_starter', 'Starter', 19, false)">Pay &amp; Upgrade ($19)</button>
-                <?php endif; ?>
-                <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">25 Profiles</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Proxy Support: <strong style="color: #E2E8F0;">HTTP/HTTPS/SOCKS</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Fingerprint Controls: <strong style="color: #E2E8F0;">Advanced</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Team Users: <strong style="color: #E2E8F0;">2 Users</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> API Access: <strong style="color: #E2E8F0;">Basic API</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Support: <strong style="color: #E2E8F0;">Email Support</strong></li>
-                </ul>
-            </div>
 
-            <!-- Professional Plan -->
-            <div id="plan-card-pro" class="plan-card popular" style="border: 2px solid #2DD4BF; box-shadow: 0 14px 44px rgba(45, 212, 191, 0.16);">
-                <?php if ($isPlanTrial('plan_pro')): ?>
-                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg><?= $trialDays ?>-DAY FREE TRIAL • MOST POPULAR</span>
-                <?php else: ?>
-                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">MOST POPULAR</span>
-                <?php endif; ?>
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <h3 style="font-size: 19px; color: #FFF; margin: 0;">Professional</h3>
-                    <?php if ($isPlanTrial('plan_pro')): ?>
-                        <span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Free Trial</span>
-                    <?php endif; ?>
-                </div>
-                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$49" data-yearly="$39">$49</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <?php if ($isPlanTrial('plan_pro')): ?>
-                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_pro" data-plan-name="Professional" data-plan-amount="49" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick="handlePlanAction('plan_pro', 'Professional', 49, true)"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
-                    <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px; border-color: rgba(45, 212, 191, 0.4); color: #2DD4BF;" onclick="handlePlanAction('plan_pro', 'Professional', 49, false)">Pay &amp; Upgrade ($49)</button>
-                <?php else: ?>
-                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_pro" data-plan-name="Professional" data-plan-amount="49" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="handlePlanAction('plan_pro', 'Professional', 49, false)">Pay &amp; Upgrade ($49)</button>
-                <?php endif; ?>
-                <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">100 Profiles</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Proxy Support: <strong style="color: #E2E8F0;">HTTP/HTTPS/SOCKS5</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Fingerprint Controls: <strong style="color: #E2E8F0;">Advanced Controls</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Team Users: <strong style="color: #E2E8F0;">10 Users</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> API Access: <strong style="color: #E2E8F0;">Full REST &amp; Driver API</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Support: <strong style="color: #E2E8F0;">Priority 24/7</strong></li>
-                </ul>
-            </div>
+                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="<?= $mPriceFmt ?>" data-yearly="<?= $yPriceFmt ?>"><?= $mPriceFmt ?></span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
 
-            <!-- Business Plan -->
-            <div id="plan-card-business" class="plan-card" style="border-color: <?= $isPlanTrial('plan_business') ? 'rgba(129, 140, 248, 0.6)' : 'rgba(148, 163, 184, 0.15)' ?>;">
-                <?php if ($isPlanTrial('plan_business')): ?>
-                    <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg><?= $trialDays ?>-DAY TRIAL • BEST VALUE</span>
+                <?php if ($isFree): ?>
+                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'free')">Start Free</button>
+                <?php elseif ($hasTrial): ?>
+                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>" data-plan-name="<?= $pNameEsc ?>" data-plan-amount="<?= $mPrice ?>" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick='handlePlanAction(<?= $pIdJs ?>, <?= $pNameJs ?>, <?= $mPrice ?>, true)'><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px; <?= $pPopular ? 'border-color: rgba(45, 212, 191, 0.4); color: #2DD4BF;' : '' ?>" onclick='handlePlanAction(<?= $pIdJs ?>, <?= $pNameJs ?>, <?= $mPrice ?>, false)'>Pay &amp; Upgrade (<?= $mPriceFmt ?>)</button>
                 <?php else: ?>
-                    <span style="position: absolute; top: -12px; right: 20px; background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">BEST VALUE</span>
+                    <button class="btn <?= $pPopular ? 'btn-primary' : 'btn-outline' ?> lp-plan-cta-btn" data-plan-id="<?= htmlspecialchars($pId, ENT_QUOTES, 'UTF-8') ?>" data-plan-name="<?= $pNameEsc ?>" data-plan-amount="<?= $mPrice ?>" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick='handlePlanAction(<?= $pIdJs ?>, <?= $pNameJs ?>, <?= $mPrice ?>, false)'>Pay &amp; Upgrade (<?= $mPriceFmt ?>)</button>
                 <?php endif; ?>
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <h3 style="font-size: 19px; color: #FFF; margin: 0;">Business</h3>
-                    <?php if ($isPlanTrial('plan_business')): ?>
-                        <span style="background: rgba(129, 140, 248, 0.15); color: #818CF8; border: 1px solid rgba(129, 140, 248, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Trial Available</span>
-                    <?php endif; ?>
-                </div>
-                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$99" data-yearly="$79">$99</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
-                <?php if ($isPlanTrial('plan_business')): ?>
-                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_business" data-plan-name="Business" data-plan-amount="99" style="width: 100%; justify-content: center; margin-bottom: 10px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);" onclick="handlePlanAction('plan_business', 'Business', 99, true)"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
-                    <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px;" onclick="handlePlanAction('plan_business', 'Business', 99, false)">Pay &amp; Upgrade ($99)</button>
-                <?php else: ?>
-                    <button class="btn btn-outline lp-plan-cta-btn" data-plan-id="plan_business" data-plan-name="Business" data-plan-amount="99" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="handlePlanAction('plan_business', 'Business', 99, false)">Pay &amp; Upgrade ($99)</button>
-                <?php endif; ?>
+
                 <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">500 Profiles</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Proxy Support: <strong style="color: #E2E8F0;">HTTP/HTTPS/SOCKS5</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Fingerprint Controls: <strong style="color: #E2E8F0;">Full Hardware Spoofing</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Team Users: <strong style="color: #E2E8F0;">25 Users</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> API Access: <strong style="color: #E2E8F0;">Unlimited API</strong></li>
-                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Support: <strong style="color: #E2E8F0;">Dedicated Account Manager</strong></li>
+                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;"><?= number_format($pProfiles) ?> Profiles</strong></li>
+                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Proxy Support: <strong style="color: #E2E8F0;"><?= $proxyLabel ?></strong></li>
+                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Fingerprint Controls: <strong style="color: #E2E8F0;"><?= $fpLabel ?></strong></li>
+                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Team Users: <strong style="color: #E2E8F0;"><?= $pUsers ?> <?= $pUsers === 1 ? 'User' : 'Users' ?></strong></li>
+                    <li><?= ($isFree && ($pApi === '—' || $pApi === 'None')) ? '— API Access: <strong style="color: #64748B;">—</strong>' : '<svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> API Access: <strong style="color: #E2E8F0;">' . $pApi . '</strong>' ?></li>
+                    <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Support: <strong style="color: #E2E8F0;"><?= $supportLabel ?></strong></li>
                 </ul>
             </div>
+            <?php endforeach; ?>
         </div>
         <script>
         window.setLandingBillingCycle = function(mode) {
@@ -5259,53 +5240,38 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px;">
-                                <div style="background: rgba(8, 11, 19, 0.85); border: 1px solid rgba(148,163,184,0.16); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+                                <?php foreach ($dynamicPricingPlans as $up):
+                                    $upPrice = (float)($up['monthly_price'] ?? 0);
+                                    if ($upPrice <= 0) continue;
+                                    $upId = (string)($up['id'] ?? '');
+                                    $upName = (string)($up['name'] ?? 'Plan');
+                                    $upNameEsc = htmlspecialchars($upName, ENT_QUOTES, 'UTF-8');
+                                    $upPriceFmt = ($upPrice == (int)$upPrice) ? '$' . (int)$upPrice : '$' . number_format($upPrice, 2);
+                                    $upProfiles = (int)($up['profile_limit'] ?? 25);
+                                    $upUsers = (int)($up['team_limit'] ?? 2);
+                                    $upApi = htmlspecialchars((string)($up['api_limit'] ?: 'Full API Access'), ENT_QUOTES, 'UTF-8');
+                                    $upBadge = trim((string)($up['badge'] ?? ''));
+                                    $upPopular = !empty($up['is_popular']);
+                                ?>
+                                <div style="background: <?= $upPopular ? 'linear-gradient(180deg, rgba(45, 212, 191, 0.1), rgba(8, 11, 19, 0.9))' : 'rgba(8, 11, 19, 0.85)' ?>; border: <?= $upPopular ? '1.5px solid #2DD4BF; box-shadow: 0 12px 30px rgba(45, 212, 191, 0.12);' : '1px solid rgba(148,163,184,0.18);' ?> border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
                                     <div>
-                                        <div style="font-size: 15px; font-weight: 700; color: #FFF;">Starter</div>
-                                        <div style="font-size: 30px; font-weight: 800; color: #2DD4BF; margin: 10px 0 14px 0;">$19 <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
-                                        <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: #94A3B8; display: flex; flex-direction: column; gap: 8px;">
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>25 Browser Profiles</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>2 Team Users &amp; Devices</span></li>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                                            <span style="font-size: 15px; font-weight: 700; color: #FFF;"><?= $upNameEsc ?></span>
+                                            <?php if ($upBadge !== ''): ?>
+                                                <span style="background: <?= $upPopular ? '#2DD4BF; color: #04131A;' : 'rgba(129, 140, 248, 0.2); color: #A5B4FC;' ?> font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;"><?= htmlspecialchars($upBadge, ENT_QUOTES, 'UTF-8') ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div style="font-size: 30px; font-weight: 800; color: #2DD4BF; margin: 10px 0 14px 0;"><?= $upPriceFmt ?> <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
+                                        <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: <?= $upPopular ? '#CBD5E1' : '#94A3B8' ?>; display: flex; flex-direction: column; gap: 8px;">
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span><?= number_format($upProfiles) ?> Browser Profiles</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span><?= $upUsers ?> Team Users &amp; Devices</span></li>
                                             <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>HTTP/HTTPS/SOCKS5 Proxies</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Basic API Access</span></li>
+                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span><?= $upApi ?></span></li>
                                         </ul>
                                     </div>
-                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade ($19)</span></button>
+                                    <button type="button" class="btn <?= $upPopular ? 'btn-primary' : 'btn-outline' ?>" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; <?= $upPopular ? 'background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800;' : 'font-weight: 700;' ?> display: inline-flex; align-items: center; gap: 7px;" onclick='initiatePackagePayment(<?= json_encode($upId) ?>, <?= json_encode($upName) ?>, <?= $upPrice ?>)'><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade (<?= $upPriceFmt ?>)</span></button>
                                 </div>
-
-                                <div style="background: linear-gradient(180deg, rgba(45, 212, 191, 0.1), rgba(8, 11, 19, 0.9)); border: 1.5px solid #2DD4BF; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 12px 30px rgba(45, 212, 191, 0.12);">
-                                    <div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <span style="font-size: 15px; font-weight: 700; color: #FFF;">Professional</span>
-                                            <span style="background: #2DD4BF; color: #04131A; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;">POPULAR</span>
-                                        </div>
-                                        <div style="font-size: 30px; font-weight: 800; color: #2DD4BF; margin: 10px 0 14px 0;">$49 <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
-                                        <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: #CBD5E1; display: flex; flex-direction: column; gap: 8px;">
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>100 Browser Profiles</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>10 Team Users &amp; Devices</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Full REST &amp; Driver API</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Priority 24/7 Support</span></li>
-                                        </ul>
-                                    </div>
-                                    <button type="button" class="btn btn-primary" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; display: inline-flex; align-items: center; gap: 7px;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade ($49)</span></button>
-                                </div>
-
-                                <div style="background: rgba(8, 11, 19, 0.85); border: 1px solid rgba(129, 140, 248, 0.4); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
-                                    <div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <span style="font-size: 15px; font-weight: 700; color: #FFF;">Business</span>
-                                            <span style="background: rgba(129, 140, 248, 0.2); color: #A5B4FC; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;">BEST VALUE</span>
-                                        </div>
-                                        <div style="font-size: 30px; font-weight: 800; color: #A5B4FC; margin: 10px 0 14px 0;">$99 <span style="font-size: 12px; color: #64748B; font-weight: 500;">/month</span></div>
-                                        <ul style="list-style: none; padding: 0; margin: 0 0 20px 0; font-size: 12.5px; color: #94A3B8; display: flex; flex-direction: column; gap: 8px;">
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>500 Browser Profiles</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>25 Team Users &amp; Devices</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Full Hardware Spoofing</span></li>
-                                            <li style="display:flex;align-items:center;gap:7px;"><svg class="lp-ico" width="13" height="13" style="color:#818CF8;" aria-hidden="true"><use href="#lp-ico-check"></use></svg><span>Unlimited API &amp; Manager</span></li>
-                                        </ul>
-                                    </div>
-                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center; border-radius: 11px; padding: 11px; font-weight: 700; border-color: rgba(129, 140, 248, 0.5); color: #A5B4FC; display: inline-flex; align-items: center; gap: 7px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-credit-card"></use></svg><span>Pay &amp; Upgrade ($99)</span></button>
-                                </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
@@ -6112,9 +6078,12 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                             </div>
                         </div>
 
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <h3 style="font-size: 18px; color: #FFF;">User Subscriptions & Account Expiration Manager</h3>
-                            <button class="btn btn-outline" onclick="loadSubscriptionsTable()">🔄 Refresh Subscriptions</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="font-size: 18px; color: #FFF; margin: 0;">User Subscriptions &amp; Account Expiration Manager</h3>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;" onclick="switchAdminTab('landing'); setTimeout(() => { openNewPlanForm(); const el = document.getElementById('adminPackageBuilderSection'); if (el) el.scrollIntoView({behavior:'smooth'}); }, 120);"><svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-plus"></use></svg><span>Create New Package</span></button>
+                                <button class="btn btn-outline" onclick="loadSubscriptionsTable()">🔄 Refresh Subscriptions</button>
+                            </div>
                         </div>
                         <div style="overflow-x: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px;">
                             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
@@ -7070,48 +7039,98 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                             <button class="btn btn-primary" style="align-self: flex-start;" onclick="saveLandingCmsHero()">Save Hero CMS Text</button>
                         </div>
 
-                        <!-- SaaS Pricing Packages Configurator -->
-                        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
-                            <h4 style="color: #818CF8; margin-bottom: 14px;">SaaS Pricing Packages & Profile Limits Configurator</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display:flex; flex-direction:column; gap:10px;">
-                                    <h5 style="color:#FFF; font-size:16px;">📦 Starter Package</h5>
-                                    <div>
-                                        <label style="font-size:11px; color:var(--text-muted);">Monthly Price ($)</label>
-                                        <input type="number" id="planPriceStarter" value="19" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:11px; color:var(--text-muted);">Max Browser Profiles</label>
-                                        <input type="number" id="planLimitStarter" value="25" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
-                                    </div>
-                                    <button class="btn btn-primary" style="font-size:12px; padding:6px 12px; margin-top:4px;" onclick="savePricingPackage('plan_starter', 'Starter', 'planPriceStarter', 'planLimitStarter')">💾 Save Starter Plan</button>
+                        <!-- Dynamic SaaS Subscription Packages Builder (Create, Edit, Delete) -->
+                        <div id="adminPackageBuilderSection" style="background: var(--bg-input); border: 1px solid rgba(45, 212, 191, 0.28); border-radius: 16px; padding: 22px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
+                                <div>
+                                    <h4 style="color: #2DD4BF; margin: 0 0 4px 0; font-size: 17px; display: flex; align-items: center; gap: 8px;">
+                                        <svg class="lp-ico" width="18" height="18" aria-hidden="true"><use href="#lp-ico-layers"></use></svg>
+                                        <span>Subscription Packages Builder (Create / Edit / Delete)</span>
+                                    </h4>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Create unlimited custom subscription packages. New packages appear automatically on the Landing Page and User Panel checkout.</p>
+                                </div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; font-weight: 800; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;" onclick="openNewPlanForm()">
+                                        <svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-plus"></use></svg>
+                                        <span>New Package</span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline" style="font-size: 12px; display: inline-flex; align-items: center; gap: 6px;" onclick="loadAdminPricingPlans()">
+                                        <svg class="lp-ico" width="13" height="13" aria-hidden="true"><use href="#lp-ico-refresh"></use></svg>
+                                        <span>Refresh</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Create / Edit Package Form -->
+                            <form id="adminPlanEditorForm" onsubmit="return submitAdminPricingPlan(event)" style="background: var(--bg-card); border: 1px solid rgba(148,163,184,0.2); border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+                                <input type="hidden" id="planEditId" value="">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                                    <strong id="planEditFormTitle" style="color: #FFF; font-size: 14.5px;">Create New Subscription Package</strong>
+                                    <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="openNewPlanForm()">Reset Form</button>
                                 </div>
 
-                                <div style="background: var(--bg-card); border: 1px solid var(--accent); border-radius: 10px; padding: 16px; display:flex; flex-direction:column; gap:10px;">
-                                    <h5 style="color:var(--accent); font-size:16px;">⭐ Professional Package</h5>
+                                <div id="planEditorStatusMsg" style="display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12.5px; font-weight: 600;"></div>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px;">
                                     <div>
-                                        <label style="font-size:11px; color:var(--text-muted);">Monthly Price ($)</label>
-                                        <input type="number" id="planPricePro" value="49" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Package Name *</label>
+                                        <input type="text" id="planEditName" required placeholder="e.g. Agency, Enterprise" class="portal-input" style="padding: 9px 11px;">
                                     </div>
                                     <div>
-                                        <label style="font-size:11px; color:var(--text-muted);">Max Browser Profiles</label>
-                                        <input type="number" id="planLimitPro" value="100" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Monthly Price (USD) *</label>
+                                        <input type="number" id="planEditMonthlyPrice" required min="0" step="0.01" placeholder="e.g. 149" class="portal-input" style="padding: 9px 11px;">
                                     </div>
-                                    <button class="btn btn-primary" style="font-size:12px; padding:6px 12px; margin-top:4px;" onclick="savePricingPackage('plan_pro', 'Professional', 'planPricePro', 'planLimitPro')">💾 Save Pro Plan</button>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Yearly Price / mo (Optional)</label>
+                                        <input type="number" id="planEditYearlyPrice" min="0" step="0.01" placeholder="Auto 20% off" class="portal-input" style="padding: 9px 11px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Max Browser Profiles *</label>
+                                        <input type="number" id="planEditProfiles" required min="1" placeholder="e.g. 1000" class="portal-input" style="padding: 9px 11px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Max Team Users / Devices *</label>
+                                        <input type="number" id="planEditTeamLimit" required min="1" value="5" placeholder="e.g. 25" class="portal-input" style="padding: 9px 11px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">API Access Label</label>
+                                        <input type="text" id="planEditApiLimit" value="Full REST & Driver API" placeholder="Basic API / Unlimited API" class="portal-input" style="padding: 9px 11px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Badge Tag (Optional)</label>
+                                        <input type="text" id="planEditBadge" placeholder="e.g. MOST POPULAR, AGENCY" class="portal-input" style="padding: 9px 11px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Support / Description</label>
+                                        <input type="text" id="planEditDesc" placeholder="e.g. Priority 24/7 Support" class="portal-input" style="padding: 9px 11px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Sort Order</label>
+                                        <input type="number" id="planEditSortOrder" value="10" min="0" class="portal-input" style="padding: 9px 11px;">
+                                    </div>
                                 </div>
 
-                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display:flex; flex-direction:column; gap:10px;">
-                                    <h5 style="color:#FFF; font-size:16px;">🚀 Business Package</h5>
-                                    <div>
-                                        <label style="font-size:11px; color:var(--text-muted);">Monthly Price ($)</label>
-                                        <input type="number" id="planPriceBiz" value="99" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,0.12);">
+                                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                                        <label style="display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #E2E8F0; cursor: pointer;">
+                                            <input type="checkbox" id="planEditPopular" style="accent-color: #2DD4BF; width: 16px; height: 16px;">
+                                            <span>Highlight as Popular</span>
+                                        </label>
+                                        <label style="display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #E2E8F0; cursor: pointer;">
+                                            <input type="checkbox" id="planEditActive" checked style="accent-color: #2DD4BF; width: 16px; height: 16px;">
+                                            <span>Active (Visible on Website)</span>
+                                        </label>
                                     </div>
-                                    <div>
-                                        <label style="font-size:11px; color:var(--text-muted);">Max Browser Profiles</label>
-                                        <input type="number" id="planLimitBiz" value="500" style="width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:8px; color:#FFF;">
-                                    </div>
-                                    <button class="btn btn-primary" style="font-size:12px; padding:6px 12px; margin-top:4px;" onclick="savePricingPackage('plan_business', 'Business', 'planPriceBiz', 'planLimitBiz')">💾 Save Business Plan</button>
+                                    <button type="submit" id="btnSubmitAdminPlan" class="btn btn-primary" style="padding: 10px 22px; font-weight: 800; border-radius: 10px; display: inline-flex; align-items: center; gap: 7px;">
+                                        <svg class="lp-ico" width="15" height="15" aria-hidden="true"><use href="#lp-ico-save"></use></svg>
+                                        <span>Save Subscription Package</span>
+                                    </button>
                                 </div>
+                            </form>
+
+                            <!-- Live Database Packages Grid -->
+                            <div id="adminPricingPlansGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                                <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">Loading subscription packages...</div>
                             </div>
                         </div>
                     </div>
@@ -9307,6 +9326,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             if (tabName === 'subscriptions') {
                 loadSubscriptionsTable();
                 loadGlobalTrialConfig();
+                loadAdminPricingPlans();
             }
             if (tabName === 'gateways') loadPaymentGatewaysTable();
             if (tabName === 'payments') loadPaymentsTable();
@@ -9326,7 +9346,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 loadSmtpConfig();
                 loadEmailLogs(1);
             }
-            if (tabName === 'landing') loadBrandingSettings();
+            if (tabName === 'landing') {
+                loadBrandingSettings();
+                loadAdminPricingPlans();
+            }
             if (tabName === 'software-features') loadAdminFeaturesTable();
         }
 
@@ -12873,17 +12896,205 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
         }
 
+        let _cachedAdminPlans = [];
+
+        async function loadAdminPricingPlans() {
+            const token = getAdminSessionToken();
+            if (!token) return;
+            const grid = document.getElementById('adminPricingPlansGrid');
+            try {
+                const res = await fetch('/api/admin/get-plans?token=' + encodeURIComponent(token), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'X-Session-Token': token }
+                });
+                const data = await res.json();
+                if (!data.success || !Array.isArray(data.data)) return;
+                _cachedAdminPlans = data.data;
+
+                // Sync trial default package selector with all paid packages
+                const trialSel = document.getElementById('globalTrialDefaultPlan');
+                if (trialSel) {
+                    const prevVal = trialSel.value;
+                    const paidPlans = _cachedAdminPlans.filter(p => Number(p.monthly_price || 0) > 0);
+                    if (paidPlans.length > 0) {
+                        trialSel.innerHTML = paidPlans.map(p =>
+                            `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${p.profile_limit} Profiles, ${p.team_limit} Devices — $${Number(p.monthly_price).toFixed(0)}/mo)</option>`
+                        ).join('');
+                        if (paidPlans.some(p => p.id === prevVal)) trialSel.value = prevVal;
+                    }
+                }
+
+                if (!grid) return;
+                if (_cachedAdminPlans.length === 0) {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">No packages created yet. Use the form above to add your first package.</div>';
+                    return;
+                }
+
+                grid.innerHTML = _cachedAdminPlans.map(p => {
+                    const isActive = p.is_active == 1 || p.is_active === true;
+                    const isPop = p.is_popular == 1 || p.is_popular === true;
+                    return `
+                    <div style="background: var(--bg-card); border: 1px solid ${isPop ? '#2DD4BF' : 'var(--border)'}; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
+                                <div>
+                                    <h5 style="color:#FFF; font-size:16px; margin:0;">${escapeHtml(p.name)}</h5>
+                                    <span style="font-size:10.5px; color:var(--text-muted); font-family:monospace;">ID: ${escapeHtml(p.id)}</span>
+                                </div>
+                                <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+                                    ${p.badge ? `<span style="background:rgba(45,212,191,0.16); color:#2DD4BF; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:800;">${escapeHtml(p.badge)}</span>` : ''}
+                                    <span style="background:${isActive ? 'rgba(16,185,129,0.16)' : 'rgba(239,68,68,0.16)'}; color:${isActive ? '#34D399' : '#F87171'}; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:800;">${isActive ? 'ACTIVE' : 'HIDDEN'}</span>
+                                </div>
+                            </div>
+                            <div style="font-size:24px; font-weight:800; color:#2DD4BF; margin:8px 0;">
+                                $${Number(p.monthly_price || 0).toFixed(2)} <span style="font-size:12px; color:var(--text-muted); font-weight:500;">/mo</span>
+                            </div>
+                            <div style="font-size:12px; color:#CBD5E1; display:flex; flex-direction:column; gap:4px;">
+                                <div>Profiles: <strong>${p.profile_limit}</strong> • Team/Devices: <strong>${p.team_limit}</strong></div>
+                                <div>API: <strong>${escapeHtml(p.api_limit || 'Basic')}</strong> • Order: <strong>#${p.sort_order ?? 0}</strong></div>
+                                ${p.description ? `<div style="color:var(--text-muted);">${escapeHtml(p.description)}</div>` : ''}
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; margin-top:4px;">
+                            <button type="button" class="btn btn-primary" style="flex:1; padding:7px 10px; font-size:12px; justify-content:center;" onclick="editAdminPricingPlan('${escapeHtml(p.id)}')">Edit</button>
+                            <button type="button" class="btn btn-outline" style="padding:7px 12px; font-size:12px; border-color:rgba(239,68,68,0.4); color:#F87171;" onclick="deleteAdminPricingPlan('${escapeHtml(p.id)}', '${escapeHtml(p.name)}')">Delete</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch(e) {
+                if (grid) grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:16px; color:#F87171;">Failed to load packages.</div>';
+            }
+        }
+
+        function openNewPlanForm() {
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+            setVal('planEditId', '');
+            setVal('planEditName', '');
+            setVal('planEditMonthlyPrice', '');
+            setVal('planEditYearlyPrice', '');
+            setVal('planEditProfiles', '100');
+            setVal('planEditTeamLimit', '5');
+            setVal('planEditApiLimit', 'Full REST & Driver API');
+            setVal('planEditBadge', '');
+            setVal('planEditDesc', 'Priority 24/7 Support');
+            setVal('planEditSortOrder', String((_cachedAdminPlans.length + 1) * 10));
+            const popEl = document.getElementById('planEditPopular'); if (popEl) popEl.checked = false;
+            const actEl = document.getElementById('planEditActive'); if (actEl) actEl.checked = true;
+            const titleEl = document.getElementById('planEditFormTitle'); if (titleEl) titleEl.innerText = 'Create New Subscription Package';
+            const msgEl = document.getElementById('planEditorStatusMsg'); if (msgEl) msgEl.style.display = 'none';
+            const nameEl = document.getElementById('planEditName'); if (nameEl) nameEl.focus();
+        }
+
+        function editAdminPricingPlan(planId) {
+            const p = _cachedAdminPlans.find(x => x.id === planId);
+            if (!p) return;
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+            setVal('planEditId', p.id || '');
+            setVal('planEditName', p.name || '');
+            setVal('planEditMonthlyPrice', p.monthly_price ?? 0);
+            setVal('planEditYearlyPrice', p.yearly_price ?? '');
+            setVal('planEditProfiles', p.profile_limit ?? 25);
+            setVal('planEditTeamLimit', p.team_limit ?? 2);
+            setVal('planEditApiLimit', p.api_limit || '');
+            setVal('planEditBadge', p.badge || '');
+            setVal('planEditDesc', p.description || '');
+            setVal('planEditSortOrder', p.sort_order ?? 0);
+            const popEl = document.getElementById('planEditPopular'); if (popEl) popEl.checked = (p.is_popular == 1 || p.is_popular === true);
+            const actEl = document.getElementById('planEditActive'); if (actEl) actEl.checked = (p.is_active == 1 || p.is_active === true);
+            const titleEl = document.getElementById('planEditFormTitle'); if (titleEl) titleEl.innerText = 'Editing Package: ' + p.name;
+            const formEl = document.getElementById('adminPlanEditorForm'); if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        async function submitAdminPricingPlan(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const token = getAdminSessionToken();
+            if (!token) return false;
+            const msgEl = document.getElementById('planEditorStatusMsg');
+            const btn = document.getElementById('btnSubmitAdminPlan');
+            if (btn) btn.disabled = true;
+
+            const payload = {
+                id: (document.getElementById('planEditId')?.value || '').trim(),
+                name: (document.getElementById('planEditName')?.value || '').trim(),
+                monthly_price: Number(document.getElementById('planEditMonthlyPrice')?.value || 0),
+                yearly_price: document.getElementById('planEditYearlyPrice')?.value || '',
+                profile_limit: Number(document.getElementById('planEditProfiles')?.value || 25),
+                team_limit: Number(document.getElementById('planEditTeamLimit')?.value || 2),
+                api_limit: (document.getElementById('planEditApiLimit')?.value || '').trim(),
+                badge: (document.getElementById('planEditBadge')?.value || '').trim(),
+                description: (document.getElementById('planEditDesc')?.value || '').trim(),
+                sort_order: Number(document.getElementById('planEditSortOrder')?.value || 10),
+                is_popular: document.getElementById('planEditPopular')?.checked ? 1 : 0,
+                is_active: document.getElementById('planEditActive')?.checked ? 1 : 0
+            };
+
+            try {
+                const res = await fetch('/api/admin/save-plan?token=' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Session-Token': token },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    if (data.success) {
+                        openNewPlanForm();
+                        msgEl.style.display = 'block';
+                        msgEl.style.background = 'rgba(16,185,129,0.16)';
+                        msgEl.style.color = '#34D399';
+                        msgEl.textContent = '✓ ' + (data.message || 'Package saved! Refresh the page to see it on Landing & Checkout.');
+                        loadAdminPricingPlans();
+                    } else {
+                        msgEl.style.background = 'rgba(239,68,68,0.16)';
+                        msgEl.style.color = '#FCA5A5';
+                        msgEl.textContent = '⚠ ' + (data.error || 'Failed to save package.');
+                    }
+                }
+            } catch(err) {
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.style.background = 'rgba(239,68,68,0.16)';
+                    msgEl.style.color = '#FCA5A5';
+                    msgEl.textContent = '⚠ Network error saving package.';
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+            return false;
+        }
+
+        async function deleteAdminPricingPlan(planId, planName) {
+            if (!confirm(`Delete subscription package "${planName}"? This will remove it from the website.`)) return;
+            const token = getAdminSessionToken();
+            if (!token) return;
+            try {
+                const res = await fetch('/api/admin/delete-plan?token=' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Session-Token': token },
+                    body: JSON.stringify({ id: planId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadAdminPricingPlans();
+                } else {
+                    alert(data.error || 'Failed to delete package.');
+                }
+            } catch(e) {
+                alert('Network error deleting package.');
+            }
+        }
+
         async function savePricingPackage(planId, planName, priceInputId, limitInputId) {
-            const token = localStorage.getItem('sessionToken');
+            const token = getAdminSessionToken();
             const price = document.getElementById(priceInputId).value;
             const limit = document.getElementById(limitInputId).value;
 
             try {
-                const res = await fetch('/api/admin/save-plan', {
+                const res = await fetch('/api/admin/save-plan?token=' + encodeURIComponent(token), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Session-Token': token
                     },
                     body: JSON.stringify({
                         id: planId,
@@ -12893,6 +13104,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     })
                 });
                 alert(`${planName} package price ($${price}) and limit (${limit} profiles) updated successfully!`);
+                loadAdminPricingPlans();
             } catch(e) {
                 alert(`${planName} package updated!`);
             }
