@@ -604,6 +604,31 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         var escapeHtml = window.escapeHtml;
 
         window.openModal = function(mode, planName) {
+            const existingToken = (function() {
+                try {
+                    const t = localStorage.getItem('sessionToken') || '';
+                    return (t && t !== 'undefined' && t !== 'null') ? t : '';
+                } catch(e) { return ''; }
+            })();
+
+            // If user is already logged in and clicked a paid subscription plan,
+            // open the payment checkout directly instead of kicking them to Create Account!
+            if (existingToken && planName && typeof window.initiatePackagePayment === 'function') {
+                const lowerPlan = String(planName).toLowerCase();
+                if (lowerPlan.includes('starter') || lowerPlan === 'plan_starter') {
+                    window.initiatePackagePayment('plan_starter', 'Starter', 19);
+                    return;
+                }
+                if (lowerPlan.includes('pro') || lowerPlan === 'plan_pro') {
+                    window.initiatePackagePayment('plan_pro', 'Professional', 49);
+                    return;
+                }
+                if (lowerPlan.includes('business') || lowerPlan === 'plan_business') {
+                    window.initiatePackagePayment('plan_business', 'Business', 99);
+                    return;
+                }
+            }
+
             window.closeAdminDashboard();
             const modal = document.getElementById('loginModal');
             if (modal) {
@@ -3764,9 +3789,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 </div>
                 <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$19" data-yearly="$15">$19</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_starter')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'Starter')"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_starter" data-plan-name="Starter" data-plan-amount="19" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick="handlePlanAction('plan_starter', 'Starter', 19, true)"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px;" onclick="handlePlanAction('plan_starter', 'Starter', 19, false)">Pay &amp; Upgrade ($19)</button>
                 <?php else: ?>
-                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">Pay &amp; Upgrade ($19)</button>
+                    <button class="btn btn-outline lp-plan-cta-btn" data-plan-id="plan_starter" data-plan-name="Starter" data-plan-amount="19" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="handlePlanAction('plan_starter', 'Starter', 19, false)">Pay &amp; Upgrade ($19)</button>
                 <?php endif; ?>
                 <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
                     <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">25 Profiles</strong></li>
@@ -3793,9 +3819,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 </div>
                 <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$49" data-yearly="$39">$49</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_pro')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'Professional')"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_pro" data-plan-name="Professional" data-plan-amount="49" style="width: 100%; justify-content: center; margin-bottom: 10px;" onclick="handlePlanAction('plan_pro', 'Professional', 49, true)"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px; border-color: rgba(45, 212, 191, 0.4); color: #2DD4BF;" onclick="handlePlanAction('plan_pro', 'Professional', 49, false)">Pay &amp; Upgrade ($49)</button>
                 <?php else: ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">Pay &amp; Upgrade ($49)</button>
+                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_pro" data-plan-name="Professional" data-plan-amount="49" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="handlePlanAction('plan_pro', 'Professional', 49, false)">Pay &amp; Upgrade ($49)</button>
                 <?php endif; ?>
                 <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
                     <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">100 Profiles</strong></li>
@@ -3822,9 +3849,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 </div>
                 <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$99" data-yearly="$79">$99</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_business')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);" onclick="openModal('register', 'Business')"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary lp-plan-cta-btn" data-plan-id="plan_business" data-plan-name="Business" data-plan-amount="99" style="width: 100%; justify-content: center; margin-bottom: 10px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);" onclick="handlePlanAction('plan_business', 'Business', 99, true)"><svg class="lp-ico" width="13" height="13" style="margin-right:4px;" aria-hidden="true"><use href="#lp-ico-sparkles"></use></svg>Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-outline lp-plan-direct-pay-btn" style="width: 100%; justify-content: center; margin-bottom: 24px; font-size: 13px; padding: 9px 14px;" onclick="handlePlanAction('plan_business', 'Business', 99, false)">Pay &amp; Upgrade ($99)</button>
                 <?php else: ?>
-                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">Pay &amp; Upgrade ($99)</button>
+                    <button class="btn btn-outline lp-plan-cta-btn" data-plan-id="plan_business" data-plan-name="Business" data-plan-amount="99" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="handlePlanAction('plan_business', 'Business', 99, false)">Pay &amp; Upgrade ($99)</button>
                 <?php endif; ?>
                 <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
                     <li><svg class="lp-ico" width="14" height="14" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> Browser Profiles: <strong style="color: #E2E8F0;">500 Profiles</strong></li>
@@ -4613,9 +4641,9 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                     <p style="color: #CBD5E1; font-size: 12.5px; margin: 3px 0 0 0;">Browser profile launching, new profile creation, proxy setup, and team options are locked. Please subscribe to an active plan to unlock your profiles immediately.</p>
                                 </div>
                             </div>
-                            <a href="#pricing" onclick="closeAdminDashboard()" class="btn btn-primary" style="background: linear-gradient(135deg, #F87171, #EF4444); color: #FFF; font-weight: 800; padding: 10px 22px; border-radius: 10px; font-size: 13.5px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
-                                💳 Choose Plan & Unlock Now
-                            </a>
+                            <button type="button" onclick="openSubscriptionUpgradeTab()" class="btn btn-primary" style="background: linear-gradient(135deg, #F87171, #EF4444); color: #FFF; font-weight: 800; padding: 10px 22px; border-radius: 10px; font-size: 13.5px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
+                                💳 Choose Plan &amp; Unlock Now
+                            </button>
                         </div>
                     </div>
 
@@ -4670,7 +4698,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                 <h3 style="font-size: 18px; color: #FFF; margin-bottom: 4px;">My Subscription & Quota Usage</h3>
                                 <p style="color: var(--text-muted); font-size: 13px;">View your active subscription plan, device limits, and profile quota.</p>
                             </div>
-                            <a href="#pricing" onclick="closeAdminDashboard()" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 20px;">⚡ Renew / Upgrade Subscription</a>
+                            <button type="button" onclick="scrollToPortalUpgradePlans()" class="btn btn-primary" style="background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; padding: 10px 20px;">⚡ Renew / Upgrade Subscription</button>
                         </div>
 
                         <!-- Read-Only Subscription Overview Cards -->
@@ -4731,6 +4759,65 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                                         <h5 style="font-size: 13px; color: #FFF;">Local Storage Encryption</h5>
                                         <span style="font-size: 11px; color: var(--text-muted);">AES-256 GCM</span>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Direct In-Portal Plan Upgrade & Payment Section -->
+                        <div id="portalUpgradePlansSection" style="background: var(--bg-card); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 16px; padding: 24px; margin-top: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;">
+                                <div>
+                                    <h4 style="font-size: 17px; color: #FFF; margin: 0;">💳 Upgrade or Renew Your Plan Directly</h4>
+                                    <p style="font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0 0;">Select a plan below to pay instantly via Bachs.io, Stripe, or Crypto with automatic activation.</p>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                                <div style="background: #0A0B10; border: 1px solid #272A3B; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <div style="font-size: 15px; font-weight: 700; color: #FFF;">Starter</div>
+                                        <div style="font-size: 28px; font-weight: 800; color: #2DD4BF; margin: 10px 0;">$19 <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">/month</span></div>
+                                        <ul style="list-style: none; padding: 0; margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;">
+                                            <li>✓ 25 Browser Profiles</li>
+                                            <li>✓ 2 Team Users &amp; Devices</li>
+                                            <li>✓ HTTP/HTTPS/SOCKS5 Proxies</li>
+                                            <li>✓ Basic API Access</li>
+                                        </ul>
+                                    </div>
+                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">Pay &amp; Upgrade ($19)</button>
+                                </div>
+
+                                <div style="background: linear-gradient(180deg, rgba(45, 212, 191, 0.08), #0A0B10); border: 2px solid #2DD4BF; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 15px; font-weight: 700; color: #FFF;">Professional</span>
+                                            <span style="background: #2DD4BF; color: #000; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px;">POPULAR</span>
+                                        </div>
+                                        <div style="font-size: 28px; font-weight: 800; color: #2DD4BF; margin: 10px 0;">$49 <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">/month</span></div>
+                                        <ul style="list-style: none; padding: 0; margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;">
+                                            <li>✓ 100 Browser Profiles</li>
+                                            <li>✓ 10 Team Users &amp; Devices</li>
+                                            <li>✓ Full REST &amp; Driver API</li>
+                                            <li>✓ Priority 24/7 Support</li>
+                                        </ul>
+                                    </div>
+                                    <button type="button" class="btn btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">Pay &amp; Upgrade ($49)</button>
+                                </div>
+
+                                <div style="background: #0A0B10; border: 1px solid rgba(129, 140, 248, 0.45); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 15px; font-weight: 700; color: #FFF;">Business</span>
+                                            <span style="background: rgba(129, 140, 248, 0.2); color: #818CF8; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px;">BEST VALUE</span>
+                                        </div>
+                                        <div style="font-size: 28px; font-weight: 800; color: #818CF8; margin: 10px 0;">$99 <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">/month</span></div>
+                                        <ul style="list-style: none; padding: 0; margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;">
+                                            <li>✓ 500 Browser Profiles</li>
+                                            <li>✓ 25 Team Users &amp; Devices</li>
+                                            <li>✓ Full Hardware Spoofing</li>
+                                            <li>✓ Unlimited API &amp; Manager</li>
+                                        </ul>
+                                    </div>
+                                    <button type="button" class="btn btn-outline" style="width: 100%; justify-content: center; border-color: rgba(129, 140, 248, 0.5); color: #A5B4FC;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">Pay &amp; Upgrade ($99)</button>
                                 </div>
                             </div>
                         </div>
@@ -7197,10 +7284,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 <!-- Dynamic Bachs.io Config (Shown when editing Bachs.io Gateway) -->
                 <div id="gwBachsSpecificSection" style="display: none; margin-bottom: 16px;">
                     <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.28); border-radius: 10px; padding: 14px;">
-                        <label style="font-size: 12px; color: #60A5FA; font-weight: 700; display: block; margin-bottom: 8px;">🏦 Bachs.io Gateway Endpoint (app.bachs.io)</label>
+                        <label style="font-size: 12px; color: #60A5FA; font-weight: 700; display: block; margin-bottom: 8px;">🏦 Bachs.io Gateway Endpoint (api.bachs.io)</label>
                         <div style="margin-bottom: 10px;">
-                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">API Base URL</label>
-                            <input type="text" id="gwBachsApiUrl" value="https://app.bachs.io" placeholder="https://app.bachs.io" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">API Base URL (Live: https://api.bachs.io)</label>
+                            <input type="text" id="gwBachsApiUrl" value="https://api.bachs.io" placeholder="https://api.bachs.io" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
                         </div>
                         <p style="font-size: 11px; color: var(--text-muted); margin: 0; line-height: 1.5;">
                             Enter your Bachs.io Merchant / Public ID in <strong style="color:#FFF;">Public Key</strong>, API Secret Key in <strong style="color:#FFF;">Secret Key</strong>, and set the Webhook URL above in your <a href="https://app.bachs.io/" target="_blank" rel="noopener noreferrer" style="color:#2DD4BF;">app.bachs.io</a> dashboard.
@@ -7585,6 +7672,8 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         function handleLogout() {
             localStorage.removeItem('sessionToken');
             localStorage.removeItem('user');
+            try { sessionStorage.removeItem('pendingCheckoutPlan'); } catch(e) {}
+            if (typeof syncNavbarAuthState === 'function') syncNavbarAuthState(false);
             closeAdminDashboard();
             closeModal();
             if (window.history && window.history.replaceState) {
@@ -8049,10 +8138,26 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     }
 
                     loadUserPortalData();
+                    if (typeof syncNavbarAuthState === 'function') syncNavbarAuthState(true);
+
+                    // If user clicked a paid plan before logging in, resume payment checkout automatically!
+                    try {
+                        const pendingRaw = sessionStorage.getItem('pendingCheckoutPlan');
+                        if (pendingRaw) {
+                            sessionStorage.removeItem('pendingCheckoutPlan');
+                            const pending = JSON.parse(pendingRaw);
+                            if (pending && pending.planId && typeof initiatePackagePayment === 'function') {
+                                setTimeout(() => {
+                                    initiatePackagePayment(pending.planId, pending.planName || 'Plan', Number(pending.amount) || 19);
+                                }, 250);
+                            }
+                        }
+                    } catch(pe) {}
                 } catch(e) {
                     console.error('[AntiProfiles] checkSession error:', e);
                     localStorage.removeItem('sessionToken');
                     localStorage.removeItem('user');
+                    if (typeof syncNavbarAuthState === 'function') syncNavbarAuthState(false);
                     if (adminModal) {
                         adminModal.classList.remove('active');
                         adminModal.style.display = 'none';
@@ -8060,6 +8165,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     openModal('login');
                 }
             } else {
+                if (typeof syncNavbarAuthState === 'function') syncNavbarAuthState(false);
                 if (adminModal) {
                     adminModal.classList.remove('active');
                     adminModal.style.display = 'none';
@@ -10785,7 +10891,10 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             if (secLabel) secLabel.innerText = isBachs ? 'Bachs.io Secret / API Key' : 'Secret Key / Merchant API Key';
             if (isBachs) {
                 const apiUrlEl = document.getElementById('gwBachsApiUrl');
-                if (apiUrlEl) apiUrlEl.value = cfg.api_base_url || 'https://app.bachs.io';
+                const savedApiUrl = (cfg.api_base_url || '').trim();
+                if (apiUrlEl) {
+                    apiUrlEl.value = (!savedApiUrl || savedApiUrl === 'https://app.bachs.io') ? 'https://api.bachs.io' : savedApiUrl;
+                }
             }
 
             const origin = window.location.origin || 'https://antiprofiles.com';
@@ -10842,9 +10951,13 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             let configObj = {};
             if (isBachs) {
                 const apiUrlEl = document.getElementById('gwBachsApiUrl');
+                let rawApiUrl = (apiUrlEl && apiUrlEl.value.trim()) ? apiUrlEl.value.trim().replace(/\/+$/, '') : 'https://api.bachs.io';
+                if (rawApiUrl === 'https://app.bachs.io' || rawApiUrl === 'http://app.bachs.io') {
+                    rawApiUrl = 'https://api.bachs.io';
+                }
                 configObj = {
                     provider: 'bachs',
-                    api_base_url: (apiUrlEl && apiUrlEl.value.trim()) ? apiUrlEl.value.trim().replace(/\/+$/, '') : 'https://app.bachs.io'
+                    api_base_url: rawApiUrl
                 };
             } else if (isCrypto) {
                 document.querySelectorAll('.crypto-coin-cb:checked').forEach(cb => supportedCoins.push(cb.value));
@@ -11161,10 +11274,106 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         // CUSTOMER PAYMENT & SUBSCRIPTION UPGRADE FLOW
         // ═══════════════════════════════════════════════════════════════════════
 
-        async function initiatePackagePayment(planId, planName, amount) {
-            const token = localStorage.getItem('sessionToken');
+        function getActiveUserToken() {
+            try {
+                const t = localStorage.getItem('sessionToken') || localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+                return (t && t !== 'undefined' && t !== 'null') ? t : '';
+            } catch(e) {
+                return '';
+            }
+        }
+
+        function syncNavbarAuthState(isLoggedIn) {
+            try {
+                const signInBtn = document.querySelector('.nav-btn-signin');
+                const getStartedBtn = document.querySelector('.nav-btn-getstarted');
+                if (signInBtn) {
+                    if (isLoggedIn) {
+                        signInBtn.innerText = 'My Dashboard';
+                        signInBtn.setAttribute('href', '/dashboard');
+                        signInBtn.onclick = function(e) { e.preventDefault(); checkSession(); return false; };
+                    } else {
+                        signInBtn.innerText = 'Sign In';
+                        signInBtn.setAttribute('href', '/login');
+                        signInBtn.onclick = function(e) { e.preventDefault(); openModal('login'); return false; };
+                    }
+                }
+                if (getStartedBtn) {
+                    if (isLoggedIn) {
+                        getStartedBtn.innerText = 'Upgrade Plan';
+                        getStartedBtn.setAttribute('href', '#pricing');
+                        getStartedBtn.onclick = function(e) { e.preventDefault(); openSubscriptionUpgradeTab(); return false; };
+                    } else {
+                        getStartedBtn.innerText = 'Get Started';
+                        getStartedBtn.setAttribute('href', '/register');
+                        getStartedBtn.onclick = function(e) { e.preventDefault(); openModal('register'); return false; };
+                    }
+                }
+                // Update landing pricing CTA buttons when user is already logged in
+                document.querySelectorAll('.lp-plan-cta-btn').forEach(btn => {
+                    const pName = btn.getAttribute('data-plan-name') || '';
+                    const pAmt = btn.getAttribute('data-plan-amount') || '';
+                    if (isLoggedIn && pAmt) {
+                        btn.innerText = 'Pay & Upgrade ($' + pAmt + ')';
+                    }
+                });
+                document.querySelectorAll('.lp-plan-direct-pay-btn').forEach(btn => {
+                    btn.style.display = isLoggedIn ? 'none' : 'inline-flex';
+                });
+            } catch(e) {}
+        }
+
+        function handlePlanAction(planId, planName, amount, isTrialEligible) {
+            const token = getActiveUserToken();
+            if (token) {
+                // Logged-in users ALWAYS go directly to Payment Checkout (never Create Account!)
+                initiatePackagePayment(planId, planName, amount);
+                return;
+            }
+            if (isTrialEligible) {
+                openModal('register', planName);
+            } else {
+                try {
+                    sessionStorage.setItem('pendingCheckoutPlan', JSON.stringify({ planId, planName, amount }));
+                } catch(e) {}
+                openModal('login', planName);
+            }
+        }
+
+        function openSubscriptionUpgradeTab() {
+            const token = getActiveUserToken();
             if (!token) {
                 openModal('login');
+                return;
+            }
+            const adminModal = document.getElementById('adminDashboardModal');
+            if (adminModal) {
+                adminModal.classList.add('active');
+                adminModal.style.display = 'flex';
+            }
+            const btn = document.getElementById('btnTabMySubscription');
+            if (typeof switchAdminTab === 'function') {
+                switchAdminTab('my-subscription', btn);
+            }
+            setTimeout(scrollToPortalUpgradePlans, 120);
+        }
+
+        function scrollToPortalUpgradePlans() {
+            const sec = document.getElementById('portalUpgradePlansSection');
+            if (sec) {
+                sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                sec.style.boxShadow = '0 0 28px rgba(45, 212, 191, 0.45)';
+                setTimeout(() => { sec.style.boxShadow = 'none'; }, 1600);
+            }
+        }
+
+        async function initiatePackagePayment(planId, planName, amount) {
+            const token = getActiveUserToken();
+            if (!token) {
+                try {
+                    sessionStorage.setItem('pendingCheckoutPlan', JSON.stringify({ planId, planName, amount }));
+                } catch(e) {}
+                openModal('login', planName);
                 return;
             }
 
@@ -11238,8 +11447,14 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         }
 
         async function submitCheckoutPayment() {
-            const token = localStorage.getItem('sessionToken');
-            if (!token || !_activeCheckoutPlan) return;
+            const token = getActiveUserToken();
+            if (!token || !_activeCheckoutPlan) {
+                if (!token) {
+                    closeCheckoutModal();
+                    openModal('login');
+                }
+                return;
+            }
 
             const selectedGw = document.querySelector('input[name="checkoutGateway"]:checked');
             if (!selectedGw) {
@@ -11255,15 +11470,20 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             btn.innerText = 'Creating Secure Payment Session...';
 
             try {
-                const res = await fetch('/api/payments/create-checkout', {
+                const res = await fetch('/api/payments/create-checkout?token=' + encodeURIComponent(token), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token,
+                        'X-Session-Token': token
+                    },
                     body: JSON.stringify({
                         plan_id: _activeCheckoutPlan.planId,
                         gateway: gatewayKey,
                         network: selectedNetwork,
-                        success_url: window.location.origin + '/?payment=success',
-                        cancel_url: window.location.origin + '/?payment=cancelled'
+                        token: token,
+                        success_url: window.location.origin + '/?payment=success&gateway=' + encodeURIComponent(gatewayKey),
+                        cancel_url: window.location.origin + '/?payment=cancelled&gateway=' + encodeURIComponent(gatewayKey)
                     })
                 });
 
