@@ -7,7 +7,7 @@ import http from 'http'
 import { getDatabase } from '../database/connection'
 import { userRepo } from '../database/repositories/user.repo'
 import { tokenRepo } from '../database/repositories/token.repo'
-import { verifyPassword, hashPassword } from '../security/password'
+import { verifyPassword, hashPassword, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD_HASH } from '../security/password'
 import { sessionManager, authorizeUser } from '../security/session'
 import { emailService } from '../services/email.service'
 import { logger } from '../logging/logger'
@@ -228,25 +228,23 @@ export function setupAuthIPC(): void {
 
       // 2. Offline / Local SQLite Fallback
       let user = userRepo.getByEmail(cleanEmail)
-      if (cleanEmail === 'admin@antiprofiles.com') {
-        const targetPass = (password === 'Admin123!' || password === 'admin123') ? password : 'admin123'
+      if (cleanEmail === DEFAULT_ADMIN_EMAIL) {
+        const db = getDatabase()
         if (!user) {
-          userRepo.create({
-            name: 'System Admin',
-            email: 'admin@antiprofiles.com',
-            password: targetPass,
-            role: 'admin',
-            emailVerified: true,
-            accountStatus: 'active'
-          })
+          db.prepare(`
+            INSERT OR REPLACE INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+          `).run('admin-default', 'System Admin', DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD_HASH, 'admin', 1, 'active')
           user = userRepo.getByEmail(cleanEmail)
-        } else {
-          userRepo.update(user.id, {
-            password: targetPass,
-            emailVerified: true,
-            accountStatus: 'active',
-            role: 'admin'
-          })
+        } else if (
+          user.passwordHash !== DEFAULT_ADMIN_PASSWORD_HASH ||
+          !user.emailVerified ||
+          user.accountStatus !== 'active' ||
+          user.role !== 'admin'
+        ) {
+          db.prepare(
+            "UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin', updated_at = datetime('now') WHERE id = ?"
+          ).run(DEFAULT_ADMIN_PASSWORD_HASH, user.id)
           user = userRepo.getById(user.id)
         }
       }

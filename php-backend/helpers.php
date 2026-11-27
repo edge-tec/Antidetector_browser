@@ -1563,6 +1563,137 @@ function ensureDatabaseTablesExist() {
         // Auto-seed default software features if empty
         ensureDefaultSoftwareFeaturesSeeded($db);
     } catch (Throwable $e) {}
+
+    // One-time idempotent admin credentials sync (safe for existing MySQL & SQLite DBs)
+    try {
+        ensureDefaultAdminCredentials(Database::getConnection());
+    } catch (Throwable $e) {}
+}
+
+function ensureDefaultAdminCredentials(PDO $db): void {
+    $syncKey = 'admin_credentials_sync_20261127';
+    $adminEmail = 'admin@antiprofiles.com';
+    $adminHash = '$2y$10$RllDjh6IlCD7hCD13cGPu.1/ASzoVjFp1GXki7lWqEizRHCrJg1Q6';
+
+    // Ensure settings table exists (MySQL or SQLite compatible)
+    try {
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `settings` (
+              `key` VARCHAR(100) NOT NULL PRIMARY KEY,
+              `value` TEXT NOT NULL
+            )
+        ");
+    } catch (Throwable $e) {}
+
+    // Skip if already applied once so future manual password changes are preserved
+    try {
+        $chk = $db->prepare("SELECT `value` FROM `settings` WHERE `key` = ? LIMIT 1");
+        $chk->execute([$syncKey]);
+        $row = $chk->fetch();
+        if ($row && ($row['value'] ?? '') === '1') {
+            return;
+        }
+    } catch (Throwable $e) {}
+
+    $synced = false;
+    try {
+        $stmt = $db->prepare("SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1");
+        $stmt->execute([$adminEmail]);
+        $existingByEmail = $stmt->fetch();
+
+        if ($existingByEmail) {
+            try {
+                $upd = $db->prepare("
+                    UPDATE users
+                    SET email = ?,
+                        password_hash = ?,
+                        role = 'super_admin',
+                        permissions = '[\"*\"]',
+                        auth_version = COALESCE(auth_version, 1) + 1,
+                        email_verified = 1,
+                        account_status = 'active',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                ");
+                $upd->execute([$adminEmail, $adminHash, $existingByEmail['id']]);
+            } catch (Throwable $e) {
+                $upd = $db->prepare("
+                    UPDATE users
+                    SET email = ?,
+                        password_hash = ?,
+                        role = 'super_admin',
+                        email_verified = 1,
+                        account_status = 'active'
+                    WHERE id = ?
+                ");
+                $upd->execute([$adminEmail, $adminHash, $existingByEmail['id']]);
+            }
+            $synced = true;
+        } else {
+            $stmtDef = $db->prepare("SELECT id FROM users WHERE id = 'admin-default' LIMIT 1");
+            $stmtDef->execute();
+            $existingDefault = $stmtDef->fetch();
+
+            if ($existingDefault) {
+                try {
+                    $upd = $db->prepare("
+                        UPDATE users
+                        SET email = ?,
+                            password_hash = ?,
+                            role = 'super_admin',
+                            permissions = '[\"*\"]',
+                            auth_version = COALESCE(auth_version, 1) + 1,
+                            email_verified = 1,
+                            account_status = 'active',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = 'admin-default'
+                    ");
+                    $upd->execute([$adminEmail, $adminHash]);
+                } catch (Throwable $e) {
+                    $upd = $db->prepare("
+                        UPDATE users
+                        SET email = ?,
+                            password_hash = ?,
+                            role = 'super_admin',
+                            email_verified = 1,
+                            account_status = 'active'
+                        WHERE id = 'admin-default'
+                    ");
+                    $upd->execute([$adminEmail, $adminHash]);
+                }
+                $synced = true;
+            } else {
+                try {
+                    $ins = $db->prepare("
+                        INSERT INTO users (id, name, email, password_hash, role, permissions, auth_version, email_verified, email_verified_at, account_status, created_at)
+                        VALUES ('admin-default', 'System Admin', ?, ?, 'super_admin', '[\"*\"]', 1, 1, CURRENT_TIMESTAMP, 'active', CURRENT_TIMESTAMP)
+                    ");
+                    $ins->execute([$adminEmail, $adminHash]);
+                } catch (Throwable $e) {
+                    $ins = $db->prepare("
+                        INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at)
+                        VALUES ('admin-default', 'System Admin', ?, ?, 'super_admin', 1, 'active', CURRENT_TIMESTAMP)
+                    ");
+                    $ins->execute([$adminEmail, $adminHash]);
+                }
+                $synced = true;
+            }
+        }
+    } catch (Throwable $e) {
+        return;
+    }
+
+    if ($synced) {
+        try {
+            $sIns = $db->prepare("INSERT INTO `settings` (`key`, `value`) VALUES (?, '1')");
+            $sIns->execute([$syncKey]);
+        } catch (Throwable $e) {
+            try {
+                $sUpd = $db->prepare("UPDATE `settings` SET `value` = '1' WHERE `key` = ?");
+                $sUpd->execute([$syncKey]);
+            } catch (Throwable $e2) {}
+        }
+    }
 }
 
 ensureDatabaseTablesExist();

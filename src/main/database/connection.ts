@@ -6,7 +6,7 @@ import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { runMigrations } from './migrations/runner'
-import { hashPassword } from '../security/password'
+import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD_HASH } from '../security/password'
 import { FallbackDatabase } from './fallback-db'
 
 let db: any = null
@@ -72,7 +72,12 @@ export function initDatabase(): any {
   }
 
   try {
-    db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = 'admin@antiprofiles.com'").run(hashPassword('admin123'))
+    const existingAdmin = db.prepare("SELECT id FROM users WHERE LOWER(email) = LOWER(?)").get(DEFAULT_ADMIN_EMAIL)
+    if (existingAdmin) {
+      db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = ?").run(DEFAULT_ADMIN_PASSWORD_HASH, DEFAULT_ADMIN_EMAIL)
+    } else {
+      db.prepare("UPDATE users SET email = ?, password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE id = 'admin-default'").run(DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD_HASH)
+    }
   } catch {}
 
   try {

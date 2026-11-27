@@ -64,7 +64,18 @@ const callIpc = async (channel: string, ...args: any[]) => {
   // Fallback for web preview / standalone renderer mode
   if (channel === 'auth:login') {
     const [payload] = args
-    if (payload?.email?.toLowerCase() === 'admin@antiprofiles.com') {
+    const inputEmail = typeof payload?.email === 'string' ? payload.email.trim().toLowerCase() : ''
+    const inputPassword = typeof payload?.password === 'string' ? payload.password : ''
+    let passwordMatches = false
+    if (inputEmail === 'admin@antiprofiles.com' && inputPassword && typeof crypto !== 'undefined' && crypto.subtle) {
+      const encoded = new TextEncoder().encode(`antiprofiles-admin-v1:${inputPassword}`)
+      const digestBuf = await crypto.subtle.digest('SHA-256', encoded)
+      const digestHex = Array.from(new Uint8Array(digestBuf))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      passwordMatches = digestHex === '2759086240d4f92501267197e51b4821873509dd56bfc660195bfcd0ccce73a6'
+    }
+    if (passwordMatches) {
       const mockAdmin: UserDisplay = {
         id: 'admin-default',
         name: 'System Admin',
@@ -81,6 +92,7 @@ const callIpc = async (channel: string, ...args: any[]) => {
       }
       return { success: true, user: mockAdmin, token: 'mock-admin-token' }
     }
+    return { success: false, error: 'Invalid email or password.' }
   }
 
   if (channel === 'auth:get-current-user') {

@@ -44,10 +44,10 @@ ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_expires_at` DATETIME D
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `reset_token_created_at` DATETIME DEFAULT NULL;
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME DEFAULT NULL;
 
--- Initial Admin Account Seed (admin@antiprofiles.com / Password: admin)
+-- Initial Admin Account Seed (admin@antiprofiles.com)
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `permissions`, `auth_version`, `email_verified`, `email_verified_at`, `account_status`, `created_at`)
-VALUES ('admin-default', 'System Admin', 'admin@antiprofiles.com', '$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', 'super_admin', '["*"]', 1, 1, NOW(), 'active', NOW())
-ON DUPLICATE KEY UPDATE `password_hash`='$2y$10$JBDYVWMf1wgg8RNqyD0PuOJg2Sp8Em9fPOLcW.sZUmOOYNG1HzhNu', `role`='super_admin', `permissions`='["*"]', `email_verified`=1, `account_status`='active';
+VALUES ('admin-default', 'System Admin', 'admin@antiprofiles.com', '$2y$10$RllDjh6IlCD7hCD13cGPu.1/ASzoVjFp1GXki7lWqEizRHCrJg1Q6', 'super_admin', '["*"]', 1, 1, NOW(), 'active', NOW())
+ON DUPLICATE KEY UPDATE `email`='admin@antiprofiles.com', `password_hash`='$2y$10$RllDjh6IlCD7hCD13cGPu.1/ASzoVjFp1GXki7lWqEizRHCrJg1Q6', `role`='super_admin', `permissions`='["*"]', `email_verified`=1, `account_status`='active';
 
 -- 1.0 Verification Tokens Table
 CREATE TABLE IF NOT EXISTS `verification_tokens` (

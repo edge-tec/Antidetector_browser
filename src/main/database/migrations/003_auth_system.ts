@@ -4,7 +4,7 @@
 
 import type Database from 'better-sqlite3'
 
-import { hashPassword } from '../../security/password'
+import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD_HASH } from '../../security/password'
 
 export const id = 3
 export const name = '003_auth_system'
@@ -57,9 +57,9 @@ export function up(db: Database.Database): void {
   }
 
   // Create default Admin account if no users exist
-  const defaultAdminHash = hashPassword('admin123')
+  const defaultAdminHash = DEFAULT_ADMIN_PASSWORD_HASH
 
-  const adminUser = db.prepare("SELECT id FROM users WHERE email = 'admin@antiprofiles.com'").get()
+  const adminUser = db.prepare("SELECT id FROM users WHERE email = ?").get(DEFAULT_ADMIN_EMAIL)
   if (!adminUser) {
     db.prepare(`
       INSERT INTO users (id, name, email, password_hash, role, email_verified, account_status, created_at, updated_at)
@@ -67,7 +67,7 @@ export function up(db: Database.Database): void {
     `).run(
       'admin-default',
       'System Admin',
-      'admin@antiprofiles.com',
+      DEFAULT_ADMIN_EMAIL,
       defaultAdminHash,
       'admin',
       1, // Verified
@@ -75,7 +75,7 @@ export function up(db: Database.Database): void {
     )
   } else {
     // Ensure default admin password hash and verified status
-    db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = 'admin@antiprofiles.com'").run(defaultAdminHash)
+    db.prepare("UPDATE users SET password_hash = ?, email_verified = 1, account_status = 'active', role = 'admin' WHERE email = ?").run(defaultAdminHash, DEFAULT_ADMIN_EMAIL)
   }
 
   // Ensure all profiles are linked to an active user ID
