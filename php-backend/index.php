@@ -9449,15 +9449,16 @@ if (!headers_sent()) {
                     secure: secure,
                     enabled: enabled
                 };
-                if (pass && pass !== '••••••••••••') {
+                if (pass && !/^•+$/.test(pass.trim())) {
                     payload.password = pass;
                 }
 
-                const res = await fetch('/api/admin/save-smtp-config', {
+                const res = await fetch('/api/admin/save-smtp-config?token=' + encodeURIComponent(token), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Session-Token': token
                     },
                     body: JSON.stringify(payload)
                 });
@@ -9522,14 +9523,15 @@ if (!headers_sent()) {
             }
 
             try {
-                const payload = { host, port, user, secure, fromEmail };
-                if (pass && pass !== '••••••••••••') payload.password = pass;
+                const payload = { host, port, user, secure, fromEmail, enabled: true };
+                if (pass && !/^•+$/.test(pass.trim())) payload.password = pass;
 
-                const res = await fetch('/api/admin/test-smtp-connection', {
+                const res = await fetch('/api/admin/test-smtp-connection?token=' + encodeURIComponent(token), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Session-Token': token
                     },
                     body: JSON.stringify(payload)
                 });
@@ -9598,14 +9600,15 @@ if (!headers_sent()) {
             }
 
             try {
-                const payload = { recipient, host, port, user, secure, fromEmail, fromName };
-                if (pass && pass !== '••••••••••••') payload.password = pass;
+                const payload = { recipient, host, port, user, secure, fromEmail, fromName, enabled: true };
+                if (pass && !/^•+$/.test(pass.trim())) payload.password = pass;
 
-                const res = await fetch('/api/admin/send-test-email', {
+                const res = await fetch('/api/admin/send-test-email?token=' + encodeURIComponent(token), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Session-Token': token
                     },
                     body: JSON.stringify(payload)
                 });

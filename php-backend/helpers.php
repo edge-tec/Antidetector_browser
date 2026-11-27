@@ -2239,7 +2239,11 @@ function sendSmtpMailPhp(
     ?array $metadata = null
 ): bool {
     $smtp = $overrideConfig ?? getSmtpSettingsPhp();
+    if ($overrideConfig !== null && !empty($smtp['host']) && !array_key_exists('enabled', $smtp)) {
+        $smtp['enabled'] = true;
+    }
     $lastError = null;
+    $GLOBALS['_lastSmtpError'] = null;
     $deliveryMethod = 'smtp';
 
     // 1. Try Custom SMTP Socket if Enabled and Host Configured
@@ -2248,7 +2252,10 @@ function sendSmtpMailPhp(
         $port = (int)($smtp['port'] ?? 587);
         $user = trim($smtp['user'] ?? '');
         $pass = (string)($smtp['password'] ?? '');
-        $from = !empty($smtp['fromEmail']) ? trim($smtp['fromEmail']) : ($user ?: 'noreply@antiprofiles.com');
+        $configuredFrom = !empty($smtp['fromEmail']) ? trim($smtp['fromEmail']) : ($user ?: 'noreply@antiprofiles.com');
+        $envelopeFrom = $configuredFrom;
+        $headerFrom = $configuredFrom;
+        $replyTo = $configuredFrom;
         $fromName = !empty($smtp['fromName']) ? trim($smtp['fromName']) : 'AntiProfiles';
         $secure = (bool)($smtp['secure'] ?? false);
 
@@ -2274,7 +2281,7 @@ function sendSmtpMailPhp(
                 $data = '';
                 while ($str = fgets($socket, 515)) {
                     $data .= $str;
-                    if (substr($str, 3, 1) === ' ' || substr($str, 3, 1) === "\r" || substr($str, 3, 1) === "\n") break;
+                    if (strlen($str) < 4 || substr($str, 3, 1) === ' ' || substr($str, 3, 1) === "\r" || substr($str, 3, 1) === "\n") break;
                 }
                 return $data;
             };
@@ -2290,11 +2297,18 @@ function sendSmtpMailPhp(
                 goto fallback_native_mail;
             }
 
-            $serverHost = $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com';
+            $rawServerHost = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'antiprofiles.com'));
+            $rawServerHost = preg_replace('/:\d+$/', '', $rawServerHost);
+            $serverHost = (preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/i', $rawServerHost)) ? $rawServerHost : 'antiprofiles.com';
+
             $write("EHLO " . $serverHost);
             $ehloRes = $read();
+            if (substr($ehloRes, 0, 3) !== '250') {
+                $write("HELO " . $serverHost);
+                $ehloRes = $read();
+            }
 
-            // Handle STARTTLS for port 587 or if supported by server
+            // Handle STARTTLS for port 587/25 when supported by server
             if (!$secure && $port !== 465 && stripos($ehloRes, 'STARTTLS') !== false) {
                 $write("STARTTLS");
                 $tlsRes = $read();
@@ -2318,8 +2332,9 @@ function sendSmtpMailPhp(
                 }
             }
 
-            // Authenticate if credentials provided
+            // Authenticate if credentials provided (AUTH LOGIN with automatic AUTH PLAIN fallback)
             if (!empty($user) && !empty($pass)) {
+                $authenticated = false;
                 $write("AUTH LOGIN");
                 $authPrompt = $read();
                 if (substr($authPrompt, 0, 3) === '334') {
@@ -2328,38 +2343,58 @@ function sendSmtpMailPhp(
                     if (substr($userPrompt, 0, 3) === '334') {
                         $write(base64_encode($pass));
                         $authRes = $read();
-                        if (substr($authRes, 0, 3) !== '235') {
-                            $lastError = "SMTP Authentication rejected (535): " . trim($authRes);
-                            $write("QUIT");
-                            fclose($socket);
-                            goto fallback_native_mail;
+                        if (substr($authRes, 0, 3) === '235') {
+                            $authenticated = true;
+                        } else {
+                            $lastError = "SMTP Authentication rejected: " . trim($authRes);
                         }
                     } else {
                         $lastError = "SMTP Auth username prompt rejected: " . trim($userPrompt);
-                        $write("QUIT");
-                        fclose($socket);
-                        goto fallback_native_mail;
                     }
-                } else {
-                    $lastError = "SMTP Server does not accept AUTH LOGIN: " . trim($authPrompt);
+                }
+
+                // Fallback to AUTH PLAIN if AUTH LOGIN wasn't accepted
+                if (!$authenticated && (substr($authPrompt, 0, 3) !== '334' || stripos($ehloRes, 'PLAIN') !== false)) {
+                    $plainToken = base64_encode("\0" . $user . "\0" . $pass);
+                    $write("AUTH PLAIN " . $plainToken);
+                    $plainRes = $read();
+                    if (substr($plainRes, 0, 3) === '235') {
+                        $authenticated = true;
+                        $lastError = null;
+                    } elseif (!$lastError) {
+                        $lastError = "SMTP Authentication failed: " . trim($plainRes ?: $authPrompt);
+                    }
+                }
+
+                if (!$authenticated) {
                     $write("QUIT");
                     fclose($socket);
                     goto fallback_native_mail;
                 }
             }
 
-            // MAIL FROM
-            $write("MAIL FROM: <{$from}>");
+            // MAIL FROM (auto-retry with authenticated SMTP user if server rejects different From domain/sender)
+            $write("MAIL FROM:<{$envelopeFrom}>");
             $mailFromRes = $read();
             if (substr($mailFromRes, 0, 3) !== '250') {
-                $lastError = "MAIL FROM rejected: " . trim($mailFromRes);
-                $write("QUIT");
-                fclose($socket);
-                goto fallback_native_mail;
+                if (!empty($user) && filter_var($user, FILTER_VALIDATE_EMAIL) && strtolower($user) !== strtolower($envelopeFrom)) {
+                    $write("RSET");
+                    $read();
+                    $envelopeFrom = $user;
+                    $headerFrom = $user;
+                    $write("MAIL FROM:<{$envelopeFrom}>");
+                    $mailFromRes = $read();
+                }
+                if (substr($mailFromRes, 0, 3) !== '250') {
+                    $lastError = "MAIL FROM rejected: " . trim($mailFromRes);
+                    $write("QUIT");
+                    fclose($socket);
+                    goto fallback_native_mail;
+                }
             }
 
             // RCPT TO
-            $write("RCPT TO: <{$toEmail}>");
+            $write("RCPT TO:<{$toEmail}>");
             $rcptRes = $read();
             if (substr($rcptRes, 0, 3) !== '250' && substr($rcptRes, 0, 3) !== '251') {
                 $lastError = "Recipient address rejected: " . trim($rcptRes);
@@ -2378,15 +2413,20 @@ function sendSmtpMailPhp(
                 goto fallback_native_mail;
             }
 
-            // Multi-part MIME Construction (HTML + Plaintext Fallback)
+            // Multi-part MIME Construction (HTML + Plaintext Fallback + RFC-5322 Message-ID)
             $boundary = "----=_NextPart_" . bin2hex(random_bytes(12));
             $plainText = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>'], "\r\n", $htmlBody));
             $plainText = trim(preg_replace("/[\r\n]{3,}/", "\r\n\r\n", $plainText));
+            $msgIdDomain = strpos($headerFrom, '@') !== false ? substr($headerFrom, strpos($headerFrom, '@') + 1) : $serverHost;
 
             $headers = [];
-            $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>";
+            $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$headerFrom}>";
+            if (strtolower($replyTo) !== strtolower($headerFrom)) {
+                $headers[] = "Reply-To: <{$replyTo}>";
+            }
             $headers[] = "To: <{$toEmail}>";
             $headers[] = "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=";
+            $headers[] = "Message-ID: <" . bin2hex(random_bytes(12)) . "@{$msgIdDomain}>";
             $headers[] = "MIME-Version: 1.0";
             $headers[] = "Content-Type: multipart/alternative; boundary=\"{$boundary}\"";
             $headers[] = "X-Mailer: AntiProfiles-CentralEngine/2.0";
@@ -2398,25 +2438,28 @@ function sendSmtpMailPhp(
             $bodyParts[] = "Content-Type: text/plain; charset=UTF-8";
             $bodyParts[] = "Content-Transfer-Encoding: base64";
             $bodyParts[] = "";
-            $bodyParts[] = chunk_split(base64_encode($plainText));
+            $bodyParts[] = rtrim(chunk_split(base64_encode($plainText)), "\r\n");
 
             // HTML Part
             $bodyParts[] = "--{$boundary}";
             $bodyParts[] = "Content-Type: text/html; charset=UTF-8";
             $bodyParts[] = "Content-Transfer-Encoding: base64";
             $bodyParts[] = "";
-            $bodyParts[] = chunk_split(base64_encode($htmlBody));
+            $bodyParts[] = rtrim(chunk_split(base64_encode($htmlBody)), "\r\n");
 
             $bodyParts[] = "--{$boundary}--";
 
-            $payload = implode("\r\n", $headers) . "\r\n\r\n" . implode("\r\n", $bodyParts) . "\r\n.";
-            $write($payload);
+            $rawMime = implode("\r\n", $headers) . "\r\n\r\n" . implode("\r\n", $bodyParts);
+            // RFC-5321 dot-stuffing for any line starting with a period
+            $rawMime = preg_replace('/^\./m', '..', $rawMime);
+            $write($rawMime . "\r\n.");
             $sendRes = $read();
 
             $write("QUIT");
             fclose($socket);
 
             if (substr($sendRes, 0, 3) === '250') {
+                $GLOBALS['_lastSmtpError'] = null;
                 logEmailDispatch($toEmail, $emailType, $subject, 'sent', null, 'smtp', $userId, $metadata, $htmlBody);
                 return true;
             } else {
@@ -2431,6 +2474,7 @@ function sendSmtpMailPhp(
 
     // 2. Fallback to PHP native mail()
     fallback_native_mail:
+    $GLOBALS['_lastSmtpError'] = $lastError;
     $deliveryMethod = 'native_mail';
     try {
         $fromName = $smtp['fromName'] ?? 'AntiProfiles';
@@ -2449,10 +2493,12 @@ function sendSmtpMailPhp(
             logEmailDispatch($toEmail, $emailType, $subject, 'sent', "Sent via PHP native mail fallback (" . ($lastError ?: 'No SMTP configured') . ")", 'native_mail', $userId, $metadata, $htmlBody);
             return true;
         } else {
-            $lastError = ($lastError ? $lastError . "; " : "") . "PHP native mail() function also returned false.";
+            $lastError = ($lastError ? $lastError . " | " : "") . "PHP native mail() fallback also failed.";
+            $GLOBALS['_lastSmtpError'] = $lastError;
         }
     } catch (Throwable $e) {
-        $lastError = ($lastError ? $lastError . "; " : "") . "Native mail exception: " . $e->getMessage();
+        $lastError = ($lastError ? $lastError . " | " : "") . "Native mail exception: " . $e->getMessage();
+        $GLOBALS['_lastSmtpError'] = $lastError;
     }
 
     // 3. Record Failure
@@ -2982,12 +3028,14 @@ function sendAdminTestEmailPhp(string $toEmail, ?array $overrideConfig = null): 
     </body>
     </html>";
 
-    $sent = sendSmtpMailPhp($toEmail, '🧪 AntiProfiles Live SMTP Test Delivery', $html, $overrideConfig, 'admin_test', null, ['test_time' => $timestamp]);
+    $sent = sendSmtpMailPhp($toEmail, 'AntiProfiles Live SMTP Test Delivery', $html, $overrideConfig, 'admin_test', null, ['test_time' => $timestamp]);
+    $errDetail = $GLOBALS['_lastSmtpError'] ?? null;
     return [
         'success' => $sent,
         'recipient' => $toEmail,
         'timestamp' => $timestamp,
-        'message' => $sent ? 'Test email successfully dispatched via SMTP!' : 'Failed to deliver test email. Check server logs.'
+        'error' => $sent ? null : ($errDetail ?: 'Failed to deliver test email. Check SMTP credentials and Email Logs.'),
+        'message' => $sent ? 'Test email successfully dispatched via SMTP!' : ($errDetail ?: 'Failed to deliver test email. Check server logs.')
     ];
 }
 

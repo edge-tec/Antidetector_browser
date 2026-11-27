@@ -1541,7 +1541,7 @@ switch ($action) {
             if (isset($input['host'])) $stmt->execute(['smtp_host', trim((string)$input['host'])]);
             if (isset($input['port'])) $stmt->execute(['smtp_port', (string)(int)$input['port']]);
             if (isset($input['user'])) $stmt->execute(['smtp_user', trim((string)$input['user'])]);
-            if (isset($input['password']) && $input['password'] !== '' && $input['password'] !== '••••••••') {
+            if (isset($input['password']) && $input['password'] !== '' && !preg_match('/^•+$/u', trim((string)$input['password']))) {
                 $stmt->execute(['smtp_password', (string)$input['password']]);
             }
             if (isset($input['fromEmail'])) $stmt->execute(['smtp_from_email', trim((string)$input['fromEmail'])]);
@@ -1561,13 +1561,16 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         
         // If password is masked, fetch stored password from database
-        if (empty($input['password']) || $input['password'] === '••••••••') {
+        if (empty($input['password']) || preg_match('/^•+$/u', trim((string)$input['password']))) {
             $currSmtp = getSmtpSettingsPhp();
             $input['password'] = $currSmtp['password'] ?? '';
             if (empty($input['host'])) $input['host'] = $currSmtp['host'] ?? '';
             if (empty($input['user'])) $input['user'] = $currSmtp['user'] ?? '';
             if (empty($input['port'])) $input['port'] = $currSmtp['port'] ?? 587;
+            if (empty($input['fromEmail'])) $input['fromEmail'] = $currSmtp['fromEmail'] ?? '';
+            if (empty($input['fromName'])) $input['fromName'] = $currSmtp['fromName'] ?? 'AntiProfiles';
         }
+        $input['enabled'] = true;
 
         $diag = testSmtpDiagnosticsPhp($input);
 
@@ -1578,7 +1581,7 @@ switch ($action) {
             $testEmailSent = $testRes['success'];
             $diag['steps']['testEmail'] = [
                 'status' => $testEmailSent ? 'PASS' : 'FAIL',
-                'detail' => $testEmailSent ? "Delivered to {$testRecipient}" : "Failed to deliver to {$testRecipient}"
+                'detail' => $testEmailSent ? "Delivered to {$testRecipient}" : ("Failed: " . ($testRes['error'] ?? "Could not deliver to {$testRecipient}"))
             ];
         }
 
@@ -1601,14 +1604,21 @@ switch ($action) {
         $override = null;
         if (!empty($input['host'])) {
             $override = $input;
-            if (empty($override['password']) || $override['password'] === '••••••••') {
-                $curr = getSmtpSettingsPhp();
+            $override['enabled'] = true;
+            $curr = getSmtpSettingsPhp();
+            if (empty($override['password']) || preg_match('/^•+$/u', trim((string)$override['password']))) {
                 $override['password'] = $curr['password'] ?? '';
+            }
+            if (empty($override['fromEmail'])) {
+                $override['fromEmail'] = $curr['fromEmail'] ?? ($override['user'] ?? '');
+            }
+            if (empty($override['fromName'])) {
+                $override['fromName'] = $curr['fromName'] ?? 'AntiProfiles';
             }
         }
 
         $res = sendAdminTestEmailPhp($recipient, $override);
-        logAdminAction($adminUser['id'], $adminUser['email'], 'SENT_ADMIN_TEST_EMAIL', null, "Recipient: {$recipient}, Success: " . ($res['success'] ? 'Yes' : 'No'));
+        logAdminAction($adminUser['id'], $adminUser['email'], 'SENT_ADMIN_TEST_EMAIL', null, "Recipient: {$recipient}, Success: " . ($res['success'] ? 'Yes' : ('No - ' . ($res['error'] ?? ''))));
 
         if ($res['success']) {
             respondJson([
@@ -1619,8 +1629,8 @@ switch ($action) {
         } else {
             respondJson([
                 'success' => false,
-                'error' => "Failed to deliver test email to {$recipient}. Please verify SMTP credentials and check Email Logs."
-            ], 500);
+                'error' => $res['error'] ?: "Failed to deliver test email to {$recipient}. Please verify SMTP credentials and check Email Logs."
+            ], 400);
         }
         break;
 
