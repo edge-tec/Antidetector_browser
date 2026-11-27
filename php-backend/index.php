@@ -2117,8 +2117,16 @@ if (!headers_sent()) {
             flex: 1;
             overflow: hidden;
         }
+        .brand-logo-img {
+            display: block;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.28)) brightness(1.08);
+            image-rendering: -webkit-optimize-contrast;
+        }
         .admin-top-left .admin-top-logo {
-            height: 40px;
+            height: 46px;
+            max-width: 190px;
             width: auto;
             object-fit: contain;
             flex-shrink: 0;
@@ -2440,7 +2448,8 @@ if (!headers_sent()) {
                 gap: 8px !important;
             }
             .admin-top-left .admin-top-logo {
-                height: 32px !important;
+                height: 38px !important;
+                max-width: 155px !important;
             }
             .admin-top-info h2 {
                 font-size: 13.5px !important;
@@ -2889,7 +2898,7 @@ if (!headers_sent()) {
     <!-- Navbar -->
     <nav class="navbar">
         <a href="/" class="logo" style="display: flex; align-items: center;">
-            <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 44px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+            <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 48px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
         </a>
         <ul class="nav-links">
             <li><a href="/features">Features (52)</a></li>
@@ -4651,7 +4660,7 @@ if (!headers_sent()) {
         <div class="container footer-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--border);">
             <div class="footer-brand">
                 <div class="footer-logo-wrapper" style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 44px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+                    <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 48px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
                 </div>
                 <p style="color: var(--text-muted); font-size: 13px; line-height: 1.6; max-width: 320px;">Professional browser profile isolation and anti-detect privacy management software.</p>
             </div>
@@ -7020,6 +7029,7 @@ if (!headers_sent()) {
 
                             <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
                                 <button class="btn btn-primary" id="btnSaveBranding" onclick="saveBrandingSettings()" style="padding: 10px 20px; font-weight: 700; font-size: 13px;">💾 Save & Update Logo & Favicon</button>
+                                <button class="btn btn-outline" onclick="const i=document.getElementById('adminLogoUrlInput'); const f=document.getElementById('adminLogoFileInput'); const p=document.getElementById('adminLogoPreview'); if(f)f.value=''; if(i)i.value='/brand-logo.png'; if(p)p.src='/brand-logo.png?t='+Date.now(); saveBrandingSettings();" style="padding: 10px 16px; font-size: 13px; border-color: rgba(45,212,191,0.45); color: #2DD4BF;">✨ Use Dark-Mode White Logo</button>
                                 <button class="btn btn-outline" onclick="loadBrandingSettings()" style="padding: 10px 16px; font-size: 13px;">🔄 Reload Current Assets</button>
                             </div>
                         </div>
