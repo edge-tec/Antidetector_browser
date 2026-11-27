@@ -216,24 +216,18 @@ function ensureDatabaseTablesExist() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
-        $db->exec("
-            INSERT INTO `pricing_plans` (`id`, `name`, `slug`, `description`, `monthly_price`, `yearly_price`, `profile_limit`, `team_limit`, `api_limit`, `badge`, `button_text`, `button_url`, `is_popular`, `sort_order`)
-            VALUES
-            ('plan_free', 'Free', 'free', 'Ideal for testing & personal profile management', 0.00, 0.00, 3, 1, '—', '', 'Start Free', '#register', 0, 1),
-            ('plan_starter', 'Starter', 'starter', 'Essential features for solo operators & small tasks', 19.00, 15.00, 25, 2, 'Basic API', '', 'Pay & Upgrade ($19)', '#pricing', 0, 2),
-            ('plan_pro', 'Professional', 'professional', 'Advanced fingerprint controls & team features', 49.00, 39.00, 100, 10, 'Full REST & Driver API', 'Most Popular', 'Pay & Upgrade ($49)', '#pricing', 1, 3),
-            ('plan_business', 'Business', 'business', 'Maximum power for large scale multi-profile teams', 99.00, 79.00, 500, 25, 'Unlimited API', 'Best Value', 'Pay & Upgrade ($99)', '#pricing', 0, 4)
-            ON DUPLICATE KEY UPDATE 
-                `name`=VALUES(`name`),
-                `monthly_price`=VALUES(`monthly_price`),
-                `yearly_price`=VALUES(`yearly_price`),
-                `profile_limit`=VALUES(`profile_limit`),
-                `team_limit`=VALUES(`team_limit`),
-                `api_limit`=VALUES(`api_limit`),
-                `badge`=VALUES(`badge`),
-                `button_text`=VALUES(`button_text`),
-                `is_popular`=VALUES(`is_popular`);
-        ");
+        // Seed default packages ONLY on a brand-new empty table (never overwrite Admin edits or deleted plans)
+        $existingPlanCount = (int)$db->query("SELECT COUNT(*) FROM `pricing_plans`")->fetchColumn();
+        if ($existingPlanCount === 0) {
+            $db->exec("
+                INSERT IGNORE INTO `pricing_plans` (`id`, `name`, `slug`, `description`, `monthly_price`, `yearly_price`, `profile_limit`, `team_limit`, `api_limit`, `badge`, `button_text`, `button_url`, `is_popular`, `sort_order`)
+                VALUES
+                ('plan_free', 'Free', 'free', 'Ideal for testing & personal profile management', 0.00, 0.00, 3, 1, '—', '', 'Start Free', '#register', 0, 1),
+                ('plan_starter', 'Starter', 'starter', 'Essential features for solo operators & small tasks', 19.00, 15.00, 25, 2, 'Basic API', '', 'Pay & Upgrade ($19)', '#pricing', 0, 2),
+                ('plan_pro', 'Professional', 'professional', 'Advanced fingerprint controls & team features', 49.00, 39.00, 100, 10, 'Full REST & Driver API', 'Most Popular', 'Pay & Upgrade ($49)', '#pricing', 1, 3),
+                ('plan_business', 'Business', 'business', 'Maximum power for large scale multi-profile teams', 99.00, 79.00, 500, 25, 'Unlimited API', 'Best Value', 'Pay & Upgrade ($99)', '#pricing', 0, 4);
+            ");
+        }
 
         // 3. Subscriptions Table
         $db->exec("
