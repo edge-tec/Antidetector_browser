@@ -113,7 +113,13 @@ function callBachsApi(
     ?string $idempotencyKey = null
 ): array {
     $secret = trim($secretKey);
-    $useSandbox = $isTestMode || stripos($secret, 'sk_sandbox_') === 0 || stripos($secret, 'sk_test_') === 0;
+    if (stripos($secret, 'sk_live_') === 0) {
+        $useSandbox = false;
+    } elseif (stripos($secret, 'sk_sandbox_') === 0 || stripos($secret, 'sk_test_') === 0) {
+        $useSandbox = true;
+    } else {
+        $useSandbox = $isTestMode;
+    }
     $rawLiveUrl = rtrim(trim((string)($config['api_base_url'] ?? 'https://api.bachs.io')), '/');
     if ($rawLiveUrl === '' || stripos($rawLiveUrl, '://app.bachs.io') !== false) {
         $rawLiveUrl = 'https://api.bachs.io';
@@ -165,14 +171,23 @@ function callBachsApi(
         return ['success' => true, 'data' => $json, 'httpCode' => $httpCode, 'baseUrl' => $baseUrl];
     }
 
-    $errMsg = 'Bachs.io API returned HTTP ' . $httpCode;
+    $errMsg = 'Card gateway API returned HTTP ' . $httpCode;
     if (is_array($json)) {
         if (!empty($json['error']['message'])) {
             $errMsg = (string)$json['error']['message'];
+        } elseif (!empty($json['error']) && is_string($json['error'])) {
+            $errMsg = (string)$json['error'];
         } elseif (!empty($json['message'])) {
             $errMsg = is_array($json['message']) ? implode('; ', $json['message']) : (string)$json['message'];
         } elseif (!empty($json['detail'])) {
             $errMsg = is_array($json['detail']) ? json_encode($json['detail']) : (string)$json['detail'];
+        } elseif (!empty($json['errors'])) {
+            $errMsg = is_array($json['errors']) ? json_encode($json['errors']) : (string)$json['errors'];
+        }
+    } elseif (!empty($response)) {
+        $snippet = trim(substr(strip_tags((string)$response), 0, 180));
+        if ($snippet !== '') {
+            $errMsg .= ' (' . $snippet . ')';
         }
     }
     return ['success' => false, 'error' => $errMsg, 'data' => $json, 'httpCode' => $httpCode, 'baseUrl' => $baseUrl];
@@ -1036,7 +1051,7 @@ switch ($action) {
                         'message' => 'Test Mode Checkout: ' . ($stripeRes['error'] ?? '')
                     ]);
                 } else {
-                    respondJson(['success' => false, 'error' => 'Stripe Checkout generation failed: ' . $stripeRes['error']], 500);
+                    respondJson(['success' => false, 'error' => 'Card Checkout generation failed: ' . $stripeRes['error']], 400);
                 }
             }
 
@@ -1103,7 +1118,7 @@ switch ($action) {
                 }
             }
 
-            // Build Bachs.io Checkout Session payload (https://docs.bachs.io — POST /v1/checkout-sessions)
+            // Build clean official Bachs.io Checkout Session payload (POST /v1/checkout-sessions)
             $checkoutEndpoint = '/' . ltrim(trim((string)($bachsCfg['checkout_endpoint'] ?? '/v1/checkout-sessions')), '/');
             $productIdsMap = is_array($bachsCfg['product_ids'] ?? null) ? $bachsCfg['product_ids'] : [];
             $mappedProductId = trim((string)($productIdsMap[$planId] ?? ($bachsCfg['default_product_id'] ?? '')));
@@ -1114,10 +1129,8 @@ switch ($action) {
                     'email' => (string)($user['email'] ?? ''),
                     'name' => (string)($user['name'] ?? 'AntiProfiles Customer')
                 ],
-                'reference' => $invNumber,
                 'success_url' => $successUrl,
                 'cancel_url' => $cancelUrl,
-                'return_url' => $successUrl,
                 'metadata' => [
                     'user_id' => (string)$user['id'],
                     'invoice_id' => $invId,
@@ -1131,11 +1144,7 @@ switch ($action) {
                 $bachsPayload['product_cart'] = [
                     [
                         'product_id' => $mappedProductId,
-                        'quantity' => 1,
-                        'pricing' => [
-                            'amount' => $amountStr,
-                            'currency' => $currency
-                        ]
+                        'quantity' => 1
                     ]
                 ];
             } else {
@@ -1143,34 +1152,62 @@ switch ($action) {
                     'amount' => $amountStr,
                     'currency' => $currency
                 ];
-                $bachsPayload['description'] = ($bachsCfg['checkout_title'] ?? 'AntiProfiles Subscription') . ' — ' . ($plan['name'] ?? $planId);
-            }
-
-            if (isset($bachsCfg['adaptive_pricing'])) {
-                $bachsPayload['adaptive_pricing'] = (bool)$bachsCfg['adaptive_pricing'];
             }
 
             $bachsRes = callBachsApi($secretKey, $checkoutEndpoint, 'POST', $bachsPayload, $isSandbox, $bachsCfg, 'chk_' . $invId);
 
+            // Auto-fallback: if Bachs account requires product_cart instead of raw pricing, auto-create a product and retry
+            if (!$bachsRes['success'] && $mappedProductId === '') {
+                $errLower = strtolower((string)($bachsRes['error'] ?? '') . ' ' . json_encode($bachsRes['data'] ?? []));
+                if (strpos($errLower, 'product') !== false) {
+                    $prodCreate = callBachsApi($secretKey, '/v1/products', 'POST', [
+                        'name' => 'AntiProfiles ' . (string)($plan['name'] ?? $planId) . ' Plan',
+                        'description' => 'AntiProfiles Monthly Subscription (' . $invNumber . ')',
+                        'type' => 'one_time',
+                        'pricing' => [
+                            'amount' => $amountStr,
+                            'currency' => $currency
+                        ]
+                    ], $isSandbox, $bachsCfg, 'prod_' . $invId);
+
+                    if ($prodCreate['success'] && !empty($prodCreate['data'])) {
+                        $pData = is_array($prodCreate['data']['data'] ?? null) ? $prodCreate['data']['data'] : $prodCreate['data'];
+                        $autoProdId = (string)($pData['id'] ?? $pData['product_id'] ?? '');
+                        if ($autoProdId !== '') {
+                            unset($bachsPayload['pricing']);
+                            $bachsPayload['product_cart'] = [
+                                [
+                                    'product_id' => $autoProdId,
+                                    'quantity' => 1
+                                ]
+                            ];
+                            $bachsRes = callBachsApi($secretKey, $checkoutEndpoint, 'POST', $bachsPayload, $isSandbox, $bachsCfg, 'chk2_' . $invId);
+                        }
+                    }
+                }
+            }
+
             if (!$bachsRes['success']) {
+                // Return HTTP 400 (never 502) so Nginx/Cloudflare does not replace JSON with an HTML 502 Bad Gateway page
                 respondJson([
                     'success' => false,
-                    'error' => 'Bachs.io Checkout Session failed: ' . ($bachsRes['error'] ?? 'Unknown error'),
+                    'error' => 'Card checkout session could not be created: ' . ($bachsRes['error'] ?? 'Please verify API credentials and gateway mode.'),
+                    'httpCode' => $bachsRes['httpCode'] ?? 0,
                     'details' => $bachsRes['data'] ?? null
-                ], 502);
+                ], 400);
             }
 
             $respData = $bachsRes['data'];
             $inner = is_array($respData['data'] ?? null) ? $respData['data'] : $respData;
             $checkoutUrl = (string)($inner['checkout_url'] ?? $inner['url'] ?? $inner['payment_url'] ?? $respData['checkout_url'] ?? $respData['url'] ?? '');
-            $sessionId = (string)($inner['id'] ?? $inner['session_id'] ?? $inner['checkout_session_id'] ?? $inner['payment_id'] ?? $inner['reference'] ?? $respData['id'] ?? '');
+            $sessionId = (string)($inner['checkout_id'] ?? $inner['id'] ?? $inner['session_id'] ?? $inner['checkout_session_id'] ?? $inner['payment_id'] ?? $inner['reference'] ?? $respData['checkout_id'] ?? $respData['id'] ?? '');
 
             if ($checkoutUrl === '') {
                 respondJson([
                     'success' => false,
-                    'error' => 'Bachs.io API succeeded but did not return a checkout_url. Please verify your Checkout Endpoint in Admin Panel → Payment Gateways → Bachs.io.',
+                    'error' => 'Payment gateway did not return a checkout URL. Please check gateway configuration in Admin Panel.',
                     'response' => $respData
-                ], 502);
+                ], 400);
             }
 
             $bachsMeta = [
@@ -1876,5 +1913,5 @@ switch ($action) {
     respondJson([
         'success' => false,
         'error' => 'Payment processing error: ' . $e->getMessage()
-    ], 500);
+    ], 400);
 }
