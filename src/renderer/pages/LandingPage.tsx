@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react'
 import logoImg from '../assets/logo.png'
 import { SupportChatWidget } from '../components/SupportChatWidget'
+import { Hero3DFingerprintBg } from '../components/Hero3DFingerprintBg'
 
 interface LandingProps {
   onNavigateLogin: () => void
@@ -119,7 +120,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
   const [appReleases, setAppReleases] = useState<any>(null)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [openFaq, setOpenFaq] = useState<string | null>(null)
+  const [selectedCockpitIdx, setSelectedCockpitIdx] = useState<number>(0)
 
   // OS & CPU Architecture Detection State
   const [detectedTarget, setDetectedTarget] = useState<'windows-x64' | 'macos-arm64' | 'macos-x64' | 'linux-x64'>('windows-x64')
@@ -256,49 +257,80 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
     }, 800)
   }
 
+  const cockpitProfiles = [
+    {
+      name: 'US E-Commerce Store #01',
+      meta: 'macOS Sequoia • 🇺🇸 New York • Chromium 136',
+      status: 'Running',
+      canvas: '0x9A4F...E21B (Noise +0.4%)',
+      gpu: 'Apple M4 Metal GPU',
+      proxy: 'US Residential • 18ms',
+      webrtc: 'Kill-Switch Active'
+    },
+    {
+      name: 'UK Meta Ads Workspace',
+      meta: 'Windows 11 • 🇬🇧 London • Dual-Kernel',
+      status: 'Running',
+      canvas: '0x4C81...7D90 (Noise +0.7%)',
+      gpu: 'NVIDIA RTX 4070 Direct3D',
+      proxy: 'UK Mobile SOCKS5 • 24ms',
+      webrtc: 'Proxy Tunnel Locked'
+    },
+    {
+      name: 'EU Automation & Affiliate Hub',
+      meta: 'Linux x64 • 🇩🇪 Frankfurt • Camoufox C++',
+      status: 'Ready',
+      canvas: '0x7E12...B04C (C++ Native)',
+      gpu: 'Mesa Intel Iris Xe',
+      proxy: 'DE Residential • 14ms',
+      webrtc: 'Zero DNS / UDP Leak'
+    }
+  ]
+  const activeCockpit = cockpitProfiles[selectedCockpitIdx] || cockpitProfiles[0]
+
   return (
-    <div style={{ backgroundColor: '#0F0F14', color: '#CBD5E1', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', width: '100%', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
+    <div style={{ backgroundColor: '#06080F', color: '#CBD5E1', fontFamily: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', width: '100%', height: '100vh', overflowY: 'auto', overflowX: 'hidden', scrollPaddingTop: '84px' }}>
       
-      {/* ── 1. Sticky Navigation Bar ── */}
+      {/* ── 1. Sticky Glass Navigation Bar ── */}
       <header className="window-drag-area" style={{
         position: 'sticky',
         top: 0,
         zIndex: 1000,
-        backgroundColor: '#0F0F14D0',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #2C2C3E',
-        padding: '16px 24px 16px 90px'
+        backgroundColor: 'rgba(6, 8, 15, 0.82)',
+        backdropFilter: 'blur(20px) saturate(160%)',
+        borderBottom: '1px solid rgba(148, 163, 184, 0.14)',
+        padding: '14px 24px 14px 90px'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ maxWidth: '1220px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           
           {/* Brand Logo & Name */}
           <div className="window-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <img src={logoImg} alt="AntiProfiles Logo" style={{ width: 32, height: 32, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.6))' }} />
-            <span style={{ fontSize: '20px', fontWeight: 800, color: '#F1F5F9', letterSpacing: '-0.5px' }}>
+            <img src={logoImg} alt="AntiProfiles Logo" style={{ width: 32, height: 32, objectFit: 'contain', filter: 'drop-shadow(0 2px 10px rgba(45,212,191,0.5))' }} />
+            <span style={{ fontSize: '20px', fontWeight: 800, color: '#F8FAFC', letterSpacing: '-0.5px' }}>
               {branding.site_name || 'AntiProfiles'}
             </span>
           </div>
 
-          {/* Desktop Nav Links */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '28px' }} className="desktop-nav window-no-drag">
-            <a href="#features" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>Features</a>
-            <a href="#how-it-works" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>How It Works</a>
-            <a href="#showcase" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>Preview</a>
-            <a href="#pricing" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>Pricing</a>
-            <a href="#faq" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>FAQ</a>
-            <a href="#contact" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>Contact</a>
+          {/* Desktop Nav Links Pill */}
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px', borderRadius: '999px', backgroundColor: 'rgba(15, 19, 32, 0.65)', border: '1px solid rgba(148, 163, 184, 0.14)' }} className="desktop-nav window-no-drag">
+            <a href="#features" style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '13px', fontWeight: 500, padding: '6px 13px', borderRadius: '999px' }}>Features</a>
+            <a href="#how-it-works" style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '13px', fontWeight: 500, padding: '6px 13px', borderRadius: '999px' }}>How It Works</a>
+            <a href="#download" style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '13px', fontWeight: 500, padding: '6px 13px', borderRadius: '999px' }}>Downloads</a>
+            <a href="#pricing" style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '13px', fontWeight: 500, padding: '6px 13px', borderRadius: '999px' }}>Pricing</a>
+            <a href="#faq" style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '13px', fontWeight: 500, padding: '6px 13px', borderRadius: '999px' }}>FAQ</a>
+            <a href="#contact" style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '13px', fontWeight: 500, padding: '6px 13px', borderRadius: '999px' }}>Contact</a>
           </nav>
 
           {/* Right Action CTAs */}
-          <div className="window-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="window-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               type="button"
               onClick={onNavigateLogin}
               style={{
                 padding: '9px 18px',
-                borderRadius: '8px',
-                backgroundColor: 'transparent',
-                border: '1px solid #2C2C3E',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(15, 19, 32, 0.7)',
+                border: '1px solid rgba(148, 163, 184, 0.24)',
                 color: '#F1F5F9',
                 fontWeight: 600,
                 fontSize: '13px',
@@ -313,14 +345,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               onClick={onNavigateRegister}
               style={{
                 padding: '9px 20px',
-                borderRadius: '8px',
-                backgroundColor: accentColor,
+                borderRadius: '10px',
+                background: `linear-gradient(135deg, ${accentColor}, #06B6D4 55%, #3B82F6)`,
                 border: 'none',
-                color: '#0F0F17',
-                fontWeight: 700,
+                color: '#041014',
+                fontWeight: 800,
                 fontSize: '13px',
                 cursor: 'pointer',
-                boxShadow: `0 4px 14px ${accentColor}40`
+                boxShadow: `0 6px 20px ${accentColor}40`
               }}
             >
               Get Started
@@ -332,6 +364,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               style={{ background: 'none', border: 'none', color: '#FFF', fontSize: '22px', cursor: 'pointer', display: 'none' }}
               className="mobile-toggle"
+              aria-label="Toggle Navigation"
             >
               ☰
             </button>
@@ -340,9 +373,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
 
         {/* Mobile Navigation Menu Dropdown */}
         {mobileMenuOpen && (
-          <div style={{ backgroundColor: '#161622', borderTop: '1px solid #2C2C3E', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+          <div style={{ backgroundColor: '#0B0F1A', borderTop: '1px solid rgba(148, 163, 184, 0.14)', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
             <a href="#features" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Features</a>
             <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>How It Works</a>
+            <a href="#download" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Downloads</a>
             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Pricing</a>
             <a href="#faq" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>FAQ</a>
             <a href="#contact" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Contact</a>
@@ -350,116 +384,198 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         )}
       </header>
 
-      {/* ── 2. Hero Section ── */}
-      <section style={{ padding: '80px 24px 60px', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px', alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', backgroundColor: `${primaryColor}20`, border: `1px solid ${primaryColor}40`, color: accentColor, fontSize: '12px', fontWeight: 600, marginBottom: '20px' }}>
-            <span>🚀</span> Next-Generation AntiProfiles Architecture
-          </div>
-          
-          <h1 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, color: '#F8FAFC', lineHeight: 1.15, margin: '0 0 20px', letterSpacing: '-1px' }}>
-            {hero.headline}
-          </h1>
+      {/* ── 2. Full-Bleed Hero Stage with 3D Animated Anti-Detect & Fingerprint Background ── */}
+      <section style={{
+        position: 'relative',
+        width: '100%',
+        minHeight: 'min(88vh, 800px)',
+        display: 'flex',
+        alignItems: 'center',
+        overflow: 'hidden',
+        background: 'radial-gradient(ellipse 80% 60% at 68% 42%, rgba(45, 212, 191, 0.12) 0%, transparent 62%), radial-gradient(ellipse 65% 55% at 22% 28%, rgba(99, 102, 241, 0.16) 0%, transparent 64%), linear-gradient(180deg, #05070D 0%, #070B16 62%, #06080F 100%)',
+        borderBottom: '1px solid rgba(148, 163, 184, 0.12)'
+      }}>
+        <Hero3DFingerprintBg />
 
-          <p style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.6, margin: '0 0 32px', maxWidth: '540px' }}>
-            {hero.subheadline}
-          </p>
-
-          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '24px' }}>
-            <button
-              type="button"
-              onClick={onNavigateRegister}
-              style={{
-                padding: '14px 28px',
-                borderRadius: '10px',
-                backgroundColor: accentColor,
-                color: '#0F0F17',
-                fontWeight: 800,
-                fontSize: '15px',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: `0 6px 20px ${accentColor}40`
-              }}
-            >
-              {hero.cta_primary_text}
-            </button>
-
-            <a
-              href="#pricing"
-              style={{
-                padding: '14px 28px',
-                borderRadius: '10px',
-                backgroundColor: '#161622',
-                border: '1px solid #2C2C3E',
-                color: '#F1F5F9',
-                fontWeight: 600,
-                fontSize: '15px',
-                textDecoration: 'none',
-                display: 'inline-block'
-              }}
-            >
-              {hero.cta_secondary_text}
-            </a>
-          </div>
-
-          <div style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {hero.trust_text}
-          </div>
-        </div>
-
-        {/* Dashboard Live Mockup Visualizer */}
         <div style={{
-          backgroundColor: '#161622',
-          border: '1px solid #2C2C3E',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7)',
-          position: 'relative'
+          position: 'relative',
+          zIndex: 3,
+          padding: '84px 24px 72px',
+          maxWidth: '1220px',
+          width: '100%',
+          margin: '0 auto',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '48px',
+          alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2C2C3E', paddingBottom: '14px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#EF4444' }} />
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#F59E0B' }} />
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+          <div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '9px',
+              padding: '7px 16px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(15, 23, 42, 0.78)',
+              border: '1px solid rgba(45, 212, 191, 0.35)',
+              color: '#99F6E4',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              marginBottom: '22px',
+              backdropFilter: 'blur(12px)'
+            }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2DD4BF', boxShadow: '0 0 10px #2DD4BF' }} />
+              <span>v2.0 Dual-Kernel • Chromium + Camoufox Stealth</span>
             </div>
-            <span style={{ fontSize: '12px', color: '#64748B', fontFamily: 'monospace' }}>AntiProfiles Dashboard v1.0</span>
+
+            <h1 style={{ fontSize: 'clamp(34px, 4.8vw, 56px)', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.08, margin: '0 0 22px', letterSpacing: '-0.035em' }}>
+              Browse Invisibly.<br />
+              <span style={{ background: 'linear-gradient(115deg, #2DD4BF 0%, #38BDF8 48%, #818CF8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Isolate Every Fingerprint.
+              </span><br />
+              Scale Without Limits.
+            </h1>
+
+            <p style={{ fontSize: '16.5px', color: '#CBD5E1', lineHeight: 1.66, margin: '0 0 30px', maxWidth: '540px' }}>
+              {hero.subheadline}
+            </p>
+
+            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              <button
+                type="button"
+                onClick={onNavigateRegister}
+                style={{
+                  padding: '14px 30px',
+                  borderRadius: '12px',
+                  background: `linear-gradient(135deg, ${accentColor} 0%, #06B6D4 55%, #3B82F6 100%)`,
+                  color: '#041014',
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: `0 8px 26px ${accentColor}40`
+                }}
+              >
+                {hero.cta_primary_text} →
+              </button>
+
+              <a
+                href="#pricing"
+                style={{
+                  padding: '14px 26px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(15, 19, 32, 0.72)',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  color: '#F1F5F9',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                {hero.cta_secondary_text}
+              </a>
+            </div>
+
+            <div style={{ fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <span>✓ <strong style={{ color: '#E2E8F0' }}>No credit card</strong> required</span>
+              <span>✓ <strong style={{ color: '#E2E8F0' }}>99.8%</strong> Stealth Score</span>
+              <span>✓ <strong style={{ color: '#E2E8F0' }}>Win / Mac / Linux</strong></span>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { name: 'US E-Commerce Account', os: 'macOS', location: '🇺🇸 United States', proxy: 'Active HTTP', status: 'Running' },
-              { name: 'UK Marketing Profile', os: 'Windows 11', location: '🇬🇧 United Kingdom', proxy: 'SOCKS5 Active', status: 'Stopped' },
-              { name: 'EU Research Context', os: 'Linux', location: '🇩🇪 Germany', proxy: 'HTTP Active', status: 'Running' }
-            ].map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '8px', backgroundColor: '#14141F', border: '1px solid #2C2C3E' }}>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#F1F5F9' }}>{p.name}</div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>{p.os} • {p.location} • {p.proxy}</div>
+          {/* Live Interactive Stealth Cockpit Preview */}
+          <div style={{
+            background: 'linear-gradient(160deg, rgba(16, 22, 38, 0.88) 0%, rgba(10, 13, 24, 0.94) 100%)',
+            border: '1px solid rgba(45, 212, 191, 0.25)',
+            borderRadius: '22px',
+            padding: '22px',
+            boxShadow: '0 30px 70px rgba(0,0,0,0.68), 0 0 42px rgba(45,212,191,0.12)',
+            backdropFilter: 'blur(18px)',
+            position: 'relative'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(148, 163, 184, 0.14)', paddingBottom: '14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '7px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#EF4444' }} />
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#F59E0B' }} />
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
                 </div>
-                <span style={{
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  backgroundColor: p.status === 'Running' ? '#10B98120' : '#2C2C3E',
-                  color: p.status === 'Running' ? '#10B981' : '#94A3B8'
-                }}>
-                  {p.status}
-                </span>
+                <span style={{ fontSize: '11.5px', color: '#94A3B8', fontFamily: 'monospace' }}>AntiProfiles Engine v2.0</span>
               </div>
-            ))}
+              <span style={{ padding: '4px 10px', borderRadius: '999px', backgroundColor: 'rgba(16, 185, 129, 0.14)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#34D399', fontSize: '11px', fontWeight: 800 }}>
+                ● 99.8% Undetectable
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {cockpitProfiles.map((p, i) => {
+                const selected = i === selectedCockpitIdx
+                return (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => setSelectedCockpitIdx(i)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '13px 15px',
+                      borderRadius: '14px',
+                      backgroundColor: selected ? 'rgba(20, 32, 48, 0.78)' : 'rgba(9, 12, 22, 0.78)',
+                      border: selected ? '1px solid rgba(45, 212, 191, 0.5)' : '1px solid rgba(148, 163, 184, 0.14)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#F8FAFC' }}>{p.name}</div>
+                      <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '2px' }}>{p.meta}</div>
+                    </div>
+                    <span style={{
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      fontSize: '10.5px',
+                      fontWeight: 800,
+                      backgroundColor: p.status === 'Running' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(99, 102, 241, 0.16)',
+                      border: p.status === 'Running' ? '1px solid rgba(16, 185, 129, 0.32)' : '1px solid rgba(99, 102, 241, 0.35)',
+                      color: p.status === 'Running' ? '#34D399' : '#A5B4FC'
+                    }}>
+                      {p.status === 'Running' ? '● Running' : 'Ready'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', paddingTop: '14px', borderTop: '1px solid rgba(148, 163, 184, 0.12)' }}>
+              {[
+                { label: 'Canvas Fingerprint', val: activeCockpit.canvas },
+                { label: 'WebGL Hardware Mask', val: activeCockpit.gpu },
+                { label: 'Encrypted Proxy Route', val: activeCockpit.proxy },
+                { label: 'WebRTC & DNS Shield', val: activeCockpit.webrtc }
+              ].map((m) => (
+                <div key={m.label} style={{ backgroundColor: 'rgba(6, 9, 18, 0.78)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: '10px', padding: '9px 11px' }}>
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700, marginBottom: '2px' }}>{m.label}</div>
+                  <div style={{ fontSize: '11.5px', fontFamily: 'monospace', color: '#2DD4BF', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.val}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ── 3. Hero Statistics Row ── */}
-      <section style={{ borderTop: '1px solid #2C2C3E', borderBottom: '1px solid #2C2C3E', backgroundColor: '#14141F', padding: '40px 24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', textAlign: 'center' }}>
+      <section style={{ borderBottom: '1px solid rgba(148, 163, 184, 0.12)', background: 'linear-gradient(180deg, rgba(11, 15, 26, 0.92), rgba(7, 10, 18, 0.96))', padding: '36px 24px' }}>
+        <div style={{ maxWidth: '1220px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', textAlign: 'center' }}>
           {stats.map((s: any) => (
-            <div key={s.id} style={{ padding: '16px' }}>
-              <div style={{ fontSize: '28px', marginBottom: '4px' }}>{s.icon}</div>
-              <div style={{ fontSize: '32px', fontWeight: 800, color: accentColor, letterSpacing: '-0.5px' }}>{s.number}</div>
-              <div style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px' }}>{s.label}</div>
+            <div key={s.id} style={{ padding: '20px 16px', backgroundColor: 'rgba(15, 19, 32, 0.58)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: '16px' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>{s.icon}</div>
+              <div style={{ fontSize: '32px', fontWeight: 800, background: `linear-gradient(135deg, ${accentColor}, #60A5FA)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>{s.number}</div>
+              <div style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px', fontWeight: 600 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -1169,10 +1285,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         </div>
       </section>
 
-      {/* ── 8. FAQ Accordion Section ── */}
-      <section id="faq" style={{ padding: '90px 24px', maxWidth: '800px', margin: '0 auto' }}>
+      {/* ── 8. FAQ Accordion Section (Semantic Native <details>) ── */}
+      <section id="faq" aria-labelledby="desktop-faq-heading" style={{ padding: '90px 24px', maxWidth: '840px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-          <h2 style={{ fontSize: '32px', fontWeight: 800, color: '#F8FAFC', margin: '0 0 12px' }}>
+          <h2 id="desktop-faq-heading" style={{ fontSize: '34px', fontWeight: 800, color: '#F8FAFC', margin: '0 0 12px' }}>
             Frequently Asked Questions
           </h2>
           <p style={{ fontSize: '15px', color: '#94A3B8' }}>
@@ -1181,39 +1297,34 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {faqs.map((faq: any) => {
-            const isOpen = openFaq === faq.id
-            return (
-              <div key={faq.id} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '10px', overflow: 'hidden' }}>
-                <button
-                  type="button"
-                  onClick={() => setOpenFaq(isOpen ? null : faq.id)}
-                  style={{
-                    width: '100%',
-                    padding: '18px 20px',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#F1F5F9',
-                    fontWeight: 700,
-                    fontSize: '15px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span>{faq.question}</span>
-                  <span style={{ fontSize: '18px', color: accentColor }}>{isOpen ? '−' : '+'}</span>
-                </button>
-                {isOpen && (
-                  <div style={{ padding: '0 20px 20px', fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, borderTop: '1px solid #2C2C3E30', paddingTop: '14px' }}>
-                    {faq.answer}
-                  </div>
-                )}
+          {faqs.map((faq: any, idx: number) => (
+            <details
+              key={faq.id}
+              open={idx === 0}
+              style={{
+                background: 'linear-gradient(180deg, rgba(16, 21, 36, 0.92), rgba(11, 14, 24, 0.96))',
+                border: '1px solid rgba(148, 163, 184, 0.16)',
+                borderRadius: '14px',
+                overflow: 'hidden'
+              }}
+            >
+              <summary
+                style={{
+                  padding: '18px 22px',
+                  color: '#F8FAFC',
+                  fontWeight: 700,
+                  fontSize: '15.5px',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
+                {faq.question}
+              </summary>
+              <div style={{ padding: '14px 22px 20px', fontSize: '14px', color: '#94A3B8', lineHeight: 1.68, borderTop: '1px solid rgba(148, 163, 184, 0.1)' }}>
+                {faq.answer}
               </div>
-            )
-          })}
+            </details>
+          ))}
         </div>
       </section>
 

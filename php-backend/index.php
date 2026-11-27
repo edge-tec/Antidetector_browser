@@ -715,71 +715,116 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0B0C10;
-            --bg-card: #151720;
-            --bg-input: #0F1016;
-            --border: #242736;
-            --border-hover: #3E435C;
+            --bg-dark: #06080F;
+            --bg-card: #0F1320;
+            --bg-input: #0B0E18;
+            --border: rgba(148, 163, 184, 0.14);
+            --border-hover: rgba(45, 212, 191, 0.42);
             --primary: #6366F1;
             --primary-glow: rgba(99, 102, 241, 0.35);
             --accent: #2DD4BF;
+            --accent-cyan: #06B6D4;
+            --accent-glow: rgba(45, 212, 191, 0.28);
             --text-main: #F8FAFC;
             --text-muted: #94A3B8;
+            --lp-surface: rgba(15, 19, 32, 0.78);
+            --lp-surface-strong: rgba(17, 22, 37, 0.92);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { 
-            background: var(--bg-dark); 
-            color: var(--text-main); 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-size: clamp(13px, 1.2vw, 15px);
-            line-height: 1.6; 
-            overflow-x: hidden; 
-            width: 100%; 
-            -webkit-text-size-adjust: 100%;
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 88px;
         }
-        h1, h2, h3, .logo { font-family: 'Outfit', sans-serif; }
+        html, body {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: clamp(13.5px, 1.15vw, 15px);
+            line-height: 1.6;
+            overflow-x: hidden;
+            width: 100%;
+            -webkit-text-size-adjust: 100%;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4, .logo { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
 
         /* Fluid Typography Scaling Across All Screens */
-        h1 { font-size: clamp(24px, 4.5vw, 48px); line-height: 1.2; word-break: break-word; }
-        h2 { font-size: clamp(20px, 3.2vw, 34px); line-height: 1.25; word-break: break-word; }
-        h3 { font-size: clamp(16px, 2.4vw, 22px); line-height: 1.3; word-break: break-word; }
-        h4 { font-size: clamp(14px, 1.8vw, 18px); line-height: 1.35; word-break: break-word; }
+        h1 { font-size: clamp(30px, 4.6vw, 56px); line-height: 1.08; word-break: break-word; }
+        h2 { font-size: clamp(24px, 3.2vw, 38px); line-height: 1.18; word-break: break-word; }
+        h3 { font-size: clamp(17px, 2.2vw, 22px); line-height: 1.3; word-break: break-word; }
+        h4 { font-size: clamp(14.5px, 1.6vw, 18px); line-height: 1.35; word-break: break-word; }
         h5 { font-size: clamp(12.5px, 1.4vw, 15px); line-height: 1.4; word-break: break-word; }
         h6 { font-size: clamp(11px, 1.2vw, 13px); line-height: 1.4; }
-        p { font-size: clamp(12.5px, 1.35vw, 14.5px); line-height: 1.6; }
-        
+        p { font-size: clamp(13px, 1.2vw, 15px); line-height: 1.65; }
+
+        /* Accessible Keyboard Focus Ring */
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+        }
+
         /* Container - Centered Width Across All Viewports */
-        .container { 
-            width: 100%; 
-            max-width: 1200px; 
-            margin-left: auto; 
-            margin-right: auto; 
-            padding-left: 24px; 
-            padding-right: 24px; 
+        .container {
+            width: 100%;
+            max-width: 1220px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 24px;
+            padding-right: 24px;
             box-sizing: border-box;
         }
 
-        /* Glassmorphism Navbar */
-        .navbar { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            z-index: 1000; 
-            backdrop-filter: blur(16px); 
-            background: rgba(11, 12, 16, 0.9); 
-            border-bottom: 1px solid var(--border); 
-            padding: 14px 28px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
+        /* Modern Glassmorphism Navbar with Scroll-Driven Refinement */
+        @keyframes lpNavScrollRefine {
+            from {
+                background: rgba(6, 8, 15, 0.58);
+                border-bottom-color: rgba(148, 163, 184, 0.08);
+                box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+            }
+            to {
+                background: rgba(6, 8, 15, 0.92);
+                border-bottom-color: rgba(45, 212, 191, 0.22);
+                box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+            }
+        }
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            background: rgba(6, 8, 15, 0.72);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            padding: 13px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             box-sizing: border-box;
+            transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease;
+        }
+        .navbar.is-scrolled {
+            background: rgba(6, 8, 15, 0.94);
+            border-bottom-color: rgba(45, 212, 191, 0.22);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+                .navbar {
+                    animation: lpNavScrollRefine auto linear both;
+                    animation-timeline: scroll(block root);
+                    animation-range: 0px 140px;
+                }
+            }
         }
         .logo { font-size: 22px; font-weight: 800; color: #FFF; text-decoration: none; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-        .nav-links { display: flex; align-items: center; gap: 24px; list-style: none; margin: 0; padding: 0; }
-        .nav-links a { color: var(--text-muted); text-decoration: none; font-weight: 500; font-size: 14px; transition: 0.2s; white-space: nowrap; }
-        .nav-links a:hover { color: #FFF; }
-        
+        .nav-links { display: flex; align-items: center; gap: 6px; list-style: none; margin: 0; padding: 4px; background: rgba(15, 19, 32, 0.55); border: 1px solid rgba(148, 163, 184, 0.12); border-radius: 999px; }
+        .nav-links a { color: #CBD5E1; text-decoration: none; font-weight: 500; font-size: 13px; padding: 6px 13px; border-radius: 999px; transition: color 0.2s ease, background-color 0.2s ease; white-space: nowrap; display: inline-block; }
+        .nav-links a:hover { color: #FFF; background: rgba(45, 212, 191, 0.12); }
+
         .nav-actions {
             display: flex;
             align-items: center;
@@ -787,7 +832,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             flex-wrap: nowrap !important;
             flex-shrink: 0;
         }
-        
+
         .mobile-nav-toggle {
             display: none;
             background: rgba(255,255,255,0.06);
@@ -795,30 +840,32 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             color: #FFF;
             font-size: 20px;
             padding: 6px 12px;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             line-height: 1;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        
+
         .mobile-nav-drawer {
             display: none;
             position: fixed;
-            top: 66px;
+            top: 64px;
             left: 0;
             width: 100%;
-            background: rgba(11, 12, 16, 0.98);
-            backdrop-filter: blur(20px);
+            background: rgba(6, 8, 15, 0.98);
+            backdrop-filter: blur(22px);
             border-bottom: 1px solid var(--border);
             padding: 20px 24px 28px 24px;
             z-index: 999;
             flex-direction: column;
-            gap: 14px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            gap: 12px;
+            box-shadow: 0 24px 50px rgba(0,0,0,0.85);
             box-sizing: border-box;
-            animation: tabFadeIn 0.2s ease;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .mobile-nav-drawer { animation: tabFadeIn 0.2s ease; }
         }
         .mobile-nav-drawer.active {
             display: flex;
@@ -828,19 +875,20 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             text-decoration: none;
             font-size: 15px;
             font-weight: 600;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
             display: block;
         }
         .mobile-nav-drawer a:hover {
             color: var(--accent);
         }
 
-        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; cursor: pointer; transition: 0.2s; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
-        .btn-primary { background: linear-gradient(135deg, var(--primary), #8B5CF6); color: #FFF; box-shadow: 0 4px 20px var(--primary-glow); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--primary-glow); }
-        .btn-outline { background: transparent; border: 1px solid var(--border-hover); color: var(--text-main); }
-        .btn-outline:hover { background: rgba(255,255,255,0.05); color: #FFF; }
+        /* Modern Buttons */
+        .btn { padding: 11px 22px; border-radius: 12px; font-weight: 700; font-size: 14px; text-decoration: none; cursor: pointer; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+        .btn-primary { background: linear-gradient(135deg, #2DD4BF 0%, #06B6D4 55%, #3B82F6 100%); color: #041014; font-weight: 800; box-shadow: 0 8px 26px rgba(45, 212, 191, 0.28), inset 0 1px 0 rgba(255,255,255,0.35); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(45, 212, 191, 0.42), inset 0 1px 0 rgba(255,255,255,0.45); }
+        .btn-outline { background: rgba(15, 19, 32, 0.65); border: 1px solid rgba(148, 163, 184, 0.24); color: #F1F5F9; backdrop-filter: blur(8px); }
+        .btn-outline:hover { background: rgba(45, 212, 191, 0.1); border-color: rgba(45, 212, 191, 0.5); color: #FFF; transform: translateY(-1px); }
 
         /* Google reCAPTCHA v3 Policy-Compliant Badge Hide & Attribution */
         .grecaptcha-badge {
@@ -865,39 +913,435 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         .recaptcha-legal-notice a:hover {
             color: #2DD4BF;
         }
-        
-        /* Hero Section */
-        .hero { padding: 140px 0 80px; position: relative; }
-        .hero::before { content: ''; position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(11,12,16,0) 70%); filter: blur(60px); pointer-events: none; }
-        .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #818CF8; font-size: 13px; font-weight: 600; margin-bottom: 24px; }
-        .hero h1 { font-size: clamp(32px, 5vw, 54px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; color: #FFF; }
-        .hero p { font-size: 16px; color: var(--text-muted); line-height: 1.6; margin-bottom: 32px; max-width: 540px; }
-        .hero-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
 
-        /* Server Status Widget */
-        .status-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 28px; max-width: 680px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
-        .status-item { display: flex; flex-direction: column; }
-        .status-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-        .status-val { font-size: 15px; font-weight: 700; color: var(--accent); margin-top: 2px; }
+        /* ═══════════════════════════════════════════════
+           3D ANIMATED ANTI-DETECT & FINGERPRINT HERO STAGE
+           ═══════════════════════════════════════════════ */
+        .hero-stage {
+            position: relative;
+            width: 100%;
+            min-height: min(92vh, 840px);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            background:
+                radial-gradient(ellipse 80% 60% at 68% 42%, rgba(45, 212, 191, 0.12) 0%, transparent 62%),
+                radial-gradient(ellipse 65% 55% at 22% 28%, rgba(99, 102, 241, 0.16) 0%, transparent 64%),
+                linear-gradient(180deg, #05070D 0%, #070B16 62%, #06080F 100%);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .hero-3d-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .hero-scrim {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 24% 48%, rgba(6, 8, 15, 0.72) 0%, rgba(6, 8, 15, 0.34) 46%, rgba(6, 8, 15, 0.14) 76%),
+                linear-gradient(180deg, rgba(6, 8, 15, 0.55) 0%, transparent 18%, transparent 80%, #06080F 100%);
+        }
+        .hero {
+            padding: 126px 0 84px;
+            position: relative;
+            z-index: 3;
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+            gap: 48px;
+            align-items: center;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 16px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            color: #99F6E4;
+            font-size: 12.5px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 28px rgba(45, 212, 191, 0.14);
+        }
+        .hero-badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2DD4BF;
+            box-shadow: 0 0 12px #2DD4BF;
+            flex-shrink: 0;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(1.3); }
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .hero-badge-dot { animation: pulseGlow 2.4s ease-in-out infinite; }
+        }
+        .hero h1 {
+            font-size: clamp(34px, 4.7vw, 58px);
+            font-weight: 800;
+            line-height: 1.08;
+            margin-bottom: 22px;
+            color: #FFFFFF;
+            letter-spacing: -0.035em;
+        }
+        .hero-gradient-text {
+            background: linear-gradient(115deg, #2DD4BF 0%, #38BDF8 48%, #818CF8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-lead {
+            font-size: clamp(15px, 1.3vw, 17.5px);
+            color: #CBD5E1;
+            line-height: 1.68;
+            margin-bottom: 30px;
+            max-width: 550px;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 13px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        .hero-trust-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 20px;
+            align-items: center;
+            font-size: 13px;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+        .hero-trust-pills span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .hero-trust-pills strong { color: #E2E8F0; font-weight: 700; }
+
+        /* Accessible 3D Background Pause/Play Control (WCAG 2.2.2) */
+        .hero-3d-toggle {
+            position: absolute;
+            right: 22px;
+            bottom: 18px;
+            z-index: 4;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 13px;
+            border-radius: 999px;
+            background: rgba(10, 14, 26, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            color: #CBD5E1;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+        }
+        .hero-3d-toggle:hover {
+            border-color: rgba(45, 212, 191, 0.55);
+            color: #FFF;
+            background: rgba(15, 23, 42, 0.92);
+        }
+
+        /* Hero Right: Live Interactive Anti-Detect Stealth Cockpit */
+        .hero-cockpit {
+            position: relative;
+            background: linear-gradient(160deg, rgba(16, 22, 38, 0.88) 0%, rgba(10, 13, 24, 0.94) 100%);
+            border: 1px solid rgba(45, 212, 191, 0.24);
+            border-radius: 22px;
+            padding: 22px;
+            box-shadow:
+                0 30px 70px rgba(0, 0, 0, 0.68),
+                0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+                0 0 44px rgba(45, 212, 191, 0.11);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+        .cockpit-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+            margin-bottom: 16px;
+        }
+        .cockpit-dots { display: flex; gap: 7px; align-items: center; }
+        .cockpit-dots span { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .cockpit-title { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #94A3B8; }
+        .cockpit-score-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(16, 185, 129, 0.14);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            color: #34D399;
+            font-size: 11px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .cockpit-profiles { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+        .cockpit-profile-row {
+            width: 100%;
+            text-align: left;
+            background: rgba(9, 12, 22, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 14px;
+            padding: 13px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+            color: inherit;
+        }
+        .cockpit-profile-row:hover,
+        .cockpit-profile-row.is-selected {
+            border-color: rgba(45, 212, 191, 0.5);
+            background: rgba(20, 32, 48, 0.72);
+        }
+        .cockpit-profile-row h4 { font-size: 14px; color: #F8FAFC; font-weight: 700; margin: 0 0 3px 0; }
+        .cockpit-profile-row p { font-size: 11.5px; color: #94A3B8; margin: 0; line-height: 1.4; }
+        .cockpit-status-chip {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+        .cockpit-status-running { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.32); }
+        .cockpit-status-ready { background: rgba(99, 102, 241, 0.16); color: #A5B4FC; border: 1px solid rgba(99, 102, 241, 0.35); }
+        .cockpit-telemetry {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .cockpit-metric {
+            background: rgba(6, 9, 18, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 10px;
+            padding: 9px 11px;
+        }
+        .cockpit-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; font-weight: 700; display: block; margin-bottom: 2px; }
+        .cockpit-metric-val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #2DD4BF; font-weight: 700; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Metrics Bar */
+        .lp-stats-band {
+            background: linear-gradient(180deg, rgba(11, 15, 26, 0.92), rgba(7, 10, 18, 0.96));
+            border-bottom: 1px solid var(--border);
+            padding: 36px 0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            text-align: center;
+        }
+        .lp-stat-card {
+            background: rgba(15, 19, 32, 0.55);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 16px;
+            padding: 20px 16px;
+            transition: border-color 0.25s ease, transform 0.25s ease;
+        }
+        .lp-stat-card:hover {
+            border-color: rgba(45, 212, 191, 0.35);
+            transform: translateY(-2px);
+        }
+        .lp-stat-num {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(26px, 3vw, 36px);
+            font-weight: 800;
+            background: linear-gradient(135deg, #2DD4BF, #60A5FA);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.15;
+            margin: 4px 0;
+        }
+        .lp-stat-label { color: #94A3B8; font-size: 13px; font-weight: 600; }
+
+        /* Below-the-fold Rendering Optimization (Modern Web Guidance) */
+        .lp-deferred-section {
+            content-visibility: auto;
+            contain-intrinsic-size: auto none auto 640px;
+        }
 
         /* Section Headings */
-        .section { padding: 75px 0; border-top: 1px solid var(--border); }
-        .section-title { text-align: center; margin-bottom: 48px; }
-        .section-title h2 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; margin-bottom: 12px; color: #FFF; }
-        .section-title p { color: var(--text-muted); font-size: 15px; max-width: 680px; margin: 0 auto; }
+        .section { padding: 84px 0; border-top: 1px solid rgba(148, 163, 184, 0.09); position: relative; }
+        .section-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 15px;
+            border-radius: 999px;
+            background: rgba(45, 212, 191, 0.09);
+            border: 1px solid rgba(45, 212, 191, 0.28);
+            color: #5EEAD4;
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 16px;
+        }
+        .section-title { text-align: center; margin-bottom: 52px; }
+        .section-title h2 { font-size: clamp(26px, 3.8vw, 40px); font-weight: 800; margin-bottom: 14px; color: #FFF; letter-spacing: -0.028em; }
+        .section-title p { color: var(--text-muted); font-size: 15.5px; max-width: 660px; margin: 0 auto; line-height: 1.65; }
 
-        /* Features Grid */
-        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; width: 100%; }
-        .feature-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: 0.3s; box-sizing: border-box; }
-        .feature-card:hover { border-color: var(--border-hover); transform: translateY(-4px); }
+        /* Features Bento Grid */
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 22px; width: 100%; }
+        .feature-card {
+            background: linear-gradient(180deg, rgba(16, 21, 36, 0.92), rgba(11, 14, 24, 0.96));
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 20px;
+            padding: 28px;
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20px;
+            right: 20px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.55), rgba(99, 102, 241, 0.55), transparent);
+            opacity: 0;
+            transition: opacity 0.28s ease;
+        }
+        .feature-card:hover {
+            border-color: rgba(45, 212, 191, 0.38);
+            transform: translateY(-4px);
+            box-shadow: 0 22px 44px rgba(0, 0, 0, 0.45);
+        }
+        .feature-card:hover::before { opacity: 1; }
         .feature-icon { font-size: 30px; margin-bottom: 14px; }
-        .feature-card h3 { font-size: 18px; margin-bottom: 8px; color: #FFF; }
-        .feature-card p { color: var(--text-muted); font-size: 13.5px; line-height: 1.55; }
+        .feature-card h3 { font-size: 19px; margin-bottom: 10px; color: #FFF; font-weight: 700; }
+        .feature-card p { color: var(--text-muted); font-size: 13.8px; line-height: 1.62; }
 
-        /* Pricing Grid */
-        .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; width: 100%; }
-        .plan-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 32px 24px; position: relative; display: flex; flex-direction: column; box-sizing: border-box; }
-        .plan-card.popular { border-color: var(--primary); box-shadow: 0 0 30px var(--primary-glow); }
+        /* How It Works Step Cards */
+        .lp-step-card {
+            background: linear-gradient(180deg, rgba(16, 21, 36, 0.9), rgba(10, 14, 24, 0.95));
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 20px;
+            padding: 28px;
+            position: relative;
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        .lp-step-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(45, 212, 191, 0.4);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+        }
+        .lp-step-badge {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            background: rgba(45, 212, 191, 0.14);
+            color: #2DD4BF;
+            border: 1px solid rgba(45, 212, 191, 0.28);
+            padding: 3px 10px;
+            border-radius: 999px;
+        }
+        .lp-step-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.14), rgba(99, 102, 241, 0.14));
+            border: 1px solid rgba(45, 212, 191, 0.24);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin-bottom: 18px;
+        }
+
+        /* Pricing Billing Switcher & Cards */
+        .lp-billing-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px;
+            border-radius: 999px;
+            background: rgba(15, 19, 32, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            margin-top: 22px;
+        }
+        .lp-billing-btn {
+            border: none;
+            background: transparent;
+            color: #94A3B8;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 8px 18px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .lp-billing-btn.active {
+            background: linear-gradient(135deg, #2DD4BF, #06B6D4);
+            color: #041014;
+            box-shadow: 0 4px 14px rgba(45, 212, 191, 0.3);
+        }
+        .lp-save-pill {
+            font-size: 10.5px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(16, 185, 129, 0.18);
+            color: #34D399;
+        }
+        .lp-billing-btn.active .lp-save-pill {
+            background: rgba(4, 16, 20, 0.18);
+            color: #041014;
+        }
+
+        .pricing-grid, .pricing-section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; width: 100%; }
+        .plan-card {
+            background: linear-gradient(180deg, rgba(16, 21, 36, 0.92), rgba(10, 14, 24, 0.96));
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 22px;
+            padding: 30px 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+        }
+        .plan-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(45, 212, 191, 0.42);
+            box-shadow: 0 22px 48px rgba(0, 0, 0, 0.5);
+        }
+        .plan-card.popular { border-color: var(--accent); box-shadow: 0 0 34px rgba(45, 212, 191, 0.16); }
         .popular-tag { position: absolute; top: -14px; right: 24px; background: var(--primary); color: #FFF; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 12px; text-transform: uppercase; }
         .plan-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
         .plan-price { font-size: 38px; font-weight: 800; color: #FFF; margin-bottom: 14px; }
@@ -905,6 +1349,109 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         .plan-features { list-style: none; margin-bottom: 28px; flex-grow: 1; }
         .plan-features li { margin-bottom: 10px; color: var(--text-muted); font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
         .plan-features li::before { content: '✓'; color: var(--accent); font-weight: 700; }
+
+        /* Modern Native <details> FAQ Accordion (Modern Web Guidance) */
+        .lp-faq-list {
+            max-width: 860px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .lp-faq-item {
+            background: linear-gradient(180deg, rgba(16, 21, 36, 0.9), rgba(11, 14, 24, 0.95));
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: border-color 0.22s ease, box-shadow 0.22s ease;
+        }
+        .lp-faq-item[open] {
+            border-color: rgba(45, 212, 191, 0.42);
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.36);
+        }
+        .lp-faq-item > summary {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px 24px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 17px;
+            color: #F8FAFC;
+            user-select: none;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .lp-faq-item > summary::-webkit-details-marker { display: none; }
+        .lp-faq-item > summary:hover {
+            background: rgba(45, 212, 191, 0.05);
+            color: #FFF;
+        }
+        .lp-faq-item > summary::before {
+            content: "";
+            inline-size: 20px;
+            block-size: 20px;
+            flex-shrink: 0;
+            background-color: #2DD4BF;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat center / contain;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat center / contain;
+            rotate: -90deg;
+        }
+        .lp-faq-item[open] > summary::before {
+            rotate: 0deg;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .lp-faq-item > summary::before {
+                transition: rotate 0.22s ease;
+            }
+        }
+        .lp-faq-item::details-content {
+            interpolate-size: allow-keywords;
+            overflow: clip;
+            contain: layout;
+        }
+        .lp-faq-item:not([open])::details-content {
+            block-size: 0;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .lp-faq-item::details-content {
+                transition: block-size, content-visibility, display;
+                transition-duration: 0.28s;
+                transition-timing-function: ease-in-out;
+                transition-behavior: allow-discrete;
+            }
+        }
+        .lp-faq-body {
+            padding: 0 24px 22px 58px;
+            color: #94A3B8;
+            font-size: 14.5px;
+            line-height: 1.72;
+            border-top: 1px solid rgba(148, 163, 184, 0.09);
+            padding-top: 16px;
+        }
+
+        /* Testimonial Cards */
+        .lp-testimonial-card {
+            background: linear-gradient(180deg, rgba(16, 21, 36, 0.92), rgba(10, 14, 24, 0.96));
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 20px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+        .lp-testimonial-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(45, 212, 191, 0.35);
+        }
+
+        /* Server Status Widget */
+        .status-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 28px; max-width: 680px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .status-item { display: flex; flex-direction: column; }
+        .status-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .status-val { font-size: 15px; font-weight: 700; color: var(--accent); margin-top: 2px; }
 
         /* Login & Auth Modals */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
@@ -1286,9 +1833,14 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
             
             .container { padding-left: 16px; padding-right: 16px; }
-            .section { padding: 44px 0; }
-            .hero { padding-top: 96px !important; padding-bottom: 36px !important; gap: 28px !important; }
-            .hero h1 { font-size: 30px !important; line-height: 1.25 !important; }
+            .section { padding: 52px 0; }
+            .hero-stage { min-height: auto; }
+            .hero { grid-template-columns: 1fr !important; padding-top: 98px !important; padding-bottom: 56px !important; gap: 32px !important; }
+            .hero h1 { font-size: 32px !important; line-height: 1.15 !important; }
+            .hero-3d-toggle { right: 14px; bottom: 12px; font-size: 11px; padding: 5px 11px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+            .lp-faq-item > summary { padding: 16px 18px; font-size: 15.5px; }
+            .lp-faq-body { padding: 14px 18px 18px 18px; }
             .status-box { flex-direction: column; gap: 16px; text-align: center; }
             
             /* Admin Dashboard Layout — Left Slide-Out Sidebar Drawer */
@@ -1812,96 +2364,526 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         </div>
     </div>
 
-    <!-- 1. Hero Section (2-Column Layout) -->
-    <section class="hero container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 40px; align-items: center;">
-        <div>
-            <div class="badge">
-                🚀 Next-Generation AntiProfiles Architecture
+    <!-- 1. Hero Section — Full-Bleed 3D Animated Anti-Detect & Fingerprint Stage -->
+    <section class="hero-stage" id="heroStage">
+        <canvas id="hero3dCanvas" class="hero-3d-canvas" aria-hidden="true"></canvas>
+        <div class="hero-scrim" aria-hidden="true"></div>
+
+        <div class="hero container">
+            <!-- Left Column: Display Copy & Conversion Actions -->
+            <div>
+                <div class="hero-badge">
+                    <span class="hero-badge-dot" aria-hidden="true"></span>
+                    <span>v2.0 Dual-Kernel • Chromium + Camoufox Fingerprint Isolation</span>
+                </div>
+                <h1>
+                    Browse Invisibly.<br>
+                    <span class="hero-gradient-text">Isolate Every Fingerprint.</span><br>
+                    Scale Without Limits.
+                </h1>
+                <p class="hero-lead">
+                    Run hundreds of completely isolated browser profiles with hardware-grade Canvas, WebGL, Audio &amp; TLS fingerprint masking, residential proxy routing, and zero-leak WebRTC protection.
+                </p>
+                <div class="hero-actions">
+                    <a href="/register" class="btn btn-primary" style="padding: 14px 30px; font-size: 15px; text-decoration: none;" onclick="openModal('register'); return false;">Start Free Trial →</a>
+                    <a href="<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['url'] ?? '#downloads') ?>" id="heroDynamicDownloadBtn" class="btn btn-outline" style="padding: 14px 24px; font-size: 14.5px; border-color: rgba(45,212,191,0.42);">⬇️ Download App</a>
+                    <a href="#pricing" class="btn btn-outline" style="padding: 14px 22px; font-size: 14.5px;">View Pricing</a>
+                </div>
+                <div class="hero-trust-pills">
+                    <span>✓ <strong>No credit card</strong> required</span>
+                    <span>✓ <strong>99.8%</strong> Stealth Score</span>
+                    <span>✓ <strong>Win / Mac / Linux</strong> Native</span>
+                </div>
             </div>
-            <h1>
-                Browse Privately.<br>Manage Profiles.<br>Scale Your Workflow.
-            </h1>
-            <p style="font-size: 16px; color: var(--text-muted); line-height: 1.6; margin-bottom: 32px; max-width: 520px;">
-                Create isolated browser profiles with configurable environments, secure sessions, proxy support, and powerful team profile management.
-            </p>
-            <div class="hero-actions" style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
-                <a href="/register" class="btn btn-primary" style="padding: 14px 28px; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; text-decoration: none;" onclick="openModal('register'); return false;">Start Free</a>
-                <a href="<?= htmlspecialchars($activeLandingReleases[$detectedPlatform]['url'] ?? '#downloads') ?>" id="heroDynamicDownloadBtn" class="btn btn-outline" style="padding: 14px 24px; font-size: 14.5px; border-color: rgba(45,212,191,0.4); display: inline-flex; align-items: center; gap: 8px;">⬇️ Download App</a>
-                <a href="#pricing" class="btn btn-outline" style="padding: 14px 22px; font-size: 14.5px;">View Pricing</a>
+
+            <!-- Right Column: Live Interactive Anti-Detect Stealth Cockpit -->
+            <div class="hero-cockpit" aria-label="Interactive AntiProfiles Stealth Cockpit Preview">
+                <div class="cockpit-topbar">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="cockpit-dots" aria-hidden="true">
+                            <span style="background: #EF4444;"></span>
+                            <span style="background: #F59E0B;"></span>
+                            <span style="background: #10B981;"></span>
+                        </div>
+                        <span class="cockpit-title">AntiProfiles Engine v2.0</span>
+                    </div>
+                    <span class="cockpit-score-pill">● 99.8% Undetectable</span>
+                </div>
+
+                <div class="cockpit-profiles" id="heroCockpitProfiles">
+                    <button type="button" class="cockpit-profile-row is-selected" data-canvas="0x9A4F...E21B (Noise +0.4%)" data-gpu="Apple M4 Metal GPU" data-proxy="US Residential • 18ms" data-webrtc="Kill-Switch Active">
+                        <div>
+                            <h4>US E-Commerce Store #01</h4>
+                            <p>macOS Sequoia • 🇺🇸 New York • Chromium 136</p>
+                        </div>
+                        <span class="cockpit-status-chip cockpit-status-running">● Running</span>
+                    </button>
+
+                    <button type="button" class="cockpit-profile-row" data-canvas="0x4C81...7D90 (Noise +0.7%)" data-gpu="NVIDIA RTX 4070 Direct3D" data-proxy="UK Mobile SOCKS5 • 24ms" data-webrtc="Proxy Tunnel Locked">
+                        <div>
+                            <h4>UK Meta Ads Workspace</h4>
+                            <p>Windows 11 • 🇬🇧 London • Dual-Kernel</p>
+                        </div>
+                        <span class="cockpit-status-chip cockpit-status-running">● Running</span>
+                    </button>
+
+                    <button type="button" class="cockpit-profile-row" data-canvas="0x7E12...B04C (C++ Native)" data-gpu="Mesa Intel Iris Xe" data-proxy="DE Residential • 14ms" data-webrtc="Zero DNS / UDP Leak">
+                        <div>
+                            <h4>EU Automation &amp; Affiliate Hub</h4>
+                            <p>Linux x64 • 🇩🇪 Frankfurt • Camoufox C++</p>
+                        </div>
+                        <span class="cockpit-status-chip cockpit-status-ready">Ready</span>
+                    </button>
+                </div>
+
+                <div class="cockpit-telemetry" aria-live="polite">
+                    <div class="cockpit-metric">
+                        <span class="cockpit-metric-label">Canvas Fingerprint</span>
+                        <span class="cockpit-metric-val" id="cockpitCanvasVal">0x9A4F...E21B (Noise +0.4%)</span>
+                    </div>
+                    <div class="cockpit-metric">
+                        <span class="cockpit-metric-label">WebGL Hardware Mask</span>
+                        <span class="cockpit-metric-val" id="cockpitGpuVal">Apple M4 Metal GPU</span>
+                    </div>
+                    <div class="cockpit-metric">
+                        <span class="cockpit-metric-label">Encrypted Proxy Route</span>
+                        <span class="cockpit-metric-val" id="cockpitProxyVal">US Residential • 18ms</span>
+                    </div>
+                    <div class="cockpit-metric">
+                        <span class="cockpit-metric-label">WebRTC &amp; DNS Shield</span>
+                        <span class="cockpit-metric-val" id="cockpitWebrtcVal">Kill-Switch Active</span>
+                    </div>
+                </div>
             </div>
-            <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;">⚡ No credit card required • Free trial available • Cancel anytime</p>
         </div>
 
-        <!-- Right Column: Interactive Dashboard Preview Card -->
-        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); backdrop-filter: blur(12px);">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px;">
-                <div style="display: flex; gap: 8px;">
-                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #EF4444;"></span>
-                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #F59E0B;"></span>
-                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981;"></span>
-                </div>
-                <span style="font-family: monospace; font-size: 12px; color: var(--text-muted);">AntiProfiles Dashboard v1.0</span>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h4 style="font-size: 14px; color: #FFF; font-weight: 700;">US E-Commerce Account</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">macOS • 🇺🇸 United States • Active HTTP</p>
-                    </div>
-                    <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800;">Running</span>
-                </div>
-
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h4 style="font-size: 14px; color: #FFF; font-weight: 700;">UK Marketing Profile</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Windows 11 • 🇬🇧 United Kingdom • SOCKS5 Active</p>
-                    </div>
-                    <span style="background: rgba(148, 163, 184, 0.15); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800;">Stopped</span>
-                </div>
-
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h4 style="font-size: 14px; color: #FFF; font-weight: 700;">EU Research Context</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Linux • 🇩🇪 Germany • HTTP Active</p>
-                    </div>
-                    <span style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800;">Running</span>
-                </div>
-            </div>
-        </div>
+        <!-- Accessible Pause/Play Control for 3D Background Motion (WCAG 2.2.2) -->
+        <button type="button" id="hero3dToggleBtn" class="hero-3d-toggle">⏸ Pause 3D</button>
     </section>
 
+    <!-- 3D Anti-Detect Shield & Biometric Fingerprint Engine + Cockpit + Navbar Scroll Fallback -->
+    <script>
+    (function() {
+        // 1. Navbar scroll state fallback for browsers without CSS scroll-driven animations
+        if (typeof CSS === 'undefined' || !CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)')) {
+            var navEl = document.querySelector('.navbar');
+            if (navEl) {
+                var onScrollNav = function() {
+                    if (window.scrollY > 24) navEl.classList.add('is-scrolled');
+                    else navEl.classList.remove('is-scrolled');
+                };
+                window.addEventListener('scroll', onScrollNav, { passive: true });
+                onScrollNav();
+            }
+        }
+
+        // 2. Interactive Hero Cockpit Profile Switcher
+        var cockpitList = document.getElementById('heroCockpitProfiles');
+        if (cockpitList) {
+            cockpitList.addEventListener('click', function(e) {
+                var row = e.target.closest('.cockpit-profile-row');
+                if (!row) return;
+                var all = cockpitList.querySelectorAll('.cockpit-profile-row');
+                for (var i = 0; i < all.length; i++) all[i].classList.remove('is-selected');
+                row.classList.add('is-selected');
+                var cEl = document.getElementById('cockpitCanvasVal');
+                var gEl = document.getElementById('cockpitGpuVal');
+                var pEl = document.getElementById('cockpitProxyVal');
+                var wEl = document.getElementById('cockpitWebrtcVal');
+                if (cEl) cEl.textContent = row.getAttribute('data-canvas') || '';
+                if (gEl) gEl.textContent = row.getAttribute('data-gpu') || '';
+                if (pEl) pEl.textContent = row.getAttribute('data-proxy') || '';
+                if (wEl) wEl.textContent = row.getAttribute('data-webrtc') || '';
+            });
+        }
+
+        // 3. 3D Animated Anti-Detect Shield & Biometric Fingerprint Canvas
+        var stage = document.getElementById('heroStage');
+        var canvas = document.getElementById('hero3dCanvas');
+        var toggleBtn = document.getElementById('hero3dToggleBtn');
+        if (!stage || !canvas || !canvas.getContext) return;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var isPaused = reducedMotion;
+        var inViewport = true;
+        var width = 0, height = 0, dpr = 1;
+        var rafId = null;
+        var pointerX = 0, pointerY = 0, smoothPX = 0, smoothPY = 0;
+        var simTime = 1.4;
+        var lastTs = performance.now();
+
+        function syncToggleLabel() {
+            if (!toggleBtn) return;
+            toggleBtn.textContent = isPaused ? '▶ Play 3D' : '⏸ Pause 3D';
+        }
+        syncToggleLabel();
+
+        // Generate 3D Biometric Fingerprint Ridges on a Convex Holographic Dome
+        var ridgeCount = 17;
+        var ridges = [];
+        for (var r = 0; r < ridgeCount; r++) {
+            var t = (r + 1) / ridgeCount;
+            var rx = 24 + t * 144;
+            var ry = 32 + t * 186;
+            var segments = Math.max(44, Math.floor(54 + t * 44));
+            var pts = [];
+            var gaps = [];
+            var gapCount = (r % 3 === 0) ? 2 : 1;
+            for (var g = 0; g < gapCount; g++) gaps.push((r * 19 + g * 37) % segments);
+
+            for (var i = 0; i <= segments; i++) {
+                var a = (i / segments) * Math.PI * 2;
+                var whorl = Math.sin(a * 2 + r * 0.34) * (4 + t * 9);
+                var archLift = Math.cos(a) < 0 ? Math.abs(Math.cos(a)) * (10 + t * 16) : 0;
+                var px = Math.cos(a) * (rx + whorl * 0.55);
+                var py = Math.sin(a) * (ry + whorl * 0.45) - archLift * 0.35;
+                var normD = Math.min(1, Math.hypot(px / 188, py / 234));
+                var pz = Math.sqrt(Math.max(0, 1 - normD * normD)) * 80 - 22;
+                pts.push({ x: px, y: py, z: pz });
+            }
+            ridges.push({ pts: pts, gaps: gaps });
+        }
+
+        // Orbiting Anti-Detect Shield Profile Nodes
+        var orbitNodes = [
+            { ring: 0, angle: 0.4, speed: 0.36, label: 'CANVAS: MASKED', color: '#2DD4BF' },
+            { ring: 0, angle: 2.5, speed: 0.36, label: 'WEBGL: SPOOFED', color: '#38BDF8' },
+            { ring: 0, angle: 4.6, speed: 0.36, label: 'WEBRTC: LOCKED', color: '#818CF8' },
+            { ring: 1, angle: 1.2, speed: -0.30, label: 'JA4/TLS: CLEAN', color: '#2DD4BF' },
+            { ring: 1, angle: 4.3, speed: -0.30, label: 'IP: ISOLATED', color: '#C084FC' }
+        ];
+
+        // 3D Floating Depth Particles
+        var particles = [];
+        for (var k = 0; k < 48; k++) {
+            var sx = (Math.sin(k * 12.9898) * 43758.5453) % 1;
+            var sy = (Math.sin(k * 78.233) * 43758.5453) % 1;
+            var sz = (Math.sin(k * 39.425) * 43758.5453) % 1;
+            particles.push({
+                x: (sx - 0.5) * 920,
+                y: (sy - 0.5) * 580,
+                z: (sz - 0.5) * 440,
+                vz: 12 + (k % 5) * 5,
+                size: 1.1 + (k % 3) * 0.75,
+                hue: k % 3 === 0 ? '#2DD4BF' : (k % 3 === 1 ? '#6366F1' : '#38BDF8')
+            });
+        }
+
+        function project3D(x, y, z, rotX, rotY, cx, cy, fov) {
+            var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+            var x1 = x * cosY - z * sinY;
+            var z1 = x * sinY + z * cosY;
+            var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+            var y2 = y * cosX - z1 * sinX;
+            var z2 = y * sinX + z1 * cosX;
+            var scale = fov / Math.max(120, fov + z2);
+            return { x: cx + x1 * scale, y: cy + y2 * scale, z: z2, scale: scale };
+        }
+
+        function renderFrame(timeSec) {
+            ctx.clearRect(0, 0, width, height);
+            var isCompact = width < 900;
+            var cx = isCompact ? width * 0.5 : width * 0.56;
+            var cy = isCompact ? height * 0.36 : height * 0.51;
+            var fov = isCompact ? 540 : 680;
+            var rigScale = isCompact ? 0.68 : Math.min(1.12, width / 1260);
+
+            smoothPX += (pointerX - smoothPX) * 0.06;
+            smoothPY += (pointerY - smoothPY) * 0.06;
+
+            var rotY = Math.sin(timeSec * 0.35) * 0.36 + smoothPX * 0.32;
+            var rotX = -0.18 + Math.cos(timeSec * 0.28) * 0.14 + smoothPY * 0.20;
+
+            // 1. 3D Cyber Perspective Grid Floor
+            ctx.save();
+            ctx.lineWidth = 1;
+            for (var gr = 0; gr < 7; gr++) {
+                var gz = -220 + gr * 75;
+                ctx.strokeStyle = 'rgba(99, 102, 241, ' + Math.max(0.02, 0.08 - gr * 0.008).toFixed(3) + ')';
+                ctx.beginPath();
+                for (var gc = -12; gc <= 12; gc++) {
+                    var gp = project3D(gc * 85 * rigScale, 250 * rigScale, gz * rigScale, 0.22 + smoothPY * 0.06, smoothPX * 0.12, cx, cy, fov);
+                    if (gc === -12) ctx.moveTo(gp.x, gp.y);
+                    else ctx.lineTo(gp.x, gp.y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 2. Ambient Volumetric Glow Core
+            var glow = ctx.createRadialGradient(cx, cy, 12, cx, cy, 300 * rigScale);
+            glow.addColorStop(0, 'rgba(45, 212, 191, 0.15)');
+            glow.addColorStop(0.45, 'rgba(99, 102, 241, 0.09)');
+            glow.addColorStop(1, 'rgba(6, 8, 15, 0)');
+            ctx.fillStyle = glow;
+            ctx.fillRect(0, 0, width, height);
+
+            // 3. 3D Depth Particles
+            for (var pi = 0; pi < particles.length; pi++) {
+                var pt = particles[pi];
+                var zMod = ((pt.z + timeSec * pt.vz + 240) % 480) - 240;
+                var pp = project3D(pt.x * rigScale, pt.y * rigScale, zMod * rigScale, rotX * 0.3, rotY * 0.3, cx, cy, fov);
+                ctx.fillStyle = pt.hue;
+                ctx.globalAlpha = Math.max(0.08, Math.min(0.65, (pp.scale - 0.55) * 0.85));
+                ctx.beginPath();
+                ctx.arc(pp.x, pp.y, Math.max(0.7, pt.size * pp.scale), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // 4. 3D Anti-Detect Shield Gyroscope Rings
+            var ringSpecs = [
+                { radius: 228 * rigScale, tiltX: 0.82, tiltZ: 0.35, spin: timeSec * 0.22, color: 'rgba(99, 102, 241, 0.30)', dashed: true },
+                { radius: 196 * rigScale, tiltX: -0.68, tiltZ: -0.48, spin: -timeSec * 0.28, color: 'rgba(45, 212, 191, 0.36)', dashed: false },
+                { radius: 262 * rigScale, tiltX: 1.15, tiltZ: -0.22, spin: timeSec * 0.14, color: 'rgba(56, 189, 248, 0.18)', dashed: true }
+            ];
+            for (var ri = 0; ri < ringSpecs.length; ri++) {
+                var rg = ringSpecs[ri];
+                ctx.save();
+                ctx.strokeStyle = rg.color;
+                ctx.lineWidth = rg.dashed ? 1 : 1.35;
+                if (rg.dashed) ctx.setLineDash([5, 9]);
+                ctx.beginPath();
+                for (var s = 0; s <= 84; s++) {
+                    var ang = (s / 84) * Math.PI * 2 + rg.spin;
+                    var rx0 = Math.cos(ang) * rg.radius;
+                    var ry0 = Math.sin(ang) * rg.radius;
+                    var ry1 = ry0 * Math.cos(rg.tiltX);
+                    var rz1 = ry0 * Math.sin(rg.tiltX);
+                    var rx2 = rx0 * Math.cos(rg.tiltZ) - ry1 * Math.sin(rg.tiltZ);
+                    var ry2 = rx0 * Math.sin(rg.tiltZ) + ry1 * Math.cos(rg.tiltZ);
+                    var rp = project3D(rx2, ry2, rz1, rotX, rotY, cx, cy, fov);
+                    if (s === 0) ctx.moveTo(rp.x, rp.y);
+                    else ctx.lineTo(rp.x, rp.y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 5. 3D Biometric Fingerprint Holographic Ridge Mesh + Active Laser Scan Plane
+            var scanY = Math.sin(timeSec * 1.15) * 195 * rigScale;
+            ctx.save();
+            ctx.lineCap = 'round';
+            for (var fi = 0; fi < ridges.length; fi++) {
+                var ridge = ridges[fi];
+                var rPts = ridge.pts;
+                for (var j = 0; j < rPts.length - 1; j++) {
+                    var isGap = false;
+                    for (var gi = 0; gi < ridge.gaps.length; gi++) {
+                        if (Math.abs(j - ridge.gaps[gi]) <= 2) { isGap = true; break; }
+                    }
+                    if (isGap) continue;
+                    var a3 = rPts[j], b3 = rPts[j + 1];
+                    var p1 = project3D(a3.x * rigScale, a3.y * rigScale, a3.z * rigScale, rotX, rotY, cx, cy, fov);
+                    var p2 = project3D(b3.x * rigScale, b3.y * rigScale, b3.z * rigScale, rotX, rotY, cx, cy, fov);
+                    var segY = ((a3.y + b3.y) * 0.5) * rigScale;
+                    var prox = Math.max(0, 1 - Math.abs(segY - scanY) / (46 * rigScale));
+                    var dAlpha = Math.max(0.14, Math.min(0.85, (p1.scale - 0.65) * 1.35));
+                    if (prox > 0.15) {
+                        var boost = prox * prox;
+                        ctx.strokeStyle = 'rgba(45, 212, 191, ' + (0.34 + boost * 0.64).toFixed(3) + ')';
+                        ctx.lineWidth = (1.1 + boost * 1.9) * p1.scale;
+                    } else {
+                        ctx.strokeStyle = (fi > ridgeCount * 0.62)
+                            ? 'rgba(129, 140, 248, ' + (dAlpha * 0.38).toFixed(3) + ')'
+                            : 'rgba(45, 212, 191, ' + (dAlpha * 0.44).toFixed(3) + ')';
+                        ctx.lineWidth = 1.15 * p1.scale;
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+
+                    if (prox > 0.72 && (j + fi) % 13 === 0) {
+                        ctx.fillStyle = 'rgba(153, 246, 228, ' + (prox * 0.9).toFixed(3) + ')';
+                        ctx.beginPath();
+                        ctx.arc(p1.x, p1.y, 2.2 * p1.scale, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // 6. Volumetric Scanner Sweep Beam
+            var sl = project3D(-175 * rigScale, scanY, 26 * rigScale, rotX, rotY, cx, cy, fov);
+            var sr = project3D(175 * rigScale, scanY, 26 * rigScale, rotX, rotY, cx, cy, fov);
+            var sGrad = ctx.createLinearGradient(sl.x, sl.y, sr.x, sr.y);
+            sGrad.addColorStop(0, 'rgba(45, 212, 191, 0)');
+            sGrad.addColorStop(0.25, 'rgba(45, 212, 191, 0.55)');
+            sGrad.addColorStop(0.5, 'rgba(153, 246, 228, 0.95)');
+            sGrad.addColorStop(0.75, 'rgba(56, 189, 248, 0.55)');
+            sGrad.addColorStop(1, 'rgba(99, 102, 241, 0)');
+            ctx.strokeStyle = sGrad;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(sl.x, sl.y);
+            ctx.lineTo(sr.x, sr.y);
+            ctx.stroke();
+            ctx.restore();
+
+            // 7. Orbiting Isolated Profile Shield Nodes + Subtle Telemetry Labels
+            var pNodes = [];
+            for (var ni = 0; ni < orbitNodes.length; ni++) {
+                var nd = orbitNodes[ni];
+                var nr = ringSpecs[nd.ring];
+                var na = nd.angle + timeSec * nd.speed;
+                var nx0 = Math.cos(na) * nr.radius;
+                var ny0 = Math.sin(na) * nr.radius;
+                var ny1 = ny0 * Math.cos(nr.tiltX);
+                var nz1 = ny0 * Math.sin(nr.tiltX);
+                var nx2 = nx0 * Math.cos(nr.tiltZ) - ny1 * Math.sin(nr.tiltZ);
+                var ny2 = nx0 * Math.sin(nr.tiltZ) + ny1 * Math.cos(nr.tiltZ);
+                pNodes.push({ p: project3D(nx2, ny2, nz1, rotX, rotY, cx, cy, fov), label: nd.label, color: nd.color });
+            }
+            ctx.save();
+            for (var ci = 0; ci < pNodes.length; ci++) {
+                var aNode = pNodes[ci], bNode = pNodes[(ci + 1) % pNodes.length];
+                ctx.strokeStyle = 'rgba(45, 212, 191, 0.13)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(aNode.p.x, aNode.p.y);
+                ctx.lineTo(bNode.p.x, bNode.p.y);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            for (var di = 0; di < pNodes.length; di++) {
+                var item = pNodes[di];
+                var rN = Math.max(2.4, 4.2 * item.p.scale);
+                var nGlow = ctx.createRadialGradient(item.p.x, item.p.y, 0, item.p.x, item.p.y, rN * 4.2);
+                nGlow.addColorStop(0, item.color);
+                nGlow.addColorStop(1, 'rgba(6, 8, 15, 0)');
+                ctx.fillStyle = nGlow;
+                ctx.globalAlpha = 0.55;
+                ctx.beginPath();
+                ctx.arc(item.p.x, item.p.y, rN * 4.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 0.95;
+                ctx.fillStyle = item.color;
+                ctx.beginPath();
+                ctx.arc(item.p.x, item.p.y, rN, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (!isCompact && item.p.scale > 0.85) {
+                    ctx.font = '600 10px ui-monospace, SFMono-Regular, Menlo, monospace';
+                    ctx.fillStyle = 'rgba(226, 232, 240, 0.56)';
+                    ctx.fillText(item.label, item.p.x + rN + 7, item.p.y + 3);
+                }
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function resizeCanvas() {
+            var rect = stage.getBoundingClientRect();
+            width = Math.max(320, rect.width);
+            height = Math.max(460, rect.height);
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.floor(width * dpr);
+            canvas.height = Math.floor(height * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            renderFrame(simTime);
+        }
+
+        function tick(now) {
+            var dt = Math.min(0.05, (now - lastTs) / 1000);
+            lastTs = now;
+            if (!isPaused && inViewport && !document.hidden) {
+                simTime += dt;
+                renderFrame(simTime);
+                rafId = requestAnimationFrame(tick);
+            } else {
+                rafId = null;
+            }
+        }
+
+        function startLoop() {
+            if (rafId === null && !isPaused && inViewport && !document.hidden) {
+                lastTs = performance.now();
+                rafId = requestAnimationFrame(tick);
+            }
+        }
+        function stopLoop() {
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+        }
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                isPaused = !isPaused;
+                syncToggleLabel();
+                if (isPaused) stopLoop();
+                else startLoop();
+            });
+        }
+
+        stage.addEventListener('pointermove', function(e) {
+            var rect = stage.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            pointerX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+            pointerY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+        }, { passive: true });
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) stopLoop();
+            else startLoop();
+        });
+
+        if (typeof IntersectionObserver !== 'undefined') {
+            var io = new IntersectionObserver(function(entries) {
+                inViewport = !!(entries[0] && entries[0].isIntersecting);
+                if (inViewport) startLoop();
+                else stopLoop();
+            }, { rootMargin: '150px' });
+            io.observe(stage);
+        }
+
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(resizeCanvas).observe(stage);
+        } else {
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        resizeCanvas();
+        if (!isPaused) startLoop();
+    })();
+    </script>
+
     <!-- 2. Stats Bar Section -->
-    <section style="background: rgba(21, 23, 32, 0.6); border-y: 1px solid var(--border); padding: 40px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
-        <div class="container stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; text-align: center;">
-            <div>
-                <div style="font-size: 28px; margin-bottom: 6px;">🌐</div>
-                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">10K+</h3>
-                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Active Profiles</p>
+    <section class="lp-stats-band">
+        <div class="container stats-grid">
+            <div class="lp-stat-card">
+                <div style="font-size: 24px; margin-bottom: 4px;">🌐</div>
+                <div class="lp-stat-num">10K+</div>
+                <div class="lp-stat-label">Active Isolated Profiles</div>
             </div>
-            <div>
-                <div style="font-size: 28px; margin-bottom: 6px;">⚡</div>
-                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">99.9%</h3>
-                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Platform Uptime</p>
+            <div class="lp-stat-card">
+                <div style="font-size: 24px; margin-bottom: 4px;">⚡</div>
+                <div class="lp-stat-num">99.9%</div>
+                <div class="lp-stat-label">Platform Uptime SLA</div>
             </div>
-            <div>
-                <div style="font-size: 28px; margin-bottom: 6px;">🌍</div>
-                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">150+</h3>
-                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Countries Supported</p>
+            <div class="lp-stat-card">
+                <div style="font-size: 24px; margin-bottom: 4px;">🌍</div>
+                <div class="lp-stat-num">150+</div>
+                <div class="lp-stat-label">Countries &amp; Geo-IPs</div>
             </div>
-            <div>
-                <div style="font-size: 28px; margin-bottom: 6px;">🛡️</div>
-                <h3 style="font-size: 32px; font-weight: 800; color: #2DD4BF;">24/7</h3>
-                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600;">Expert Support</p>
+            <div class="lp-stat-card">
+                <div style="font-size: 24px; margin-bottom: 4px;">🛡️</div>
+                <div class="lp-stat-num">24/7</div>
+                <div class="lp-stat-label">Live Technical Support</div>
             </div>
         </div>
     </section>
 
     <!-- 2.5. Platforms & Ecosystem Section (Ideal for managing accounts across all services) -->
-    <section id="ecosystem" class="section container" style="padding-top: 60px; padding-bottom: 60px;">
-        <div class="section-title" style="text-align: center; margin-bottom: 40px;">
-            <h2 style="font-size: 32px; font-weight: 800; color: #FFF; margin-bottom: 12px; letter-spacing: -0.5px;">Ideal for managing accounts across all services</h2>
-            <p style="color: var(--text-muted); font-size: 15px; max-width: 680px; margin: 0 auto; line-height: 1.6;">
+    <section id="ecosystem" class="section container lp-deferred-section">
+        <div class="section-title">
+            <div class="section-eyebrow">🌐 Universal Multi-Account Ecosystem</div>
+            <h2>Ideal for managing accounts across all services</h2>
+            <p>
                 Run multiple stealth accounts simultaneously without detection, bans, or cross-profile linking across global e-commerce, advertising, and social networks.
             </p>
         </div>
@@ -2031,17 +3013,17 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
     </section>
 
     <!-- 3. Core Features Showcase Preview Section -->
-    <section id="features" class="section container">
+    <section id="features" class="section container lp-deferred-section">
         <div class="section-title">
-            <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); color: #2DD4BF; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">
+            <div class="section-eyebrow">
                 <span>✨ Advanced Anti-Detect Platform Architecture</span>
             </div>
-            <h2>Built for Ultimate Stealth & Multi-Account Scale</h2>
+            <h2>Built for Ultimate Stealth &amp; Multi-Account Scale</h2>
             <p>AntiProfiles combines kernel-grade hardware spoofing, dual-engine isolation, residential proxy orchestration, and developer automation in a unified interface.</p>
         </div>
 
         <!-- 6 Core Architectural Pillar Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 36px;">
+        <div class="features-grid" style="margin-bottom: 36px;">
             
             <!-- Pillar 1: Fingerprint Defense -->
             <div class="feature-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease;">
@@ -2171,41 +3153,42 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
     </section>
 
     <!-- 4. How It Works Section (4 Steps) -->
-    <section id="how-it-works" class="section container">
+    <section id="how-it-works" class="section container lp-deferred-section">
         <div class="section-title">
+            <div class="section-eyebrow">⚙️ 4-Step Stealth Workflow</div>
             <h2>How AntiProfiles Works</h2>
             <p>Get started in four easy steps and launch your isolated browser profiles in seconds.</p>
         </div>
-        <div class="how-it-works-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
-                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 01</span>
-                <div style="font-size: 32px; margin-bottom: 14px;">📋</div>
-                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Create Your Profile</h3>
-                <p style="color: var(--text-muted); font-size: 13px;">Choose a profile template or start from scratch to configure your environment.</p>
+        <div class="how-it-works-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px;">
+            <div class="lp-step-card">
+                <span class="lp-step-badge">STEP 01</span>
+                <div class="lp-step-icon">📋</div>
+                <h3 style="font-size: 17px; color: #FFF; margin-bottom: 8px;">Create Your Profile</h3>
+                <p style="color: var(--text-muted); font-size: 13.5px;">Choose a profile template or start from scratch to configure your isolated environment.</p>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
-                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 02</span>
-                <div style="font-size: 32px; margin-bottom: 14px;">⚙️</div>
-                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Configure Environment</h3>
-                <p style="color: var(--text-muted); font-size: 13px;">Set custom User Agent, OS, timezone, language, WebGL, fingerprint, and proxy.</p>
+            <div class="lp-step-card">
+                <span class="lp-step-badge">STEP 02</span>
+                <div class="lp-step-icon">⚙️</div>
+                <h3 style="font-size: 17px; color: #FFF; margin-bottom: 8px;">Configure Environment</h3>
+                <p style="color: var(--text-muted); font-size: 13.5px;">Set custom User Agent, OS, timezone, language, WebGL fingerprint, and residential proxy.</p>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
-                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 03</span>
-                <div style="font-size: 32px; margin-bottom: 14px;">🚀</div>
-                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Launch Isolated Window</h3>
-                <p style="color: var(--text-muted); font-size: 13px;">Open an isolated browser window running with dedicated storage and cookies.</p>
+            <div class="lp-step-card">
+                <span class="lp-step-badge">STEP 03</span>
+                <div class="lp-step-icon">🚀</div>
+                <h3 style="font-size: 17px; color: #FFF; margin-bottom: 8px;">Launch Isolated Window</h3>
+                <p style="color: var(--text-muted); font-size: 13.5px;">Open an isolated browser window running with dedicated storage, cookies, and masked hardware.</p>
             </div>
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative;">
-                <span style="position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 800; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; padding: 2px 8px; border-radius: 4px;">STEP 04</span>
-                <div style="font-size: 32px; margin-bottom: 14px;">📊</div>
-                <h3 style="font-size: 16px; color: #FFF; margin-bottom: 6px;">Scale & Manage</h3>
-                <p style="color: var(--text-muted); font-size: 13px;">Monitor profile status, organize into groups, and manage team access effortlessly.</p>
+            <div class="lp-step-card">
+                <span class="lp-step-badge">STEP 04</span>
+                <div class="lp-step-icon">📊</div>
+                <h3 style="font-size: 17px; color: #FFF; margin-bottom: 8px;">Scale &amp; Manage</h3>
+                <p style="color: var(--text-muted); font-size: 13.5px;">Monitor stealth score, organize into folders, sync across devices, and collaborate with teams.</p>
             </div>
         </div>
     </section>
 
     <!-- 5. Desktop Downloads Section -->
-    <section id="downloads" class="section container">
+    <section id="downloads" class="section container lp-deferred-section">
         <div class="section-title">
             <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 700; margin-bottom: 12px;">
                 💻 Cross-Platform Desktop Client (v2.0.0)
@@ -2636,117 +3619,135 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         </script>
     </section>
 
-    <!-- 6. Pricing Section (4 Plan Cards) -->
-    <section id="pricing" class="section container">
+    <!-- 6. Pricing Section (4 Plan Cards + Billing Toggle) -->
+    <section id="pricing" class="section container lp-deferred-section">
         <div class="section-title">
-            <h2>Transparent & Flexible Pricing</h2>
-            <p>Choose the plan that fits your workflow. Scale or downgrade anytime.</p>
+            <div class="section-eyebrow">💳 Simple, Predictable Scaling</div>
+            <h2>Transparent &amp; Flexible Pricing</h2>
+            <p>Choose the plan that fits your workflow. Upgrade, downgrade, or cancel anytime with instant activation.</p>
+            <div class="lp-billing-toggle" role="group" aria-label="Billing cycle">
+                <button type="button" id="lpBillingMonthlyBtn" class="lp-billing-btn active" onclick="setLandingBillingCycle('monthly')">Monthly</button>
+                <button type="button" id="lpBillingYearlyBtn" class="lp-billing-btn" onclick="setLandingBillingCycle('yearly')">Yearly <span class="lp-save-pill">Save 20%</span></button>
+            </div>
         </div>
-        <div class="pricing-section-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+        <div class="pricing-section-grid">
             <!-- Free Plan -->
-            <div id="plan-card-free" class="plan-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; transition: all 0.3s ease;">
-                <h3 style="font-size: 18px; color: #FFF;">Free</h3>
-                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$0 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+            <div id="plan-card-free" class="plan-card">
+                <h3 style="font-size: 19px; color: #FFF;">Free</h3>
+                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$0" data-yearly="$0">$0</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'free')">Start Free</button>
-                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
-                    <li>✓ Browser Profiles: <strong>3 Profiles</strong></li>
-                    <li>✓ Proxy Support: <strong>Basic</strong></li>
-                    <li>✓ Fingerprint Controls: <strong>Standard</strong></li>
-                    <li>✓ Team Users: <strong>1 User</strong></li>
-                    <li>✕ API Access: <strong>—</strong></li>
-                    <li>✓ Support: <strong>Community</strong></li>
+                <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
+                    <li>✓ Browser Profiles: <strong style="color: #E2E8F0;">3 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong style="color: #E2E8F0;">Basic</strong></li>
+                    <li>✓ Fingerprint Controls: <strong style="color: #E2E8F0;">Standard</strong></li>
+                    <li>✓ Team Users: <strong style="color: #E2E8F0;">1 User</strong></li>
+                    <li>✕ API Access: <strong style="color: #64748B;">—</strong></li>
+                    <li>✓ Support: <strong style="color: #E2E8F0;">Community</strong></li>
                 </ul>
             </div>
 
             <!-- Starter Plan -->
-            <div id="plan-card-starter" class="plan-card" style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_starter') ? '#2DD4BF' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; transition: all 0.3s ease;">
+            <div id="plan-card-starter" class="plan-card" style="border-color: <?= $isPlanTrial('plan_starter') ? 'rgba(45, 212, 191, 0.55)' : 'rgba(148, 163, 184, 0.15)' ?>;">
                 <?php if ($isPlanTrial('plan_starter')): ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY FREE TRIAL</span>
                 <?php endif; ?>
                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <h3 style="font-size: 18px; color: #FFF; margin: 0;">Starter</h3>
+                    <h3 style="font-size: 19px; color: #FFF; margin: 0;">Starter</h3>
                     <?php if ($isPlanTrial('plan_starter')): ?>
                         <span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Trial Available</span>
                     <?php endif; ?>
                 </div>
-                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$19 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$19" data-yearly="$15">$19</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_starter')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register', 'Starter')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'Starter')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
                 <?php else: ?>
-                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">⚡ Pay & Upgrade ($19)</button>
+                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_starter', 'Starter', 19)">⚡ Pay &amp; Upgrade ($19)</button>
                 <?php endif; ?>
-                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
-                    <li>✓ Browser Profiles: <strong>25 Profiles</strong></li>
-                    <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS</strong></li>
-                    <li>✓ Fingerprint Controls: <strong>Advanced</strong></li>
-                    <li>✓ Team Users: <strong>2 Users</strong></li>
-                    <li>✓ API Access: <strong>Basic API</strong></li>
-                    <li>✓ Support: <strong>Email Support</strong></li>
+                <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
+                    <li>✓ Browser Profiles: <strong style="color: #E2E8F0;">25 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong style="color: #E2E8F0;">HTTP/HTTPS/SOCKS</strong></li>
+                    <li>✓ Fingerprint Controls: <strong style="color: #E2E8F0;">Advanced</strong></li>
+                    <li>✓ Team Users: <strong style="color: #E2E8F0;">2 Users</strong></li>
+                    <li>✓ API Access: <strong style="color: #E2E8F0;">Basic API</strong></li>
+                    <li>✓ Support: <strong style="color: #E2E8F0;">Email Support</strong></li>
                 </ul>
             </div>
 
             <!-- Professional Plan -->
-            <div id="plan-card-pro" class="plan-card" style="background: var(--bg-card); border: 2px solid #2DD4BF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; box-shadow: 0 8px 30px rgba(45, 212, 191, 0.15); transition: all 0.3s ease;">
+            <div id="plan-card-pro" class="plan-card popular" style="border: 2px solid #2DD4BF; box-shadow: 0 14px 44px rgba(45, 212, 191, 0.16);">
                 <?php if ($isPlanTrial('plan_pro')): ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY FREE TRIAL • MOST POPULAR</span>
                 <?php else: ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">MOST POPULAR</span>
                 <?php endif; ?>
                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <h3 style="font-size: 18px; color: #FFF; margin: 0;">Professional</h3>
+                    <h3 style="font-size: 19px; color: #FFF; margin: 0;">Professional</h3>
                     <?php if ($isPlanTrial('plan_pro')): ?>
                         <span style="background: rgba(45, 212, 191, 0.15); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Free Trial</span>
                     <?php endif; ?>
                 </div>
-                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$49 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$49" data-yearly="$39">$49</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_pro')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(45, 212, 191, 0.35);" onclick="openModal('register', 'Professional')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="openModal('register', 'Professional')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
                 <?php else: ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000; font-weight: 800;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">⚡ Pay & Upgrade ($49)</button>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_pro', 'Professional', 49)">⚡ Pay &amp; Upgrade ($49)</button>
                 <?php endif; ?>
-                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
-                    <li>✓ Browser Profiles: <strong>100 Profiles</strong></li>
-                    <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
-                    <li>✓ Fingerprint Controls: <strong>Advanced Controls</strong></li>
-                    <li>✓ Team Users: <strong>10 Users</strong></li>
-                    <li>✓ API Access: <strong>Full REST & Driver API</strong></li>
-                    <li>✓ Support: <strong>Priority 24/7</strong></li>
+                <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
+                    <li>✓ Browser Profiles: <strong style="color: #E2E8F0;">100 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong style="color: #E2E8F0;">HTTP/HTTPS/SOCKS5</strong></li>
+                    <li>✓ Fingerprint Controls: <strong style="color: #E2E8F0;">Advanced Controls</strong></li>
+                    <li>✓ Team Users: <strong style="color: #E2E8F0;">10 Users</strong></li>
+                    <li>✓ API Access: <strong style="color: #E2E8F0;">Full REST &amp; Driver API</strong></li>
+                    <li>✓ Support: <strong style="color: #E2E8F0;">Priority 24/7</strong></li>
                 </ul>
             </div>
 
             <!-- Business Plan -->
-            <div id="plan-card-business" class="plan-card" style="background: var(--bg-card); border: 1px solid <?= $isPlanTrial('plan_business') ? '#818CF8' : 'var(--border)' ?>; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; position: relative; transition: all 0.3s ease;">
+            <div id="plan-card-business" class="plan-card" style="border-color: <?= $isPlanTrial('plan_business') ? 'rgba(129, 140, 248, 0.6)' : 'rgba(148, 163, 184, 0.15)' ?>;">
                 <?php if ($isPlanTrial('plan_business')): ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">🎁 <?= $trialDays ?>-DAY TRIAL • BEST VALUE</span>
                 <?php else: ?>
                     <span style="position: absolute; top: -12px; right: 20px; background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 20px;">BEST VALUE</span>
                 <?php endif; ?>
                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <h3 style="font-size: 18px; color: #FFF; margin: 0;">Business</h3>
+                    <h3 style="font-size: 19px; color: #FFF; margin: 0;">Business</h3>
                     <?php if ($isPlanTrial('plan_business')): ?>
                         <span style="background: rgba(129, 140, 248, 0.15); color: #818CF8; border: 1px solid rgba(129, 140, 248, 0.3); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;">Trial Available</span>
                     <?php endif; ?>
                 </div>
-                <div style="font-size: 36px; font-weight: 800; color: #FFF; margin: 16px 0;">$99 <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
+                <div style="font-size: 38px; font-weight: 800; color: #FFF; margin: 16px 0;"><span class="lp-price-num" data-monthly="$99" data-yearly="$79">$99</span> <span style="font-size: 14px; color: var(--text-muted); font-weight: 400;">/month</span></div>
                 <?php if ($isPlanTrial('plan_business')): ?>
-                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);" onclick="openModal('register', 'Business')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 24px; background: linear-gradient(135deg, #818CF8, #6366F1); color: #FFF; box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);" onclick="openModal('register', 'Business')">🎁 Start <?= $trialDays ?>-Day Free Trial</button>
                 <?php else: ?>
-                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">⚡ Pay & Upgrade ($99)</button>
+                    <button class="btn btn-outline" style="width: 100%; justify-content: center; margin-bottom: 24px;" onclick="initiatePackagePayment('plan_business', 'Business', 99)">⚡ Pay &amp; Upgrade ($99)</button>
                 <?php endif; ?>
-                <ul style="list-style: none; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
-                    <li>✓ Browser Profiles: <strong>500 Profiles</strong></li>
-                    <li>✓ Proxy Support: <strong>HTTP/HTTPS/SOCKS5</strong></li>
-                    <li>✓ Fingerprint Controls: <strong>Full Hardware Spoofing</strong></li>
-                    <li>✓ Team Users: <strong>25 Users</strong></li>
-                    <li>✓ API Access: <strong>Unlimited API</strong></li>
-                    <li>✓ Support: <strong>Dedicated Account Manager</strong></li>
+                <ul style="list-style: none; font-size: 13.5px; color: var(--text-muted); display: flex; flex-direction: column; gap: 11px;">
+                    <li>✓ Browser Profiles: <strong style="color: #E2E8F0;">500 Profiles</strong></li>
+                    <li>✓ Proxy Support: <strong style="color: #E2E8F0;">HTTP/HTTPS/SOCKS5</strong></li>
+                    <li>✓ Fingerprint Controls: <strong style="color: #E2E8F0;">Full Hardware Spoofing</strong></li>
+                    <li>✓ Team Users: <strong style="color: #E2E8F0;">25 Users</strong></li>
+                    <li>✓ API Access: <strong style="color: #E2E8F0;">Unlimited API</strong></li>
+                    <li>✓ Support: <strong style="color: #E2E8F0;">Dedicated Account Manager</strong></li>
                 </ul>
             </div>
         </div>
+        <script>
+        window.setLandingBillingCycle = function(mode) {
+            var mBtn = document.getElementById('lpBillingMonthlyBtn');
+            var yBtn = document.getElementById('lpBillingYearlyBtn');
+            if (mBtn) mBtn.classList.toggle('active', mode === 'monthly');
+            if (yBtn) yBtn.classList.toggle('active', mode === 'yearly');
+            var nums = document.querySelectorAll('.lp-price-num');
+            for (var i = 0; i < nums.length; i++) {
+                var val = nums[i].getAttribute(mode === 'yearly' ? 'data-yearly' : 'data-monthly');
+                if (val) nums[i].textContent = val;
+            }
+        };
+        </script>
     </section>
 
     <!-- 7. Plan Feature Comparison Matrix Table -->
-    <section class="section container" style="padding-top: 0;">
+    <section class="section container lp-deferred-section" style="padding-top: 0;">
         <div class="section-title">
             <h2>Plan Feature Comparison Matrix</h2>
         </div>
@@ -2803,7 +3804,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
     </section>
 
     <!-- 7.5. 24/7 Real-Time Support Showcase & Trust Badges Section -->
-    <section id="live-support-showcase" class="section container" style="padding-top: 60px; padding-bottom: 60px;">
+    <section id="live-support-showcase" class="section container lp-deferred-section" style="padding-top: 64px; padding-bottom: 64px;">
         <div style="background: linear-gradient(135deg, rgba(24, 27, 38, 0.8) 0%, rgba(15, 17, 26, 0.95) 100%); border: 1px solid var(--border); border-radius: 24px; padding: 48px 40px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden;">
             
             <!-- Background Glow -->
@@ -2919,7 +3920,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 22px;">🏆</span>
                     <div>
-                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">Best Support 2025</div>
+                        <div style="font-size: 11px; font-weight: 800; color: #FFF;">Best Support 2026</div>
                         <div style="font-size: 10px; color: #2DD4BF;">G2 Top Rated</div>
                     </div>
                 </div>
@@ -2936,7 +3937,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     <span style="font-size: 22px;">🛡️</span>
                     <div>
                         <div style="font-size: 11px; font-weight: 800; color: #FFF;">High Performer</div>
-                        <div style="font-size: 10px; color: #60A5FA;">Spring 2025</div>
+                        <div style="font-size: 10px; color: #60A5FA;">2026 Leader</div>
                     </div>
                 </div>
 
@@ -2969,109 +3970,102 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
         </div>
     </section>
 
-    <!-- 8. Frequently Asked Questions Section -->
-    <section id="faq" class="section container">
+    <!-- 8. Frequently Asked Questions Section (Semantic Accessible Native <details> Accordion) -->
+    <section id="faq" class="section container lp-deferred-section" aria-labelledby="faq-heading">
         <div class="section-title">
-            <h2>Frequently Asked Questions</h2>
-            <p>Have questions about AntiProfiles? Find answers below.</p>
+            <div class="section-eyebrow">❓ Knowledge Base</div>
+            <h2 id="faq-heading">Frequently Asked Questions</h2>
+            <p>Everything you need to know about AntiProfiles isolation, proxies, fingerprints, and plans.</p>
         </div>
-        <div style="max-width: 840px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
-                    <span>What is an anti-detect browser?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
-                </div>
-                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+        <div class="lp-faq-list">
+            <details class="lp-faq-item" open>
+                <summary>What is an anti-detect browser?</summary>
+                <div class="lp-faq-body">
                     An anti-detect browser is a specialized browser platform designed to run multiple isolated browser environments simultaneously. Each profile operates with its own distinct cookies, cache, local storage, dedicated proxy connection, and unique digital hardware fingerprint (including WebGL, Canvas noise, User-Agent, WebRTC IP masking, screen resolution, and audio context). This prevents websites from tracking or linking your accounts together.
                 </div>
-            </div>
+            </details>
 
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
-                    <span>What is a browser profile?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
-                </div>
-                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+            <details class="lp-faq-item">
+                <summary>What is a browser profile?</summary>
+                <div class="lp-faq-body">
                     A browser profile is an entirely isolated virtual browsing session. It stores its own independent cookies, browsing history, saved credentials, browser extensions, and hardware parameters. Running a profile is like launching a separate physical computer with its own browser environment, ensuring complete data separation between different social media, e-commerce, or advertising accounts.
                 </div>
-            </div>
+            </details>
 
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
-                    <span>Can I use HTTP, SOCKS4, and SOCKS5 proxies?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
-                </div>
-                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+            <details class="lp-faq-item">
+                <summary>Can I use HTTP, SOCKS4, and SOCKS5 proxies?</summary>
+                <div class="lp-faq-body">
                     Yes! AntiProfiles supports HTTP, HTTPS, SOCKS4, and SOCKS5 proxies with full authentication (username/password or IP whitelist). You can configure proxies per profile, test connections in real time, auto-detect geographical location, and automatically route WebRTC and DNS traffic through your proxy to prevent IP leaks.
                 </div>
-            </div>
+            </details>
 
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
-                    <span>Can I upgrade or downgrade my plan at any time?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
-                </div>
-                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+            <details class="lp-faq-item">
+                <summary>Can I upgrade or downgrade my plan at any time?</summary>
+                <div class="lp-faq-body">
                     Absolutely! You can upgrade, downgrade, or change your subscription plan whenever needed directly from your account dashboard. Upgrades take effect immediately with prorated billing, and you can manage device limits, profile quotas, and active licenses with complete control.
                 </div>
-            </div>
+            </details>
 
-            <div class="faq-item" onclick="toggleFaq(this)" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px; cursor: pointer; transition: all 0.2s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 17px; color: #FFF;">
-                    <span>Does AntiProfiles offer an Automation API?</span>
-                    <span class="faq-icon" style="color: #2DD4BF; font-size: 22px; font-weight: 700; width: 28px; text-align: center;">+</span>
-                </div>
-                <div class="faq-answer" style="display: none; margin-top: 14px; color: var(--text-muted); font-size: 14px; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
+            <details class="lp-faq-item">
+                <summary>Does AntiProfiles offer an Automation API?</summary>
+                <div class="lp-faq-body">
                     Yes! AntiProfiles includes a robust local REST API and WebSocket endpoints compatible with Selenium, Puppeteer, Playwright, and custom automation tools. You can programmatically launch profiles, manage browser sessions, inspect runtime status, and automate multi-account workflows at scale.
                 </div>
-            </div>
+            </details>
         </div>
     </section>
 
     <!-- 9. Testimonials Section -->
-    <section class="section container">
+    <section class="section container lp-deferred-section">
         <div class="section-title">
+            <div class="section-eyebrow">⭐ Verified Reviews</div>
             <h2>Trusted by Professionals World-Wide</h2>
             <p>See what engineers, agencies, and security researchers say about AntiProfiles.</p>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="color: #F59E0B; font-size: 18px; margin-bottom: 12px;">⭐⭐⭐⭐⭐</div>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-                    "AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid."
-                </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 22px;">
+            <div class="lp-testimonial-card">
+                <div>
+                    <div style="color: #F59E0B; font-size: 16px; letter-spacing: 2px; margin-bottom: 14px;">★★★★★</div>
+                    <p style="color: #CBD5E1; font-size: 14.5px; line-height: 1.65; margin-bottom: 22px;">
+                        "AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid."
+                    </p>
+                </div>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #6366F1; display: flex; align-items: center; justify-content: center; font-weight: 700;">AR</div>
+                    <div style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: #FFF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">AR</div>
                     <div>
-                        <h4 style="font-size: 14px; color: #FFF;">Alex Rivera</h4>
+                        <h4 style="font-size: 14.5px; color: #FFF;">Alex Rivera</h4>
                         <p style="font-size: 12px; color: var(--text-muted);">E-Commerce Manager at Apex Brands</p>
                     </div>
                 </div>
             </div>
 
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="color: #F59E0B; font-size: 18px; margin-bottom: 12px;">⭐⭐⭐⭐⭐</div>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-                    "The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless."
-                </p>
+            <div class="lp-testimonial-card">
+                <div>
+                    <div style="color: #F59E0B; font-size: 16px; letter-spacing: 2px; margin-bottom: 14px;">★★★★★</div>
+                    <p style="color: #CBD5E1; font-size: 14.5px; line-height: 1.65; margin-bottom: 22px;">
+                        "The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless."
+                    </p>
+                </div>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #2DD4BF; color: #000; display: flex; align-items: center; justify-content: center; font-weight: 700;">SC</div>
+                    <div style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #041014; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">SC</div>
                     <div>
-                        <h4 style="font-size: 14px; color: #FFF;">Sarah Chen</h4>
+                        <h4 style="font-size: 14.5px; color: #FFF;">Sarah Chen</h4>
                         <p style="font-size: 12px; color: var(--text-muted);">Lead Growth Engineer at Nexus Digital</p>
                     </div>
                 </div>
             </div>
 
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-                <div style="color: #F59E0B; font-size: 18px; margin-bottom: 12px;">⭐⭐⭐⭐⭐</div>
-                <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-                    "Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require."
-                </p>
+            <div class="lp-testimonial-card">
+                <div>
+                    <div style="color: #F59E0B; font-size: 16px; letter-spacing: 2px; margin-bottom: 14px;">★★★★★</div>
+                    <p style="color: #CBD5E1; font-size: 14.5px; line-height: 1.65; margin-bottom: 22px;">
+                        "Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require."
+                    </p>
+                </div>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #8B5CF6; display: flex; align-items: center; justify-content: center; font-weight: 700;">MV</div>
+                    <div style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #8B5CF6, #EC4899); color: #FFF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">MV</div>
                     <div>
-                        <h4 style="font-size: 14px; color: #FFF;">Marcus Vance</h4>
+                        <h4 style="font-size: 14.5px; color: #FFF;">Marcus Vance</h4>
                         <p style="font-size: 12px; color: var(--text-muted);">Privacy Consultant at CyberShield</p>
                     </div>
                 </div>
@@ -3080,7 +4074,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
     </section>
 
     <!-- 10. Contact Us Section -->
-    <section id="contact" class="section container">
+    <section id="contact" class="section container lp-deferred-section">
         <div class="section-title">
             <h2>Get in Touch with Our Team</h2>
             <p>Have custom enterprise requirements or need technical assistance? Contact our team directly.</p>
