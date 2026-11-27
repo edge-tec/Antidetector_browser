@@ -1623,7 +1623,9 @@ switch ($action) {
         if ($res['success']) {
             respondJson([
                 'success' => true,
-                'message' => "Test email successfully delivered to {$recipient}!",
+                'message' => "Test email accepted by SMTP server for {$recipient}!",
+                'method' => $res['method'] ?? 'smtp',
+                'serverReply' => $res['serverReply'] ?? null,
                 'timestamp' => $res['timestamp']
             ]);
         } else {

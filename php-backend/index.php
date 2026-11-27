@@ -9616,7 +9616,8 @@ if (!headers_sent()) {
                 const data = await res.json();
                 if (data.success) {
                     if (resultsBox) {
-                        resultsBox.innerHTML = '<div style="color:#2DD4BF; font-weight:700;">✓ ' + (data.message || 'Test email dispatched successfully!') + '</div><div style="color:#94A3B8; font-size:11px; margin-top:4px;">Check inbox/spam folder for ' + recipient + '</div>';
+                        const srvReplyHtml = data.serverReply ? '<div style="color:#64748B; font-size:11px; margin-top:4px; font-family:monospace;">SMTP Server: ' + String(data.serverReply).replace(/</g, '&lt;') + '</div>' : '';
+                        resultsBox.innerHTML = '<div style="color:#2DD4BF; font-weight:700;">✓ ' + (data.message || 'Test email accepted by SMTP server!') + '</div>' + srvReplyHtml + '<div style="color:#94A3B8; font-size:11px; margin-top:4px;">Check inbox/spam folder for ' + recipient + '</div>';
                     }
                 } else {
                     if (resultsBox) {

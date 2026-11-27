@@ -2244,10 +2244,13 @@ function sendSmtpMailPhp(
     }
     $lastError = null;
     $GLOBALS['_lastSmtpError'] = null;
+    $GLOBALS['_lastSmtpMethod'] = null;
+    $GLOBALS['_lastSmtpServerReply'] = null;
     $deliveryMethod = 'smtp';
+    $smtpExplicitlyEnabled = (!empty($smtp['enabled']) && !empty($smtp['host']));
 
     // 1. Try Custom SMTP Socket if Enabled and Host Configured
-    if (!empty($smtp['enabled']) && !empty($smtp['host'])) {
+    if ($smtpExplicitlyEnabled) {
         $host = trim($smtp['host']);
         $port = (int)($smtp['port'] ?? 587);
         $user = trim($smtp['user'] ?? '');
@@ -2460,7 +2463,9 @@ function sendSmtpMailPhp(
 
             if (substr($sendRes, 0, 3) === '250') {
                 $GLOBALS['_lastSmtpError'] = null;
-                logEmailDispatch($toEmail, $emailType, $subject, 'sent', null, 'smtp', $userId, $metadata, $htmlBody);
+                $GLOBALS['_lastSmtpMethod'] = 'smtp';
+                $GLOBALS['_lastSmtpServerReply'] = trim($sendRes);
+                logEmailDispatch($toEmail, $emailType, $subject, 'sent', trim($sendRes), 'smtp', $userId, $metadata, $htmlBody);
                 return true;
             } else {
                 $lastError = "SMTP final send rejected: " . trim($sendRes);
@@ -2472,9 +2477,13 @@ function sendSmtpMailPhp(
         $lastError = "Custom SMTP is not configured or disabled in Admin settings.";
     }
 
-    // 2. Fallback to PHP native mail()
+    // 2. Fallback to PHP native mail() ONLY when custom SMTP is not explicitly enabled/tested
     fallback_native_mail:
     $GLOBALS['_lastSmtpError'] = $lastError;
+    if ($smtpExplicitlyEnabled || $overrideConfig !== null) {
+        logEmailDispatch($toEmail, $emailType, $subject, 'failed', $lastError, 'smtp', $userId, $metadata, $htmlBody);
+        return false;
+    }
     $deliveryMethod = 'native_mail';
     try {
         $fromName = $smtp['fromName'] ?? 'AntiProfiles';
@@ -2490,6 +2499,8 @@ function sendSmtpMailPhp(
 
         $nativeSent = @mail($toEmail, '=?UTF-8?B?' . base64_encode($subject) . '?=', $htmlBody, implode("\r\n", $headers));
         if ($nativeSent) {
+            $GLOBALS['_lastSmtpMethod'] = 'native_mail';
+            $GLOBALS['_lastSmtpServerReply'] = 'Queued via PHP native mail()';
             logEmailDispatch($toEmail, $emailType, $subject, 'sent', "Sent via PHP native mail fallback (" . ($lastError ?: 'No SMTP configured') . ")", 'native_mail', $userId, $metadata, $htmlBody);
             return true;
         } else {
@@ -3030,12 +3041,16 @@ function sendAdminTestEmailPhp(string $toEmail, ?array $overrideConfig = null): 
 
     $sent = sendSmtpMailPhp($toEmail, 'AntiProfiles Live SMTP Test Delivery', $html, $overrideConfig, 'admin_test', null, ['test_time' => $timestamp]);
     $errDetail = $GLOBALS['_lastSmtpError'] ?? null;
+    $smtpReply = $GLOBALS['_lastSmtpServerReply'] ?? null;
+    $method = $GLOBALS['_lastSmtpMethod'] ?? 'smtp';
     return [
         'success' => $sent,
         'recipient' => $toEmail,
         'timestamp' => $timestamp,
+        'method' => $method,
+        'serverReply' => $smtpReply,
         'error' => $sent ? null : ($errDetail ?: 'Failed to deliver test email. Check SMTP credentials and Email Logs.'),
-        'message' => $sent ? 'Test email successfully dispatched via SMTP!' : ($errDetail ?: 'Failed to deliver test email. Check server logs.')
+        'message' => $sent ? 'Test email accepted by SMTP server!' : ($errDetail ?: 'Failed to deliver test email. Check server logs.')
     ];
 }
 
