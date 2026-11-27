@@ -14,7 +14,7 @@ import { TronWeb } from 'tronweb';
 const HOST = process.env.SIGNER_HOST || '127.0.0.1';
 const PORT = Number(process.env.SIGNER_PORT || 3105);
 const API_KEY = (process.env.SIGNER_API_KEY || '').trim();
-const MNEMONIC = (process.env.HD_MASTER_MNEMONIC || '').trim();
+const ENV_MNEMONIC = (process.env.HD_MASTER_MNEMONIC || '').trim();
 const ALLOW_EVM = (process.env.TRUST_WALLET_EVM || '').trim();
 const ALLOW_TRON = (process.env.TRUST_WALLET_TRON || '').trim();
 const GAS_FUNDER_EVM = (process.env.GAS_FUNDER_PRIVATE_KEY_EVM || '').trim();
@@ -25,12 +25,25 @@ if (!API_KEY || API_KEY.length < 16) {
   console.error('[Signer] FATAL: SIGNER_API_KEY must be set (min 16 chars) in .env');
   process.exit(1);
 }
-if (!MNEMONIC || MNEMONIC.split(/\s+/).length < 12) {
-  console.error('[Signer] FATAL: HD_MASTER_MNEMONIC must be a valid 12/24-word BIP-39 phrase in .env');
-  process.exit(1);
-}
 
-const masterMnemonic = ethers.Mnemonic.fromPhrase(MNEMONIC);
+const envMasterMnemonic = (ENV_MNEMONIC && ENV_MNEMONIC.split(/\s+/).length >= 12)
+  ? ethers.Mnemonic.fromPhrase(ENV_MNEMONIC)
+  : null;
+
+function resolveMnemonic(rawPhrase) {
+  const phrase = String(rawPhrase || '').trim().replace(/\s+/g, ' ');
+  if (phrase) {
+    const words = phrase.split(' ');
+    if (words.length < 12) {
+      throw new Error('Secret recovery phrase must be 12 or 24 valid BIP-39 words');
+    }
+    return ethers.Mnemonic.fromPhrase(phrase);
+  }
+  if (envMasterMnemonic) {
+    return envMasterMnemonic;
+  }
+  throw new Error('Trust Wallet / HD Secret Recovery Phrase is not configured yet. Add it in Admin Panel -> Payment Gateways -> Crypto.');
+}
 
 const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
@@ -54,7 +67,8 @@ function constantTimeAuth(req) {
   return crypto.timingSafeEqual(a, b);
 }
 
-function deriveChildWallet(network, index) {
+function deriveChildWallet(network, index, mnemonicObj) {
+  const activeMnemonic = mnemonicObj || resolveMnemonic('');
   const idx = Number(index);
   if (!Number.isInteger(idx) || idx < 0 || idx > 2147483647) {
     throw new Error(`Invalid derivation index: ${index}`);
@@ -63,7 +77,7 @@ function deriveChildWallet(network, index) {
 
   if (net === 'tron') {
     const path = `m/44'/195'/0'/0/${idx}`;
-    const hd = ethers.HDNodeWallet.fromMnemonic(masterMnemonic, path);
+    const hd = ethers.HDNodeWallet.fromMnemonic(activeMnemonic, path);
     const privHex = hd.privateKey.replace(/^0x/, '');
     const tronAddress = TronWeb.address.fromPrivateKey(privHex);
     return {
@@ -77,7 +91,7 @@ function deriveChildWallet(network, index) {
 
   if (net === 'bsc' || net === 'ethereum' || net === 'polygon') {
     const path = `m/44'/60'/0'/0/${idx}`;
-    const hd = ethers.HDNodeWallet.fromMnemonic(masterMnemonic, path);
+    const hd = ethers.HDNodeWallet.fromMnemonic(activeMnemonic, path);
     return {
       network: net,
       index: idx,
@@ -110,9 +124,11 @@ function assertTreasuryAllowed(network, toTreasuryAddress) {
   return ethers.getAddress(target);
 }
 
-async function sweepEvm({ network, index, tokenStandard, contractAddress, decimals, toTreasuryAddress, rpcUrl }) {
-  const child = deriveChildWallet(network, index);
-  const treasury = assertTreasuryAllowed(network, toTreasuryAddress);
+async function sweepEvm({ network, index, tokenStandard, contractAddress, decimals, toTreasuryAddress, rpcUrl, mnemonic }) {
+  const mnemonicObj = resolveMnemonic(mnemonic);
+  const child = deriveChildWallet(network, index, mnemonicObj);
+  const rootWallet = deriveChildWallet(network, 0, mnemonicObj);
+  const treasury = assertTreasuryAllowed(network, toTreasuryAddress || rootWallet.address);
   const provider = new ethers.JsonRpcProvider(rpcUrl || DEFAULT_RPCS[network]);
   const wallet = new ethers.Wallet(child.privateKey, provider);
   const feeData = await provider.getFeeData();
@@ -130,15 +146,17 @@ async function sweepEvm({ network, index, tokenStandard, contractAddress, decima
     let nativeBal = await provider.getBalance(wallet.address);
 
     if (nativeBal < requiredGas) {
-      if (!GAS_FUNDER_EVM) {
+      const funderKey = GAS_FUNDER_EVM || rootWallet.privateKey;
+      const funder = new ethers.Wallet(funderKey, provider);
+      const funderBal = await provider.getBalance(funder.address);
+      const topUp = requiredGas - nativeBal;
+      if (funderBal < topUp + (21000n * gasPrice)) {
         return {
           success: false,
           status: 'needs_gas',
-          error: `Child address ${wallet.address} needs ${ethers.formatEther(requiredGas)} native gas; configure GAS_FUNDER_PRIVATE_KEY_EVM`
+          error: `Child address ${wallet.address} needs ${ethers.formatEther(requiredGas)} native gas; keep minimal BNB/ETH/POL in your Trust Wallet (${funder.address}) to auto-sponsor token sweeps`
         };
       }
-      const funder = new ethers.Wallet(GAS_FUNDER_EVM, provider);
-      const topUp = requiredGas - nativeBal;
       const fundTx = await funder.sendTransaction({ to: wallet.address, value: topUp, gasPrice });
       await fundTx.wait(1);
     }
@@ -179,9 +197,11 @@ async function sweepEvm({ network, index, tokenStandard, contractAddress, decima
   };
 }
 
-async function sweepTron({ index, tokenStandard, contractAddress, decimals, toTreasuryAddress, rpcUrl }) {
-  const child = deriveChildWallet('tron', index);
-  const treasury = assertTreasuryAllowed('tron', toTreasuryAddress);
+async function sweepTron({ index, tokenStandard, contractAddress, decimals, toTreasuryAddress, rpcUrl, mnemonic }) {
+  const mnemonicObj = resolveMnemonic(mnemonic);
+  const child = deriveChildWallet('tron', index, mnemonicObj);
+  const rootWallet = deriveChildWallet('tron', 0, mnemonicObj);
+  const treasury = assertTreasuryAllowed('tron', toTreasuryAddress || rootWallet.address);
   const fullHost = rpcUrl || DEFAULT_RPCS.tron;
   const headers = TRONGRID_API_KEY ? { 'TRON-PRO-API-KEY': TRONGRID_API_KEY } : undefined;
 
@@ -198,15 +218,18 @@ async function sweepTron({ index, tokenStandard, contractAddress, decimals, toTr
     const trxSun = BigInt(await tronWeb.trx.getBalance(child.address));
     const minSun = 25_000_000n; // 25 TRX
     if (trxSun < minSun) {
-      if (!GAS_FUNDER_TRON) {
+      const funderKey = GAS_FUNDER_TRON || rootWallet.privateKey;
+      const funderTron = new TronWeb({ fullHost, headers, privateKey: funderKey });
+      const funderAddr = TronWeb.address.fromPrivateKey(funderKey);
+      const funderSun = BigInt(await funderTron.trx.getBalance(funderAddr));
+      const topUpSun = Number(minSun - trxSun);
+      if (funderSun < BigInt(topUpSun) + 2_000_000n) {
         return {
           success: false,
           status: 'needs_gas',
-          error: `TRON child ${child.address} needs TRX for energy; configure GAS_FUNDER_PRIVATE_KEY_TRON`
+          error: `TRON child ${child.address} needs ~25 TRX for TRC20 sweep gas; keep TRX in your Trust Wallet (${funderAddr}) to auto-sponsor USDT-TRC20 sweeps`
         };
       }
-      const funderTron = new TronWeb({ fullHost, headers, privateKey: GAS_FUNDER_TRON });
-      const topUpSun = Number(minSun - trxSun);
       await funderTron.trx.sendTransaction(child.address, topUpSun);
       await new Promise((r) => setTimeout(r, 4000));
     }
@@ -269,6 +292,8 @@ const server = http.createServer(async (req, res) => {
         status: 'ok',
         service: 'antiprofiles-hd-signer',
         networks: ['tron', 'bsc', 'ethereum', 'polygon'],
+        envMnemonicConfigured: Boolean(envMasterMnemonic),
+        dynamicMnemonicSupported: true,
         treasuryAllowlistEnabled: Boolean(ALLOW_EVM || ALLOW_TRON)
       });
     }
@@ -277,9 +302,26 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 401, { success: false, error: 'Unauthorized' });
     }
 
+    if (req.method === 'POST' && req.url === '/derive-treasury') {
+      const body = await readJsonBody(req);
+      const mnemonicObj = resolveMnemonic(body.mnemonic);
+      const tronRoot = deriveChildWallet('tron', 0, mnemonicObj);
+      const evmRoot = deriveChildWallet('bsc', 0, mnemonicObj);
+      return sendJson(res, 200, {
+        success: true,
+        tron: tronRoot.address,
+        evm: evmRoot.address,
+        paths: {
+          tron: tronRoot.derivationPath,
+          evm: evmRoot.derivationPath
+        }
+      });
+    }
+
     if (req.method === 'POST' && req.url === '/derive-address') {
       const body = await readJsonBody(req);
-      const child = deriveChildWallet(body.network, body.index);
+      const mnemonicObj = resolveMnemonic(body.mnemonic);
+      const child = deriveChildWallet(body.network, body.index, mnemonicObj);
       return sendJson(res, 200, {
         success: true,
         network: child.network,

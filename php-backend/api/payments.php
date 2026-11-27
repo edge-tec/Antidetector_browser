@@ -1284,7 +1284,19 @@ switch ($action) {
                 respondJson(['success' => false, 'error' => "Unsupported crypto network: {$networkInput}"], 400);
             }
 
+            $useHdMode = HdWalletSweepService::isHdModeEnabled($gw['config'], $net);
             $trustWallet = trim((string)$net['wallet']);
+            if ($trustWallet === '' && $useHdMode) {
+                $derivedTreasury = HdWalletSweepService::deriveTreasuryAddresses($gw['config']);
+                if (!empty($derivedTreasury['success'])) {
+                    $trustWallet = ($net['network'] === 'tron')
+                        ? trim((string)($derivedTreasury['tron'] ?? ''))
+                        : trim((string)($derivedTreasury['evm'] ?? ''));
+                    if ($trustWallet !== '') {
+                        $net['wallet'] = $trustWallet;
+                    }
+                }
+            }
             if ($trustWallet === '') {
                 respondJson([
                     'success' => false,
@@ -1294,7 +1306,6 @@ switch ($action) {
 
             $rateUsd = InHouseCryptoGateway::getUsdPrice($net['symbol']);
             $expiresAt = date('Y-m-d H:i:s', strtotime('+2 hours'));
-            $useHdMode = HdWalletSweepService::isHdModeEnabled($gw['config'], $net);
 
             if ($useHdMode) {
                 // Dedicated per-order HD deposit address -> exact amount (no micro-tag needed)

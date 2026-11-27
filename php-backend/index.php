@@ -7881,9 +7881,25 @@ if (!headers_sent()) {
                         </div>
                     </div>
 
-                    <!-- HD Signer Service Settings (Shown when mode === hd_sweep) -->
+                    <!-- HD Signer Service & Trust Wallet Secret Phrase Settings (Shown when mode === hd_sweep) -->
                     <div id="gwCryptoSignerBox" style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.28); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
-                        <label style="font-size: 12px; color: #F59E0B; font-weight: 700; display: block; margin-bottom: 10px;">🔑 Local HD Signer Service (Auto-Sweep Engine)</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+                            <label style="font-size: 12px; color: #F59E0B; font-weight: 700; margin: 0;">🔐 Trust Wallet Secret Recovery Phrase & HD Auto-Sweep</label>
+                            <span id="gwTrustPhraseStatusBadge" style="font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(148,163,184,0.16); color: #94A3B8;">Not configured</span>
+                        </div>
+
+                        <div style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(245, 158, 11, 0.22); border-radius: 8px; padding: 11px;">
+                            <label style="font-size: 11px; color: #FDE68A; font-weight: 600; display: block; margin-bottom: 4px;">Trust Wallet 12 / 24-Word Secret Phrase (Stored AES-256-GCM Encrypted)</label>
+                            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                <input type="password" id="gwTrustSecretPhrase" autocomplete="off" spellcheck="false" placeholder="word1 word2 word3 ... word12 (leave blank to keep saved encrypted phrase)" style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #FFF; font-size: 12px; font-family: monospace;">
+                                <button type="button" id="btnToggleTrustPhrase" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; white-space: nowrap;" onclick="toggleTrustPhraseVisibility()">👁️ Show</button>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span style="font-size: 10.5px; color: var(--text-muted); line-height: 1.4;">Generates a unique HD address per order (#1, #2, #3...) &amp; auto-sweeps confirmed funds to your Trust Wallet (#0 or address above).</span>
+                                <button type="button" id="btnDeriveTrustWallets" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; border-color: rgba(45,212,191,0.45); color: #2DD4BF; white-space: nowrap;" onclick="deriveTrustWalletsFromPhrase()">⚡ Auto-Fill Trust Wallets</button>
+                            </div>
+                            <div id="gwTrustDeriveMsg" style="display: none; margin-top: 8px; font-size: 11px; padding: 7px 10px; border-radius: 6px; font-family: monospace;"></div>
+                        </div>
 
                         <div style="margin-bottom: 10px;">
                             <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px;">Signer Local URL (127.0.0.1 only)</label>
@@ -11379,7 +11395,11 @@ if (!headers_sent()) {
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                         <span style="color: var(--text-muted);">Trust Wallets:</span>
-                        <span style="color: #818CF8; font-family: monospace;">${configuredChains.length ? configuredChains.join(', ') : 'Not configured'}</span>
+                        <span style="color: #818CF8; font-family: monospace;">${configuredChains.length ? configuredChains.join(', ') : (cfg.hd_mnemonic_configured ? 'Auto (From Phrase)' : 'Not configured')}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Secret Phrase:</span>
+                        <span style="color: ${cfg.hd_mnemonic_configured ? '#10B981' : '#F59E0B'}; font-family: monospace;">${cfg.hd_mnemonic_configured ? '✓ Encrypted (AES-256)' : 'Not set'}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: var(--text-muted);">HD Signer:</span>
@@ -11471,6 +11491,72 @@ if (!headers_sent()) {
             if (input) input.value = hex;
         }
 
+        function toggleTrustPhraseVisibility() {
+            const input = document.getElementById('gwTrustSecretPhrase');
+            const btn = document.getElementById('btnToggleTrustPhrase');
+            if (!input) return;
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            if (btn) btn.innerText = isHidden ? '🙈 Hide' : '👁️ Show';
+        }
+
+        async function deriveTrustWalletsFromPhrase() {
+            const token = getAdminSessionToken();
+            const phrase = (document.getElementById('gwTrustSecretPhrase')?.value || '').trim();
+            const signerUrl = (document.getElementById('gwSignerUrl')?.value || 'http://127.0.0.1:3105').trim();
+            const signerKey = (document.getElementById('gwSignerApiKey')?.value || '').trim();
+            const msgEl = document.getElementById('gwTrustDeriveMsg');
+            const btn = document.getElementById('btnDeriveTrustWallets');
+
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.style.background = 'rgba(129,140,248,0.12)';
+                msgEl.style.color = '#A5B4FC';
+                msgEl.innerText = '⏳ Deriving Trust Wallet TRON & EVM addresses via local HD Signer...';
+            }
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/admin/derive-trust-wallets' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token,
+                        'X-Auth-Token': token
+                    },
+                    body: JSON.stringify({
+                        hd_mnemonic: phrase,
+                        signer_url: signerUrl,
+                        signer_api_key: signerKey
+                    })
+                });
+                const data = await res.json();
+                if (data.success && (data.tron || data.evm)) {
+                    if (data.tron) document.getElementById('gwTrustWalletTron').value = data.tron;
+                    if (data.evm) document.getElementById('gwTrustWalletEvm').value = data.evm;
+                    if (msgEl) {
+                        msgEl.style.background = 'rgba(16,185,129,0.14)';
+                        msgEl.style.color = '#34D399';
+                        msgEl.innerText = '✓ Derived Trust Wallets! TRON: ' + (data.tron || '-') + ' | EVM: ' + (data.evm || '-');
+                    }
+                } else {
+                    if (msgEl) {
+                        msgEl.style.background = 'rgba(239,68,68,0.14)';
+                        msgEl.style.color = '#F87171';
+                        msgEl.innerText = '✗ ' + (data.error || 'Could not derive addresses. Make sure HD Signer service is running.');
+                    }
+                }
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.style.background = 'rgba(239,68,68,0.14)';
+                    msgEl.style.color = '#F87171';
+                    msgEl.innerText = '✗ Network error connecting to signer API.';
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function copySignerKeyField() {
             const input = document.getElementById('gwSignerApiKey');
             if (input && input.value && !input.value.includes('••••')) {
@@ -11526,6 +11612,30 @@ if (!headers_sent()) {
                 document.getElementById('gwTrustWalletSol').value = tw.solana || cfg.wallet_address_sol || '';
                 document.getElementById('gwSignerUrl').value = cfg.signer_url || 'http://127.0.0.1:3105';
                 document.getElementById('gwSignerApiKey').value = cfg.signer_api_key_masked || '';
+                const phraseInput = document.getElementById('gwTrustSecretPhrase');
+                const phraseBadge = document.getElementById('gwTrustPhraseStatusBadge');
+                const deriveMsg = document.getElementById('gwTrustDeriveMsg');
+                if (phraseInput) {
+                    phraseInput.value = '';
+                    phraseInput.type = 'password';
+                    phraseInput.placeholder = cfg.hd_mnemonic_configured
+                        ? ('Saved: ' + (cfg.hd_mnemonic_masked || '••••••••••••') + ' — leave blank to keep')
+                        : 'word1 word2 word3 ... word12 (Enter your 12 or 24-word Trust Wallet Secret Phrase)';
+                }
+                const toggleBtn = document.getElementById('btnToggleTrustPhrase');
+                if (toggleBtn) toggleBtn.innerText = '👁️ Show';
+                if (phraseBadge) {
+                    if (cfg.hd_mnemonic_configured) {
+                        phraseBadge.innerText = '✓ Encrypted & Saved';
+                        phraseBadge.style.background = 'rgba(16,185,129,0.18)';
+                        phraseBadge.style.color = '#34D399';
+                    } else {
+                        phraseBadge.innerText = 'Not configured';
+                        phraseBadge.style.background = 'rgba(245,158,11,0.16)';
+                        phraseBadge.style.color = '#FBBF24';
+                    }
+                }
+                if (deriveMsg) deriveMsg.style.display = 'none';
                 document.getElementById('gwRpcTron').value = cfg.rpc_tron || '';
                 document.getElementById('gwRpcBsc').value = cfg.rpc_bsc || '';
                 document.getElementById('gwRpcEth').value = cfg.rpc_ethereum || '';
@@ -11583,6 +11693,7 @@ if (!headers_sent()) {
                     mode: mode === 'nowpayments' ? 'direct' : mode,
                     signer_url: document.getElementById('gwSignerUrl').value.trim() || 'http://127.0.0.1:3105',
                     signer_api_key: document.getElementById('gwSignerApiKey').value.trim(),
+                    hd_mnemonic: (document.getElementById('gwTrustSecretPhrase')?.value || '').trim(),
                     trust_wallets: {
                         tron: document.getElementById('gwTrustWalletTron').value.trim(),
                         evm: document.getElementById('gwTrustWalletEvm').value.trim(),

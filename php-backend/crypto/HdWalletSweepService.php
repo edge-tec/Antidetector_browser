@@ -10,6 +10,86 @@ class HdWalletSweepService
 {
     public const HD_SUPPORTED_NETWORKS = ['tron', 'bsc', 'ethereum', 'polygon'];
 
+    private static function getVaultKey(): string
+    {
+        $parts = [
+            defined('JWT_SECRET') ? (string)JWT_SECRET : (string)(getenv('JWT_SECRET') ?: ''),
+            defined('DB_PASS') ? (string)DB_PASS : (string)(getenv('DB_PASS') ?: ''),
+            defined('DB_NAME') ? (string)DB_NAME : (string)(getenv('DB_NAME') ?: ''),
+            __DIR__,
+            'antiprofiles-hd-mnemonic-vault-v1'
+        ];
+        return hash('sha256', implode('|', $parts), true);
+    }
+
+    public static function encryptSecret(string $plaintext): string
+    {
+        $clean = trim($plaintext);
+        if ($clean === '') return '';
+        $iv = random_bytes(12);
+        $tag = '';
+        $cipher = openssl_encrypt($clean, 'aes-256-gcm', self::getVaultKey(), OPENSSL_RAW_DATA, $iv, $tag);
+        if ($cipher === false) {
+            throw new RuntimeException('Failed to encrypt Trust Wallet secret phrase');
+        }
+        return 'enc_v1:' . base64_encode($iv . $tag . $cipher);
+    }
+
+    public static function decryptSecret(string $encoded): string
+    {
+        $encoded = trim($encoded);
+        if ($encoded === '') return '';
+        if (strpos($encoded, 'enc_v1:') !== 0) {
+            return $encoded;
+        }
+        $raw = base64_decode(substr($encoded, 7), true);
+        if ($raw === false || strlen($raw) < 29) {
+            return '';
+        }
+        $iv = substr($raw, 0, 12);
+        $tag = substr($raw, 12, 16);
+        $cipher = substr($raw, 28);
+        $plain = openssl_decrypt($cipher, 'aes-256-gcm', self::getVaultKey(), OPENSSL_RAW_DATA, $iv, $tag);
+        return $plain === false ? '' : trim($plain);
+    }
+
+    public static function validateMnemonic(string $rawPhrase): array
+    {
+        $normalized = strtolower(trim(preg_replace('/\s+/', ' ', $rawPhrase)));
+        $words = $normalized === '' ? [] : explode(' ', $normalized);
+        $count = count($words);
+        if (!in_array($count, [12, 15, 18, 21, 24], true)) {
+            return ['valid' => false, 'error' => "Secret recovery phrase must be 12 or 24 words (got {$count})."];
+        }
+        foreach ($words as $w) {
+            if (!preg_match('/^[a-z]{2,12}$/', $w)) {
+                return ['valid' => false, 'error' => 'Secret recovery phrase contains invalid characters. Use space-separated lowercase English BIP-39 words.'];
+            }
+        }
+        $masked = $words[0] . ' •••• •••• ... ' . $words[$count - 1] . " ({$count} words)";
+        return ['valid' => true, 'phrase' => $normalized, 'wordCount' => $count, 'masked' => $masked];
+    }
+
+    public static function resolveDecryptedMnemonic(array $gwConfig): string
+    {
+        if (!empty($gwConfig['hd_mnemonic_enc'])) {
+            return self::decryptSecret((string)$gwConfig['hd_mnemonic_enc']);
+        }
+        if (!empty($gwConfig['hd_mnemonic'])) {
+            return trim((string)$gwConfig['hd_mnemonic']);
+        }
+        return '';
+    }
+
+    public static function deriveTreasuryAddresses(array $gwConfig, ?string $overrideMnemonic = null): array
+    {
+        $payload = [];
+        if ($overrideMnemonic !== null && trim($overrideMnemonic) !== '') {
+            $payload['mnemonic'] = trim(preg_replace('/\s+/', ' ', $overrideMnemonic));
+        }
+        return self::callSigner($gwConfig, '/derive-treasury', $payload);
+    }
+
     public static function ensureSchema(PDO $db): void
     {
         $db->exec("
@@ -81,6 +161,14 @@ class HdWalletSweepService
 
         $network = strtolower((string)$net['network']);
         $treasuryWallet = trim((string)$net['wallet']);
+        if ($treasuryWallet === '') {
+            $derivedTreasury = self::deriveTreasuryAddresses($gwConfig);
+            if (!empty($derivedTreasury['success'])) {
+                $treasuryWallet = ($network === 'tron')
+                    ? trim((string)($derivedTreasury['tron'] ?? ''))
+                    : trim((string)($derivedTreasury['evm'] ?? ''));
+            }
+        }
         if ($treasuryWallet === '') {
             throw new RuntimeException("Trust Wallet treasury address not configured for {$net['label']}");
         }
@@ -344,10 +432,23 @@ class HdWalletSweepService
         return $summary;
     }
 
-    private static function callSigner(array $gwConfig, string $path, array $payload): array
+    public static function callSigner(array $gwConfig, string $path, array $payload): array
     {
         $baseUrl = rtrim(trim((string)($gwConfig['signer_url'] ?? 'http://127.0.0.1:3105')), '/');
         $apiKey = trim((string)($gwConfig['signer_api_key'] ?? ''));
+
+        // Security guardrail: only transmit decrypted mnemonic over strict localhost loopback
+        $host = strtolower((string)(parse_url($baseUrl, PHP_URL_HOST) ?? ''));
+        $isLocalhost = in_array($host, ['127.0.0.1', 'localhost', '::1'], true);
+        if (!$isLocalhost) {
+            return ['success' => false, 'error' => 'Security blocked: Signer URL must be strictly 127.0.0.1 / localhost.'];
+        }
+        if (empty($payload['mnemonic'])) {
+            $decrypted = self::resolveDecryptedMnemonic($gwConfig);
+            if ($decrypted !== '') {
+                $payload['mnemonic'] = $decrypted;
+            }
+        }
 
         $ch = curl_init($baseUrl . $path);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

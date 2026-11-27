@@ -1834,7 +1834,7 @@ switch ($action) {
                     VALUES
                     ('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{\"checkout_title\":\"AntiProfiles Subscription\",\"allow_promotion_codes\":true,\"billing_address_collection\":\"auto\"}'),
                     ('gw_bachs', 'bachs', 'Bachs.io', 0, 1, '', '', '', 'USD', '{\"api_base_url\":\"https://api.bachs.io\",\"sandbox_api_base_url\":\"https://sandbox-api.bachs.io\",\"checkout_endpoint\":\"/v1/checkout-sessions\",\"checkout_title\":\"AntiProfiles Subscription\",\"adaptive_pricing\":true,\"payment_methods\":[\"card\",\"bank_transfer\",\"mobile_money\",\"crypto\"],\"product_ids\":{}}'),
-                    ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{\"provider\":\"nowpayments\",\"supported_coins\":[\"BTC\",\"ETH\",\"USDT\",\"USDC\"],\"network\":\"TRC20,ERC20,BTC\",\"min_amount\":10,\"confirmations_required\":2}');
+                    ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{\"provider\":\"inhouse\",\"mode\":\"hd_sweep\",\"signer_url\":\"http://127.0.0.1:3105\",\"supported_coins\":[\"USDT-TRC20\",\"TRX\",\"USDT-BEP20\",\"BNB\",\"USDT-ERC20\",\"ETH\",\"BTC\",\"POL\",\"SOL\"],\"min_amount\":10,\"confirmations_required\":2}');
                 ");
             } catch (Throwable $e) {}
 
@@ -1852,6 +1852,16 @@ switch ($action) {
                 } else {
                     $gw['config']['signer_api_key_masked'] = '';
                 }
+                if (!empty($gw['config']['hd_mnemonic_enc'])) {
+                    $gw['config']['hd_mnemonic_configured'] = true;
+                    $gw['config']['hd_mnemonic_masked'] = (string)($gw['config']['hd_mnemonic_hint'] ?? '•••••••••••• (Encrypted)');
+                } else {
+                    $gw['config']['hd_mnemonic_configured'] = false;
+                    $gw['config']['hd_mnemonic_masked'] = '';
+                }
+                unset($gw['config']['hd_mnemonic_enc']);
+                unset($gw['config']['hd_mnemonic']);
+                unset($gw['config_json']);
                 if (!empty($gw['secret_key'])) {
                     $prefix = substr($gw['secret_key'], 0, 7);
                     $suffix = substr($gw['secret_key'], -4);
@@ -1916,6 +1926,7 @@ switch ($action) {
             }
 
             if ($key === 'crypto') {
+                require_once __DIR__ . '/../crypto/HdWalletSweepService.php';
                 // Preserve existing signer_api_key if masked or empty
                 $incomingSignerKey = trim((string)($config['signer_api_key'] ?? ''));
                 if ($incomingSignerKey === '' || strpos($incomingSignerKey, '••••') !== false) {
@@ -1929,10 +1940,45 @@ switch ($action) {
                 }
                 unset($config['signer_api_key_masked']);
 
+                // Encrypt and store Trust Wallet / HD Master Secret Recovery Phrase (AES-256-GCM)
+                $incomingMnemonic = trim((string)($config['hd_mnemonic'] ?? ''));
+                $clearMnemonic = !empty($config['clear_hd_mnemonic']);
+                unset($config['hd_mnemonic'], $config['hd_mnemonic_masked'], $config['hd_mnemonic_configured'], $config['clear_hd_mnemonic']);
+
+                if ($clearMnemonic) {
+                    unset($config['hd_mnemonic_enc'], $config['hd_mnemonic_hint']);
+                    unset($existingConfig['hd_mnemonic_enc'], $existingConfig['hd_mnemonic_hint']);
+                } elseif ($incomingMnemonic !== '' && strpos($incomingMnemonic, '••••') === false) {
+                    $val = HdWalletSweepService::validateMnemonic($incomingMnemonic);
+                    if (empty($val['valid'])) {
+                        respondJson(['success' => false, 'error' => $val['error'] ?? 'Invalid Trust Wallet secret recovery phrase.'], 400);
+                    }
+                    $config['hd_mnemonic_enc'] = HdWalletSweepService::encryptSecret($val['phrase']);
+                    $config['hd_mnemonic_hint'] = $val['masked'];
+                } elseif (!empty($existingConfig['hd_mnemonic_enc'])) {
+                    $config['hd_mnemonic_enc'] = $existingConfig['hd_mnemonic_enc'];
+                    $config['hd_mnemonic_hint'] = $existingConfig['hd_mnemonic_hint'] ?? '•••••••••••• (Encrypted)';
+                }
+
                 if (!empty($input['supported_coins']) && is_array($input['supported_coins'])) {
                     $config['supported_coins'] = $input['supported_coins'];
                 }
                 $config = array_merge($existingConfig, $config);
+
+                // If TRON/EVM Trust Wallet addresses are blank & signer is online with phrase, auto-derive index 0
+                $tw = is_array($config['trust_wallets'] ?? null) ? $config['trust_wallets'] : [];
+                if (($config['mode'] ?? '') === 'hd_sweep' && !empty($config['signer_api_key']) && (empty(trim((string)($tw['tron'] ?? ''))) || empty(trim((string)($tw['evm'] ?? ''))))) {
+                    $derived = HdWalletSweepService::deriveTreasuryAddresses($config);
+                    if (!empty($derived['success'])) {
+                        if (empty(trim((string)($tw['tron'] ?? ''))) && !empty($derived['tron'])) {
+                            $tw['tron'] = $derived['tron'];
+                        }
+                        if (empty(trim((string)($tw['evm'] ?? ''))) && !empty($derived['evm'])) {
+                            $tw['evm'] = $derived['evm'];
+                        }
+                        $config['trust_wallets'] = $tw;
+                    }
+                }
             } elseif ($key === 'bachs') {
                 $bachsDefaults = [
                     'api_base_url' => 'https://api.bachs.io',
@@ -2177,11 +2223,12 @@ switch ($action) {
                     $configuredChains[] = strtoupper($c);
                 }
             }
-            if (empty($configuredChains) && empty(trim((string)($conf['wallet_address'] ?? '')))) {
-                respondJson(['success' => false, 'error' => 'No Trust Wallet addresses configured yet. Open Configure → enter your TRON/EVM/BTC/SOL Trust Wallet addresses.'], 400);
+            if (empty($configuredChains) && empty(trim((string)($conf['wallet_address'] ?? ''))) && !($mode === 'hd_sweep' && !empty($conf['hd_mnemonic_enc']))) {
+                respondJson(['success' => false, 'error' => 'No Trust Wallet addresses or Secret Recovery Phrase configured yet. Open Configure → enter your Trust Wallet Secret Phrase or TRON/EVM/BTC/SOL addresses.'], 400);
             }
 
             if ($mode === 'hd_sweep') {
+                require_once __DIR__ . '/../crypto/HdWalletSweepService.php';
                 $signerUrl = rtrim(trim((string)($conf['signer_url'] ?? 'http://127.0.0.1:3105')), '/');
                 $signerKey = trim((string)($conf['signer_api_key'] ?? ''));
                 if (!$signerKey) {
@@ -2199,25 +2246,22 @@ switch ($action) {
                     respondJson(['success' => false, 'error' => "HD Signer offline at {$signerUrl}: {$healthErr}"], 500);
                 }
 
-                // 2. Verify Bearer auth + live BIP-44 derivation (index 0)
-                $ch2 = curl_init($signerUrl . '/derive-address');
-                curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch2, CURLOPT_POST, true);
-                curl_setopt($ch2, CURLOPT_POSTFIELDS, json_encode(['network' => 'bsc', 'index' => 0]));
-                curl_setopt($ch2, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $signerKey]);
-                curl_setopt($ch2, CURLOPT_TIMEOUT, 8);
-                $drvRaw = curl_exec($ch2);
-                $drvCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
-                curl_close($ch2);
-                $drvJson = json_decode((string)$drvRaw, true);
+                // 2. Verify Bearer auth + live BIP-44 derivation (index 1 sample + index 0 Trust Wallet treasury)
+                $drvJson = HdWalletSweepService::callSigner($conf, '/derive-address', ['network' => 'bsc', 'index' => 1]);
+                $trsJson = HdWalletSweepService::deriveTreasuryAddresses($conf);
 
-                if ($drvCode !== 200 || empty($drvJson['success'])) {
-                    respondJson(['success' => false, 'error' => 'HD Signer auth failed (HTTP ' . $drvCode . '): ' . ($drvJson['error'] ?? 'Check SIGNER_API_KEY match')], 400);
+                if (empty($drvJson['success'])) {
+                    respondJson(['success' => false, 'error' => 'HD Signer derivation failed: ' . ($drvJson['error'] ?? 'Check SIGNER_API_KEY & Trust Wallet Secret Phrase')], 400);
                 }
+
+                $phraseLabel = !empty($conf['hd_mnemonic_enc']) ? 'Encrypted Admin Phrase' : 'Signer .env Phrase';
+                $trsSummary = !empty($trsJson['success'])
+                    ? (" | Trust TRON: " . ($trsJson['tron'] ?? '-') . " | Trust EVM: " . ($trsJson['evm'] ?? '-'))
+                    : (" | Trust Wallets: " . implode(', ', $configuredChains));
 
                 respondJson([
                     'success' => true,
-                    'message' => 'HD Wallet Signer ONLINE & Authenticated! Sample HD Address: ' . $drvJson['address'] . ' | Trust Wallets: ' . implode(', ', $configuredChains)
+                    'message' => "HD Wallet Signer ONLINE ({$phraseLabel})! Sample Order #1 EVM: " . $drvJson['address'] . $trsSummary
                 ]);
             }
 
@@ -2227,6 +2271,53 @@ switch ($action) {
             ]);
         } else {
             respondJson(['success' => false, 'error' => "Unknown gateway {$key}"], 400);
+        }
+        break;
+
+    case 'derive-trust-wallets':
+        try {
+            require_once __DIR__ . '/../crypto/HdWalletSweepService.php';
+            $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $existStmt = $db->prepare("SELECT config_json FROM payment_gateways WHERE gateway_key = 'crypto' LIMIT 1");
+            $existStmt->execute();
+            $existingConfig = json_decode((string)($existStmt->fetchColumn() ?: '{}'), true) ?: [];
+
+            $signerUrl = trim((string)($input['signer_url'] ?? $existingConfig['signer_url'] ?? 'http://127.0.0.1:3105'));
+            $signerKey = trim((string)($input['signer_api_key'] ?? ''));
+            if ($signerKey === '' || strpos($signerKey, '••••') !== false) {
+                $signerKey = trim((string)($existingConfig['signer_api_key'] ?? ''));
+            }
+            if ($signerKey === '') {
+                respondJson(['success' => false, 'error' => 'Signer API Key is required. Enter or generate one matching signer-service/.env.'], 400);
+            }
+
+            $rawPhrase = trim((string)($input['hd_mnemonic'] ?? ''));
+            $overridePhrase = null;
+            if ($rawPhrase !== '' && strpos($rawPhrase, '••••') === false) {
+                $val = HdWalletSweepService::validateMnemonic($rawPhrase);
+                if (empty($val['valid'])) {
+                    respondJson(['success' => false, 'error' => $val['error'] ?? 'Invalid 12/24-word secret phrase.'], 400);
+                }
+                $overridePhrase = $val['phrase'];
+            }
+
+            $cfg = array_merge($existingConfig, [
+                'signer_url' => $signerUrl,
+                'signer_api_key' => $signerKey
+            ]);
+            $res = HdWalletSweepService::deriveTreasuryAddresses($cfg, $overridePhrase);
+            if (empty($res['success'])) {
+                respondJson(['success' => false, 'error' => $res['error'] ?? 'Failed to derive Trust Wallet addresses from signer.'], 400);
+            }
+
+            respondJson([
+                'success' => true,
+                'tron' => $res['tron'] ?? '',
+                'evm' => $res['evm'] ?? '',
+                'paths' => $res['paths'] ?? []
+            ]);
+        } catch (Throwable $e) {
+            respondJson(['success' => false, 'error' => $e->getMessage()], 500);
         }
         break;
 
