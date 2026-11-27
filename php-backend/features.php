@@ -29,6 +29,12 @@ try {
         }
     }
 } catch (Throwable $e) {}
+if ($landingLogoUrl === '/brand-logo.png' && is_file(__DIR__ . '/brand-logo.png')) {
+    $landingLogoUrl = '/brand-logo.png?v=' . @filemtime(__DIR__ . '/brand-logo.png');
+}
+if ($landingFaviconUrl === '/favicon.ico' && is_file(__DIR__ . '/favicon.ico')) {
+    $landingFaviconUrl = '/favicon.ico?v=' . @filemtime(__DIR__ . '/favicon.ico');
+}
 
 // Load dynamic features list
 $allFeatures = [];
@@ -499,7 +505,7 @@ $activeCategory = strtolower($_GET['category'] ?? 'all');
     <nav class="navbar">
         <div class="container nav-inner">
             <a href="/" class="logo" style="display: flex; align-items: center;">
-                <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+                <img src="<?php echo $landingLogoUrl; ?>" alt="AntiProfiles Logo" class="brand-logo-img" style="height: 44px; width: auto; max-width: 240px; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
             </a>
             <ul class="nav-links">
                 <li><a href="/">Home</a></li>

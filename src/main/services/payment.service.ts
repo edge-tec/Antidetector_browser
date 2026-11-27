@@ -158,6 +158,21 @@ export class PaymentService {
 
         INSERT OR IGNORE INTO global_trial_settings (id, is_enabled, trial_duration_days, default_plan_id, applies_to_packages)
         VALUES ('global_trial_config', 1, 7, 'plan_starter', 'all');
+
+        INSERT OR IGNORE INTO payment_gateways (
+          id, gateway_key, name, is_enabled, is_test_mode, public_key, secret_key, webhook_secret, currency, config_json
+        ) VALUES (
+          'gw_bachs',
+          'bachs',
+          'Bachs.io (Global Cards, Bank Transfer, Mobile Money & Stablecoins)',
+          0,
+          1,
+          '',
+          '',
+          '',
+          'USD',
+          '{"api_base_url":"https://api.bachs.io","sandbox_api_base_url":"https://sandbox-api.bachs.io","checkout_endpoint":"/v1/checkout-sessions","checkout_title":"AntiProfiles Subscription","adaptive_pricing":true,"payment_methods":["card","bank_transfer","mobile_money","crypto"],"product_ids":{}}'
+        );
       `)
     } catch {}
   }
@@ -739,6 +754,181 @@ export class PaymentService {
       success: true,
       mode: secret.startsWith('sk_live_') ? 'live' : 'test',
       message: `Connected to Stripe (${secret.startsWith('sk_live_') ? 'LIVE' : 'TEST'} mode). Automatic Webhook & Session Verification active.`,
+      webhookReady
+    }
+  }
+
+  /**
+   * Direct HTTPS JSON request helper for Bachs.io REST API (`https://api.bachs.io` / `https://sandbox-api.bachs.io`).
+   */
+  public callBachsRestApi(
+    secretKey: string,
+    endpoint: string,
+    method: 'GET' | 'POST' = 'GET',
+    bodyObj?: Record<string, any>,
+    isSandbox = false,
+    customBaseUrl?: string
+  ): Promise<{ success: boolean; statusCode: number; data?: any; error?: string; baseUrl: string }> {
+    return new Promise((resolve) => {
+      const secret = secretKey.trim()
+      const useSandbox = isSandbox || secret.startsWith('sk_sandbox_') || secret.startsWith('sk_test_')
+      const baseUrl = (customBaseUrl || (useSandbox ? 'https://sandbox-api.bachs.io' : 'https://api.bachs.io')).replace(/\/+$/, '')
+      let parsed: URL
+      try {
+        parsed = new URL(`${baseUrl}/${endpoint.replace(/^\/+/, '')}`)
+      } catch (err: any) {
+        return resolve({ success: false, statusCode: 0, error: `Invalid Bachs.io URL: ${err.message}`, baseUrl })
+      }
+
+      const payloadStr = method === 'POST' && bodyObj ? JSON.stringify(bodyObj) : ''
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${secret}`,
+        Accept: 'application/json',
+        'User-Agent': 'AntiProfiles-Bachs/1.0'
+      }
+      if (method === 'POST') {
+        headers['Content-Type'] = 'application/json'
+        headers['Content-Length'] = Buffer.byteLength(payloadStr).toString()
+      }
+
+      const req = https.request(
+        {
+          hostname: parsed.hostname,
+          port: parsed.port || 443,
+          path: parsed.pathname + parsed.search,
+          method,
+          headers,
+          timeout: 15000
+        },
+        (res) => {
+          let raw = ''
+          res.setEncoding('utf8')
+          res.on('data', (chunk) => { raw += chunk })
+          res.on('end', () => {
+            const statusCode = res.statusCode || 500
+            try {
+              const json = JSON.parse(raw || '{}')
+              if (statusCode >= 200 && statusCode < 300) {
+                resolve({ success: true, statusCode, data: json, baseUrl })
+              } else {
+                const msg = json?.error?.message || json?.message || json?.detail || `Bachs.io API HTTP ${statusCode}`
+                resolve({ success: false, statusCode, data: json, error: String(msg), baseUrl })
+              }
+            } catch (e: any) {
+              resolve({ success: false, statusCode, error: `Invalid Bachs.io JSON response: ${e.message}`, baseUrl })
+            }
+          })
+        }
+      )
+
+      req.on('error', (err) => {
+        resolve({ success: false, statusCode: 0, error: `Bachs.io network error: ${err.message}`, baseUrl })
+      })
+      req.on('timeout', () => {
+        req.destroy()
+        resolve({ success: false, statusCode: 0, error: 'Bachs.io API request timed out', baseUrl })
+      })
+
+      if (method === 'POST' && payloadStr) {
+        req.write(payloadStr)
+      }
+      req.end()
+    })
+  }
+
+  /**
+   * Verify Bachs.io Webhook HMAC-SHA256 Signature (`X-Bachs-Signature` + `X-Bachs-Timestamp`).
+   */
+  public verifyBachsWebhookSignature(
+    rawPayload: string,
+    sigHeader: string,
+    timestampHeader: string,
+    secret: string,
+    toleranceSeconds = 600
+  ): boolean {
+    const cleanSecret = (secret || '').trim()
+    const cleanSig = (sigHeader || '').trim()
+    let timestamp = (timestampHeader || '').trim()
+    if (!rawPayload || !cleanSig || !cleanSecret) return false
+
+    const candidates: string[] = []
+    if (cleanSig.includes('=') && (cleanSig.includes(',') || cleanSig.includes('v1=') || cleanSig.includes('t='))) {
+      for (const item of cleanSig.split(',')) {
+        const [k, v] = item.trim().split('=', 2)
+        if (k === 't' && v) timestamp = v.trim()
+        else if (['v1', 'v2', 'sha256', 'sig'].includes((k || '').toLowerCase()) && v) candidates.push(v.trim())
+      }
+    } else {
+      candidates.push(cleanSig.replace(/^(sha256=|v1=|v2=)/i, ''))
+    }
+    if (!candidates.length) return false
+
+    if (timestamp && /^\d+$/.test(timestamp) && toleranceSeconds > 0) {
+      const tsNum = parseInt(timestamp, 10)
+      if (Math.abs(Math.floor(Date.now() / 1000) - tsNum) > toleranceSeconds) return false
+    }
+
+    const expectedHex: string[] = []
+    if (timestamp) {
+      expectedHex.push(crypto.createHmac('sha256', cleanSecret).update(`${timestamp}.${rawPayload}`, 'utf8').digest('hex'))
+    }
+    expectedHex.push(crypto.createHmac('sha256', cleanSecret).update(rawPayload, 'utf8').digest('hex'))
+
+    for (const sig of candidates) {
+      for (const exp of expectedHex) {
+        if (/^[a-f0-9]{64}$/i.test(sig) && crypto.timingSafeEqual(Buffer.from(exp, 'hex'), Buffer.from(sig, 'hex'))) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  /**
+   * Test Live or Sandbox Bachs.io API credentials against `/v1/balances` (fallback `/v1/products?limit=1`).
+   */
+  public async testBachsConnection(): Promise<{
+    success: boolean
+    mode: 'live' | 'sandbox'
+    message: string
+    webhookReady: boolean
+  }> {
+    const gw = this.getAllGateways().find((g) => g.gateway_key === 'bachs')
+    if (!gw) {
+      return { success: false, mode: 'sandbox', message: 'Bachs.io gateway not found.', webhookReady: false }
+    }
+    const secret = (gw.secret_key || '').trim()
+    const webhookReady = Boolean(gw.webhook_secret && gw.webhook_secret.trim().length >= 8)
+    const isSandbox = gw.is_test_mode || secret.startsWith('sk_sandbox_') || secret.startsWith('sk_test_')
+    const cfg = gw.parsed_config || {}
+    const customBase = isSandbox ? cfg.sandbox_api_base_url : cfg.api_base_url
+
+    if (!secret || secret.length < 12) {
+      return {
+        success: false,
+        mode: isSandbox ? 'sandbox' : 'live',
+        message: 'Bachs.io Secret API Key is not configured yet. Paste your sk_live_... or sk_sandbox_... key from https://app.bachs.io.',
+        webhookReady
+      }
+    }
+
+    let res = await this.callBachsRestApi(secret, '/v1/balances', 'GET', undefined, isSandbox, customBase)
+    if (!res.success && res.statusCode !== 401 && res.statusCode !== 403) {
+      res = await this.callBachsRestApi(secret, '/v1/products?limit=1', 'GET', undefined, isSandbox, customBase)
+    }
+    if (!res.success) {
+      return {
+        success: false,
+        mode: isSandbox ? 'sandbox' : 'live',
+        message: `Bachs.io authentication failed (${res.baseUrl}): ${res.error}`,
+        webhookReady
+      }
+    }
+
+    return {
+      success: true,
+      mode: isSandbox ? 'sandbox' : 'live',
+      message: `Connected to Bachs.io (${isSandbox ? 'SANDBOX' : 'LIVE'} — ${res.baseUrl}). ${webhookReady ? 'Webhook secret configured.' : 'Add whsec_... webhook secret for instant fulfillment.'}`,
       webhookReady
     }
   }

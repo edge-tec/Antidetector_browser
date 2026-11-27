@@ -93,6 +93,26 @@ export function up(db: Database.Database): void {
       })
     },
     {
+      id: 'gw_bachs',
+      gateway_key: 'bachs',
+      name: 'Bachs.io (Global Cards, Bank Transfer, Mobile Money & Stablecoins)',
+      is_enabled: 0,
+      is_test_mode: 1,
+      public_key: '',
+      secret_key: '',
+      webhook_secret: '',
+      currency: 'USD',
+      config_json: JSON.stringify({
+        api_base_url: 'https://api.bachs.io',
+        sandbox_api_base_url: 'https://sandbox-api.bachs.io',
+        checkout_endpoint: '/v1/checkout-sessions',
+        checkout_title: 'AntiProfiles Subscription',
+        adaptive_pricing: true,
+        payment_methods: ['card', 'bank_transfer', 'mobile_money', 'crypto'],
+        product_ids: {}
+      })
+    },
+    {
       id: 'gw_crypto',
       gateway_key: 'crypto',
       name: 'Cryptocurrency (USDT TRC20 / ERC20, BTC, ETH)',

@@ -328,6 +328,7 @@ function ensureDatabaseTablesExist() {
                 INSERT INTO `payment_gateways` (`id`, `gateway_key`, `name`, `is_enabled`, `is_test_mode`, `public_key`, `secret_key`, `webhook_secret`, `currency`, `config_json`)
                 VALUES
                 ('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{\"checkout_title\":\"AntiProfiles Subscription\",\"allow_promotion_codes\":true,\"billing_address_collection\":\"auto\"}'),
+                ('gw_bachs', 'bachs', 'Bachs.io', 0, 1, '', '', '', 'USD', '{\"api_base_url\":\"https://api.bachs.io\",\"sandbox_api_base_url\":\"https://sandbox-api.bachs.io\",\"checkout_endpoint\":\"/v1/checkout-sessions\",\"checkout_title\":\"AntiProfiles Subscription\",\"adaptive_pricing\":true,\"payment_methods\":[\"card\",\"bank_transfer\",\"mobile_money\",\"crypto\"],\"product_ids\":{}}'),
                 ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{\"provider\":\"nowpayments\",\"supported_coins\":[\"BTC\",\"ETH\",\"USDT\",\"USDC\"],\"network\":\"TRC20,ERC20,BTC\",\"min_amount\":10,\"confirmations_required\":2}')
                 ON DUPLICATE KEY UPDATE `id`=`id`;
             ");

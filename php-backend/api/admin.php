@@ -1713,24 +1713,21 @@ switch ($action) {
     case 'get-payment-gateways':
         try {
             ensureDatabaseTablesExist();
-            $stmt = $db->prepare("SELECT * FROM payment_gateways ORDER BY gateway_key ASC");
+
+            // Always ensure built-in gateways (Stripe, Bachs.io, Crypto) exist without overwriting saved credentials
+            try {
+                $db->exec("
+                    INSERT IGNORE INTO `payment_gateways` (`id`, `gateway_key`, `name`, `is_enabled`, `is_test_mode`, `public_key`, `secret_key`, `webhook_secret`, `currency`, `config_json`)
+                    VALUES
+                    ('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{\"checkout_title\":\"AntiProfiles Subscription\",\"allow_promotion_codes\":true,\"billing_address_collection\":\"auto\"}'),
+                    ('gw_bachs', 'bachs', 'Bachs.io', 0, 1, '', '', '', 'USD', '{\"api_base_url\":\"https://api.bachs.io\",\"sandbox_api_base_url\":\"https://sandbox-api.bachs.io\",\"checkout_endpoint\":\"/v1/checkout-sessions\",\"checkout_title\":\"AntiProfiles Subscription\",\"adaptive_pricing\":true,\"payment_methods\":[\"card\",\"bank_transfer\",\"mobile_money\",\"crypto\"],\"product_ids\":{}}'),
+                    ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{\"provider\":\"nowpayments\",\"supported_coins\":[\"BTC\",\"ETH\",\"USDT\",\"USDC\"],\"network\":\"TRC20,ERC20,BTC\",\"min_amount\":10,\"confirmations_required\":2}');
+                ");
+            } catch (Throwable $e) {}
+
+            $stmt = $db->prepare("SELECT * FROM payment_gateways ORDER BY FIELD(gateway_key, 'bachs', 'stripe', 'crypto'), gateway_key ASC");
             $stmt->execute();
             $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Re-seed default gateways if empty
-            if (empty($gateways)) {
-                try {
-                    $db->exec("
-                        INSERT INTO `payment_gateways` (`id`, `gateway_key`, `name`, `is_enabled`, `is_test_mode`, `public_key`, `secret_key`, `webhook_secret`, `currency`, `config_json`)
-                        VALUES
-                        ('gw_stripe', 'stripe', 'Stripe', 0, 1, '', '', '', 'USD', '{\"checkout_title\":\"ProfileVault Subscription\",\"allow_promotion_codes\":true,\"billing_address_collection\":\"auto\"}'),
-                        ('gw_crypto', 'crypto', 'Cryptocurrency', 0, 1, '', '', '', 'USD', '{\"provider\":\"nowpayments\",\"supported_coins\":[\"BTC\",\"ETH\",\"USDT\",\"USDC\"],\"network\":\"TRC20,ERC20,BTC\",\"min_amount\":10,\"confirmations_required\":2}')
-                        ON DUPLICATE KEY UPDATE `id`=`id`;
-                    ");
-                    $stmt->execute();
-                    $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                } catch (Throwable $e) {}
-            }
 
             // Mask secrets safely before returning to Admin UI
             foreach ($gateways as &$gw) {
@@ -1823,6 +1820,21 @@ switch ($action) {
                     $config['supported_coins'] = $input['supported_coins'];
                 }
                 $config = array_merge($existingConfig, $config);
+            } elseif ($key === 'bachs') {
+                $bachsDefaults = [
+                    'api_base_url' => 'https://api.bachs.io',
+                    'sandbox_api_base_url' => 'https://sandbox-api.bachs.io',
+                    'checkout_endpoint' => '/v1/checkout-sessions',
+                    'checkout_title' => 'AntiProfiles Subscription',
+                    'adaptive_pricing' => true,
+                    'payment_methods' => ['card', 'bank_transfer', 'mobile_money', 'crypto'],
+                    'product_ids' => []
+                ];
+                $config = array_merge($bachsDefaults, $existingConfig, $config);
+                $config['api_base_url'] = rtrim(trim((string)($config['api_base_url'] ?: 'https://api.bachs.io')), '/');
+                $config['sandbox_api_base_url'] = rtrim(trim((string)($config['sandbox_api_base_url'] ?: 'https://sandbox-api.bachs.io')), '/');
+                $ep = trim((string)($config['checkout_endpoint'] ?: '/v1/checkout-sessions'));
+                $config['checkout_endpoint'] = '/' . ltrim($ep, '/');
             }
 
             // Ensure payment_gateways table has all required columns
@@ -1831,11 +1843,12 @@ switch ($action) {
 
             if (!$existing) {
                 $gwId = 'gw_' . $key;
+                $gwDisplayName = $key === 'bachs' ? 'Bachs.io' : ucfirst($key);
                 $ins = $db->prepare("
                     INSERT INTO payment_gateways (id, gateway_key, name, is_enabled, is_test_mode, public_key, secret_key, webhook_secret, currency, config_json)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                $ins->execute([$gwId, $key, ucfirst($key), $isEnabled, $isTestMode, $publicKey, $secretKey, $webhookSecret, $currency, json_encode($config)]);
+                $ins->execute([$gwId, $key, $gwDisplayName, $isEnabled, $isTestMode, $publicKey, $secretKey, $webhookSecret, $currency, json_encode($config)]);
             } else {
                 $upd = $db->prepare("
                     UPDATE payment_gateways SET
@@ -1880,7 +1893,7 @@ switch ($action) {
     case 'toggle-payment-gateway':
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $key = trim($input['gateway_key'] ?? $input['key'] ?? '');
-        $enable = (int)(bool)($input['enable'] ?? false);
+        $enable = (int)(bool)($input['enable'] ?? $input['is_enabled'] ?? false);
 
         $upd = $db->prepare("UPDATE payment_gateways SET is_enabled = ? WHERE gateway_key = ?");
         $upd->execute([$enable, $key]);
@@ -1942,6 +1955,83 @@ switch ($action) {
                     'error' => 'Stripe API authentication error: ' . ($json['error']['message'] ?? "HTTP Code $code")
                 ], 400);
             }
+        } elseif ($key === 'bachs') {
+            $secret = trim($gw['secret_key'] ?? '');
+            if (!$secret) {
+                respondJson(['success' => false, 'error' => 'Bachs.io Secret API Key is not configured yet. Open Configure → paste your sk_live_... or sk_sandbox_... key from https://app.bachs.io.'], 400);
+            }
+
+            $conf = json_decode($gw['config_json'] ?? '{}', true) ?: [];
+            $isSandbox = !empty($gw['is_test_mode']) || stripos($secret, 'sk_sandbox_') === 0 || stripos($secret, 'sk_test_') === 0;
+            $baseUrl = $isSandbox
+                ? rtrim(trim((string)($conf['sandbox_api_base_url'] ?? 'https://sandbox-api.bachs.io')), '/')
+                : rtrim(trim((string)($conf['api_base_url'] ?? 'https://api.bachs.io')), '/');
+
+            $t0 = microtime(true);
+            $probeEndpoints = ['/v1/balances', '/v1/products?limit=1'];
+            $lastCode = 0;
+            $lastErr = '';
+            $lastJson = null;
+            $verified = false;
+            $verifiedEndpoint = '';
+
+            foreach ($probeEndpoints as $ep) {
+                $ch = curl_init($baseUrl . $ep);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Authorization: Bearer ' . $secret,
+                    'Accept: application/json',
+                    'User-Agent: AntiProfiles-Bachs/1.0'
+                ]);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                $res = curl_exec($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $err = curl_error($ch);
+                curl_close($ch);
+
+                if ($err) {
+                    $lastErr = $err;
+                    break;
+                }
+                $lastCode = $code;
+                $lastJson = json_decode((string)$res, true);
+                if ($code >= 200 && $code < 300) {
+                    $verified = true;
+                    $verifiedEndpoint = $ep;
+                    break;
+                }
+                // Stop immediately on 401/403 authentication errors
+                if ($code === 401 || $code === 403) {
+                    break;
+                }
+            }
+
+            $latencyMs = (int)round((microtime(true) - $t0) * 1000);
+            if ($lastErr) {
+                respondJson(['success' => false, 'error' => "Bachs.io connection failed ({$baseUrl}): {$lastErr}"], 500);
+            }
+
+            if ($verified) {
+                $envLabel = $isSandbox ? 'SANDBOX' : 'LIVE';
+                $whStatus = !empty(trim((string)($gw['webhook_secret'] ?? ''))) ? 'Webhook Secret Configured' : 'Webhook Secret Not Set Yet';
+                respondJson([
+                    'success' => true,
+                    'message' => "Bachs.io {$envLabel} API verified ({$baseUrl}{$verifiedEndpoint})! {$whStatus}.",
+                    'environment' => $envLabel,
+                    'base_url' => $baseUrl,
+                    'currency' => $gw['currency'] ?: 'USD',
+                    'latency_ms' => $latencyMs
+                ]);
+            }
+
+            $apiMsg = $lastJson['error']['message'] ?? $lastJson['message'] ?? $lastJson['detail'] ?? "HTTP {$lastCode}";
+            respondJson([
+                'success' => false,
+                'error' => "Bachs.io API authentication/endpoint error ({$baseUrl}): {$apiMsg}",
+                'http_code' => $lastCode,
+                'latency_ms' => $latencyMs
+            ], 400);
         } elseif ($key === 'crypto') {
             $conf = json_decode($gw['config_json'] ?? '{}', true) ?: [];
             $provider = strtolower(trim((string)($conf['provider'] ?? 'inhouse')));

@@ -176,6 +176,20 @@ export function registerPaymentIpcHandlers(): void {
     }
   })
 
+  // 13B. Admin: Test Live/Sandbox Bachs.io Connection (app.bachs.io)
+  ipcMain.handle('admin:test-bachs-connection', async (_event, sessionToken: string) => {
+    const auth = authorizeUser(sessionToken, { requireAdmin: true })
+    if (auth.error || !auth.user) {
+      return { success: false, error: auth.error || 'Admin access required.' }
+    }
+    try {
+      const data = await paymentService.testBachsConnection()
+      return { success: data.success, data, error: data.success ? undefined : data.message }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
   // 14. Admin: Trigger Stripe Auto-Verify Sweep on Pending Invoices
   ipcMain.handle('admin:run-stripe-autoverify-sweep', async (_event, sessionToken: string) => {
     const auth = authorizeUser(sessionToken, { requireAdmin: true })

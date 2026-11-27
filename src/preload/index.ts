@@ -91,6 +91,7 @@ const api = {
   dispatchStripeWebhook: (rawPayload: string, sigHeader: string) =>
     ipcRenderer.invoke('payment:stripe-webhook', rawPayload, sigHeader),
   adminTestStripeConnection: (token: string) => ipcRenderer.invoke('admin:test-stripe-connection', token),
+  adminTestBachsConnection: (token: string) => ipcRenderer.invoke('admin:test-bachs-connection', token),
   adminRunStripeAutoVerifySweep: (token: string) => ipcRenderer.invoke('admin:run-stripe-autoverify-sweep', token),
   adminListStripeWebhookEvents: (token: string, limit?: number) =>
     ipcRenderer.invoke('admin:list-stripe-webhook-events', token, limit),

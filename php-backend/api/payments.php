@@ -1,7 +1,7 @@
 <?php
 // ──────────────────────────────────────────────
 // ProfileVault — Central Production Payment Gateway & Webhook API
-// Supports: Stripe + In-House Direct-to-TrustWallet Multi-Crypto Gateway
+// Supports: Bachs.io (app.bachs.io) + Stripe + In-House Direct-to-TrustWallet Multi-Crypto Gateway
 // ──────────────────────────────────────────────
 
 require_once __DIR__ . '/../helpers.php';
@@ -97,6 +97,154 @@ function verifyStripeWebhookSignature(string $rawPayload, string $sigHeader, str
     foreach ($signatures as $sig) {
         if (hash_equals($computedSig, $sig)) {
             return true;
+        }
+    }
+    return false;
+}
+
+// Helper: Call Bachs.io API (https://api.bachs.io or https://sandbox-api.bachs.io)
+function callBachsApi(
+    string $secretKey,
+    string $endpoint,
+    string $method = 'POST',
+    array $data = [],
+    bool $isTestMode = false,
+    array $config = [],
+    ?string $idempotencyKey = null
+): array {
+    $secret = trim($secretKey);
+    $useSandbox = $isTestMode || stripos($secret, 'sk_sandbox_') === 0 || stripos($secret, 'sk_test_') === 0;
+    $baseUrl = $useSandbox
+        ? rtrim(trim((string)($config['sandbox_api_base_url'] ?? 'https://sandbox-api.bachs.io')), '/')
+        : rtrim(trim((string)($config['api_base_url'] ?? 'https://api.bachs.io')), '/');
+
+    $url = $baseUrl . '/' . ltrim($endpoint, '/');
+    $ch = curl_init();
+
+    $headers = [
+        'Authorization: Bearer ' . $secret,
+        'Accept: application/json',
+        'Content-Type: application/json',
+        'User-Agent: AntiProfiles-Bachs/1.0'
+    ];
+    if ($idempotencyKey) {
+        $headers[] = 'Idempotency-Key: ' . $idempotencyKey;
+    }
+
+    $upperMethod = strtoupper($method);
+    if ($upperMethod === 'POST' || $upperMethod === 'PUT' || $upperMethod === 'PATCH') {
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $upperMethod);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_SLASHES));
+    } elseif (!empty($data)) {
+        $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($data);
+    }
+
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlError) {
+        return ['success' => false, 'error' => 'Bachs.io connection failed: ' . $curlError, 'httpCode' => $httpCode, 'baseUrl' => $baseUrl];
+    }
+
+    $json = json_decode((string)$response, true);
+    if ($httpCode >= 200 && $httpCode < 300 && is_array($json)) {
+        return ['success' => true, 'data' => $json, 'httpCode' => $httpCode, 'baseUrl' => $baseUrl];
+    }
+
+    $errMsg = 'Bachs.io API returned HTTP ' . $httpCode;
+    if (is_array($json)) {
+        if (!empty($json['error']['message'])) {
+            $errMsg = (string)$json['error']['message'];
+        } elseif (!empty($json['message'])) {
+            $errMsg = is_array($json['message']) ? implode('; ', $json['message']) : (string)$json['message'];
+        } elseif (!empty($json['detail'])) {
+            $errMsg = is_array($json['detail']) ? json_encode($json['detail']) : (string)$json['detail'];
+        }
+    }
+    return ['success' => false, 'error' => $errMsg, 'data' => $json, 'httpCode' => $httpCode, 'baseUrl' => $baseUrl];
+}
+
+// Helper: Verify Bachs.io Webhook Cryptographic HMAC-SHA256 Signature
+// Supports X-Bachs-Signature / X-Bachs-Signature-V2 + X-Bachs-Timestamp ({timestamp}.{raw_body})
+function verifyBachsWebhookSignature(
+    string $rawPayload,
+    string $sigHeader,
+    string $timestampHeader,
+    string $secret,
+    int $toleranceSeconds = 600
+): bool {
+    $secret = trim($secret);
+    $sigHeader = trim($sigHeader);
+    $timestampHeader = trim($timestampHeader);
+    if ($rawPayload === '' || $sigHeader === '' || $secret === '') {
+        return false;
+    }
+
+    $timestamp = $timestampHeader;
+    $candidateSigs = [];
+
+    // Format A: Composite header like "t=1700000000,v1=abcdef..."
+    if (strpos($sigHeader, '=') !== false && (strpos($sigHeader, ',') !== false || strpos($sigHeader, 'v1=') !== false || strpos($sigHeader, 't=') !== false)) {
+        foreach (explode(',', $sigHeader) as $item) {
+            $parts = explode('=', trim($item), 2);
+            if (count($parts) === 2) {
+                $k = strtolower(trim($parts[0]));
+                $v = trim($parts[1]);
+                if ($k === 't' && $v !== '') {
+                    $timestamp = $v;
+                } elseif (in_array($k, ['v1', 'v2', 'sha256', 'sig'], true) && $v !== '') {
+                    $candidateSigs[] = $v;
+                }
+            }
+        }
+    } else {
+        // Format B: Direct hex/base64 signature, optionally prefixed with "sha256=" or "v1="
+        $cleanSig = preg_replace('/^(sha256=|v1=|v2=)/i', '', $sigHeader);
+        if ($cleanSig !== '') {
+            $candidateSigs[] = $cleanSig;
+        }
+    }
+
+    if (empty($candidateSigs)) {
+        return false;
+    }
+
+    // Replay attack protection when timestamp is supplied
+    if ($timestamp !== '' && ctype_digit($timestamp) && $toleranceSeconds > 0) {
+        if (abs(time() - (int)$timestamp) > $toleranceSeconds) {
+            return false;
+        }
+    }
+
+    // Expected HMACs: primary Bachs spec "{timestamp}.{raw_body}", plus raw-body fallback when no timestamp header is sent
+    $expectedHexList = [];
+    $expectedB64List = [];
+    if ($timestamp !== '') {
+        $signedMsg = $timestamp . '.' . $rawPayload;
+        $expectedHexList[] = hash_hmac('sha256', $signedMsg, $secret);
+        $expectedB64List[] = base64_encode(hash_hmac('sha256', $signedMsg, $secret, true));
+    }
+    $expectedHexList[] = hash_hmac('sha256', $rawPayload, $secret);
+    $expectedB64List[] = base64_encode(hash_hmac('sha256', $rawPayload, $secret, true));
+
+    foreach ($candidateSigs as $sig) {
+        foreach ($expectedHexList as $expHex) {
+            if (hash_equals(strtolower($expHex), strtolower($sig))) {
+                return true;
+            }
+        }
+        foreach ($expectedB64List as $expB64) {
+            if (hash_equals($expB64, $sig)) {
+                return true;
+            }
         }
     }
     return false;
@@ -867,6 +1015,146 @@ switch ($action) {
                 'amount' => $amount,
                 'currency' => $gw['currency'] ?: 'USD'
             ]);
+        } elseif ($gatewayKey === 'bachs') {
+            $secretKey = trim($gw['secret_key'] ?? '');
+            $bachsCfg = is_array($gw['config']) ? $gw['config'] : [];
+            $isSandbox = !empty($gw['is_test_mode']);
+            $currency = strtoupper(trim((string)($gw['currency'] ?: 'USD')));
+
+            $baseUrl = defined('APP_BASE_URL') && APP_BASE_URL
+                ? APP_BASE_URL
+                : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https') . '://' . ($_SERVER['HTTP_HOST'] ?? 'antiprofiles.com'));
+            $successUrl = rtrim($baseUrl, '/') . '/?payment_status=success&gateway=bachs&invoice=' . urlencode($invNumber) . '#pricing';
+            $cancelUrl = rtrim($baseUrl, '/') . '/?payment_status=cancelled&gateway=bachs&invoice=' . urlencode($invNumber) . '#pricing';
+
+            // Sandbox Demo fallback when Secret Key is not entered yet in Test Mode
+            if (!$secretKey || strpos($secretKey, 'placeholder') !== false || strlen($secretKey) < 12) {
+                if ($isSandbox) {
+                    $res = processSuccessfulPayment(
+                        $db,
+                        'bachs',
+                        'bachs_sandbox_' . $invId,
+                        'collection.succeeded',
+                        $invNumber,
+                        'bsess_sandbox_' . bin2hex(random_bytes(6)),
+                        'btx_sandbox_' . bin2hex(random_bytes(6)),
+                        $amount,
+                        $currency,
+                        ['payment_method' => 'bachs_sandbox', 'sandbox' => true, 'customer_email' => $user['email'] ?? '']
+                    );
+                    respondJson([
+                        'success' => true,
+                        'type' => 'redirect',
+                        'gateway' => 'bachs',
+                        'invoiceNumber' => $invNumber,
+                        'checkout_url' => $successUrl . '&sandbox=1',
+                        'checkoutUrl' => $successUrl . '&sandbox=1',
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'message' => 'Bachs.io Sandbox test payment completed! Plan activated.',
+                        'result' => $res
+                    ]);
+                } else {
+                    respondJson([
+                        'success' => false,
+                        'error' => 'Bachs.io Secret API Key is not configured yet. Please add your live sk_live_... key in Admin Panel → Payment Gateways → Bachs.io.'
+                    ], 400);
+                }
+            }
+
+            // Build Bachs.io Checkout Session payload (https://docs.bachs.io — POST /v1/checkout-sessions)
+            $checkoutEndpoint = '/' . ltrim(trim((string)($bachsCfg['checkout_endpoint'] ?? '/v1/checkout-sessions')), '/');
+            $productIdsMap = is_array($bachsCfg['product_ids'] ?? null) ? $bachsCfg['product_ids'] : [];
+            $mappedProductId = trim((string)($productIdsMap[$planId] ?? ($bachsCfg['default_product_id'] ?? '')));
+
+            $amountStr = number_format($amount, 2, '.', '');
+            $bachsPayload = [
+                'customer' => [
+                    'email' => (string)($user['email'] ?? ''),
+                    'name' => (string)($user['name'] ?? 'AntiProfiles Customer')
+                ],
+                'reference' => $invNumber,
+                'success_url' => $successUrl,
+                'cancel_url' => $cancelUrl,
+                'return_url' => $successUrl,
+                'metadata' => [
+                    'user_id' => (string)$user['id'],
+                    'invoice_id' => $invId,
+                    'invoice_number' => $invNumber,
+                    'plan_id' => $planId,
+                    'plan_name' => (string)($plan['name'] ?? $planId)
+                ]
+            ];
+
+            if ($mappedProductId !== '') {
+                $bachsPayload['product_cart'] = [
+                    [
+                        'product_id' => $mappedProductId,
+                        'quantity' => 1,
+                        'pricing' => [
+                            'amount' => $amountStr,
+                            'currency' => $currency
+                        ]
+                    ]
+                ];
+            } else {
+                $bachsPayload['pricing'] = [
+                    'amount' => $amountStr,
+                    'currency' => $currency
+                ];
+                $bachsPayload['description'] = ($bachsCfg['checkout_title'] ?? 'AntiProfiles Subscription') . ' — ' . ($plan['name'] ?? $planId);
+            }
+
+            if (isset($bachsCfg['adaptive_pricing'])) {
+                $bachsPayload['adaptive_pricing'] = (bool)$bachsCfg['adaptive_pricing'];
+            }
+
+            $bachsRes = callBachsApi($secretKey, $checkoutEndpoint, 'POST', $bachsPayload, $isSandbox, $bachsCfg, 'chk_' . $invId);
+
+            if (!$bachsRes['success']) {
+                respondJson([
+                    'success' => false,
+                    'error' => 'Bachs.io Checkout Session failed: ' . ($bachsRes['error'] ?? 'Unknown error'),
+                    'details' => $bachsRes['data'] ?? null
+                ], 502);
+            }
+
+            $respData = $bachsRes['data'];
+            $inner = is_array($respData['data'] ?? null) ? $respData['data'] : $respData;
+            $checkoutUrl = (string)($inner['checkout_url'] ?? $inner['url'] ?? $inner['payment_url'] ?? $respData['checkout_url'] ?? $respData['url'] ?? '');
+            $sessionId = (string)($inner['id'] ?? $inner['session_id'] ?? $inner['checkout_session_id'] ?? $inner['payment_id'] ?? $inner['reference'] ?? $respData['id'] ?? '');
+
+            if ($checkoutUrl === '') {
+                respondJson([
+                    'success' => false,
+                    'error' => 'Bachs.io API succeeded but did not return a checkout_url. Please verify your Checkout Endpoint in Admin Panel → Payment Gateways → Bachs.io.',
+                    'response' => $respData
+                ], 502);
+            }
+
+            $bachsMeta = [
+                'bachs' => [
+                    'session_id' => $sessionId,
+                    'reference' => (string)($inner['reference'] ?? $invNumber),
+                    'checkout_url' => $checkoutUrl,
+                    'environment' => $isSandbox ? 'sandbox' : 'live',
+                    'api_base_url' => $bachsRes['baseUrl'] ?? ''
+                ]
+            ];
+            $db->prepare("UPDATE invoices SET transaction_id = ?, metadata = ? WHERE id = ?")
+               ->execute([$sessionId ?: $invNumber, json_encode($bachsMeta), $invId]);
+
+            respondJson([
+                'success' => true,
+                'type' => 'redirect',
+                'gateway' => 'bachs',
+                'invoiceNumber' => $invNumber,
+                'checkout_url' => $checkoutUrl,
+                'checkoutUrl' => $checkoutUrl,
+                'sessionId' => $sessionId,
+                'amount' => $amount,
+                'currency' => $currency
+            ]);
         } elseif ($gatewayKey === 'crypto') {
             $cryptoApiKey = trim($gw['secret_key'] ?? '');
             $provider = strtolower(trim((string)($gw['config']['provider'] ?? 'inhouse')));
@@ -1240,6 +1528,205 @@ switch ($action) {
             'status' => $inv['status'],
             'invoiceNumber' => $inv['invoice_number'],
             'message' => 'Awaiting Stripe payment completion...'
+        ]);
+        break;
+
+    // ── 4C. Official Bachs.io Webhook Handler (app.bachs.io) ──
+    case 'bachs/webhook':
+    case 'bachs-webhook':
+        $rawPayload = file_get_contents('php://input');
+        $sigHeader = $_SERVER['HTTP_X_BACHS_SIGNATURE_V2']
+            ?? $_SERVER['HTTP_X_BACHS_SIGNATURE']
+            ?? $_SERVER['HTTP_BACHS_SIGNATURE']
+            ?? '';
+        $tsHeader = $_SERVER['HTTP_X_BACHS_TIMESTAMP']
+            ?? $_SERVER['HTTP_BACHS_TIMESTAMP']
+            ?? '';
+
+        $gw = getPaymentGatewayConfig($db, 'bachs');
+        if (!$gw || empty(trim((string)($gw['webhook_secret'] ?? '')))) {
+            http_response_code(400);
+            respondJson(['success' => false, 'error' => 'Bachs.io webhook signing secret is not configured in Admin Control Panel.'], 400);
+        }
+
+        // Constant-time HMAC-SHA256 verification on untouched raw request body
+        if (!verifyBachsWebhookSignature($rawPayload, $sigHeader, $tsHeader, (string)$gw['webhook_secret'])) {
+            http_response_code(400);
+            respondJson(['success' => false, 'error' => 'Invalid or forged Bachs.io webhook signature.'], 400);
+        }
+
+        $event = json_decode($rawPayload, true);
+        if (!is_array($event)) {
+            http_response_code(400);
+            respondJson(['success' => false, 'error' => 'Invalid JSON webhook payload.'], 400);
+        }
+
+        $eventType = strtolower(trim((string)($event['event_type'] ?? $event['event'] ?? $event['type'] ?? '')));
+        $eventId = (string)($event['id'] ?? $event['event_id'] ?? ('bachs_evt_' . hash('sha256', $rawPayload)));
+        $dataObj = is_array($event['data']['object'] ?? null)
+            ? $event['data']['object']
+            : (is_array($event['data'] ?? null) ? $event['data'] : $event);
+        $meta = is_array($dataObj['metadata'] ?? null) ? $dataObj['metadata'] : [];
+
+        $successEvents = [
+            'collection.succeeded',
+            'checkout.completed',
+            'checkout.session.completed',
+            'checkout_session.completed',
+            'payment.succeeded',
+            'payment.completed'
+        ];
+        $refundEvents = ['collection.refunded', 'refund.succeeded', 'charge.refunded', 'payment.refunded'];
+        $failedEvents = ['collection.failed', 'payment.failed', 'checkout.expired'];
+
+        if (in_array($eventType, $successEvents, true)) {
+            $invoiceRef = (string)(
+                $meta['invoice_number']
+                ?? $meta['invoice_id']
+                ?? $dataObj['reference']
+                ?? $dataObj['checkout_session_id']
+                ?? $dataObj['session_id']
+                ?? $dataObj['id']
+                ?? ''
+            );
+            $providerPayId = (string)($dataObj['payment_id'] ?? $dataObj['collection_id'] ?? $dataObj['id'] ?? $eventId);
+            $txId = (string)($dataObj['reference'] ?? $dataObj['transaction_id'] ?? $providerPayId);
+            $rawAmt = $dataObj['amount'] ?? ($dataObj['pricing']['amount'] ?? ($dataObj['total_amount'] ?? 0));
+            $amount = is_numeric($rawAmt) ? (float)$rawAmt : 0.0;
+            $currency = strtoupper((string)($dataObj['currency'] ?? ($dataObj['pricing']['currency'] ?? ($gw['currency'] ?: 'USD'))));
+            $payMethod = (string)($dataObj['payment_method'] ?? $dataObj['channel'] ?? 'bachs');
+
+            $res = processSuccessfulPayment(
+                $db,
+                'bachs',
+                $eventId,
+                $eventType,
+                $invoiceRef,
+                $providerPayId,
+                $txId,
+                $amount,
+                $currency,
+                [
+                    'payment_method' => $payMethod,
+                    'customer_email' => $dataObj['customer']['email'] ?? ($dataObj['customer_email'] ?? ''),
+                    'bachs_reference' => $dataObj['reference'] ?? '',
+                    'raw_event_type' => $eventType
+                ]
+            );
+
+            http_response_code(200);
+            respondJson(['success' => true, 'processed' => true, 'result' => $res]);
+        } elseif (in_array($eventType, $refundEvents, true)) {
+            $refId = (string)($dataObj['reference'] ?? $dataObj['payment_id'] ?? $dataObj['id'] ?? '');
+            if ($refId !== '') {
+                $db->prepare("UPDATE payments SET status = 'refunded' WHERE gateway = 'bachs' AND (transaction_id = ? OR provider_payment_id = ?)")
+                   ->execute([$refId, $refId]);
+            }
+            http_response_code(200);
+            respondJson(['success' => true, 'refund_recorded' => true]);
+        } elseif (in_array($eventType, $failedEvents, true)) {
+            $invoiceRef = (string)($meta['invoice_number'] ?? $meta['invoice_id'] ?? $dataObj['reference'] ?? '');
+            try {
+                $db->prepare("
+                    INSERT IGNORE INTO payment_events (id, provider, event_id, event_type, invoice_id, payload, status, error_message, received_at, processed_at)
+                    VALUES (?, 'bachs', ?, ?, ?, ?, 'failed', 'Payment failed or expired at Bachs.io', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ")->execute(['pevt_' . bin2hex(random_bytes(8)), $eventId, $eventType, $invoiceRef, $rawPayload]);
+            } catch (Throwable $e) {}
+            http_response_code(200);
+            respondJson(['success' => true, 'recorded' => true, 'status' => $eventType]);
+        } else {
+            http_response_code(200);
+            respondJson(['success' => true, 'status' => 'ignored', 'event_type' => $eventType]);
+        }
+        break;
+
+    // ── 4D. Automatic Real-Time Bachs.io Session & Invoice Verification ──
+    case 'bachs/verify':
+    case 'bachs-verify':
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+        $invRef = trim((string)($input['invoice'] ?? $input['invoice_number'] ?? $_GET['invoice'] ?? ''));
+        $sessionId = trim((string)($input['session_id'] ?? $input['sessionId'] ?? $_GET['session_id'] ?? ''));
+
+        if ($invRef === '' && $sessionId === '') {
+            respondJson(['success' => false, 'error' => 'Invoice number or Bachs.io session_id is required.'], 400);
+        }
+
+        $lookup = $invRef !== '' ? $invRef : $sessionId;
+        $stmt = $db->prepare("SELECT * FROM invoices WHERE invoice_number = ? OR id = ? OR transaction_id = ? LIMIT 1");
+        $stmt->execute([$lookup, $lookup, $sessionId ?: $lookup]);
+        $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$inv) {
+            respondJson(['success' => false, 'error' => 'Invoice not found.'], 404);
+        }
+
+        if ($inv['status'] === 'paid') {
+            respondJson([
+                'success' => true,
+                'paid' => true,
+                'status' => 'paid',
+                'gateway' => 'bachs',
+                'invoiceNumber' => $inv['invoice_number'],
+                'planId' => $inv['plan_id'],
+                'message' => 'Bachs.io payment verified and subscription is active!'
+            ]);
+        }
+
+        $gw = getPaymentGatewayConfig($db, 'bachs');
+        $secretKey = trim($gw['secret_key'] ?? '');
+        $bachsCfg = is_array($gw['config'] ?? null) ? $gw['config'] : [];
+        $isSandbox = !empty($gw['is_test_mode']);
+        $targetSession = $sessionId ?: trim((string)($inv['transaction_id'] ?? ''));
+
+        if ($secretKey && strlen($secretKey) >= 12 && strpos($secretKey, 'placeholder') === false && $targetSession !== '') {
+            $checkoutBase = '/' . trim((string)($bachsCfg['checkout_endpoint'] ?? '/v1/checkout-sessions'), '/');
+            $bachsCheck = callBachsApi($secretKey, $checkoutBase . '/' . urlencode($targetSession), 'GET', [], $isSandbox, $bachsCfg);
+
+            if ($bachsCheck['success'] && !empty($bachsCheck['data'])) {
+                $rawObj = $bachsCheck['data'];
+                $sObj = is_array($rawObj['data'] ?? null) ? $rawObj['data'] : $rawObj;
+                $stVal = strtolower((string)($sObj['payment_status'] ?? $sObj['status'] ?? ''));
+                $isPaid = in_array($stVal, ['paid', 'succeeded', 'completed', 'complete', 'settled'], true);
+
+                if ($isPaid) {
+                    $txId = (string)($sObj['reference'] ?? $sObj['payment_id'] ?? $sObj['id'] ?? $targetSession);
+                    $rawAmt = $sObj['amount'] ?? ($sObj['pricing']['amount'] ?? $inv['amount']);
+                    $amt = is_numeric($rawAmt) ? (float)$rawAmt : (float)$inv['amount'];
+                    $cur = strtoupper((string)($sObj['currency'] ?? ($sObj['pricing']['currency'] ?? ($inv['currency'] ?: 'USD'))));
+
+                    $res = processSuccessfulPayment(
+                        $db,
+                        'bachs',
+                        'bachs_autoverify_' . ($sObj['id'] ?? $inv['id']),
+                        'collection.succeeded',
+                        $inv['invoice_number'],
+                        (string)($sObj['id'] ?? $targetSession),
+                        $txId,
+                        $amt,
+                        $cur,
+                        ['payment_method' => $sObj['payment_method'] ?? 'bachs', 'verified_via' => 'bachs_auto_verify']
+                    );
+                    respondJson([
+                        'success' => true,
+                        'paid' => true,
+                        'status' => 'paid',
+                        'gateway' => 'bachs',
+                        'invoiceNumber' => $inv['invoice_number'],
+                        'planId' => $inv['plan_id'],
+                        'result' => $res,
+                        'message' => 'Bachs.io payment verified and subscription activated!'
+                    ]);
+                }
+            }
+        }
+
+        respondJson([
+            'success' => true,
+            'paid' => false,
+            'status' => $inv['status'],
+            'gateway' => 'bachs',
+            'invoiceNumber' => $inv['invoice_number'],
+            'message' => 'Awaiting Bachs.io payment confirmation...'
         ]);
         break;
 

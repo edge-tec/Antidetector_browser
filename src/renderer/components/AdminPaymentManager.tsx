@@ -60,6 +60,7 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
   const [gateways, setGateways] = useState<GatewayItem[]>([])
   const [webhookEvents, setWebhookEvents] = useState<any[]>([])
   const [testingStripe, setTestingStripe] = useState(false)
+  const [testingBachs, setTestingBachs] = useState(false)
   const [usersList, setUsersList] = useState<{ id: string; name: string; email: string }[]>([])
 
   // Filters
@@ -285,6 +286,36 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
       showToast('error', err.message)
     } finally {
       setTestingStripe(false)
+    }
+  }
+
+  const handleTestBachsConnection = async () => {
+    setTestingBachs(true)
+    try {
+      const token = localStorage.getItem('pv_session_token') || ''
+      if ((window as any).api?.adminTestBachsConnection) {
+        const res = await (window as any).api.adminTestBachsConnection(token)
+        if (res?.success) {
+          showToast('success', res.data?.message || 'Bachs.io API connection verified!')
+        } else {
+          showToast('error', res?.error || 'Bachs.io connection failed.')
+        }
+      } else {
+        const res = await fetch('/api/admin.php?action=test-gateway-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ gateway_key: 'bachs' })
+        }).then(r => r.json())
+        if (res?.success) {
+          showToast('success', res.message || 'Bachs.io API connection verified!')
+        } else {
+          showToast('error', res?.error || 'Bachs.io connection failed.')
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message)
+    } finally {
+      setTestingBachs(false)
     }
   }
 
@@ -544,6 +575,7 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
               style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#161622', border: '1px solid #2C2C3E', color: '#CBD5E1', fontSize: '13px' }}
             >
               <option value="all">All Gateways</option>
+              <option value="bachs">Bachs.io (app.bachs.io)</option>
               <option value="stripe">Stripe</option>
               <option value="crypto">Cryptocurrency (USDT/BTC)</option>
               <option value="paypal">PayPal</option>
@@ -668,7 +700,7 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '20px' }}>
-                      {gw.gateway_key === 'stripe' ? '💳' : gw.gateway_key === 'crypto' ? '🪙' : gw.gateway_key === 'paypal' ? '🅿️' : '🏦'}
+                      {gw.gateway_key === 'bachs' ? '⚡' : gw.gateway_key === 'stripe' ? '💳' : gw.gateway_key === 'crypto' ? '🪙' : gw.gateway_key === 'paypal' ? '🅿️' : '🏦'}
                     </span>
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#FFF' }}>{gw.name}</h3>
                   </div>
@@ -737,6 +769,31 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
                         style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', backgroundColor: '#10B98120', border: '1px solid #10B98150', color: '#34D399', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
                       >
                         🔄 Auto-Verify Pending
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {gw.gateway_key === 'bachs' && (
+                  <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #232336', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#94A3B8' }}>Developer Portal:</span>
+                      <a href="https://app.bachs.io/" target="_blank" rel="noreferrer" style={{ color: '#A5B4FC', fontWeight: 700, textDecoration: 'none' }}>app.bachs.io ↗</a>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#94A3B8' }}>Webhook Security:</span>
+                      <span style={{ color: '#34D399', fontWeight: 700 }}>⚡ HMAC-SHA256</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                      Webhook URL: <code style={{ color: '#2DD4BF' }}>/api/payments/bachs/webhook</code>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                      <button
+                        type="button"
+                        disabled={testingBachs}
+                        onClick={handleTestBachsConnection}
+                        style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', backgroundColor: '#1E293B', border: '1px solid #334155', color: '#38BDF8', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {testingBachs ? 'Testing...' : '🔌 Test Bachs.io API'}
                       </button>
                     </div>
                   </div>
@@ -1326,28 +1383,63 @@ export const AdminPaymentManager: React.FC<Props> = ({ onSubscriptionUpdated }) 
                 </label>
               </div>
 
+              {editingGateway.gateway_key === 'bachs' && (
+                <div style={{ backgroundColor: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: '10px', padding: '12px', fontSize: '12px', color: '#CBD5E1', lineHeight: 1.5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <strong style={{ color: '#A5B4FC' }}>⚡ Bachs.io Setup Guide</strong>
+                    <a href="https://app.bachs.io/" target="_blank" rel="noreferrer" style={{ color: '#2DD4BF', fontWeight: 700, textDecoration: 'none' }}>Open app.bachs.io ↗</a>
+                  </div>
+                  Copy your <code>sk_live_...</code> / <code>sk_sandbox_...</code> Secret Key from <strong>app.bachs.io → Developers → API Keys</strong>, and register Webhook URL <code style={{ color: '#2DD4BF' }}>https://antiprofiles.com/api/payments/bachs/webhook</code> for <code>collection.succeeded</code> &amp; <code>checkout.completed</code>.
+                </div>
+              )}
+
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-                  {editingGateway.gateway_key === 'crypto' ? 'USDT TRC20 / ERC20 Wallet Address' : 'Public / Publishable API Key'}
+                  Billing Currency
+                </label>
+                <select
+                  value={editingGateway.currency || 'USD'}
+                  onChange={e => setEditingGateway({ ...editingGateway, currency: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px' }}
+                >
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="CAD">CAD ($)</option>
+                  <option value="NGN">NGN (₦ — Nigerian Naira)</option>
+                  <option value="GHS">GHS (₵ — Ghanaian Cedi)</option>
+                  <option value="KES">KES (KSh — Kenyan Shilling)</option>
+                  <option value="ZAR">ZAR (R — South African Rand)</option>
+                  <option value="BDT">BDT (৳ — Bangladeshi Taka)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
+                  {editingGateway.gateway_key === 'crypto'
+                    ? 'USDT TRC20 / ERC20 Wallet Address'
+                    : editingGateway.gateway_key === 'bachs'
+                      ? 'Bachs.io Public / Merchant Key (Optional)'
+                      : 'Public / Publishable API Key'}
                 </label>
                 <input
                   type="text"
                   value={editingGateway.public_key || ''}
                   onChange={e => setEditingGateway({ ...editingGateway, public_key: e.target.value })}
-                  placeholder={editingGateway.gateway_key === 'crypto' ? 'e.g. Txxxxxxxxxxxxxxxxxxxx' : 'pk_live_... / pk_test_...'}
+                  placeholder={editingGateway.gateway_key === 'crypto' ? 'e.g. Txxxxxxxxxxxxxxxxxxxx' : editingGateway.gateway_key === 'bachs' ? 'Optional pk_live_... / pk_sandbox_...' : 'pk_live_... / pk_test_...'}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px', fontFamily: 'monospace' }}
                 />
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-                  Secret Key / Private API Token
+                  {editingGateway.gateway_key === 'bachs' ? 'Bachs.io Secret API Key (sk_live_... / sk_sandbox_...)' : 'Secret Key / Private API Token'}
                 </label>
                 <input
                   type="password"
                   value={editingGateway.secret_key || ''}
                   onChange={e => setEditingGateway({ ...editingGateway, secret_key: e.target.value })}
-                  placeholder="sk_live_... / sk_test_..."
+                  placeholder={editingGateway.gateway_key === 'bachs' ? 'sk_live_... or sk_sandbox_...' : 'sk_live_... / sk_test_...'}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#101018', border: '1px solid #334155', color: '#FFF', fontSize: '13px', fontFamily: 'monospace' }}
                 />
               </div>

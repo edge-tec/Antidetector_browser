@@ -511,6 +511,14 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($landingPage['seo_title'] ?? ('AntiProfiles ' . $packageName . ' Plan | High-Performance Antidetect Browser')) ?></title>
     <meta name="description" content="<?= htmlspecialchars($landingPage['meta_desc'] ?? $heroSubtitle) ?>">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=2">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2026">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=2026">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2026">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2026">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -578,13 +586,7 @@ $reviews = json_decode($landingPage['reviews_json'] ?? '[]', true) ?: [
     <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
             <a href="/" class="flex items-center gap-3 group">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-400 to-cyan-400 flex items-center justify-center shadow-lg shadow-teal-500/25 font-black text-slate-950 text-xl font-heading group-hover:scale-105 transition-transform">
-                    A
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-xl font-extrabold font-heading tracking-tight text-white group-hover:text-teal-300 transition-colors">AntiProfiles</span>
-                    <span class="text-[10px] uppercase font-bold tracking-widest text-teal-400 -mt-1">Antidetect Browser</span>
-                </div>
+                <img src="/brand-logo.png?v=2026" alt="AntiProfiles" style="height: 44px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
             </a>
 
             <div class="flex items-center gap-3 sm:gap-5">

@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import brandLogoImg from '../assets/brand-logo.png'
 
 interface Props {
   email?: string
@@ -144,6 +145,9 @@ export const VerifyEmailPage: React.FC<Props> = ({ email: initialEmail, initialD
         boxSizing: 'border-box',
         textAlign: 'center'
       }}>
+        <div style={{ marginBottom: '20px' }}>
+          <img src={brandLogoImg} alt="AntiProfiles Logo" style={{ height: 48, width: 'auto', maxWidth: '100%', objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(99,102,241,0.32))' }} />
+        </div>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>
           {status === 'success' ? '✅' : status === 'error' ? '⚠️' : '✉️'}
         </div>

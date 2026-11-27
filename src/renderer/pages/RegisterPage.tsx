@@ -100,7 +100,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigateLogin, onRegistrationS
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img src={brandLogoImg} alt="AntiProfiles Logo" style={{ height: 48, width: 'auto', objectFit: 'contain', marginBottom: '16px', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.4))' }} />
+          <img src={brandLogoImg} alt="AntiProfiles Logo" style={{ height: 58, width: 'auto', maxWidth: '100%', objectFit: 'contain', marginBottom: '16px', filter: 'drop-shadow(0 4px 16px rgba(99,102,241,0.35))' }} />
           <h2 style={{ margin: '0 0 6px', fontSize: '22px', color: '#F1F5F9', fontWeight: 700 }}>
             Create Your Account
           </h2>

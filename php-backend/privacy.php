@@ -143,7 +143,7 @@ header('Content-Type: text/html; charset=utf-8');
     <nav>
         <div class="container nav-inner">
             <a href="/" style="display: flex; align-items: center; text-decoration: none;">
-                <img src="/brand-logo.png" alt="AntiProfiles Logo" style="height: 36px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+                <img src="/brand-logo.png?v=2026" alt="AntiProfiles Logo" style="height: 44px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
             </a>
             <a href="/" class="btn-back">← Back to Home</a>
         </div>

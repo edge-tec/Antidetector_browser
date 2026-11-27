@@ -231,7 +231,7 @@ if (!empty($token)) {
         
         <div class="logo-header">
             <a href="/" style="display: inline-block;">
-                <img src="/brand-logo.png" alt="AntiProfiles" style="height: 40px; width: auto; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
+                <img src="/brand-logo.png?v=2026" alt="AntiProfiles" style="height: 52px; width: auto; max-width: 100%; object-fit: contain;" onerror="this.onerror=null; this.src='/logo.png';">
             </a>
         </div>
 

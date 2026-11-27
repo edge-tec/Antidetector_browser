@@ -38,6 +38,7 @@ import { UltraProSuitePage } from './pages/enterprise/UltraProSuitePage'
 import { enterpriseService } from './services/enterpriseService'
 import type { ProxyTestResult } from './types'
 import logoImg from './assets/logo.png'
+import brandLogoImg from './assets/brand-logo.png'
 import defaultChromeImg from './assets/antiprofiles-chrome.png'
 import defaultFirefoxImg from './assets/antiprofiles-firefox.png'
 
@@ -3288,8 +3289,14 @@ function AppContent() {
         <aside className="sidebar">
           <div className="sidebar-header">
             <div className="sidebar-brand">
-              <img src={brandingConfig?.app?.previewUrl || logoImg} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
-              <span className="sidebar-brand-text">AntiProfiles</span>
+              {brandingConfig?.app?.previewUrl ? (
+                <>
+                  <img src={brandingConfig.app.previewUrl} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ width: 30, height: 30, objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(59,130,246,0.5))' }} />
+                  <span className="sidebar-brand-text">AntiProfiles</span>
+                </>
+              ) : (
+                <img src={brandLogoImg} alt="AntiProfiles Logo" className="sidebar-brand-img" style={{ height: 40, width: 'auto', maxWidth: '100%', objectFit: 'contain', filter: 'drop-shadow(0 2px 10px rgba(99,102,241,0.35))' }} />
+              )}
             </div>
           </div>
 

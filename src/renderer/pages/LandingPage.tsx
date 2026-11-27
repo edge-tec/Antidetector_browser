@@ -3,19 +3,72 @@
 // ──────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react'
-import logoImg from '../assets/logo.png'
+import brandLogoImg from '../assets/brand-logo.png'
 import { SupportChatWidget } from '../components/SupportChatWidget'
 import { Hero3DFingerprintBg } from '../components/Hero3DFingerprintBg'
+import { LandingIcon, LandingIconName } from '../components/LandingIcons'
 
 interface LandingProps {
   onNavigateLogin: () => void
   onNavigateRegister: () => void
 }
 
+const EMOJI_TO_ICON_MAP: Record<string, LandingIconName> = {
+  '🌐': 'globe',
+  '⚡': 'zap',
+  '🌍': 'globe',
+  '🛡️': 'shield-check',
+  '🛡': 'shield-check',
+  '🔒': 'lock',
+  '📋': 'file-plus',
+  '👥': 'users',
+  '💾': 'database',
+  '💻': 'monitor',
+  '⚙️': 'sliders',
+  '⚙': 'sliders',
+  '🚀': 'rocket',
+  '📊': 'bar-chart',
+  '🤖': 'cpu',
+  '☁️': 'cloud-lock',
+  '🔌': 'network',
+  '✨': 'sparkles',
+  'fingerprint': 'fingerprint',
+  'shield-check': 'shield-check',
+  'globe': 'globe',
+  'zap': 'zap',
+  'layers': 'layers',
+  'headset': 'headset',
+  'sliders': 'sliders',
+  'monitor': 'monitor',
+  'cpu': 'cpu',
+  'network': 'network',
+  'users': 'users',
+  'cloud-lock': 'cloud-lock',
+  'file-plus': 'file-plus',
+  'rocket': 'rocket',
+  'bar-chart': 'bar-chart',
+  'lock': 'lock',
+  'database': 'database',
+  'browsers': 'browsers'
+}
+
+function resolveLandingIcon(rawIcon: string | undefined, fallback: LandingIconName): LandingIconName {
+  if (!rawIcon) return fallback
+  const trimmed = rawIcon.trim()
+  return EMOJI_TO_ICON_MAP[trimmed] || fallback
+}
+
+function getInitials(name: string | undefined): string {
+  if (!name) return 'AP'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
 const DEFAULT_LANDING_DATA = {
   branding: {
     site_name: 'AntiProfiles',
-    logo_text: '🛡️ AntiProfiles',
+    logo_text: 'AntiProfiles',
     primary_color: '#6366F1',
     secondary_color: '#8B5CF6',
     accent_color: '#2DD4BF',
@@ -31,29 +84,29 @@ const DEFAULT_LANDING_DATA = {
     cta_primary_url: '#register',
     cta_secondary_text: 'View Pricing',
     cta_secondary_url: '#pricing',
-    trust_text: '⚡ No credit card required • Free trial available • Cancel anytime'
+    trust_text: 'No credit card required • Free trial available • Cancel anytime'
   },
   stats: [
-    { id: '1', number: '10K+', label: 'Active Profiles', icon: '🌐' },
-    { id: '2', number: '99.9%', label: 'Platform Uptime', icon: '⚡' },
-    { id: '3', number: '150+', label: 'Countries Supported', icon: '🌍' },
-    { id: '4', number: '24/7', label: 'Expert Support', icon: '🛡️' }
+    { id: '1', number: '10K+', label: 'Active Profiles', icon: 'layers' },
+    { id: '2', number: '99.9%', label: 'Platform Uptime', icon: 'zap' },
+    { id: '3', number: '150+', label: 'Countries Supported', icon: 'globe' },
+    { id: '4', number: '24/7', label: 'Expert Support', icon: 'headset' }
   ],
   features: [
-    { id: '1', title: 'Isolated Browser Profiles', description: 'Keep cookies, local storage, sessions, and browser data completely separated between profiles.', icon: '🔒' },
-    { id: '2', title: 'Fingerprint Management', description: 'Configure browser and device environment parameters including WebGL, Canvas, and User Agents.', icon: '🛡️' },
-    { id: '3', title: 'Proxy Management System', description: 'Seamlessly assign and test HTTP, HTTPS, SOCKS4, and SOCKS5 proxy configurations per profile.', icon: '🌐' },
-    { id: '4', title: 'Reusable Profile Templates', description: 'Create standardized profile templates for fast batch provisioning across your operations.', icon: '📋' },
-    { id: '5', title: 'Team Access Controls', description: 'Share browser profiles securely across team members with granular permission levels.', icon: '👥' },
-    { id: '6', title: 'Automation API', description: 'Access local REST endpoints and automation drivers for Puppeteer and Selenium workflows.', icon: '⚡' },
-    { id: '7', title: 'Encrypted Local Storage', description: 'All session data and cookies are stored with high-standard AES-256 local database encryption.', icon: '💾' },
-    { id: '8', title: 'Cross-Platform Compatibility', description: 'Native desktop support tailored for macOS, Windows, and Linux operating systems.', icon: '💻' }
+    { id: '1', title: 'Isolated Browser Profiles', description: 'Keep cookies, local storage, sessions, and browser data completely separated between profiles.', icon: 'browsers' },
+    { id: '2', title: 'Fingerprint Management', description: 'Configure browser and device environment parameters including WebGL, Canvas, and User Agents.', icon: 'fingerprint' },
+    { id: '3', title: 'Proxy Management System', description: 'Seamlessly assign and test HTTP, HTTPS, SOCKS4, and SOCKS5 proxy configurations per profile.', icon: 'network' },
+    { id: '4', title: 'Reusable Profile Templates', description: 'Create standardized profile templates for fast batch provisioning across your operations.', icon: 'file-plus' },
+    { id: '5', title: 'Team Access Controls', description: 'Share browser profiles securely across team members with granular permission levels.', icon: 'users' },
+    { id: '6', title: 'Automation API', description: 'Access local REST endpoints and automation drivers for Puppeteer and Selenium workflows.', icon: 'cpu' },
+    { id: '7', title: 'Encrypted Local Storage', description: 'All session data and cookies are stored with high-standard AES-256 local database encryption.', icon: 'database' },
+    { id: '8', title: 'Cross-Platform Compatibility', description: 'Native desktop support tailored for macOS, Windows, and Linux operating systems.', icon: 'monitor' }
   ],
   steps: [
-    { id: '1', step_number: 1, title: 'Create Your Profile', description: 'Choose a profile template or start from scratch to configure your environment.', icon: '📋' },
-    { id: '2', step_number: 2, title: 'Configure Environment', description: 'Set custom User Agent, OS, timezone, language, WebGL fingerprint, and proxy.', icon: '⚙️' },
-    { id: '3', step_number: 3, title: 'Launch Isolated Window', description: 'Open an isolated browser window running with dedicated storage and cookies.', icon: '🚀' },
-    { id: '4', step_number: 4, title: 'Scale & Manage', description: 'Monitor profile status, organize into groups, and manage team access effortlessly.', icon: '📊' }
+    { id: '1', step_number: 1, title: 'Create Your Profile', description: 'Choose a profile template or start from scratch to configure your environment.', icon: 'file-plus' },
+    { id: '2', step_number: 2, title: 'Configure Environment', description: 'Set custom User Agent, OS, timezone, language, WebGL fingerprint, and proxy.', icon: 'sliders' },
+    { id: '3', step_number: 3, title: 'Launch Isolated Window', description: 'Open an isolated browser window running with dedicated storage and cookies.', icon: 'rocket' },
+    { id: '4', step_number: 4, title: 'Scale & Manage', description: 'Monitor profile status, organize into groups, and manage team access effortlessly.', icon: 'bar-chart' }
   ],
   pricingPlans: [
     {
@@ -81,9 +134,9 @@ const DEFAULT_LANDING_DATA = {
     { id: '5', question: 'Does AntiProfiles offer an Automation API?', answer: 'Yes. Professional and Business plans provide local REST endpoints and automation integration for Puppeteer and Selenium drivers.' }
   ],
   testimonials: [
-    { id: '1', name: 'Alex Rivera', position: 'E-Commerce Manager', company: 'Apex Brands', avatar_url: '👤', rating: 5, testimonial: 'AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', is_demo: 1 },
-    { id: '2', name: 'Sarah Chen', position: 'Lead Growth Engineer', company: 'Veloce Digital', avatar_url: '👩‍💻', rating: 5, testimonial: 'The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless.', is_demo: 1 },
-    { id: '3', name: 'Marcus Vance', position: 'Privacy Consultant', company: 'CyberShield', avatar_url: '🛡️', rating: 5, testimonial: 'Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require.', is_demo: 1 }
+    { id: '1', name: 'Alex Rivera', position: 'E-Commerce Manager', company: 'Apex Brands', avatar_url: 'AR', rating: 5, testimonial: 'AntiProfiles completely transformed how our agency manages 50+ accounts. Session isolation and proxy integration are rock solid.', is_demo: 1 },
+    { id: '2', name: 'Sarah Chen', position: 'Lead Growth Engineer', company: 'Veloce Digital', avatar_url: 'SC', rating: 5, testimonial: 'The local automation API and custom WebGL fingerprinting options made automated testing across multiple browser contexts seamless.', is_demo: 1 },
+    { id: '3', name: 'Marcus Vance', position: 'Privacy Consultant', company: 'CyberShield', avatar_url: 'MV', rating: 5, testimonial: 'Solid security architecture, local encrypted database, and clear RBAC user permissions. Exactly what professional teams require.', is_demo: 1 }
   ],
   seo: {
     meta_title: 'AntiProfiles — Next-Gen Anti-Detect & Privacy Browser',
@@ -221,8 +274,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
 
   if (!data) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#0F0F14', color: '#2DD4BF', fontSize: '18px', fontWeight: 600 }}>
-        🛡️ Loading AntiProfiles...
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', height: '100vh', backgroundColor: '#0F0F14', color: '#2DD4BF', fontSize: '18px', fontWeight: 600 }}>
+        <LandingIcon name="shield-check" size={22} color="#2DD4BF" />
+        <span>Loading AntiProfiles...</span>
       </div>
     )
   }
@@ -260,7 +314,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
   const cockpitProfiles = [
     {
       name: 'US E-Commerce Store #01',
-      meta: 'macOS Sequoia • 🇺🇸 New York • Chromium 136',
+      meta: 'macOS Sequoia • US New York • Chromium 136',
       status: 'Running',
       canvas: '0x9A4F...E21B (Noise +0.4%)',
       gpu: 'Apple M4 Metal GPU',
@@ -269,7 +323,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
     },
     {
       name: 'UK Meta Ads Workspace',
-      meta: 'Windows 11 • 🇬🇧 London • Dual-Kernel',
+      meta: 'Windows 11 • UK London • Dual-Kernel',
       status: 'Running',
       canvas: '0x4C81...7D90 (Noise +0.7%)',
       gpu: 'NVIDIA RTX 4070 Direct3D',
@@ -278,7 +332,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
     },
     {
       name: 'EU Automation & Affiliate Hub',
-      meta: 'Linux x64 • 🇩🇪 Frankfurt • Camoufox C++',
+      meta: 'Linux x64 • DE Frankfurt • Camoufox C++',
       status: 'Ready',
       canvas: '0x7E12...B04C (C++ Native)',
       gpu: 'Mesa Intel Iris Xe',
@@ -303,12 +357,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
       }}>
         <div style={{ maxWidth: '1220px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           
-          {/* Brand Logo & Name */}
-          <div className="window-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <img src={logoImg} alt="AntiProfiles Logo" style={{ width: 32, height: 32, objectFit: 'contain', filter: 'drop-shadow(0 2px 10px rgba(45,212,191,0.5))' }} />
-            <span style={{ fontSize: '20px', fontWeight: 800, color: '#F8FAFC', letterSpacing: '-0.5px' }}>
-              {branding.site_name || 'AntiProfiles'}
-            </span>
+          {/* Brand Logo */}
+          <div className="window-no-drag" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <img src={brandLogoImg} alt="AntiProfiles Logo" style={{ height: 42, width: 'auto', maxWidth: '220px', objectFit: 'contain', filter: 'drop-shadow(0 2px 12px rgba(99,102,241,0.35))' }} />
           </div>
 
           {/* Desktop Nav Links Pill */}
@@ -362,11 +413,11 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{ background: 'none', border: 'none', color: '#FFF', fontSize: '22px', cursor: 'pointer', display: 'none' }}
+              style={{ background: 'none', border: 'none', color: '#FFF', cursor: 'pointer', display: 'none', alignItems: 'center', justifyContent: 'center', padding: '6px' }}
               className="mobile-toggle"
               aria-label="Toggle Navigation"
             >
-              ☰
+              <LandingIcon name="menu" size={20} />
             </button>
           </div>
         </div>
@@ -374,12 +425,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         {/* Mobile Navigation Menu Dropdown */}
         {mobileMenuOpen && (
           <div style={{ backgroundColor: '#0B0F1A', borderTop: '1px solid rgba(148, 163, 184, 0.14)', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-            <a href="#features" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Features</a>
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>How It Works</a>
-            <a href="#download" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Downloads</a>
-            <a href="#pricing" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Pricing</a>
-            <a href="#faq" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>FAQ</a>
-            <a href="#contact" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px' }}>Contact</a>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}><LandingIcon name="sparkles" size={16} color="#2DD4BF" /> Features</a>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}><LandingIcon name="sliders" size={16} color="#818CF8" /> How It Works</a>
+            <a href="#download" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}><LandingIcon name="monitor" size={16} color="#38BDF8" /> Downloads</a>
+            <a href="#pricing" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}><LandingIcon name="credit-card" size={16} color="#A78BFA" /> Pricing</a>
+            <a href="#faq" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}><LandingIcon name="help" size={16} color="#FBBF24" /> FAQ</a>
+            <a href="#contact" onClick={() => setMobileMenuOpen(false)} style={{ color: '#CBD5E1', textDecoration: 'none', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}><LandingIcon name="mail" size={16} color="#60A5FA" /> Contact</a>
           </div>
         )}
       </header>
@@ -410,22 +461,45 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           alignItems: 'center'
         }}>
           <div>
+            {/* Editorial Architectural Hero Kicker (No Green Dot, No Pill Button) */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '9px',
-              padding: '7px 16px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(15, 23, 42, 0.78)',
-              border: '1px solid rgba(45, 212, 191, 0.35)',
-              color: '#99F6E4',
-              fontSize: '12.5px',
-              fontWeight: 700,
+              gap: '12px',
               marginBottom: '22px',
-              backdropFilter: 'blur(12px)'
+              paddingLeft: '14px',
+              position: 'relative'
             }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2DD4BF', boxShadow: '0 0 10px #2DD4BF' }} />
-              <span>v2.0 Dual-Kernel • Chromium + Camoufox Stealth</span>
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: '2px',
+                  bottom: '2px',
+                  width: '3px',
+                  borderRadius: '3px',
+                  background: 'linear-gradient(180deg, #2DD4BF 0%, #38BDF8 55%, #818CF8 100%)',
+                  boxShadow: '0 0 14px rgba(45, 212, 191, 0.55)'
+                }}
+              />
+              <LandingIcon name="fingerprint" size={18} color="#2DD4BF" />
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: '#CBD5E1', letterSpacing: '0.01em' }}>
+                <span style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  background: 'linear-gradient(90deg, #2DD4BF, #38BDF8)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  v2.0 Dual-Kernel
+                </span>
+                <span aria-hidden="true" style={{ color: '#475569', fontWeight: 400 }}>/</span>
+                <span>Chromium + Camoufox Fingerprint Isolation</span>
+              </div>
             </div>
 
             <h1 style={{ fontSize: 'clamp(34px, 4.8vw, 56px)', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.08, margin: '0 0 22px', letterSpacing: '-0.035em' }}>
@@ -453,10 +527,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                   fontSize: '15px',
                   border: 'none',
                   cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
                   boxShadow: `0 8px 26px ${accentColor}40`
                 }}
               >
-                {hero.cta_primary_text} →
+                <span>{hero.cta_primary_text}</span>
+                <LandingIcon name="arrow-right" size={16} color="#041014" />
               </button>
 
               <a
@@ -479,10 +557,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               </a>
             </div>
 
-            <div style={{ fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <span>✓ <strong style={{ color: '#E2E8F0' }}>No credit card</strong> required</span>
-              <span>✓ <strong style={{ color: '#E2E8F0' }}>99.8%</strong> Stealth Score</span>
-              <span>✓ <strong style={{ color: '#E2E8F0' }}>Win / Mac / Linux</strong></span>
+            <div style={{ fontSize: '13px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><LandingIcon name="check-circle" size={15} color="#2DD4BF" /> <strong style={{ color: '#E2E8F0' }}>No credit card</strong> required</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><LandingIcon name="shield-check" size={15} color="#2DD4BF" /> <strong style={{ color: '#E2E8F0' }}>99.8%</strong> Stealth Score</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><LandingIcon name="monitor" size={15} color="#2DD4BF" /> <strong style={{ color: '#E2E8F0' }}>Win / Mac / Linux</strong></span>
             </div>
           </div>
 
@@ -505,8 +583,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                 </div>
                 <span style={{ fontSize: '11.5px', color: '#94A3B8', fontFamily: 'monospace' }}>AntiProfiles Engine v2.0</span>
               </div>
-              <span style={{ padding: '4px 10px', borderRadius: '999px', backgroundColor: 'rgba(16, 185, 129, 0.14)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#34D399', fontSize: '11px', fontWeight: 800 }}>
-                ● 99.8% Undetectable
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '999px', backgroundColor: 'rgba(16, 185, 129, 0.14)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#34D399', fontSize: '11px', fontWeight: 800 }}>
+                <LandingIcon name="shield-check" size={12} color="#34D399" /> 99.8% Undetectable
               </span>
             </div>
 
@@ -536,6 +614,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                       <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '2px' }}>{p.meta}</div>
                     </div>
                     <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
                       padding: '4px 10px',
                       borderRadius: '999px',
                       fontSize: '10.5px',
@@ -544,7 +625,11 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                       border: p.status === 'Running' ? '1px solid rgba(16, 185, 129, 0.32)' : '1px solid rgba(99, 102, 241, 0.35)',
                       color: p.status === 'Running' ? '#34D399' : '#A5B4FC'
                     }}>
-                      {p.status === 'Running' ? '● Running' : 'Ready'}
+                      {p.status === 'Running' ? (
+                        <><LandingIcon name="activity" size={11} color="#34D399" /> Running</>
+                      ) : (
+                        <><LandingIcon name="check" size={11} color="#A5B4FC" /> Ready</>
+                      )}
                     </span>
                   </button>
                 )
@@ -571,13 +656,19 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
       {/* ── 3. Hero Statistics Row ── */}
       <section style={{ borderBottom: '1px solid rgba(148, 163, 184, 0.12)', background: 'linear-gradient(180deg, rgba(11, 15, 26, 0.92), rgba(7, 10, 18, 0.96))', padding: '36px 24px' }}>
         <div style={{ maxWidth: '1220px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', textAlign: 'center' }}>
-          {stats.map((s: any) => (
-            <div key={s.id} style={{ padding: '20px 16px', backgroundColor: 'rgba(15, 19, 32, 0.58)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: '16px' }}>
-              <div style={{ fontSize: '24px', marginBottom: '4px' }}>{s.icon}</div>
-              <div style={{ fontSize: '32px', fontWeight: 800, background: `linear-gradient(135deg, ${accentColor}, #60A5FA)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>{s.number}</div>
-              <div style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px', fontWeight: 600 }}>{s.label}</div>
-            </div>
-          ))}
+          {stats.map((s: any, idx: number) => {
+            const statFallbacks: LandingIconName[] = ['layers', 'zap', 'globe', 'headset']
+            const iconName = resolveLandingIcon(s.icon, statFallbacks[idx % statFallbacks.length])
+            return (
+              <div key={s.id} style={{ padding: '20px 16px', backgroundColor: 'rgba(15, 19, 32, 0.58)', border: '1px solid rgba(148, 163, 184, 0.12)', borderRadius: '16px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(45, 212, 191, 0.14), rgba(99, 102, 241, 0.14))', border: '1px solid rgba(45, 212, 191, 0.28)' }}>
+                  <LandingIcon name={iconName} size={22} color="#2DD4BF" />
+                </div>
+                <div style={{ fontSize: '32px', fontWeight: 800, background: `linear-gradient(135deg, ${accentColor}, #60A5FA)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' }}>{s.number}</div>
+                <div style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px', fontWeight: 600 }}>{s.label}</div>
+              </div>
+            )
+          })}
         </div>
       </section>
 
@@ -585,7 +676,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
       <section id="features" style={{ padding: '90px 24px', maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
           <h2 style={{ fontSize: '32px', fontWeight: 800, color: '#F8FAFC', margin: '0 0 12px' }}>
-            Built for Privacy, Security & Isolation
+            Built for Privacy, Security &amp; Isolation
           </h2>
           <p style={{ fontSize: '16px', color: '#94A3B8', maxWidth: '600px', margin: '0 auto' }}>
             Comprehensive environment control tools designed to keep your browser profiles completely isolated.
@@ -593,153 +684,58 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-          {features.map((f: any) => (
-            <div key={f.id} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '14px', padding: '28px', transition: 'all 0.2s ease' }}>
-              <div style={{ fontSize: '32px', marginBottom: '16px' }}>{f.icon}</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#F1F5F9', margin: '0 0 10px' }}>{f.title}</h3>
-              <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>{f.description}</p>
-            </div>
-          ))}
+          {features.map((f: any, idx: number) => {
+            const featureFallbacks: LandingIconName[] = ['browsers', 'fingerprint', 'network', 'file-plus', 'users', 'cpu', 'database', 'monitor']
+            const featureColors = ['#2DD4BF', '#818CF8', '#FACC15', '#38BDF8', '#C084FC', '#60A5FA', '#F472B6', '#34D399']
+            const iconName = resolveLandingIcon(f.icon, featureFallbacks[idx % featureFallbacks.length])
+            const tileColor = featureColors[idx % featureColors.length]
+            return (
+              <div key={f.id} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '14px', padding: '28px', transition: 'all 0.2s ease' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '13px', backgroundColor: `${tileColor}1A`, border: `1px solid ${tileColor}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                  <LandingIcon name={iconName} size={23} color={tileColor} />
+                </div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#F1F5F9', margin: '0 0 10px' }}>{f.title}</h3>
+                <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>{f.description}</p>
+              </div>
+            )
+          })}
         </div>
       </section>
 
-      {/* ── 4b. Supported Accounts & Platforms Grid Section ── */}
-      <section style={{ backgroundColor: '#FFFFFF', padding: '90px 24px', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 'clamp(26px, 4vw, 36px)', fontWeight: 800, color: '#1E293B', margin: '0 0 48px', letterSpacing: '-0.5px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      {/* ── 4b. Supported Accounts & Platforms Grid Section (Dark Obsidian Theme) ── */}
+      <section style={{ backgroundColor: '#0A0D18', padding: '90px 24px', borderTop: '1px solid rgba(148, 163, 184, 0.14)', borderBottom: '1px solid rgba(148, 163, 184, 0.14)' }}>
+        <div style={{ maxWidth: '1040px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 'clamp(26px, 4vw, 36px)', fontWeight: 800, color: '#F8FAFC', margin: '0 0 14px', letterSpacing: '-0.5px' }}>
             Ideal for managing accounts across all services
           </h2>
+          <p style={{ fontSize: '15px', color: '#94A3B8', maxWidth: '640px', margin: '0 auto 42px' }}>
+            Run isolated stealth accounts across advertising, e-commerce, and social platforms without cross-profile linking.
+          </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-            {/* 1. Facebook */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9', transition: 'transform 0.2s ease, boxShadow 0.2s ease' }} className="platform-card">
-              <svg height="26" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="0" y="24" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="26" letterSpacing="-1">facebook</text>
-              </svg>
-            </div>
-
-            {/* 2. Amazon */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="28" viewBox="0 0 120 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="0" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="700" fontSize="24">amazon</text>
-                <path d="M12 28 C 30 35, 65 35, 80 25 M 76 23 L 83 25 L 80 30" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-              </svg>
-            </div>
-
-            {/* 3. eBay */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="26" viewBox="0 0 100 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="0" y="24" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="28" letterSpacing="-1">ebay</text>
-              </svg>
-            </div>
-
-            {/* 4. LinkedIn */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="0" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="700" fontSize="24">Linked</text>
-                <rect x="76" y="4" width="22" height="22" rx="4" fill="#64748B" />
-                <text x="81" y="21" fill="#F8FAFC" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="18">in</text>
-              </svg>
-            </div>
-
-            {/* 5. Reddit */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="26" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="14" cy="16" r="10" fill="#64748B" />
-                <circle cx="10" cy="14" r="2" fill="#F8FAFC" />
-                <circle cx="18" cy="14" r="2" fill="#F8FAFC" />
-                <path d="M 10 18 Q 14 22 18 18" stroke="#F8FAFC" strokeWidth="1.5" fill="none" />
-                <text x="32" y="24" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="24">reddit</text>
-              </svg>
-            </div>
-
-            {/* 6. Instagram */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="26" viewBox="0 0 140 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="0" y="24" fill="#64748B" fontFamily="Georgia, serif" fontStyle="italic" fontWeight="700" fontSize="26">Instagram</text>
-              </svg>
-            </div>
-
-            {/* 7. TikTok */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 14 6 L 14 20 A 5 5 0 1 1 9 15 M 14 11 A 7 7 0 0 0 21 6" stroke="#64748B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                <text x="28" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="24">TikTok</text>
-              </svg>
-            </div>
-
-            {/* 8. Discord */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 4 8 C 8 6 14 5 18 6 C 18 6 20 10 21 16 C 16 18 10 18 5 16 C 6 10 8 6 8 6" fill="#64748B" />
-                <text x="26" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="22">Discord</text>
-              </svg>
-            </div>
-
-            {/* 9. Gmail */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 4 8 L 14 16 L 24 8 L 24 22 L 4 22 Z" stroke="#64748B" strokeWidth="2.5" strokeLinejoin="round" fill="none" />
-                <path d="M 4 8 L 14 16 L 24 8" stroke="#64748B" strokeWidth="2.5" fill="none" />
-                <text x="32" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="600" fontSize="22">Gmail</text>
-              </svg>
-            </div>
-
-            {/* 10. Google Ads */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 140 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 6 22 L 14 6 L 22 22 Z" stroke="#64748B" strokeWidth="2.5" fill="none" />
-                <circle cx="20" cy="20" r="4" fill="#64748B" />
-                <text x="30" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="700" fontSize="18">Google</text>
-                <text x="94" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="400" fontSize="18">Ads</text>
-              </svg>
-            </div>
-
-            {/* 11. Etsy */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="26" viewBox="0 0 100 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="0" y="24" fill="#64748B" fontFamily="Georgia, serif" fontWeight="700" fontSize="28">Etsy</text>
-              </svg>
-            </div>
-
-            {/* 12. Pinterest */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="26" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="0" y="24" fill="#64748B" fontFamily="Georgia, serif" fontStyle="italic" fontWeight="700" fontSize="26">Pinterest</text>
-              </svg>
-            </div>
-
-            {/* 13. Meta */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 6 16 C 6 10, 14 10, 18 16 C 22 22, 30 22, 30 16 C 30 10, 22 10, 18 16 C 14 22, 6 22, 6 16 Z" stroke="#64748B" strokeWidth="2.5" fill="none" />
-                <text x="36" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="24">Meta</text>
-              </svg>
-            </div>
-
-            {/* 14. X */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="26" viewBox="0 0 50 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 10 6 L 25 24 M 25 6 L 10 24" stroke="#64748B" strokeWidth="3.5" strokeLinecap="round" />
-              </svg>
-            </div>
-
-            {/* 15. Airbnb */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 14 6 C 10 6, 6 12, 6 18 C 6 22, 10 26, 14 26 C 18 26, 22 22, 22 18 C 22 12, 18 6, 14 6 Z M 14 14 C 12 14, 11 16, 11 18 C 11 20, 12 21, 14 21 C 16 21, 17 20, 17 18 C 17 16, 16 14, 14 14 Z" stroke="#64748B" strokeWidth="2" fill="none" />
-                <text x="28" y="23" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="22">airbnb</text>
-              </svg>
-            </div>
-
-            {/* 16. YouTube */}
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', padding: '20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px solid #F1F5F9' }} className="platform-card">
-              <svg height="24" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="2" y="6" width="26" height="18" rx="5" fill="#64748B" />
-                <polygon points="12,10 20,15 12,20" fill="#F8FAFC" />
-                <text x="34" y="22" fill="#64748B" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="22" letterSpacing="-0.5">YouTube</text>
-              </svg>
-            </div>
+            {[
+              { name: 'facebook', sub: 'Social & Ads', color: '#1877F2' },
+              { name: 'amazon', sub: 'E-Commerce', color: '#FF9900' },
+              { name: 'ebay', sub: 'Marketplaces', color: '#E53238' },
+              { name: 'LinkedIn', sub: 'Outreach & B2B', color: '#0A66C2' },
+              { name: 'reddit', sub: 'Community', color: '#FF4500' },
+              { name: 'Instagram', sub: 'Media & Ads', color: '#E1306C' },
+              { name: 'TikTok', sub: 'Creators & Ads', color: '#25F4EE' },
+              { name: 'Discord', sub: 'Web3 & Bots', color: '#5865F2' },
+              { name: 'Gmail', sub: 'Email Outreach', color: '#EA4335' },
+              { name: 'Google Ads', sub: 'PPC Campaigns', color: '#4285F4' },
+              { name: 'Etsy', sub: 'Handmade Stores', color: '#F16521' },
+              { name: 'Pinterest', sub: 'Visual Discovery', color: '#E60023' },
+              { name: 'Meta', sub: 'Business Suite', color: '#0081FB' },
+              { name: 'X', sub: 'Real-Time Media', color: '#F8FAFC' },
+              { name: 'airbnb', sub: 'Host Accounts', color: '#FF5A5F' },
+              { name: 'YouTube', sub: 'Channels', color: '#FF0000' }
+            ].map((plat) => (
+              <div key={plat.name} style={{ backgroundColor: 'rgba(16, 21, 36, 0.85)', borderRadius: '14px', padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(148, 163, 184, 0.14)' }} className="platform-card">
+                <div style={{ fontSize: '20px', fontWeight: 800, color: plat.color, marginBottom: '4px', letterSpacing: '-0.4px' }}>{plat.name}</div>
+                <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plat.sub}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -757,16 +753,24 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
-            {steps.map((s: any) => (
-              <div key={s.id} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '14px', padding: '24px', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '12px', fontWeight: 800, color: accentColor, backgroundColor: `${accentColor}15`, padding: '4px 10px', borderRadius: '6px' }}>
-                  STEP 0{s.step_number}
+            {steps.map((s: any, idx: number) => {
+              const stepFallbacks: LandingIconName[] = ['file-plus', 'sliders', 'rocket', 'bar-chart']
+              const stepColors = ['#2DD4BF', '#38BDF8', '#818CF8', '#C084FC']
+              const iconName = resolveLandingIcon(s.icon, stepFallbacks[idx % stepFallbacks.length])
+              const stepColor = stepColors[idx % stepColors.length]
+              return (
+                <div key={s.id} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '14px', padding: '24px', position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '12px', fontWeight: 800, color: accentColor, backgroundColor: `${accentColor}15`, padding: '4px 10px', borderRadius: '6px' }}>
+                    STEP 0{s.step_number}
+                  </div>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: `${stepColor}1A`, border: `1px solid ${stepColor}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                    <LandingIcon name={iconName} size={23} color={stepColor} />
+                  </div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#F1F5F9', margin: '0 0 10px' }}>{s.title}</h3>
+                  <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>{s.description}</p>
                 </div>
-                <div style={{ fontSize: '32px', marginBottom: '16px' }}>{s.icon}</div>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#F1F5F9', margin: '0 0 10px' }}>{s.title}</h3>
-                <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>{s.description}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
@@ -774,7 +778,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
       {/* ── Download Desktop Application Section ── */}
       <section id="download" style={{ padding: '90px 24px', maxWidth: '1150px', margin: '0 auto', textAlign: 'center' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', backgroundColor: `${accentColor}15`, border: `1px solid ${accentColor}30`, color: accentColor, fontSize: '12px', fontWeight: 700, marginBottom: '20px' }}>
-          <span>💻</span> Cross-Platform Desktop Client
+          <LandingIcon name="monitor" size={14} color={accentColor} /> Cross-Platform Desktop Client
         </div>
 
         <h2 style={{ fontSize: '36px', fontWeight: 800, color: '#F8FAFC', margin: '0 0 16px' }}>
@@ -797,7 +801,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           marginBottom: '36px',
           fontSize: '13px'
         }}>
-          <span style={{ color: '#10B981', fontWeight: 700 }}>✓ Auto-Detected System:</span>
+          <span style={{ color: '#2DD4BF', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <LandingIcon name="check-circle" size={15} color="#2DD4BF" /> Auto-Detected System:
+          </span>
           <span style={{ color: '#F1F5F9', fontWeight: 600 }}>
             {detectedTarget === 'windows-x64' ? 'Windows 10/11 (64-bit x64)' : detectedTarget === 'macos-arm64' ? 'macOS Apple Silicon (M1/M2/M3/M4 arm64)' : 'macOS Intel (64-bit x64)'}
           </span>
@@ -1033,10 +1039,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
-              textDecoration: 'underline'
+              textDecoration: 'underline',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
             }}
           >
-            ❓ Which version should I download?
+            <LandingIcon name="help" size={15} color="#60A5FA" />
+            <span>Which version should I download?</span>
           </button>
         </div>
       </section>
@@ -1047,27 +1057,27 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           <div style={{ width: '100%', maxWidth: '540px', backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '16px', padding: '28px', textAlign: 'left' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #2C2C3E', paddingBottom: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#F1F5F9' }}>Which version should I download?</h3>
-              <button type="button" onClick={() => setShowArchHelpModal(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+              <button type="button" aria-label="Close help modal" onClick={() => setShowArchHelpModal(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '4px' }}><LandingIcon name="x" size={18} /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '13px', color: '#CBD5E1', lineHeight: 1.6 }}>
               <div style={{ padding: '12px', backgroundColor: '#14141F', borderRadius: '8px', border: '1px solid #2C2C3E' }}>
-                <strong style={{ color: '#60A5FA' }}>🪟 Windows (64-bit):</strong>
+                <strong style={{ color: '#60A5FA', display: 'inline-flex', alignItems: 'center', gap: '7px' }}><LandingIcon name="monitor" size={15} color="#60A5FA" /> Windows (64-bit):</strong>
                 <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>Select this if you run Windows 10 or Windows 11 on an Intel or AMD 64-bit processor.</p>
               </div>
 
               <div style={{ padding: '12px', backgroundColor: '#14141F', borderRadius: '8px', border: '1px solid #2C2C3E' }}>
-                <strong style={{ color: '#F59E0B' }}>🍏 Mac — Apple Silicon (M1/M2/M3/M4):</strong>
-                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>Select this if your Mac was made late 2020 or newer and has an Apple M1, M2, M3, or M4 chip. To check: click  Apple Logo → <strong>About This Mac</strong> → look for <em>Chip: Apple M...</em></p>
+                <strong style={{ color: '#F59E0B', display: 'inline-flex', alignItems: 'center', gap: '7px' }}><LandingIcon name="cpu" size={15} color="#F59E0B" /> Mac — Apple Silicon (M1/M2/M3/M4):</strong>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>Select this if your Mac was made late 2020 or newer and has an Apple M1, M2, M3, or M4 chip. To check: click the Apple Menu → <strong>About This Mac</strong> → look for <em>Chip: Apple M...</em></p>
               </div>
 
               <div style={{ padding: '12px', backgroundColor: '#14141F', borderRadius: '8px', border: '1px solid #2C2C3E' }}>
-                <strong style={{ color: '#10B981' }}>🍏 Mac — Intel:</strong>
+                <strong style={{ color: '#10B981', display: 'inline-flex', alignItems: 'center', gap: '7px' }}><LandingIcon name="cpu" size={15} color="#10B981" /> Mac — Intel:</strong>
                 <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>Select this if your Mac has an Intel Core i5, i7, or i9 processor (typically models made before late 2020).</p>
               </div>
 
               <div style={{ padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
-                <strong style={{ color: '#60A5FA' }}>💡 macOS Gatekeeper / "App is damaged" Fix:</strong>
+                <strong style={{ color: '#60A5FA', display: 'inline-flex', alignItems: 'center', gap: '7px' }}><LandingIcon name="info" size={15} color="#60A5FA" /> macOS Gatekeeper / "App is damaged" Fix:</strong>
                 <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
                   If macOS shows <em>"AntiProfiles is damaged and can't be opened"</em>, open Terminal and run: <code style={{ color: '#34D399', background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '4px' }}>xattr -cr /Applications/AntiProfiles.app</code>
                 </p>
@@ -1140,7 +1150,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           {pricingPlans.map((plan: any) => {
             const price = billingCycle === 'yearly' ? plan.yearly_price : plan.monthly_price
             const isTrial = isPlanTrialActive(plan)
-            const buttonLabel = isTrial ? `🎁 Start ${trialDays}-Day Free Trial` : (plan.monthly_price === 0 ? 'Start Free' : plan.button_text || `⚡ Pay & Upgrade (${plan.currency}${price})`)
+            const buttonLabel = isTrial ? `Start ${trialDays}-Day Free Trial` : (plan.monthly_price === 0 ? 'Start Free' : plan.button_text || `Pay & Upgrade (${plan.currency}${price})`)
             return (
               <div
                 key={plan.id}
@@ -1170,9 +1180,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                     boxShadow: '0 4px 12px rgba(45, 212, 191, 0.4)',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
                   }}>
-                    🎁 {trialDays}-DAY FREE TRIAL AVAILABLE
+                    <LandingIcon name="gift" size={12} color="#0F0F17" /> {trialDays}-DAY FREE TRIAL AVAILABLE
                   </div>
                 ) : plan.badge ? (
                   <div style={{
@@ -1225,16 +1238,21 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                     fontSize: '14px',
                     cursor: 'pointer',
                     marginBottom: '24px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
                     boxShadow: isTrial ? `0 4px 14px ${accentColor}40` : undefined
                   }}
                 >
-                  {buttonLabel}
+                  {isTrial ? <LandingIcon name="gift" size={15} /> : plan.monthly_price > 0 ? <LandingIcon name="zap" size={15} /> : null}
+                  <span>{buttonLabel}</span>
                 </button>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #2C2C3E', paddingTop: '20px' }}>
                   {plan.features.map((feat: any, idx: number) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#CBD5E1' }}>
-                      <span style={{ color: accentColor }}>✓</span>
+                      <LandingIcon name={feat.feature_value === '—' ? 'x' : 'check'} size={15} color={feat.feature_value === '—' ? '#64748B' : accentColor} />
                       <span>{feat.feature_name}: <strong>{feat.feature_value}</strong></span>
                     </div>
                   ))}
@@ -1267,7 +1285,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
                   { key: 'profile_limit', name: 'Browser Profiles', render: (p: any) => p.profile_limit },
                   { key: 'team_limit', name: 'Team Members', render: (p: any) => `${p.team_limit} ${p.team_limit === 1 ? 'User' : 'Users'}` },
                   { key: 'api_limit', name: 'Automation API', render: (p: any) => p.api_limit },
-                  { key: 'proxy', name: 'Proxy Support', render: () => '✓' },
+                  { key: 'proxy', name: 'Proxy Support', render: () => <LandingIcon name="check" size={16} color={accentColor} /> },
                   { key: 'fingerprint', name: 'Fingerprint Control', render: (p: any) => p.monthly_price > 0 ? 'Advanced' : 'Basic' }
                 ].map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #2C2C3E10' }}>
@@ -1341,34 +1359,44 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-            {testimonials.map((t: any) => (
-              <div key={t.id} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '14px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <div style={{ fontSize: '14px', color: '#F59E0B' }}>
-                      {'★'.repeat(t.rating)}
-                    </div>
-                    {t.is_demo === 1 && (
-                      <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#2C2C3E', color: '#64748B' }}>
-                        Demo Content
-                      </span>
-                    )}
-                  </div>
-                  <p style={{ fontSize: '14px', color: '#CBD5E1', lineHeight: 1.6, margin: '0 0 20px', italic: 'true' }}>
-                    "{t.testimonial}"
-                  </p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#14141F', border: '1px solid #2C2C3E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-                    {t.avatar_url}
-                  </div>
+            {testimonials.map((t: any, idx: number) => {
+              const avatarGradients = [
+                'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                'linear-gradient(135deg, #2DD4BF, #06B6D4)',
+                'linear-gradient(135deg, #8B5CF6, #EC4899)'
+              ]
+              const count = Math.max(1, Math.min(5, Number(t.rating) || 5))
+              return (
+                <div key={t.id} style={{ backgroundColor: '#161622', border: '1px solid #2C2C3E', borderRadius: '14px', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9' }}>{t.name}</div>
-                    <div style={{ fontSize: '12px', color: '#64748B' }}>{t.position} at {t.company}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <div aria-label={`${count} out of 5 stars`} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#F59E0B' }}>
+                        {Array.from({ length: count }).map((_, si) => (
+                          <LandingIcon key={si} name="star" size={15} color="#F59E0B" />
+                        ))}
+                      </div>
+                      {t.is_demo === 1 && (
+                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#2C2C3E', color: '#64748B' }}>
+                          Demo Content
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: '14px', color: '#CBD5E1', lineHeight: 1.6, margin: '0 0 20px', fontStyle: 'italic' }}>
+                      "{t.testimonial}"
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: avatarGradients[idx % avatarGradients.length], color: idx % 3 === 1 ? '#041014' : '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800 }}>
+                      {getInitials(t.name)}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9' }}>{t.name}</div>
+                      <div style={{ fontSize: '12px', color: '#64748B' }}>{t.position} at {t.company}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
@@ -1425,19 +1453,23 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', borderRadius: '10px', backgroundColor: '#161622', border: '1px solid #2C2C3E' }}>
-                <span style={{ fontSize: '20px' }}>✉️</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '12px', backgroundColor: '#161622', border: '1px solid #2C2C3E' }}>
+                <span style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(45, 212, 191, 0.12)', border: '1px solid rgba(45, 212, 191, 0.28)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <LandingIcon name="mail" size={18} color="#2DD4BF" />
+                </span>
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>Email Support</div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#F1F5F9' }}>{branding.contact_email}</div>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Support</div>
+                  <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#F1F5F9', marginTop: '2px' }}>{branding.contact_email}</div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', borderRadius: '10px', backgroundColor: '#161622', border: '1px solid #2C2C3E' }}>
-                <span style={{ fontSize: '20px' }}>✈️</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '12px', backgroundColor: '#161622', border: '1px solid #2C2C3E' }}>
+                <span style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.28)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <LandingIcon name="telegram" size={18} color="#38BDF8" />
+                </span>
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>Telegram Community</div>
-                  <a href={branding.contact_telegram} target="_blank" rel="noreferrer" style={{ fontSize: '13px', fontWeight: 600, color: accentColor, textDecoration: 'none' }}>Join Telegram Support</a>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Telegram Community</div>
+                  <a href={branding.contact_telegram} target="_blank" rel="noreferrer" style={{ fontSize: '13.5px', fontWeight: 600, color: accentColor, textDecoration: 'none', display: 'inline-block', marginTop: '2px' }}>Join Telegram Support</a>
                 </div>
               </div>
             </div>
@@ -1447,8 +1479,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
             <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#F1F5F9', margin: '0 0 16px' }}>Send a Message</h3>
             
             {contactSubmitted && (
-              <div style={{ backgroundColor: '#10B98115', border: '1px solid #10B98150', color: '#10B981', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
-                ✓ Message submitted successfully! Our team will contact you shortly.
+              <div style={{ backgroundColor: '#10B98115', border: '1px solid #10B98150', color: '#10B981', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <LandingIcon name="check-circle" size={16} color="#10B981" />
+                <span>Message submitted successfully! Our team will contact you shortly.</span>
               </div>
             )}
 
@@ -1501,9 +1534,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onNavigateLogin, onNavigat
       <footer style={{ borderTop: '1px solid #2C2C3E', backgroundColor: '#0A0A0F', padding: '60px 24px 30px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '40px', marginBottom: '40px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '22px' }}>🛡️</span>
-              <span style={{ fontSize: '18px', fontWeight: 800, color: '#F1F5F9' }}>{branding.site_name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '14px' }}>
+              <img src={brandLogoImg} alt="AntiProfiles Logo" style={{ height: 40, width: 'auto', maxWidth: '210px', objectFit: 'contain' }} />
             </div>
             <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.6, margin: 0 }}>
               Professional browser profile isolation and anti-detect privacy management software.
