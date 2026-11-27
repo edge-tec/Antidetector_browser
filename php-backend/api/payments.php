@@ -114,9 +114,15 @@ function callBachsApi(
 ): array {
     $secret = trim($secretKey);
     $useSandbox = $isTestMode || stripos($secret, 'sk_sandbox_') === 0 || stripos($secret, 'sk_test_') === 0;
-    $baseUrl = $useSandbox
-        ? rtrim(trim((string)($config['sandbox_api_base_url'] ?? 'https://sandbox-api.bachs.io')), '/')
-        : rtrim(trim((string)($config['api_base_url'] ?? 'https://api.bachs.io')), '/');
+    $rawLiveUrl = rtrim(trim((string)($config['api_base_url'] ?? 'https://api.bachs.io')), '/');
+    if ($rawLiveUrl === '' || stripos($rawLiveUrl, '://app.bachs.io') !== false) {
+        $rawLiveUrl = 'https://api.bachs.io';
+    }
+    $rawSandboxUrl = rtrim(trim((string)($config['sandbox_api_base_url'] ?? 'https://sandbox-api.bachs.io')), '/');
+    if ($rawSandboxUrl === '' || stripos($rawSandboxUrl, '://app.bachs.io') !== false) {
+        $rawSandboxUrl = 'https://sandbox-api.bachs.io';
+    }
+    $baseUrl = $useSandbox ? $rawSandboxUrl : $rawLiveUrl;
 
     $url = $baseUrl . '/' . ltrim($endpoint, '/');
     $ch = curl_init();
@@ -276,8 +282,8 @@ function processSuccessfulPayment(
         ];
     }
 
-    // 2. Fetch the corresponding invoice (by id, invoice_number, or Stripe session/transaction_id)
-    $invStmt = $db->prepare("SELECT * FROM invoices WHERE id = ? OR invoice_number = ? OR transaction_id = ? FOR UPDATE");
+    // 2. Fetch the corresponding invoice (by id, invoice_number, or session/transaction_id)
+    $invStmt = $db->prepare("SELECT * FROM invoices WHERE id = ? OR invoice_number = ? OR transaction_id = ? LIMIT 1");
     $invStmt->execute([$invoiceIdOrNum, $invoiceIdOrNum, $invoiceIdOrNum]);
     $invoice = $invStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -334,7 +340,7 @@ function processSuccessfulPayment(
         $payId = 'pay_' . bin2hex(random_bytes(8));
         $insPay = $db->prepare("
             INSERT INTO payments (id, user_id, invoice_id, package_id, transaction_id, provider_payment_id, amount, amount_cents, currency, gateway, status, payment_method, metadata, paid_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE status = 'paid', paid_at = CURRENT_TIMESTAMP, transaction_id = VALUES(transaction_id)
         ");
         $insPay->execute([
@@ -818,11 +824,21 @@ if (defined('PAYMENTS_LIB_ONLY') && PAYMENTS_LIB_ONLY) {
 // ──────────────────────────────────────────────
 $action = $_GET['action'] ?? '';
 
+try {
+    ensureDatabaseTablesExist($db);
+    // Ensure newer columns exist on existing production tables
+    try {
+        $db->exec("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS amount_cents INT NOT NULL DEFAULT 0");
+        $db->exec("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) DEFAULT NULL");
+        $db->exec("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(100) DEFAULT NULL");
+        $db->exec("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS metadata TEXT DEFAULT NULL");
+        $db->exec("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS expires_at DATETIME DEFAULT NULL");
+    } catch (Throwable $migErr) {}
+
 switch ($action) {
 
-    // ── 1. Get Enabled Public Gateways (No Secrets Exposing) ──
+    // ── 1. Get Enabled Public Gateways (No Secrets or Merchant Details Exposing) ──
     case 'public-gateways':
-        ensureDatabaseTablesExist($db);
         $stmt = $db->prepare("SELECT gateway_key, name, is_enabled, is_test_mode, public_key, currency, config_json FROM payment_gateways WHERE is_enabled = 1");
         $stmt->execute();
         $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -834,18 +850,42 @@ switch ($action) {
             $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
+        $cardCount = 0;
+        foreach ($gateways as $g) {
+            if (in_array($g['gateway_key'], ['stripe', 'bachs'], true)) {
+                $cardCount++;
+            }
+        }
+
         $result = [];
         foreach ($gateways as $gw) {
             $conf = json_decode($gw['config_json'] ?? '{}', true) ?: [];
+            $gk = $gw['gateway_key'];
+            if ($gk === 'crypto') {
+                $displayName = 'Pay with Cryptocurrency';
+                $displayDesc = 'USDT (TRC20/BEP20/ERC20), Bitcoin, Ethereum, Solana';
+            } elseif ($gk === 'bachs') {
+                $displayName = 'Pay with Card';
+                $displayDesc = $cardCount > 1
+                    ? 'Visa, Mastercard, Global Debit & Credit Cards • Instant Checkout'
+                    : 'Visa, Mastercard, Credit & Debit Cards • Instant Activation';
+            } elseif ($gk === 'stripe') {
+                $displayName = $cardCount > 1 ? 'Pay with Card / Express Wallet' : 'Pay with Card';
+                $displayDesc = 'Credit & Debit Cards, Apple Pay, Google Pay';
+            } else {
+                $displayName = 'Pay with Card';
+                $displayDesc = 'Secure Online Card Payment';
+            }
+
             $result[] = [
-                'gateway_key' => $gw['gateway_key'],
-                'key' => $gw['gateway_key'],
-                'name' => $gw['name'],
+                'gateway_key' => $gk,
+                'key' => $gk,
+                'name' => $displayName,
+                'display_name' => $displayName,
+                'description' => $displayDesc,
                 'is_enabled' => (bool)$gw['is_enabled'],
                 'is_test_mode' => (bool)$gw['is_test_mode'],
                 'isTestMode' => (bool)$gw['is_test_mode'],
-                'public_key' => $gw['public_key'] ?: '',
-                'publicKey' => $gw['public_key'] ?: '',
                 'currency' => $gw['currency'] ?: 'USD',
                 'supportedCoins' => $conf['supported_coins'] ?? ['BTC', 'USDT', 'ETH', 'USDC'],
                 'minAmount' => (float)($conf['min_amount'] ?? 5.0)
@@ -921,35 +961,35 @@ switch ($action) {
             // If Secret Key is not configured or placeholder in test mode
             if (!$secretKey || strpos($secretKey, 'placeholder') !== false || strlen($secretKey) < 15) {
                 if (!empty($gw['is_test_mode'])) {
-                    // Sandbox / Demo mode activation
-                    $db->prepare("UPDATE invoices SET status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE invoice_number = ?")->execute([$invNumber]);
-                    
-                    $slug = $plan['slug'] ?? 'starter';
-                    $profileLimit = (int)($plan['profile_limit'] ?? 50);
-                    $teamLimit = (int)($plan['team_limit'] ?? 5);
-
-                    $subStmt = $db->prepare("
-                        INSERT INTO user_subscriptions (user_id, plan_id, status, expires_at, created_at, updated_at)
-                        VALUES (?, ?, 'active', DATE_ADD(NOW(), INTERVAL 30 DAY), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                        ON DUPLICATE KEY UPDATE plan_id = VALUES(plan_id), status = 'active', expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY), updated_at = CURRENT_TIMESTAMP
-                    ");
-                    $subStmt->execute([$user['id'], $planId]);
-
-                    $db->prepare("UPDATE users SET profile_limit = ?, team_limit = ? WHERE id = ?")->execute([$profileLimit, $teamLimit, $user['id']]);
+                    // Sandbox / Demo mode activation using canonical processSuccessfulPayment()
+                    $res = processSuccessfulPayment(
+                        $db,
+                        'stripe',
+                        'stripe_sandbox_' . $invId,
+                        'checkout.session.completed',
+                        $invNumber,
+                        'cs_sandbox_' . bin2hex(random_bytes(6)),
+                        'pi_sandbox_' . bin2hex(random_bytes(6)),
+                        $amount,
+                        strtoupper($gw['currency'] ?: 'USD'),
+                        ['payment_method' => 'card', 'sandbox' => true, 'customer_email' => $user['email'] ?? '']
+                    );
 
                     respondJson([
                         'success' => true,
                         'type' => 'redirect',
                         'gateway' => 'stripe',
+                        'sandbox' => true,
                         'invoiceNumber' => $invNumber,
                         'checkout_url' => $successUrl . '&sandbox=1',
                         'checkoutUrl' => $successUrl . '&sandbox=1',
                         'amount' => $amount,
                         'currency' => $gw['currency'] ?: 'USD',
-                        'message' => 'Sandbox test payment completed successfully! Plan activated.'
+                        'message' => 'Test payment completed successfully! Your subscription plan is now active.',
+                        'result' => $res
                     ]);
                 } else {
-                    respondJson(['success' => false, 'error' => 'Stripe Secret Key is not configured yet. Please configure your live Stripe API keys in Admin Panel -> Payment Gateways.'], 400);
+                    respondJson(['success' => false, 'error' => 'Card payment gateway is not configured yet. Please configure live API keys in Admin Panel -> Payment Gateways.'], 400);
                 }
             }
 
@@ -1046,18 +1086,19 @@ switch ($action) {
                         'success' => true,
                         'type' => 'redirect',
                         'gateway' => 'bachs',
+                        'sandbox' => true,
                         'invoiceNumber' => $invNumber,
                         'checkout_url' => $successUrl . '&sandbox=1',
                         'checkoutUrl' => $successUrl . '&sandbox=1',
                         'amount' => $amount,
                         'currency' => $currency,
-                        'message' => 'Bachs.io Sandbox test payment completed! Plan activated.',
+                        'message' => 'Test payment completed successfully! Your subscription plan is now active.',
                         'result' => $res
                     ]);
                 } else {
                     respondJson([
                         'success' => false,
-                        'error' => 'Bachs.io Secret API Key is not configured yet. Please add your live sk_live_... key in Admin Panel → Payment Gateways → Bachs.io.'
+                        'error' => 'Card payment API key is not configured yet. Please configure live credentials in Admin Panel → Payment Gateways.'
                     ], 400);
                 }
             }
@@ -1829,4 +1870,11 @@ switch ($action) {
     default:
         respondJson(['success' => false, 'error' => "Unknown payment action: '{$action}'."], 404);
         break;
+}
+} catch (Throwable $e) {
+    error_log('[AntiProfiles Payments API Error] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    respondJson([
+        'success' => false,
+        'error' => 'Payment processing error: ' . $e->getMessage()
+    ], 500);
 }

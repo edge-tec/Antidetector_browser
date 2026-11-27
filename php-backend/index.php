@@ -1059,6 +1059,146 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             border: 1px solid rgba(45, 212, 191, 0.25);
             color: #2DD4BF;
         }
+        /* Advanced Customer Payment Checkout Modal */
+        .checkout-modal-card {
+            max-width: 540px;
+            width: 92%;
+            background: linear-gradient(180deg, #131726 0%, #0D101B 100%);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 20px;
+            padding: 26px;
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(45, 212, 191, 0.08);
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+        .checkout-summary-box {
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+            border: 1px solid rgba(45, 212, 191, 0.22);
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .checkout-method-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1.5px solid rgba(148, 163, 184, 0.18);
+            border-radius: 14px;
+            padding: 15px 16px;
+            cursor: pointer;
+            transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.14s ease;
+            position: relative;
+        }
+        .checkout-method-card:hover {
+            border-color: rgba(45, 212, 191, 0.45);
+            background: rgba(30, 41, 59, 0.7);
+        }
+        .checkout-method-card.is-selected {
+            border-color: #2DD4BF;
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.12) 0%, rgba(6, 182, 212, 0.05) 100%);
+            box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.35), 0 10px 26px rgba(45, 212, 191, 0.12);
+        }
+        .checkout-radio-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .checkout-radio-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid rgba(148, 163, 184, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.18s ease;
+        }
+        .checkout-method-card.is-selected .checkout-radio-dot {
+            border-color: #2DD4BF;
+            background: rgba(45, 212, 191, 0.16);
+        }
+        .checkout-radio-dot::after {
+            content: '';
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #2DD4BF;
+            transform: scale(0);
+            transition: transform 0.16s ease;
+        }
+        .checkout-method-card.is-selected .checkout-radio-dot::after {
+            transform: scale(1);
+        }
+        .checkout-icon-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            color: #94A3B8;
+            transition: all 0.18s ease;
+        }
+        .checkout-method-card.is-selected .checkout-icon-badge {
+            background: rgba(45, 212, 191, 0.16);
+            border-color: rgba(45, 212, 191, 0.4);
+            color: #2DD4BF;
+        }
+        .checkout-brand-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 7px;
+        }
+        .checkout-brand-pill {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            color: #CBD5E1;
+        }
+        .checkout-rec-tag {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(45, 212, 191, 0.16);
+            color: #2DD4BF;
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            margin-left: 7px;
+        }
+        .checkout-trust-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(148, 163, 184, 0.12);
+            font-size: 11px;
+            color: #94A3B8;
+        }
+        .checkout-trust-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
         .hero h1 {
             font-size: clamp(34px, 4.7vw, 58px);
             font-weight: 800;
@@ -4768,7 +4908,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;">
                                 <div>
                                     <h4 style="font-size: 17px; color: #FFF; margin: 0;">💳 Upgrade or Renew Your Plan Directly</h4>
-                                    <p style="font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0 0;">Select a plan below to pay instantly via Bachs.io, Stripe, or Crypto with automatic activation.</p>
+                                    <p style="font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0 0;">Select a plan below to pay securely with Card or Cryptocurrency for instant activation.</p>
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
@@ -7394,34 +7534,55 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
     <!-- MODAL: CUSTOMER PAYMENT & GATEWAY SELECTION -->
     <div id="modalCheckoutPayment" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 100000;">
-        <div class="modal-card" style="max-width: 520px; width: 90%; background: #12141F; border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 style="font-size: 18px; color: #FFF;" id="checkoutModalTitle">Complete Subscription Upgrade</h3>
-                <button onclick="closeCheckoutModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">✕</button>
+        <div class="checkout-modal-card">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; gap: 12px;">
+                <div>
+                    <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #2DD4BF; background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.28); padding: 3px 9px; border-radius: 999px; margin-bottom: 8px;">
+                        <svg class="lp-ico" width="12" height="12" aria-hidden="true"><use href="#lp-ico-lock"></use></svg>
+                        <span>256-Bit Encrypted Checkout</span>
+                    </div>
+                    <h3 style="font-size: 20px; font-weight: 800; color: #FFF; margin: 0;" id="checkoutModalTitle">Complete Subscription Upgrade</h3>
+                </div>
+                <button type="button" onclick="closeCheckoutModal()" aria-label="Close checkout" style="width: 34px; height: 34px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(148, 163, 184, 0.18); color: #94A3B8; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;">&times;</button>
             </div>
 
             <!-- Order Summary Card -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="checkout-summary-box">
                 <div>
-                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">SELECTED PLAN</span>
-                    <h4 style="font-size: 18px; color: #FFF; margin-top: 2px;" id="checkoutPlanNameDisplay">Professional Plan</h4>
+                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; letter-spacing: 0.06em;">SELECTED PLAN</span>
+                    <h4 style="font-size: 18px; font-weight: 800; color: #FFF; margin: 3px 0 4px 0;" id="checkoutPlanNameDisplay">Professional Plan</h4>
+                    <span style="font-size: 11.5px; color: #94A3B8; display: inline-flex; align-items: center; gap: 5px;">
+                        <svg class="lp-ico" width="12" height="12" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-bolt"></use></svg>
+                        <span>Instant activation • 30-day access</span>
+                    </span>
                 </div>
                 <div style="text-align: right;">
-                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">TOTAL DUE</span>
-                    <h3 style="font-size: 24px; color: #2DD4BF; font-weight: 800;" id="checkoutAmountDisplay">$49.00</h3>
+                    <span style="font-size: 11px; color: #94A3B8; font-weight: 700; letter-spacing: 0.06em;">TOTAL DUE</span>
+                    <h3 style="font-size: 28px; color: #2DD4BF; font-weight: 800; margin: 2px 0 0 0; line-height: 1.1;" id="checkoutAmountDisplay">$49.00</h3>
+                    <span style="font-size: 11px; color: #64748B;">USD / month</span>
                 </div>
             </div>
 
+            <!-- Inline Error / Status Banner (No Ugly Browser Alerts) -->
+            <div id="checkoutStatusBanner" style="display: none; border-radius: 10px; padding: 11px 14px; margin-bottom: 14px; font-size: 12.5px; font-weight: 600; line-height: 1.45;"></div>
+
             <!-- Gateway Selection State -->
             <div id="checkoutGatewaySelectSection">
-                <label style="font-size: 12px; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 10px;">CHOOSE PAYMENT METHOD</label>
-                <div id="checkoutGatewaysList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 11.5px; color: #94A3B8; font-weight: 700; letter-spacing: 0.06em;">CHOOSE PAYMENT METHOD</label>
+                    <span style="font-size: 11px; color: #64748B;">Instant Auto-Unlock</span>
+                </div>
+                <div id="checkoutGatewaysList" style="display: flex; flex-direction: column; gap: 11px; margin-bottom: 16px;">
                     <!-- Injected dynamically -->
                 </div>
-                <div id="checkoutCryptoNetworkWrap" style="display: none; margin-bottom: 16px; background: rgba(45, 212, 191, 0.05); border: 1px solid rgba(45, 212, 191, 0.25); border-radius: 10px; padding: 12px;">
-                    <label style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: block; margin-bottom: 6px;">🪙 SELECT CRYPTO NETWORK (9 SUPPORTED)</label>
-                    <select id="checkoutCryptoNetworkSelect" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; color: #FFF; font-size: 13px; font-weight: 600;">
-                        <option value="usdt-tron">USDT — TRON (TRC20) ⚡ Recommended</option>
+                <div id="checkoutCryptoNetworkWrap" style="display: none; margin-bottom: 16px; background: rgba(45, 212, 191, 0.06); border: 1px solid rgba(45, 212, 191, 0.28); border-radius: 12px; padding: 14px;">
+                    <label style="font-size: 11px; color: #2DD4BF; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; letter-spacing: 0.04em;">
+                        <svg class="lp-ico" width="14" height="14" aria-hidden="true"><use href="#lp-ico-coins"></use></svg>
+                        <span>SELECT CRYPTO NETWORK (9 SUPPORTED)</span>
+                    </label>
+                    <select id="checkoutCryptoNetworkSelect" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: #FFF; font-size: 13px; font-weight: 600;">
+                        <option value="usdt-tron">USDT — TRON (TRC20) • Lowest Fee</option>
                         <option value="usdt-bsc">USDT — BNB Smart Chain (BEP20)</option>
                         <option value="usdt-ethereum">USDT — Ethereum (ERC20)</option>
                         <option value="trx-tron">TRX — TRON</option>
@@ -7432,31 +7593,39 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                         <option value="sol-solana">SOL — Solana</option>
                     </select>
                 </div>
-                <button class="btn btn-primary" id="btnProceedToPay" style="width: 100%; justify-content: center; padding: 12px; font-weight: 800; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #000;" onclick="submitCheckoutPayment()">🔒 Proceed to Secure Payment</button>
+                <button type="button" class="btn btn-primary" id="btnProceedToPay" style="width: 100%; justify-content: center; padding: 14px 18px; font-size: 14.5px; font-weight: 800; border-radius: 12px; background: linear-gradient(135deg, #2DD4BF, #06B6D4); color: #04131A; box-shadow: 0 10px 26px rgba(45, 212, 191, 0.28); display: inline-flex; align-items: center; gap: 8px;" onclick="submitCheckoutPayment()">
+                    <svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="#lp-ico-lock"></use></svg>
+                    <span>Proceed to Secure Payment</span>
+                </button>
+                <div class="checkout-trust-row">
+                    <span class="checkout-trust-item"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-shield"></use></svg> PCI-DSS Protected</span>
+                    <span class="checkout-trust-item"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-bolt"></use></svg> Instant Activation</span>
+                    <span class="checkout-trust-item"><svg class="lp-ico" width="13" height="13" style="color:#2DD4BF;" aria-hidden="true"><use href="#lp-ico-check"></use></svg> No Hidden Fees</span>
+                </div>
             </div>
 
             <!-- Crypto Invoice Display State -->
             <div id="checkoutCryptoInvoiceSection" style="display: none; text-align: center;">
-                <div style="background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 13px; color: #2DD4BF;">
+                <div style="background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 14px; font-size: 13px; color: #2DD4BF;">
                     <div id="cryptoNetworkBadge" style="font-size: 11px; color: #94A3B8; margin-bottom: 4px;">USDT — TRON (TRC20)</div>
-                    ⚡ Send exact <strong id="cryptoPayAmountDisplay">49.00 USDT</strong>
-                    <button type="button" onclick="copyCheckoutText('cryptoPayAmountRaw')" style="margin-left: 6px; background: rgba(45,212,191,0.2); border: none; color: #2DD4BF; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer;">📋 Copy</button>
+                    Send exact <strong id="cryptoPayAmountDisplay">49.00 USDT</strong>
+                    <button type="button" onclick="copyCheckoutText('cryptoPayAmountRaw')" style="margin-left: 6px; background: rgba(45,212,191,0.2); border: none; color: #2DD4BF; border-radius: 5px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Copy</button>
                     <input type="hidden" id="cryptoPayAmountRaw">
                     <input type="hidden" id="cryptoActiveInvoiceNumber">
                 </div>
                 <div style="margin: 12px 0;">
-                    <img id="cryptoQrCodeImg" src="" alt="Payment QR Code" style="width: 155px; height: 155px; border-radius: 10px; border: 2px solid #FFF;">
+                    <img id="cryptoQrCodeImg" src="" alt="Payment QR Code" style="width: 164px; height: 164px; border-radius: 12px; border: 3px solid #FFF;">
                 </div>
-                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Dedicated Deposit Address</span>
+                <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Dedicated Deposit Address</span>
                     <div style="display: flex; gap: 6px; align-items: center;">
                         <input type="text" id="cryptoAddressInput" readonly style="flex: 1; background: transparent; border: none; color: #FFF; font-family: monospace; font-size: 12px; text-align: center;" onclick="this.select()">
-                        <button type="button" onclick="copyCheckoutText('cryptoAddressInput')" style="background: rgba(129,140,248,0.2); border: none; color: #818CF8; border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">📋 Copy</button>
+                        <button type="button" onclick="copyCheckoutText('cryptoAddressInput')" style="background: rgba(129,140,248,0.2); border: none; color: #A5B4FC; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Copy</button>
                     </div>
                 </div>
-                <div style="display: flex; gap: 6px; margin-bottom: 12px;">
-                    <input type="text" id="cryptoManualTxHash" placeholder="Optional: Paste TxHash for instant verification..." style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: #FFF; font-family: monospace; font-size: 11px;">
-                    <button type="button" class="btn btn-primary" style="padding: 8px 12px; font-size: 11px;" onclick="verifyCryptoInvoiceNow()">✓ Verify</button>
+                <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                    <input type="text" id="cryptoManualTxHash" placeholder="Optional: Paste TxHash for instant verification..." style="flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; color: #FFF; font-family: monospace; font-size: 11.5px;">
+                    <button type="button" class="btn btn-primary" style="padding: 9px 14px; font-size: 12px;" onclick="verifyCryptoInvoiceNow()">Verify Now</button>
                 </div>
                 <div id="cryptoLiveStatusRow" style="display: flex; justify-content: center; align-items: center; gap: 8px; color: #F59E0B; font-size: 12.5px;">
                     <span class="pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
@@ -11367,6 +11536,36 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
         }
 
+        function showCheckoutBanner(type, message) {
+            const banner = document.getElementById('checkoutStatusBanner');
+            if (!banner) return;
+            if (!message) {
+                banner.style.display = 'none';
+                banner.textContent = '';
+                return;
+            }
+            banner.style.display = 'block';
+            if (type === 'success') {
+                banner.style.background = 'rgba(16, 185, 129, 0.14)';
+                banner.style.border = '1px solid rgba(16, 185, 129, 0.35)';
+                banner.style.color = '#34D399';
+            } else {
+                banner.style.background = 'rgba(239, 68, 68, 0.14)';
+                banner.style.border = '1px solid rgba(239, 68, 68, 0.35)';
+                banner.style.color = '#FCA5A5';
+            }
+            banner.textContent = message;
+        }
+
+        function setCheckoutBtnState(loading, labelText) {
+            const btn = document.getElementById('btnProceedToPay');
+            if (!btn) return;
+            btn.disabled = !!loading;
+            btn.style.opacity = loading ? '0.75' : '1';
+            const icon = loading ? '#lp-ico-refresh' : '#lp-ico-lock';
+            btn.innerHTML = '<svg class="lp-ico" width="16" height="16" aria-hidden="true"><use href="' + icon + '"></use></svg><span>' + labelText + '</span>';
+        }
+
         async function initiatePackagePayment(planId, planName, amount) {
             const token = getActiveUserToken();
             if (!token) {
@@ -11378,6 +11577,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             }
 
             _activeCheckoutPlan = { planId, planName, amount };
+            showCheckoutBanner('', '');
 
             document.getElementById('checkoutPlanNameDisplay').innerText = planName + ' Plan';
             document.getElementById('checkoutAmountDisplay').innerText = '$' + amount.toFixed(2);
@@ -11385,7 +11585,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
             document.getElementById('checkoutCryptoInvoiceSection').style.display = 'none';
 
             const list = document.getElementById('checkoutGatewaysList');
-            list.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:10px;">Loading payment options...</div>';
+            list.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:18px;">Loading secure payment options...</div>';
             document.getElementById('modalCheckoutPayment').style.display = 'flex';
 
             try {
@@ -11394,46 +11594,95 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                 const listData = Array.isArray(data.data) ? data.data : (Array.isArray(data.gateways) ? data.gateways : []);
 
                 if (data.success && listData.length > 0) {
+                    const cardCount = listData.filter(g => {
+                        const k = g.gateway_key || g.key || '';
+                        return k === 'stripe' || k === 'bachs';
+                    }).length;
+
                     list.innerHTML = listData.map((gw, idx) => {
                         const gwKey = gw.gateway_key || gw.key || 'stripe';
-                        const gwName = gw.name || (gwKey === 'stripe' ? 'Stripe' : (gwKey === 'bachs' ? 'Bachs.io' : 'Cryptocurrency'));
-                        const isStripe = gwKey === 'stripe';
+                        const isCrypto = gwKey === 'crypto';
                         const isBachs = gwKey === 'bachs';
-                        const desc = isStripe ? 'Credit / Debit Card, Apple Pay, Google Pay' : (isBachs ? 'Instant Checkout via Bachs.io (app.bachs.io)' : 'USDT, Bitcoin, Ethereum (Instant)');
-                        const icon = isStripe ? '💳' : (isBachs ? '🏦' : '🪙');
+                        const isStripe = gwKey === 'stripe';
+
+                        // Clean customer-facing labels (never expose internal merchant/provider names)
+                        let gwName = 'Pay with Card';
+                        let desc = 'Visa, Mastercard, Credit & Debit Cards • Instant Activation';
+                        let iconId = '#lp-ico-credit-card';
+                        let pills = ['VISA', 'Mastercard', 'AMEX', 'Debit'];
+                        let badgeHtml = idx === 0 ? '<span class="checkout-rec-tag">Recommended</span>' : '';
+
+                        if (isCrypto) {
+                            gwName = 'Pay with Cryptocurrency';
+                            desc = 'Zero-border instant on-chain verification';
+                            iconId = '#lp-ico-coins';
+                            pills = ['USDT', 'BTC', 'ETH', 'SOL'];
+                            badgeHtml = '<span class="checkout-rec-tag" style="background:rgba(129,140,248,0.16);color:#A5B4FC;border-color:rgba(129,140,248,0.35);">Zero Chargeback</span>';
+                        } else if (isBachs) {
+                            gwName = 'Pay with Card';
+                            desc = cardCount > 1
+                                ? 'Global Debit & Credit Cards • Instant Checkout'
+                                : 'Visa, Mastercard, Credit & Debit Cards • Instant Activation';
+                            iconId = '#lp-ico-credit-card';
+                            pills = ['VISA', 'Mastercard', 'Debit', 'Credit'];
+                        } else if (isStripe) {
+                            gwName = cardCount > 1 ? 'Pay with Card / Express Wallet' : 'Pay with Card';
+                            desc = 'Credit & Debit Cards, Apple Pay, Google Pay';
+                            iconId = '#lp-ico-credit-card';
+                            pills = ['VISA', 'Mastercard', 'Apple Pay', 'Google Pay'];
+                        }
+
+                        const pillsHtml = pills.map(p => `<span class="checkout-brand-pill">${p}</span>`).join('');
 
                         return `
-                        <label style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-input); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:all 0.2s;">
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <input type="radio" name="checkoutGateway" value="${gwKey}" ${idx === 0 ? 'checked' : ''} onchange="syncCheckoutGatewaySelection()" style="transform:scale(1.2);">
-                                <div>
-                                    <strong style="color:#FFF; font-size:14px;">${gwName}</strong>
-                                    <span style="display:block; font-size:11.5px; color:var(--text-muted); margin-top:2px;">${desc}</span>
+                        <label class="checkout-method-card ${idx === 0 ? 'is-selected' : ''}" data-gw-card="${gwKey}">
+                            <input type="radio" class="checkout-radio-input" name="checkoutGateway" value="${gwKey}" ${idx === 0 ? 'checked' : ''} onchange="syncCheckoutGatewaySelection()">
+                            <div style="display:flex; align-items:flex-start; gap:12px; min-width:0; flex:1;">
+                                <span class="checkout-radio-dot" style="margin-top:2px;"></span>
+                                <div style="min-width:0; flex:1;">
+                                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+                                        <strong style="color:#FFF; font-size:14.5px; font-weight:700;">${gwName}</strong>
+                                        ${badgeHtml}
+                                    </div>
+                                    <span style="display:block; font-size:12px; color:#94A3B8; margin-top:3px;">${desc}</span>
+                                    <div class="checkout-brand-pills">${pillsHtml}</div>
                                 </div>
                             </div>
-                            <span style="font-size:22px;">${icon}</span>
+                            <div class="checkout-icon-badge">
+                                <svg class="lp-ico" width="21" height="21" aria-hidden="true"><use href="${iconId}"></use></svg>
+                            </div>
                         </label>
                         `;
                     }).join('');
                     syncCheckoutGatewaySelection();
                 } else {
-                    list.innerHTML = '<div style="color:#F87171; font-size:13px; padding:10px; text-align:center;">No payment gateways currently active. Please contact administrator.</div>';
+                    list.innerHTML = '<div style="color:#F87171; font-size:13px; padding:14px; text-align:center; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px;">No payment methods currently active. Please contact support.</div>';
                 }
             } catch(e) {
-                list.innerHTML = '<div style="color:#F87171; font-size:13px; padding:10px; text-align:center;">Failed to load payment options.</div>';
+                list.innerHTML = '<div style="color:#F87171; font-size:13px; padding:14px; text-align:center; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px;">Unable to load payment options. Please refresh and try again.</div>';
             }
         }
 
         function syncCheckoutGatewaySelection() {
             const selected = document.querySelector('input[name="checkoutGateway"]:checked');
+            const selectedVal = selected ? selected.value : '';
+            document.querySelectorAll('.checkout-method-card').forEach(card => {
+                card.classList.toggle('is-selected', card.getAttribute('data-gw-card') === selectedVal);
+            });
             const wrap = document.getElementById('checkoutCryptoNetworkWrap');
             if (wrap) {
-                wrap.style.display = (selected && selected.value === 'crypto') ? 'block' : 'none';
+                wrap.style.display = (selectedVal === 'crypto') ? 'block' : 'none';
             }
+            const amt = _activeCheckoutPlan ? '$' + Number(_activeCheckoutPlan.amount).toFixed(2) : '';
+            const ctaLabel = selectedVal === 'crypto'
+                ? ('Continue to Crypto Invoice' + (amt ? ' (' + amt + ')' : ''))
+                : ('Pay Securely with Card' + (amt ? ' • ' + amt : ''));
+            setCheckoutBtnState(false, ctaLabel);
         }
 
         function closeCheckoutModal() {
             if (_cryptoPollTimer) clearInterval(_cryptoPollTimer);
+            showCheckoutBanner('', '');
             document.getElementById('modalCheckoutPayment').style.display = 'none';
         }
 
@@ -11458,16 +11707,15 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
             const selectedGw = document.querySelector('input[name="checkoutGateway"]:checked');
             if (!selectedGw) {
-                alert('Please select a payment gateway.');
+                showCheckoutBanner('error', 'Please select a payment method to continue.');
                 return;
             }
 
+            showCheckoutBanner('', '');
             const gatewayKey = selectedGw.value;
             const networkEl = document.getElementById('checkoutCryptoNetworkSelect');
             const selectedNetwork = networkEl ? networkEl.value : 'usdt-tron';
-            const btn = document.getElementById('btnProceedToPay');
-            btn.disabled = true;
-            btn.innerText = 'Creating Secure Payment Session...';
+            setCheckoutBtnState(true, 'Creating Secure Payment Session...');
 
             try {
                 const res = await fetch('/api/payments/create-checkout?token=' + encodeURIComponent(token), {
@@ -11487,14 +11735,35 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     })
                 });
 
-                const data = await res.json();
-                btn.disabled = false;
-                btn.innerText = '🔒 Proceed to Secure Payment';
+                const rawText = await res.text();
+                let data = null;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseErr) {
+                    syncCheckoutGatewaySelection();
+                    console.error('[AntiProfiles Checkout] Non-JSON response:', res.status, rawText.slice(0, 300));
+                    showCheckoutBanner('error', 'Payment Server Error (HTTP ' + res.status + '). Please contact support or verify payment gateway settings.');
+                    return;
+                }
+
+                syncCheckoutGatewaySelection();
+
+                if (res.status === 401) {
+                    closeCheckoutModal();
+                    openModal('login');
+                    return;
+                }
 
                 const checkoutUrl = data.checkout_url || data.checkoutUrl || (data.data && (data.data.checkout_url || data.data.checkoutUrl));
 
                 if (data.success) {
-                    if (checkoutUrl) {
+                    if (data.sandbox && checkoutUrl && checkoutUrl.indexOf(window.location.origin) === 0) {
+                        showCheckoutBanner('success', data.message || 'Payment completed! Your subscription plan is now active.');
+                        if (typeof loadUserPortalData === 'function') loadUserPortalData();
+                        if (typeof loadSubscriptionsTable === 'function') loadSubscriptionsTable();
+                        setTimeout(() => { closeCheckoutModal(); }, 1800);
+                    } else if (checkoutUrl) {
+                        showCheckoutBanner('success', 'Secure checkout ready — redirecting to payment page...');
                         window.location.href = checkoutUrl;
                     } else if (data.type === 'crypto' || data.gateway === 'crypto') {
                         const payAddr = data.payAddress || data.deposit_address || '';
@@ -11515,15 +11784,15 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
 
                         pollCryptoInvoiceStatus(invNum);
                     } else {
-                        alert(data.message || 'Payment initiated successfully.');
+                        showCheckoutBanner('success', data.message || 'Payment initiated successfully.');
                     }
                 } else {
-                    alert('⚠️ Payment Checkout Error: ' + (data.error || 'Failed to initialize payment session.'));
+                    showCheckoutBanner('error', data.error || 'Failed to initialize payment session. Please try another method or contact support.');
                 }
             } catch(e) {
-                btn.disabled = false;
-                btn.innerText = '🔒 Proceed to Secure Payment';
-                alert('Network error creating payment checkout session. Please try again.');
+                syncCheckoutGatewaySelection();
+                console.error('[AntiProfiles Checkout] Network/Fetch error:', e);
+                showCheckoutBanner('error', 'Connection error while creating payment session: ' + (e && e.message ? e.message : 'Please try again.'));
             }
         }
 
@@ -11589,7 +11858,7 @@ $isPlanTrial = function($planId) use ($trialActive, $trialScope, $trialPlanId) {
                     .then(r => r.json())
                     .then(data => {
                         if (data && data.paid) {
-                            alert('🎉 ' + (isBachsReturn ? 'Bachs.io' : 'Stripe') + ' Payment Verified! Your subscription plan has been activated automatically.');
+                            alert('🎉 Payment Verified! Your subscription plan has been activated automatically.');
                             if (typeof loadUserPortalData === 'function') loadUserPortalData();
                         }
                     })
